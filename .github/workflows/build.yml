@@ -1,8 +1,12 @@
 name: mglet-build
 
 on:
-  pull_request:
-    branches: [ master ]
+  push:
+    branches: 
+      - 'michael/**'
+      - 'lukas/**'
+      - 'yoshi/**'
+      - 'simon/**'
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
