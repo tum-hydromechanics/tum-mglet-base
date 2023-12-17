@@ -19,7 +19,7 @@ jobs:
 
     strategy:
       matrix:
-        image: ["build-base-image"]
+        image: ["build-base-image:master"]
         build: ["debug"]
         prec: ["Single", "Double"]
       fail-fast: false
