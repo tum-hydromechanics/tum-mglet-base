@@ -19,13 +19,13 @@ jobs:
 
     strategy:
       matrix:
-        image: ["gnu-ompi-image:sha-57f558e", "intel-impi-image:sha-57f558e"]
-        build: ["release", "debug"]
+        image: ["build-base-image:sha-383a5be"]
+        build: ["debug"]
         prec: ["Single", "Double"]
       fail-fast: false
 
     container:
-      image: ghcr.io/kmturbulenz/${{ matrix.image }}
+      image: ghcr.io/tum-hydromechanics/${{ matrix.image }}
       options: "--cap-add=SYS_PTRACE --shm-size=4gb"
 
     steps:
