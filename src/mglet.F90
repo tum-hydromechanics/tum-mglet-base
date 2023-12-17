@@ -8,8 +8,6 @@ PROGRAM main
     USE timeloop_mod, ONLY: init_timeloop, finish_timeloop, timeloop
     USE scalar_mod, ONLY: init_scalar, finish_scalar
 
-    WRITE(*,*) "Hello World"
-
     ! Initialization of core data structures
     CALL init_core()
 
