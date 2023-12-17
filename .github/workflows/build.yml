@@ -49,6 +49,7 @@ jobs:
     - name: Run testcases
       run: |
         source /root/.bashrc || true
+        apt install -y python3
         cd build
         export OMPI_ALLOW_RUN_AS_ROOT=1
         export OMPI_ALLOW_RUN_AS_ROOT_CONFIRM=1
