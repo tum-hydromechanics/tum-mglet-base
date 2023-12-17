@@ -33,22 +33,22 @@ jobs:
 
     - name: Build MGLET
       run: |
-        source /opt/bashrc || true
+        source /root/.bashrc || true
         mkdir build
         cd build
-        TOOLCHAIN=${{ contains(matrix.image, 'gnu') && 'gnu' || 'intel' }}
+        TOOLCHAIN=${{ contains(matrix.image, 'base') && 'gnu' || 'intel' }}
         cmake -GNinja --preset=${TOOLCHAIN}-${{ matrix.build }} -DMGLET_REAL64="${{ matrix.prec == 'Double' && 'ON' || 'OFF' }}" ..
         ninja
         ls -R
 
     - name: Install 'gdb' and 'pidof'
       run: |
-        source /opt/bashrc || true
-        yum ${{ contains(matrix.image, 'intel') && '--disablerepo=oneAPI' || '' }} --disablerepo=ius -y install gdb sysvinit-tools
+        source /root/.bashrc || true
+        apt install -y gdb sysvinit-utils
 
     - name: Run testcases
       run: |
-        source /opt/bashrc || true
+        source /root/.bashrc || true
         cd build
         export OMPI_ALLOW_RUN_AS_ROOT=1
         export OMPI_ALLOW_RUN_AS_ROOT_CONFIRM=1
