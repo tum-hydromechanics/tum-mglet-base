@@ -15,11 +15,11 @@ concurrency:
 jobs:
   build:
     runs-on: ubuntu-latest
-    timeout-minutes: 50
+    timeout-minutes: 15
 
     strategy:
       matrix:
-        image: ["build-base-image:sha-383a5be"]
+        image: ["build-base-image"]
         build: ["debug"]
         prec: ["Single", "Double"]
       fail-fast: false
@@ -41,15 +41,9 @@ jobs:
         ninja
         ls -R
 
-    - name: Install 'gdb' and 'pidof'
-      run: |
-        source /root/.bashrc || true
-        apt install -y gdb sysvinit-utils
-
     - name: Run testcases
       run: |
         source /root/.bashrc || true
-        apt install -y python3 ssh
         cd build
         export OMPI_ALLOW_RUN_AS_ROOT=1
         export OMPI_ALLOW_RUN_AS_ROOT_CONFIRM=1
