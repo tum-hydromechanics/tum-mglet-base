@@ -18,7 +18,14 @@ contains
         add_c_fptr = c_funloc(add_f)
     end subroutine ptr_conversion
 
-END MODULE ptr_mod" CPTR_TEST_OK SRC_EXT "F90")
+END MODULE ptr_mod
+
+
+PROGRAM main
+
+    USE ptr_mod
+
+END PROGRAM main" CPTR_TEST_OK SRC_EXT "F90")
 if(NOT CPTR_TEST_OK)
     message(FATAL_ERROR "Compiler fails at C function pointers")
 endif()

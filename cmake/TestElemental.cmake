@@ -3,7 +3,8 @@ check_fortran_source_runs("
 MODULE elemental_mod
 
     IMPLICIT NONE(type, external)
-    PRIVATE
+
+    PUBLIC :: af, bf
 
 CONTAINS
 
@@ -17,7 +18,17 @@ CONTAINS
         res = a + b
     END FUNCTION bf
 
-END MODULE elemental_mod" ELEMENTAL_TEST_OK SRC_EXT "F90")
+END MODULE elemental_mod
+
+PROGRAM main
+
+    ! USE elemental_mod, ONLY: bf
+    REAL :: a(10) = 1.0
+    REAL :: b(10) = 2.0
+    REAL :: c(10) = -1.0
+    ! c = bf( a, b )
+
+END PROGRAM main" ELEMENTAL_TEST_OK SRC_EXT "F90")
 if(NOT ELEMENTAL_TEST_OK)
     message(FATAL_ERROR "Compiler fails at 'elemental' or / and 'pure elemental'")
 endif()

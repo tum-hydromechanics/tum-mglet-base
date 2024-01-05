@@ -9,7 +9,13 @@ MODULE abstract_mod
         END SUBROUTINE
     END INTERFACE
 
-END MODULE abstract_mod" ABSTRACT_TEST_OK SRC_EXT "F90")
+END MODULE abstract_mod
+
+PROGRAM main
+
+    USE abstract_mod
+
+END PROGRAM main" ABSTRACT_TEST_OK SRC_EXT "F90")
 if(NOT ABSTRACT_TEST_OK)
     message(FATAL_ERROR "Compiler fails at 'abstract interface'")
 endif()

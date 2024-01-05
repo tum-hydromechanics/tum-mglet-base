@@ -15,7 +15,14 @@ MODULE c_binding_mod
         END FUNCTION testfun
     END INTERFACE
 
-END MODULE c_binding_mod" CBIND_TEST_OK SRC_EXT "F90")
+END MODULE c_binding_mod
+
+
+PROGRAM main
+
+    USE c_binding_mod
+
+END PROGRAM main" CBIND_TEST_OK SRC_EXT "F90")
 if(NOT CBIND_TEST_OK)
     message(FATAL_ERROR "Compiler fails to use C bindings")
 endif()
