@@ -2,6 +2,7 @@ MODULE timeintegration_mod
     USE bound_flow_mod
     USE core_mod
     USE flowcore_mod
+    USE gc_compbodyforce_mod, ONLY: sample_compbodyforce
     USE gc_flowstencils_mod, ONLY: setpointvalues, setibvalues, getibvalues
     USE ib_mod
     USE itinfo_mod, ONLY: itinfo_sample, itinfo_print
@@ -96,14 +97,10 @@ CONTAINS
         CALL coriolisterm(uo, vo, wo)
 
         ! dU_j = A_j*dU_(j-1) + dt*uo
-        du%arr = frhs*du%arr + uo%arr
-        dv%arr = frhs*dv%arr + vo%arr
-        dw%arr = frhs*dw%arr + wo%arr
-
         ! U_j = U_(j-1) + B_j*dU_j
-        u%arr = u%arr + dt*fu*du%arr
-        v%arr = v%arr + dt*fu*dv%arr
-        w%arr = w%arr + dt*fu*dw%arr
+        CALL rkstep(u%arr, du%arr, uo%arr, frhs, dt*fu)
+        CALL rkstep(v%arr, dv%arr, vo%arr, frhs, dt*fu)
+        CALL rkstep(w%arr, dw%arr, wo%arr, frhs, dt*fu)
 
         IF (ib%type == "GHOSTCELL") THEN
             ! Equivalent to old "cop3dzero"
@@ -155,7 +152,7 @@ CONTAINS
         ! Local variables
         INTEGER(intk) :: i, igrid
         INTEGER(intk) :: kk, jj, ii
-        TYPE(field_t), POINTER :: u_f, v_f, w_f, g_f, bp_f, sdiv_f
+        TYPE(field_t), POINTER :: u_f, v_f, w_f, p_f, g_f, bp_f, sdiv_f
         TYPE(field_t), POINTER :: x_f, y_f, z_f
         TYPE(field_t), POINTER :: dx_f, dy_f, dz_f
         TYPE(field_t), POINTER :: ddx_f, ddy_f, ddz_f
@@ -243,6 +240,12 @@ CONTAINS
         CALL itinfo_print(itstep, ittot, timeph, globalcflmax, exploded)
 
         CALL stop_timer(350)
+
+        IF (compbodyforce .AND. ib%type == "GHOSTCELL") THEN
+            CALL get_field(p_f, "P")
+            CALL sample_compbodyforce(u_f, v_f, w_f, p_f, g_f, ittot, timeph)
+        END IF
+
         CALL stop_timer(300)
     END SUBROUTINE itinfo_flow
 

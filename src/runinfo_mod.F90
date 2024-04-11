@@ -47,7 +47,7 @@ CONTAINS
         INTEGER(hsize_t) :: shape1(1), offset1(1), count1(1)
         INTEGER(int32) :: hdferr
         TYPE(runinfo_t), TARGET :: wdata
-        TYPE(C_PTR) :: c_ptr
+        TYPE(C_PTR) :: cptr
 
         IF (ioproc) THEN
             CALL create_runinfo_h5type(dtype)
@@ -80,8 +80,8 @@ CONTAINS
                 IF (hdferr /= 0) CALL errr(__FILE__, __LINE__)
             END IF
 
-            c_ptr = C_LOC(wdata)
-            CALL h5dread_f(dset_id, dtype, c_ptr, hdferr, &
+            cptr = C_LOC(wdata)
+            CALL h5dread_f(dset_id, dtype, cptr, hdferr, &
                 file_space_id=filespace, mem_space_id=memspace)
             IF (hdferr /= 0) CALL errr(__FILE__, __LINE__)
 
@@ -142,6 +142,7 @@ CONTAINS
         ! if it is negative, a the 'programname' buffer was too short and the
         ! returnded value was truncated
         ! if it is zero, everything is good
+        wdata%programname = REPEAT(" ", LEN(wdata%programname))
         IF (status <= 0) THEN
             wdata%programname = TRANSFER(programname, wdata%programname)
         ELSE

@@ -4,7 +4,7 @@ MODULE basefield_mod
     USE err_mod, ONLY: errr
     USE grids_mod, ONLY: mygrids, nmygrids, minlevel, maxlevel, get_imygrid, &
         level
-    USE pointers_mod, ONLY: get_len3, idim2d, get_ibb
+    USE pointers_mod, ONLY: get_len3
     USE precision_mod, ONLY: intk, realk
 
 
@@ -236,11 +236,12 @@ CONTAINS
     END SUBROUTINE get_ip
 
 
-    SUBROUTINE get_rattr(this, val, key)
+    SUBROUTINE get_rattr(this, val, key, found)
         ! Subroutine arguments
         CLASS(basefield_t), INTENT(inout) :: this
         REAL(realk), INTENT(inout) :: val
         CHARACTER(len=*), INTENT(in) :: key
+        LOGICAL, INTENT(out), OPTIONAL :: found
 
         ! Local variables
         INTEGER(intk) :: i
@@ -257,18 +258,23 @@ CONTAINS
             END IF
         END DO
 
-        IF (.NOT. thisfound) THEN
-            WRITE(*, '("Attribute ", A, " does not exist!")') key
-            CALL errr(__FILE__, __LINE__)
+        IF (PRESENT(found)) THEN
+            found = thisfound
+        ELSE
+            IF (.NOT. thisfound) THEN
+                WRITE(*, '("Attribute ", A, " does not exist!")') key
+                CALL errr(__FILE__, __LINE__)
+            END IF
         END IF
     END SUBROUTINE get_rattr
 
 
-    SUBROUTINE get_iattr(this, val, key)
+    SUBROUTINE get_iattr(this, val, key, found)
         ! Subroutine arguments
         CLASS(basefield_t), INTENT(inout) :: this
         INTEGER(intk), INTENT(inout) :: val
         CHARACTER(len=*), INTENT(in) :: key
+        LOGICAL, INTENT(out), OPTIONAL :: found
 
         ! Local variables
         INTEGER(intk) :: i
@@ -285,9 +291,13 @@ CONTAINS
             END IF
         END DO
 
-        IF (.NOT. thisfound) THEN
-            WRITE(*, '("Attribute ", A, " does not exist!")') key
-            CALL errr(__FILE__, __LINE__)
+        IF (PRESENT(found)) THEN
+            found = thisfound
+        ELSE
+            IF (.NOT. thisfound) THEN
+                WRITE(*, '("Attribute ", A, " does not exist!")') key
+                CALL errr(__FILE__, __LINE__)
+            END IF
         END IF
     END SUBROUTINE get_iattr
 

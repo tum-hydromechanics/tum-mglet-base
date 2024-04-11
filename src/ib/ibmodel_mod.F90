@@ -1,6 +1,7 @@
 MODULE ibmodel_mod
-    USE core_mod, ONLY: realk, intk, idim3d, field_t
+    USE core_mod, ONLY: realk, intk, field_t
     USE blockbp_mod, ONLY: blockbp_t
+
     IMPLICIT NONE(type, external)
     PRIVATE
 
@@ -41,9 +42,10 @@ MODULE ibmodel_mod
             INTEGER(intk), INTENT(IN) :: igrid
         END SUBROUTINE restrict_i
 
-        SUBROUTINE blockbp_i(this)
+        SUBROUTINE blockbp_i(this, stop_now)
             IMPORT :: ibmodel_t
             CLASS(ibmodel_t), INTENT(inout) :: this
+            LOGICAL, INTENT(out) :: stop_now
         END SUBROUTINE blockbp_i
 
         SUBROUTINE read_stencils_i(this)

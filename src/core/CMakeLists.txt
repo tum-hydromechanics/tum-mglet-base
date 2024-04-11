@@ -47,6 +47,7 @@ add_library(core STATIC
     timer_mod.F90
     utils_mod.F90
     write3d_mod.F90
+    write_grids_mod.F90
 )
 
 target_include_directories(core
@@ -68,7 +69,7 @@ set_source_files_properties(jsoncpp_wrapper.cxx PROPERTIES INCLUDE_DIRECTORIES
     ${json_SOURCE_DIR}/include
 )
 
-set_property(TARGET core PROPERTY CXX_STANDARD 11)
+set_property(TARGET core PROPERTY CXX_STANDARD 14)
 
 # Other neccesary compile flags
 set_source_files_properties(comms_mod.F90 PROPERTIES COMPILE_FLAGS

@@ -111,14 +111,15 @@ CONTAINS
     END SUBROUTINE destructor
 
 
-    SUBROUTINE blockbp(this)
+    SUBROUTINE blockbp(this, stop_now)
         ! Subroutine arguments
         CLASS(gc_t), INTENT(inout) :: this
+        LOGICAL, INTENT(out) :: stop_now
 
         SELECT TYPE(blockbp_op => this%blockbp_op)
         TYPE IS (gc_blockbp_t)
             CALL blockbp_op%blockbp(this%icells, this%icellspointer, &
-                this%stencils)
+                this%stencils, stop_now)
         CLASS DEFAULT
             CALL errr(__FILE__, __LINE__)
         END SELECT
@@ -201,14 +202,14 @@ CONTAINS
 
             CALL this%calc_nvecs_grid(kk, jj, ii, ddx, ddy, ddz, &
                 bzelltyp(ip3), au%arr(ip3), av%arr(ip3), aw%arr(ip3), &
-                ncells, xpsw(:, ipp:ipp+ncells-1), &
-                nvecs(:, ipp:ipp+ncells-1), arealist(ipp:ipp+ncells-1))
+                xpsw(:, ipp:ipp+ncells-1), nvecs(:, ipp:ipp+ncells-1), &
+                arealist(ipp:ipp+ncells-1))
         END DO
     END SUBROUTINE calc_nvecs
 
 
     SUBROUTINE calc_nvecs_grid(kk, jj, ii, ddx, ddy, ddz, bzelltyp, &
-            au, av, aw, ncells, xpsw, nvecs, arealist)
+            au, av, aw, xpsw, nvecs, arealist)
         ! Subroutine arguments
         INTEGER(intk), INTENT(in) :: kk, jj, ii
         REAL(realk), INTENT(in) :: ddx(ii), ddy(jj), ddz(kk)
@@ -216,7 +217,6 @@ CONTAINS
         REAL(realk), INTENT(in) :: au(kk, jj, ii)
         REAL(realk), INTENT(in) :: av(kk, jj, ii)
         REAL(realk), INTENT(in) :: aw(kk, jj, ii)
-        INTEGER(intk), INTENT(in) :: ncells
         REAL(realk), INTENT(in) :: xpsw(:, :)
         REAL(realk), INTENT(out) :: nvecs(:, :)
         REAL(realk), INTENT(out) :: arealist(:)
@@ -280,13 +280,16 @@ CONTAINS
         CHARACTER(len=1), INTENT(in), OPTIONAL :: ctyp
 
         ! Local variables
-        INTEGER(intk) :: i, igrid, ip3
+        INTEGER(intk) :: i, igrid, ilevel
         INTEGER(intk) :: kk, jj, ii
         LOGICAL :: use_sdiv
         TYPE(field_t), POINTER :: rddx_f, rddy_f, rddz_f
         TYPE(field_t), POINTER :: sdiv_f, bp_f
         REAL(realk), CONTIGUOUS, POINTER :: rddx(:), rddy(:), rddz(:)
-        REAL(realk), CONTIGUOUS, POINTER :: sdiv(:, :, :), bp(:, :, :)
+        REAL(realk), CONTIGUOUS, POINTER :: sdiv(:, :, :), bp(:, :, :), &
+            div_p(:, :, :), u_p(:, :, :), v_p(:, :, :), w_p(:, :, :)
+
+        CALL start_timer(240)
 
         ! For safety
         NULLIFY(bp_f)
@@ -309,20 +312,32 @@ CONTAINS
             CALL get_field(sdiv_f, "SDIV")
         END IF
 
-        DO i = 1, nmygrids
-            igrid = mygrids(i)
-            CALL get_mgdims(kk, jj, ii, igrid)
-            CALL get_ip3(ip3, igrid)
-            CALL rddx_f%get_ptr(rddx, igrid)
-            CALL rddy_f%get_ptr(rddy, igrid)
-            CALL rddz_f%get_ptr(rddz, igrid)
-            CALL bp_f%get_ptr(bp, igrid)
+        DO ilevel = minlevel, maxlevel
+            ! Assume that U, V, W and DIV are defined on the same levels!!!
+            IF (.NOT. u%active_level(ilevel)) CYCLE
 
-            IF (use_sdiv) CALL sdiv_f%get_ptr(sdiv, igrid)
+            DO i = 1, nmygridslvl(ilevel)
+                igrid = mygridslvl(i, ilevel)
+                CALL get_mgdims(kk, jj, ii, igrid)
 
-            CALL this%divcal_grid(kk, jj, ii, fak, div%arr(ip3), u%arr(ip3), &
-                v%arr(ip3), w%arr(ip3), rddx, rddy, rddz, bp, sdiv)
+                CALL rddx_f%get_ptr(rddx, igrid)
+                CALL rddy_f%get_ptr(rddy, igrid)
+                CALL rddz_f%get_ptr(rddz, igrid)
+                CALL bp_f%get_ptr(bp, igrid)
+
+                CALL div%get_ptr(div_p, igrid)
+                CALL u%get_ptr(u_p, igrid)
+                CALL v%get_ptr(v_p, igrid)
+                CALL w%get_ptr(w_p, igrid)
+
+                IF (use_sdiv) CALL sdiv_f%get_ptr(sdiv, igrid)
+
+                CALL this%divcal_grid(kk, jj, ii, fak, div_p, u_p, &
+                    v_p, w_p, rddx, rddy, rddz, bp, sdiv)
+            END DO
         END DO
+
+        CALL stop_timer(240)
     END SUBROUTINE divcal
 
 END MODULE gc_mod
