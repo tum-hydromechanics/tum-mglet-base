@@ -1,6 +1,6 @@
 ! this file is for TYPE definitions and general handling of particles 
 
-MODULE particles_mod
+MODULE baseparticle_mod
 
 !===================================
 
@@ -13,7 +13,7 @@ IMPLICIT NONE
 TYPE :: base_particle_t ! could be extended by a particle type that includes the mass
 	
 	LOGICAL :: is_init = .FALSE. ! if a list of particles is handled, 
-									! this can be used to identify iif an entry is an actual particly
+									! this can be used to identify if an entry is an actual particly
 	INTEGER(intk) :: local_id
 	INTEGER(intk) :: list_id 			! not sure if useful!?
 	REAL(realk) :: x, y, z
@@ -24,7 +24,7 @@ TYPE :: base_particle_t ! could be extended by a particle type that includes the
 
 	CONTAINS 
 
-	PROCEDURE :: create
+	PROCEDURE :: init
 	PROCEDURE :: print_status
 	! PROCEDURE :: get_ic  (could be another method) 
 
@@ -42,12 +42,12 @@ CONTAINS
 	    INTEGER(intk), INTENT(in) :: list_id
 	    REAL(realk), INTENT(in) :: x, y, z
 		REAL(realk), INTENT(in) :: u, v, w
-		REAL(realk) :: particle_time
+		REAL(realk), INTENT(in) :: particle_time
 
 		! Local variables
         ! none...
 
-		this%is_created = .TRUE.
+		this%is_init = .TRUE.
 
 		this%local_id = local_id
 		this%list_id = list_id
@@ -85,13 +85,19 @@ CONTAINS
 		CALL RANDOM_NUMBER(v)
 		CALL RANDOM_NUMBER(w)
 
-	END SUBROUTINE random_ic() 
+	END SUBROUTINE random_ic
 
 	!------------------------------
 
-	SUBROUTINE print_status()
-
+	SUBROUTINE print_status(this)
+	
+		CLASS(base_particle_t), INTENT(in) :: this
+	
+		IF (this%is_init) THEN
+		print *, 'Particle ID: ', this%local_id
+		END IF
+		
 	END SUBROUTINE print_status
 
 
-END MODULE particles_mod
+END MODULE 

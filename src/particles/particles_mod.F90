@@ -1,6 +1,6 @@
 ! this file is for particle lists
 
-MODULE 
+MODULE particles_mod
 
 !===================================
 
@@ -13,7 +13,6 @@ IMPLICIT NONE
 
 INTEGER(intk), PARAMETER :: default_list_length = 1000
 INTEGER(intk), PARAMETER :: default_n_particle_per_list = 100
-TYPE(particle_list_t) :: my_particle_list
 
 TYPE :: particle_list_t
 
@@ -22,7 +21,7 @@ TYPE :: particle_list_t
 	INTEGER(intk) :: list_length
 
 
-	TYPE(particle_t), ALLOCATABLE :: particles(:)
+	TYPE(base_particle_t), ALLOCATABLE :: particles(:)
 	LOGICAL, ALLOCATABLE :: particle_stored(:) 	! each logical value reflects whether a particle is stored in the list 
 												! at the respective index. Is this a feasable and good way to keep track 
 												! of particle storage (especially as is_init in particle_t carries the same information?
@@ -31,7 +30,7 @@ TYPE :: particle_list_t
 
 END TYPE particle_list_t
 
-
+TYPE(particle_list_t) :: my_particle_list
 
 CONTAINS
 
@@ -46,8 +45,8 @@ CONTAINS
 		! local variables
  		INTEGER(intk) :: local_id
  		REAL(realk) :: particle_time = 0 
- 		REAL(realk), INTENT(inout) :: x, y, z
-		REAL(realk), INTENT(inout) :: u, v, w
+ 		REAL(realk) :: x, y, z
+		REAL(realk) :: u, v, w
 
 
  		my_particle_list%n_active_particles = default_n_particle_per_list
@@ -62,7 +61,7 @@ CONTAINS
 
  			CALL random_ic(x, y, z, u, v, w)
 
- 			my_particle_list%particles(local_id)%init(local_id, my_particle_list%list_id, x, y, z, u, v, w, particle_time)
+ 			CALL my_particle_list%particles(local_id)%init(local_id, my_particle_list%list_id, x, y, z, u, v, w, particle_time)
 
  		END DO
 	
