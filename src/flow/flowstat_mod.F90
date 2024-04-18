@@ -14,12 +14,14 @@ CONTAINS
         ! Local variables
         ! none....
 
+        ! zeroth order 
         CALL register_statfield("U_AVG", comp_avg)
         CALL register_statfield("V_AVG", comp_avg)
         CALL register_statfield("W_AVG", comp_avg)
         CALL register_statfield("P_AVG", comp_avg)
         CALL register_statfield("G_AVG", comp_avg)
 
+        ! basis for second central moments
         CALL register_statfield("UU_AVG", comp_sqr_avg)
         CALL register_statfield("VV_AVG", comp_sqr_avg)
         CALL register_statfield("WW_AVG", comp_sqr_avg)
@@ -29,6 +31,19 @@ CONTAINS
         CALL register_statfield("UV_AVG", comp_uv_avg)
         CALL register_statfield("UW_AVG", comp_uv_avg)
         CALL register_statfield("VW_AVG", comp_uv_avg)
+
+        ! basis for third order central moments
+        CALL register_statfield("UUU_AVG", comp_cube_avg)
+        CALL register_statfield("VVV_AVG", comp_cube_avg)
+        CALL register_statfield("WWW_AVG", comp_cube_avg)
+
+        CALL register_statfield("UUV_AVG", comp_uvw_avg)
+        CALL register_statfield("UUW_AVG", comp_uvw_avg)
+        CALL register_statfield("UVV_AVG", comp_uvw_avg)
+        CALL register_statfield("UVW_AVG", comp_uvw_avg)
+        CALL register_statfield("UWW_AVG", comp_uvw_avg)
+        CALL register_statfield("VVW_AVG", comp_uvw_avg)
+        CALL register_statfield("VWW_AVG", comp_uvw_avg)
 
         CALL register_statfield("laplaceP_AVG", comp_laplacep_avg)
         CALL register_statfield("laplaceP_SQR_AVG", comp_laplacep_sqr_avg)
@@ -77,8 +92,58 @@ CONTAINS
 
         CALL field%init(name, istag=istag, jstag=jstag, kstag=kstag, &
             units=units)
+
+        ! the multiplication respects the staggeredness
         CALL field%multiply(in1, in2)
+
     END SUBROUTINE comp_uv_avg
+
+
+    ! Routine to compute the UV_AVG, UW_AVG and VW_AVG fields
+    SUBROUTINE comp_uvw_avg(field, name, dt)
+        ! Subroutine arguments
+        TYPE(field_t), INTENT(inout) :: field
+        CHARACTER(len=*), INTENT(in) :: name
+        REAL(realk), INTENT(in) :: dt
+
+        ! Local variables
+        INTEGER(intk), PARAMETER :: units(*) = [0, 2, -2, 0, 0, 0, 0]
+        TYPE(field_t), POINTER :: in1, in2
+        INTEGER(intk) :: istag, jstag, kstag
+
+        ! TO BE DONE !!!
+
+        ! SELECT CASE (TRIM(name))
+        ! CASE ("UV_AVG")
+        !     CALL get_field(in1, "U")
+        !     CALL get_field(in2, "V")
+        !     istag = 1
+        !     jstag = 1
+        !     kstag = 0
+        ! CASE ("UW_AVG")
+        !     CALL get_field(in1, "U")
+        !     CALL get_field(in2, "W")
+        !     istag = 1
+        !     jstag = 0
+        !     kstag = 1
+        ! CASE ("VW_AVG")
+        !     CALL get_field(in1, "V")
+        !     CALL get_field(in2, "W")
+        !     istag = 0
+        !     jstag = 1
+        !     kstag = 1
+        ! CASE DEFAULT
+        !     CALL errr(__FILE__, __LINE__)
+        ! END SELECT
+
+        ! CALL field%init(name, istag=istag, jstag=jstag, kstag=kstag, &
+        !     units=units)
+
+        ! ! the multiplication respects the staggeredness
+        ! CALL field%multiply(in1, in2)
+        
+    END SUBROUTINE comp_uvw_avg
+
 
 
     SUBROUTINE comp_laplacep_avg(field, name, dt)

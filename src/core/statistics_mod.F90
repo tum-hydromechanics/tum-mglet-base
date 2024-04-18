@@ -230,9 +230,47 @@ CONTAINS
         base_name = name(1:(nchar-4)/2)
         CALL get_field(infield, base_name)
 
+        ! staggeredness is preserved
         CALL field%copy_from(infield)
         field%units = infield%units*2
         field%arr = field%arr(:)**2
     END SUBROUTINE comp_sqr_avg
+
+
+    ! General routine to compute squares such as UU_AVG, VV_AVG etc.
+    ! Does not do any interpolation of staggered quantities.
+    !
+    ! Use the naming convention UU_AVG -> average of U*U etc.
+    SUBROUTINE comp_cube_avg(field, name, dt)
+        ! Subroutine arguments
+        TYPE(field_t), INTENT(inout) :: field
+        CHARACTER(len=*), INTENT(in) :: name
+        REAL(realk), INTENT(in) :: dt
+
+        ! Local variables
+        TYPE(field_t), POINTER :: infield
+        CHARACTER(len=nchar_name) :: base_name
+        INTEGER(intk) :: nchar
+
+        ! TO BE DONE !!!
+
+        ! ! Strip off "_AVG" at end of name to get field to compute average from
+        ! nchar = LEN_TRIM(name)
+
+        ! ! Sanity checks
+        ! IF (nchar < 6) CALL errr(__FILE__, __LINE__)
+        ! IF (nchar > nchar_name) CALL errr(__FILE__, __LINE__)
+        ! IF (name(nchar-3:nchar) /= "_AVG") CALL errr(__FILE__, __LINE__)
+        ! IF (MOD(nchar-4, 2) /= 0) CALL errr(__FILE__, __LINE__)
+
+        ! base_name = name(1:(nchar-4)/2)
+        ! CALL get_field(infield, base_name)
+
+        ! ! staggeredness is preserved
+        ! CALL field%copy_from(infield)
+        ! field%units = infield%units*2
+        ! field%arr = field%arr(:)**2
+    END SUBROUTINE comp_sqr_avg
+
 
 END MODULE statistics_mod
