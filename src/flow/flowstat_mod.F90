@@ -111,7 +111,7 @@ CONTAINS
         TYPE(field_t), POINTER :: in1, in2
         INTEGER(intk) :: istag, jstag, kstag
 
-        ! TO BE DONE !!!
+        ! TO BE DONE !!! soonfhzbghzbhzbghzbgzh
 
         ! SELECT CASE (TRIM(name))
         ! CASE ("UV_AVG")
@@ -236,7 +236,7 @@ CONTAINS
         ! lpp is declared INTENT(inout), therefore there are no need to set
         ! buffers (where no lpp is computed) to zero. If it were INTENT(out)
         ! the entire field should have been completely defined inside this
-        ! routine
+        ! routine 
 
         DO i = 3, ii-2
             IF (ifr == 1 .AND. i == 3) THEN
