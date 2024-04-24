@@ -39,6 +39,7 @@ MODULE realfield_mod
 
         PROCEDURE :: copy_from
         PROCEDURE :: multiply
+        PROCEDURE :: multiply3
         PROCEDURE :: shift
         PROCEDURE :: get_buffers
         PROCEDURE :: init_buffers
