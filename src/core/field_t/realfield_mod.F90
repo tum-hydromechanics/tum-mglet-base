@@ -265,6 +265,78 @@ CONTAINS
     END SUBROUTINE multiply
 
 
+    ! POSSIBLE OVERLOADING OF FUCTION
+    !Multiply3 does the same work as multiply but for 3 arguments considering 
+    !staggering of the of the variables
+
+    SUBROUTINE multiply3(this, a, b, c)
+        ! Subroutine arguments
+        CLASS(field_t), INTENT(inout) :: this
+        CLASS(field_t), INTENT(in) :: a
+        CLASS(field_t), INTENT(in) :: b
+        CLASS(field_t), INTENT(in) :: c
+
+        ! Local variables
+        INTEGER(intk) :: igr, ilevel, igrid
+        INTEGER(intk) :: kk, jj, ii
+        INTEGER(intk) :: k, j, i
+        INTEGER(intk) :: kstart, jstart, istart
+        INTEGER(intk) :: kstop, jstop, istop
+        INTEGER(intk) :: k1, j1, i1
+        INTEGER(intk) :: k2, j2, i2
+        INTEGER(intk) :: k3, j3, i3
+        REAL(realk), POINTER, CONTIGUOUS :: out(:, :, :), phi1(:, :, :), &
+            phi2(:, :, :), phi3(:, :, :)
+
+        DO igr = 1, nmygrids
+            igrid = mygrids(igr)
+            ilevel = level(igrid)
+
+            ! All fields must be defiend on the same levels
+            IF (.NOT. this%active_level(ilevel)) CYCLE
+            IF (a%active_level(ilevel) .EQV. .FALSE. .OR. &
+                    b%active_level(ilevel) .EQV. .FALSE.) THEN
+                CALL errr(__FILE__, __LINE__)
+            END IF
+
+            CALL get_mgdims(kk, jj, ii, igrid)
+
+            istart = 1
+            istop = ii
+            CALL get_stag_shift(i1, istart, istop, ii, this%istag, a%istag)
+            CALL get_stag_shift(i2, istart, istop, ii, this%istag, b%istag)
+            CALL get_stag_shift(i3, istart, istop, ii, this%istag, c%istag)
+
+            jstart = 1
+            jstop = jj
+            CALL get_stag_shift(j1, jstart, jstop, jj, this%jstag, a%jstag)
+            CALL get_stag_shift(j2, jstart, jstop, jj, this%jstag, b%jstag)
+            CALL get_stag_shift(j3, jstart, jstop, jj, this%jstag, c%jstag)
+
+            kstart = 1
+            kstop = kk
+            CALL get_stag_shift(k1, kstart, kstop, kk, this%kstag, a%kstag)
+            CALL get_stag_shift(k2, kstart, kstop, kk, this%kstag, b%kstag)
+            CALL get_stag_shift(k3, kstart, kstop, kk, this%kstag, c%kstag)
+
+            CALL this%get_ptr(out, igrid)
+            CALL a%get_ptr(phi1, igrid)
+            CALL b%get_ptr(phi2, igrid)
+            CALL c%get_ptr(phi3, igrid)
+
+            DO i = istart, istop
+                DO j = jstart, jstop
+                    DO k = kstart, kstop
+                        out(k, j, i) = &
+                            0.125*(phi1(k, j, i) + phi1(k+k1, j+j1, i+i1)) &
+                            *(phi2(k, j, i) + phi2(k+k2, j+j2, i+i2))      &
+                            *(phi3(k, j, i) + phi3(k+k3, j+j3, i+i3))
+                    END DO
+                END DO
+            END DO
+        END DO
+    END SUBROUTINE multiply3
+
     ! Shift position (staggering) of field. The destination field istag, jstag,
     ! kstag determine the interpolation of the source fields
     !

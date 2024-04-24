@@ -254,23 +254,23 @@ CONTAINS
 
         ! TO BE DONE !!!
 
-        ! ! Strip off "_AVG" at end of name to get field to compute average from
-        ! nchar = LEN_TRIM(name)
+        ! Strip off "_AVG" at end of name to get field to compute average from
+        nchar = LEN_TRIM(name)
 
-        ! ! Sanity checks
-        ! IF (nchar < 6) CALL errr(__FILE__, __LINE__)
-        ! IF (nchar > nchar_name) CALL errr(__FILE__, __LINE__)
-        ! IF (name(nchar-3:nchar) /= "_AVG") CALL errr(__FILE__, __LINE__)
-        ! IF (MOD(nchar-4, 2) /= 0) CALL errr(__FILE__, __LINE__)
+        ! Sanity checks
+        IF (nchar < 7) CALL errr(__FILE__, __LINE__)
+        IF (nchar > nchar_name) CALL errr(__FILE__, __LINE__)
+        IF (name(nchar-3:nchar) /= "_AVG") CALL errr(__FILE__, __LINE__)
+        IF (MOD(nchar-4, 3) /= 0) CALL errr(__FILE__, __LINE__)
 
-        ! base_name = name(1:(nchar-4)/2)
-        ! CALL get_field(infield, base_name)
+        base_name = name(1:(nchar-4)/3)
+        CALL get_field(infield, base_name)
 
-        ! ! staggeredness is preserved
-        ! CALL field%copy_from(infield)
-        ! field%units = infield%units*2
-        ! field%arr = field%arr(:)**2
-    END SUBROUTINE comp_sqr_avg
+        ! staggeredness is preserved
+        CALL field%copy_from(infield)
+        field%units = infield%units*3
+        field%arr = field%arr(:)**3
+    END SUBROUTINE comp_cube_avg
 
 
 END MODULE statistics_mod

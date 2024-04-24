@@ -99,7 +99,7 @@ CONTAINS
     END SUBROUTINE comp_uv_avg
 
 
-    ! Routine to compute the UV_AVG, UW_AVG and VW_AVG fields
+    ! Routine to compute the UUV_AVG, UUW_AVG, UVV_AVG, UVW_AVG, UWW_AVG, VVW_AVG and VWW_AVG fields
     SUBROUTINE comp_uvw_avg(field, name, dt)
         ! Subroutine arguments
         TYPE(field_t), INTENT(inout) :: field
@@ -107,40 +107,71 @@ CONTAINS
         REAL(realk), INTENT(in) :: dt
 
         ! Local variables
-        INTEGER(intk), PARAMETER :: units(*) = [0, 2, -2, 0, 0, 0, 0]
-        TYPE(field_t), POINTER :: in1, in2
+        INTEGER(intk), PARAMETER :: units(*) = [0, 3, -3, 0, 0, 0, 0]
+        TYPE(field_t), POINTER :: in1, in2, in3
         INTEGER(intk) :: istag, jstag, kstag
 
-        ! TO BE DONE !!! soonfhzbghzbhzbghzbgzh
+        !TO BE DONE !!!
 
-        ! SELECT CASE (TRIM(name))
-        ! CASE ("UV_AVG")
-        !     CALL get_field(in1, "U")
-        !     CALL get_field(in2, "V")
-        !     istag = 1
-        !     jstag = 1
-        !     kstag = 0
-        ! CASE ("UW_AVG")
-        !     CALL get_field(in1, "U")
-        !     CALL get_field(in2, "W")
-        !     istag = 1
-        !     jstag = 0
-        !     kstag = 1
-        ! CASE ("VW_AVG")
-        !     CALL get_field(in1, "V")
-        !     CALL get_field(in2, "W")
-        !     istag = 0
-        !     jstag = 1
-        !     kstag = 1
-        ! CASE DEFAULT
-        !     CALL errr(__FILE__, __LINE__)
-        ! END SELECT
+        SELECT CASE (TRIM(name))
+        CASE ("UUV_AVG")
+            CALL get_field(in1, "U")
+            CALL get_field(in2, "U")
+            CALL get_field(in3, "V")
+            istag = 1
+            jstag = 1
+            kstag = 0
+        CASE ("UUW_AVG")
+            CALL get_field(in1, "U")
+            CALL get_field(in2, "U")
+            CALL get_field(in3, "W")
+            istag = 1
+            jstag = 0
+            kstag = 1
+        CASE ("UVV_AVG")
+            CALL get_field(in1, "U")
+            CALL get_field(in2, "V")
+            CALL get_field(in3, "V")
+            istag = 1
+            jstag = 1
+            kstag = 0
+        CASE ("UVW_AVG")
+            CALL get_field(in1, "U")
+            CALL get_field(in2, "V")
+            CALL get_field(in3, "W")
+            istag = 1
+            jstag = 1
+            kstag = 1
+        CASE ("UVW_AVG")
+            CALL get_field(in1, "U")
+            CALL get_field(in2, "W")
+            CALL get_field(in3, "W")
+            istag = 1
+            jstag = 0
+            kstag = 1
+        CASE ("UVW_AVG")
+            CALL get_field(in1, "V")
+            CALL get_field(in2, "V")
+            CALL get_field(in3, "W")
+            istag = 0
+            jstag = 1
+            kstag = 1
+        CASE ("UVW_AVG")
+            CALL get_field(in1, "V")
+            CALL get_field(in2, "W")
+            CALL get_field(in3, "W")
+            istag = 0
+            jstag = 1
+            kstag = 1
+        CASE DEFAULT
+            CALL errr(__FILE__, __LINE__)
+        END SELECT
 
-        ! CALL field%init(name, istag=istag, jstag=jstag, kstag=kstag, &
-        !     units=units)
+        CALL field%init(name, istag=istag, jstag=jstag, kstag=kstag, &
+            units=units)
 
-        ! ! the multiplication respects the staggeredness
-        ! CALL field%multiply(in1, in2)
+        ! the multiplication respects the staggeredness
+        CALL field%multipl3(in1, in2, in3)
         
     END SUBROUTINE comp_uvw_avg
 
