@@ -329,7 +329,7 @@ CONTAINS
                     DO k = kstart, kstop
                         out(k, j, i) = &
                             0.125*(phi1(k, j, i) + phi1(k+k1, j+j1, i+i1)) &
-                            *(phi2(k, j, i) + phi2(k+k2, j+j2, i+i2))      &
+                            *(phi2(k, j, i) + phi2(k+k2, j+j2, i+i2)) &
                             *(phi3(k, j, i) + phi3(k+k3, j+j3, i+i3))
                     END DO
                 END DO
