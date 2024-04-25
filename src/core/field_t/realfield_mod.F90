@@ -268,7 +268,7 @@ CONTAINS
 
     ! POSSIBLE OVERLOADING OF FUCTION
     !Multiply3 does the same work as multiply but for 3 arguments considering 
-    !staggering of the of the variables
+    !staggering of the variables
 
     SUBROUTINE multiply3(this, a, b, c)
         ! Subroutine arguments

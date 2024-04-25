@@ -36,7 +36,7 @@ MODULE statistics_mod
     INTEGER(intk), ALLOCATABLE :: active_fields(:)
 
     PUBLIC :: init_statistics, finish_statistics, register_statfield, &
-        sample_statistics, comp_avg, comp_sqr_avg
+        sample_statistics, comp_avg, comp_sqr_avg, comp_cube_avg
 
 CONTAINS
     SUBROUTINE init_statistics()
