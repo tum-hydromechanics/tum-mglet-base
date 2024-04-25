@@ -296,7 +296,8 @@ CONTAINS
             ! All fields must be defiend on the same levels
             IF (.NOT. this%active_level(ilevel)) CYCLE
             IF (a%active_level(ilevel) .EQV. .FALSE. .OR. &
-                    b%active_level(ilevel) .EQV. .FALSE.) THEN
+                    b%active_level(ilevel) .EQV. .FALSE. .OR. &
+                    c%active_level(ilevel) .EQV. .FALSE) THEN
                 CALL errr(__FILE__, __LINE__)
             END IF
 

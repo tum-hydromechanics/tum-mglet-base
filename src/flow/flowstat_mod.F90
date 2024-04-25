@@ -100,6 +100,7 @@ CONTAINS
 
 
     ! Routine to compute the UUV_AVG, UUW_AVG, UVV_AVG, UVW_AVG, UWW_AVG, VVW_AVG and VWW_AVG fields
+    ! It just works with velocities
     SUBROUTINE comp_uvw_avg(field, name, dt)
         ! Subroutine arguments
         TYPE(field_t), INTENT(inout) :: field
@@ -238,7 +239,6 @@ CONTAINS
         field%name = "laplaceP_SQR_AVG"
         field%units = field%units*2
     END SUBROUTINE comp_laplacep_sqr_avg
-
 
     SUBROUTINE calclpp_grid(kk, jj, ii, lpp, p, bp, dx, dy, dz, &
             nfro, nbac, nrgt, nlft, nbot, ntop)

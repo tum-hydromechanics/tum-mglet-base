@@ -237,10 +237,10 @@ CONTAINS
     END SUBROUTINE comp_sqr_avg
 
 
-    ! General routine to compute squares such as UU_AVG, VV_AVG etc.
+    ! General routine to compute cubes such as UUU_AVG, VVV_AVG etc.
     ! Does not do any interpolation of staggered quantities.
     !
-    ! Use the naming convention UU_AVG -> average of U*U etc.
+    ! Use the naming convention UUU_AVG -> average of U*U*U etc.
     SUBROUTINE comp_cube_avg(field, name, dt)
         ! Subroutine arguments
         TYPE(field_t), INTENT(inout) :: field
@@ -251,8 +251,6 @@ CONTAINS
         TYPE(field_t), POINTER :: infield
         CHARACTER(len=nchar_name) :: base_name
         INTEGER(intk) :: nchar
-
-        ! TO BE DONE !!!
 
         ! Strip off "_AVG" at end of name to get field to compute average from
         nchar = LEN_TRIM(name)
@@ -266,7 +264,7 @@ CONTAINS
         base_name = name(1:(nchar-4)/3)
         CALL get_field(infield, base_name)
 
-        ! staggeredness is preserved
+        ! staggeredness is preserved JB
         CALL field%copy_from(infield)
         field%units = infield%units*3
         field%arr = field%arr(:)**3
