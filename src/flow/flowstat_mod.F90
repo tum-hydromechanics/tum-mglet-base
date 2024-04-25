@@ -240,6 +240,7 @@ CONTAINS
         field%units = field%units*2
     END SUBROUTINE comp_laplacep_sqr_avg
 
+
     SUBROUTINE calclpp_grid(kk, jj, ii, lpp, p, bp, dx, dy, dz, &
             nfro, nbac, nrgt, nlft, nbot, ntop)
         ! Subroutine arguments
