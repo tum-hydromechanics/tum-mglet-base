@@ -9,8 +9,4 @@ CONTAINS
 
 	END SUBROUTINE timeintegrate_particle 
 
-	SUBROUTINE get_field() ! to get needed information from fields 
-
-	END SUBROUTINE get_field
-
 END MODULE 
