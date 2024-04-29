@@ -35,11 +35,12 @@ MODULE realfield_mod
         PROCEDURE :: init
 
         GENERIC, PUBLIC :: get_ptr => get_grid1, get_grid3
+        GENERIC, PUBLIC :: multiply => multiply2, multiply3
+         
         PROCEDURE, PRIVATE :: get_grid1, get_grid3
+        PROCEDURE, PRIVATE :: multiply2, multiply3
 
         PROCEDURE :: copy_from
-        PROCEDURE :: multiply
-        PROCEDURE :: multiply3
         PROCEDURE :: shift
         PROCEDURE :: get_buffers
         PROCEDURE :: init_buffers
@@ -204,7 +205,7 @@ CONTAINS
     !
     ! Prior content in the field is discarded, but the staggering of the
     ! destination determine the interpolation of the source fields.
-    SUBROUTINE multiply(this, a, b)
+    SUBROUTINE multiply2(this, a, b)
         ! Subroutine arguments
         CLASS(field_t), INTENT(inout) :: this
         CLASS(field_t), INTENT(in) :: a
@@ -263,7 +264,7 @@ CONTAINS
                 END DO
             END DO
         END DO
-    END SUBROUTINE multiply
+    END SUBROUTINE multiply2
 
 
     ! POSSIBLE OVERLOADING OF FUCTION

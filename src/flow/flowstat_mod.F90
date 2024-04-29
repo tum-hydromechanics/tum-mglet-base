@@ -172,7 +172,7 @@ CONTAINS
             units=units)
 
         ! the multiplication respects the staggeredness
-        CALL field%multiply3(in1, in2, in3)
+        CALL field%multiply(in1, in2, in3)
         
     END SUBROUTINE comp_uvw_avg
 
