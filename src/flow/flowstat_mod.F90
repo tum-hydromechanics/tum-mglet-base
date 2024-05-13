@@ -1,5 +1,6 @@
 MODULE flowstat_mod
     USE core_mod
+    USE flowcore_mod
 
     IMPLICIT NONE(type, external)
     PRIVATE
@@ -47,6 +48,9 @@ CONTAINS
 
         CALL register_statfield("laplaceP_AVG", comp_laplacep_avg)
         CALL register_statfield("laplaceP_SQR_AVG", comp_laplacep_sqr_avg)
+
+        CALL register_statfield("DISSIP_AVG", comp_dissip_avg)
+        
     END SUBROUTINE init_flowstat
 
 
@@ -326,5 +330,191 @@ CONTAINS
             END DO
         END DO
     END SUBROUTINE calclpp_grid
+
+    SUBROUTINE comp_dissip_avg (field, name, dt)
+        ! Subroutine arguments
+        TYPE(field_t), INTENT(inout) :: field
+        CHARACTER(len=*), INTENT(in) :: name
+        REAL(realk), INTENT(in) :: dt
+
+        !Local Variables
+        TYPE(field_t), POINTER :: u_f, v_f, w_f, bp_f
+        ! TYPE(field_t), POINTER :: x_f, y_f, z_f
+        TYPE(field_t), POINTER :: dx_f, dy_f, dz_f
+        TYPE(field_t), POINTER :: ddx_f, ddy_f, ddz_f
+        TYPE(field_t), POINTER :: rddx_f, rddy_f, rddz_f
+
+        REAL(realk), POINTER, CONTIGUOUS :: u(:, :, :), v(:, :, :), &
+            w(:, :, :), dfg(:, :, :), bp(:, :, :) 
+        ! TYPE(field_t), POINTER :: x(:), y(:), z(:)    
+        REAL(realk), POINTER, CONTIGUOUS :: dx(:), dy(:), dz(:)
+        REAL(realk), POINTER, CONTIGUOUS :: ddx(:), ddy(:), ddz(:)
+        REAL(realk), POINTER, CONTIGUOUS :: rddx(:), rddy(:), rddz(:)
+
+        INTEGER(intk), PARAMETER :: units(*) = [0, 2, -3, 0, 0, 0, 0]
+        INTEGER(intk) :: i, igrid
+        ! INTEGER(intk) :: nfro, nbac, nlft, nrgt, ntop, nbot  ! They would be just needed to integrate the dissipation
+        INTEGER(intk) :: kk, jj, ii
+
+        IF (name /= "DISSIP_AVG") CALL errr(__FILE__, __LINE__)
+
+        CALL get_field(u_f, "U")
+        CALL get_field(v_f, "V")
+        CALL get_field(w_f, "W")
+        CALL get_field(bp_f, "BP")
+
+        ! CALL get_field(x_f, "X")
+        ! CALL get_field(y_f, "Y")
+        ! CALL get_field(z_f, "Z")
+
+        CALL get_field(dx_f, "DX")
+        CALL get_field(dy_f, "DY")
+        CALL get_field(dz_f, "DZ")
+
+        CALL get_field(ddx_f, "DDX")
+        CALL get_field(ddy_f, "DDY")
+        CALL get_field(ddz_f, "DDZ")
+
+        CALL get_field(rddx_f, "RDDX")
+        CALL get_field(rddy_f, "RDDY")
+        CALL get_field(rddz_f, "RDDZ")
+
+        ! Create a field to store the result, this creates an empty field
+        CALL field%init(name, units=units)
+
+        ! Compute Dissipation
+        DO i=1, nmygrids
+            igrid = mygrids(i)
+
+            CALL field%get_ptr(dfg, igrid)
+
+            CALL u_f%get_ptr(u, igrid)
+            CALL v_f%get_ptr(v,igrid)
+            CALL w_f%get_ptr(w,igrid)
+            CALL bp_f%get_ptr(bp,igrid)
+            
+            ! CALL x_f%get_ptr(x, igrid)
+            ! CALL y_f%get_ptr(y, igris)
+            ! CALL z_f%get_ptr(z, igrid)
+
+            CALL dx_f%get_ptr(dx, igrid)
+            CALL dy_f%get_ptr(dy, igrid)
+            CALL dz_f%get_ptr(dz, igrid)
+
+            CALL ddx_f%get_ptr(ddx, igrid)
+            CALL ddy_f%get_ptr(ddy, igrid)
+            CALL ddz_f%get_ptr(ddz, igrid)
+
+            CALL rddx_f%get_ptr(rddx, igrid)
+            CALL rddy_f%get_ptr(rddy, igrid)
+            CALL rddz_f%get_ptr(rddz, igrid)
+
+            CALL get_mgdims(kk, jj, ii, igrid)
+            ! CALL get_mgbasb(nfro, nbac, nrgt, nlft, nbot, ntop, igrid)
+
+            CALL calc_dissip (kk, jj, ii, dfg, u, v, w, bp, gmol, & !x, y, z &
+                dx, dy, dz, ddx, ddy, ddz, rddx, rddy, rddz) ! nfro, nbac & 
+                ! nrgt, nlft, nbot, ntop)
+        END DO
+    END SUBROUTINE comp_dissip_avg
+
+    SUBROUTINE calc_dissip (kk, jj, ii, dfg, u, v, w, bp, gmol, & !x, y, z &
+        dx, dy, dz, ddx, ddy, ddz, rddx, rddy, rddz) ! nfro, nbac, nrgt &
+        ! nlft, nbot, ntop)
+        
+        ! Subroutine arguments
+        INTEGER(intk), INTENT(in) :: kk, jj, ii
+        REAL(realk), INTENT(inout) :: dfg (kk, jj, ii)
+        REAL(realk), INTENT(in) :: u(kk, jj, ii), v(kk, jj, ii), w(kk, jj, ii)
+        REAL(realk), INTENT(in) :: bp(kk, jj, ii)
+        REAL(realk), INTENT(in) :: gmol
+        ! REAL(realk), INTENT(in) :: x(ii), y(jj), z(kk)
+        REAL(realk), INTENT(in) :: dx(ii), dy(jj), dz(kk)
+        REAL(realk), INTENT(in) :: ddx(ii), ddy(jj), ddz(kk)
+        REAL(realk), INTENT(in) :: rddx(ii), rddy(jj), rddz(kk)
+        ! INTEGER(intk), INTENT(in) :: nfro, nbac, nrgt, nlft, nbot, ntop, isum
+
+        ! Local Variables
+        INTEGER(intk) :: k, j, i
+        ! INTEGER(intk) :: ifrfix, jrifix, kbofix
+        REAL(realk) :: rddxpl, rddypl, rddzpl
+        REAL(realk) :: dxf, dyf, dzf
+        REAL(realk) :: dudx, dudy, dudz, dvdx, dvdy, dvdz, dwdx, dwdy, dwdz
+
+        ! ifrfix = 0
+        ! jrifix = 0
+        ! kbofix = 0
+
+    ! The following lines are not needed since the total amount of dissipation
+    ! is not calculated
+
+        ! IF (nfro == 2) ifrfix = 1
+        ! IF (nrgt == 2) jrifix = 1
+        ! IF (nbot == 2) kbofix = 1
+
+        DO i = 3, ii-2
+            dxf = 0.5*dx(i-1)*rddx(i)
+            
+            DO j = 3, jj-2
+                dyf = 0.5*dy(j-1)*rddy(j)
+
+                DO k = 3, kk-2
+                    dzf = 0.5*dz(k-1)*rddz(k)
+
+                    ! The following values should be checked since they used the
+                    ! function bp, which was assumed that it behaves same as in the old mglet
+
+                    rddxpl = 1.0/(ddx(i) &
+                        + dx(i+1)*(sign(0.25, bp(k, j, i+1)) + 0.25) &
+                        + dx(i-1)*(sign(0.25, bp(k, j, i-1)) + 0.25))
+                    
+                    rddypl = 1.0/(ddy(j) &
+                        + dy(j+1)*(sign(0.25, bp(k, j+1, i)) + 0.25) &
+                        + dy(j-1)*(sign(0.25, bp(k, j-1, i)) + 0.25))
+                    
+                    rddzpl = 1.0/(ddz(k) &
+                        + dz(k+1)*(sign(0.25, bp(k+1, j, i)) + 0.25) &
+                        + dz(k-1)*(sign(0.25, bp(k-1, j, i)) + 0.25))
+
+                    dudx = rddx(i)*(u(k, j, i)-u(k, j, i-1))
+
+                    dudy = rddypl * &
+                           ((u(k  ,j+1,i  )-u(k  ,j-1,i  )) * dxf &
+                        +   (u(k  ,j+1,i-1)-u(k  ,j-1,i-1)) * (1.0-dxf))
+
+                    dudz = rddzpl * &
+                           ((u(k+1,j  ,i  )-u(k-1,j  ,i  )) * dxf &
+                        +   (u(k+1,j  ,i-1)-u(k-1,j  ,i-1)) * (1.0-dxf))
+                        
+                    dvdx = rddxpl * &
+                           ((v(k  ,j  ,i+1)-v(k  ,j  ,i-1)) * dyf &
+                        +   (v(k  ,j-1,i+1)-v(k  ,j-1,i-1)) * (1.0-dyf))
+
+                    dvdy = rddy(i)*(v(k, j, i)-v(k, j-1, i))
+
+                    dvdz = rddzpl * &
+                           ((v(k+1,j  ,i  )-v(k-1,j  ,i  )) * dyf &
+                        +   (v(k+1,j-1,i  )-v(k-1,j-1,i  )) * (1.0-dyf))
+
+                    dwdx = rddxpl * &
+                           ((w(k  ,j  ,i+1)-w(k  ,j  ,i-1)) * dzf &
+                        +   (w(k-1,j  ,i+1)-w(k-1,j  ,i-1)) * (1.0-dzf))
+                        
+                    dwdy = rddypl * &
+                           ((w(k  ,j+1,i  )-w(k  ,j-1,i  )) * dzf &
+                        +   (w(k-1,j+1,i  )-w(k-1,j-1,i  )) * (1.0-dzf))
+
+                    dwdz = rddz(i)*(w(k, j, i)-w(k-1, j, i))
+
+                    dfg (k, j, i) = gmol * &
+                        (2.0*(dudx*dudx + dvdy*dvdy + dwdz*dwdz) &
+                        + (dudy+dvdx) * (dudy+dvdx) &
+                        + (dudz+dwdx) * (dudz+dwdx) &
+                        + (dvdz+dwdy) * (dvdz+dwdy))
+
+                END DO
+            END DO
+        END DO
+    END SUBROUTINE calc_dissip
 
 END MODULE flowstat_mod
