@@ -6,7 +6,7 @@ set -o pipefail
 ACTION=$1
 CASE=$2
 
-USAGE_EXAMPLE="./run.sh <bench|clean> <case 8|64> [processes] [mglet-binary-path]"
+USAGE_EXAMPLE="./run.sh <bench|clean> <case 8|64> [processes=1] [mglet-binary-path=../build/src/mglet]"
 
 # Determine case (8 or 64 grids)
 if [[ $CASE != 8 ]] && [[ $CASE != 64 ]]; then
