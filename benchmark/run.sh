@@ -6,7 +6,10 @@ set -o pipefail
 ACTION=$1
 CASE=$2
 
-USAGE_EXAMPLE="./run.sh <bench|clean> <case 8|64> [processes=1] [mglet-binary-path=../build/src/mglet]"
+DEFAULT_NUM_PROCESSES=1
+DEFAULT_MGLET_BIN_PATH="../../build/src/mglet"
+
+USAGE_EXAMPLE="./run.sh <bench|clean> <case 8|64> [processes=$DEFAULT_NUM_PROCESSES] [mglet-binary-path=$DEFAULT_MGLET_BIN_PATH]"
 
 # Determine case (8 or 64 grids)
 if [[ $CASE != 8 ]] && [[ $CASE != 64 ]]; then
@@ -21,10 +24,11 @@ BENCHMARK="$CASE-grids-32-cells"
 cd $BENCHMARK
 
 if [[ "$ACTION" == "bench" ]]; then
-    NUM_PROC=${3-1}
-    MGLET_BIN="../${4:-"../build/src/mglet"}"
+    NUM_PROC=${3-$DEFAULT_NUM_PROCESSES}
+    MGLET_BIN="${4:-$DEFAULT_MGLET_BIN_PATH}"
     echo "Running benchmark $BENCHMARK"
-    echo "Using mglet binary $MGLET_BIN"
+    echo "Benchmark directory: $( cd -- "$(dirname "$0")" >/dev/null 2>&1 ; pwd -P )"
+    echo "MGLET binary: $MGLET_BIN"
     mpirun -N $NUM_PROC $MGLET_BIN 2>&1 | tee mglet.OUT
 elif [[ "$ACTION" == "clean" ]]; then
     echo "Cleaning up files for benchmark $BENCHMARK"
