@@ -1,4 +1,4 @@
-MGLET-base flow solver
+test MGLET-base flow solver
 ======================
 
 MGLET-base is an incompressible Navier-Stokes flow solver written in Fortran,
