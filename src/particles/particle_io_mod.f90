@@ -2,7 +2,7 @@
 ! or boundary conditions (bc) should be read from a file or information should 
 ! be written to a file 
 
-MODULE 
+MODULE particle_io_mod
 
 USE
 

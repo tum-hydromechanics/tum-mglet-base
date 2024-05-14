@@ -17,22 +17,20 @@ TYPE :: base_particle_t ! could be extended by a particle type that includes the
 	LOGICAL :: is_init = .FALSE. ! if a list of particles is handled, this can be used to identify if an entry is an actual particly
 
 	INTEGER(intk) :: ipart  ! particle ID in global scope (of all processes)
-	INTEGER(intk) :: iproc	! id of process that currently handles the particle
+	INTEGER(intk) :: iproc = myid	! id of process that currently handles the particle
 	INTEGER(intk) :: igrid 	! stores the index of grid, which the particle is currently on 
 
-	INTEGER(intk) :: ijk_cell(3) ! stores indices to the nearest grid cell 
+	INTEGER(intk) :: ijkcell(3) ! stores indices of the PRESSURE grid cell the particle is in
 
 	REAL(realk) :: x, y, z
-	REAL(realk) :: time
-
-	REAL(realk) :: diffusion_len ! or other diffusion specific parameter 
+	REAL(realk) :: time ! REMOVE? 
 
 	CONTAINS 
 
 	PROCEDURE :: init
 	PROCEDURE :: print_status
 	PROCEDURE :: get_p_igrid
-	PROCEDURE :: get_p_cell
+	PROCEDURE :: get_p_ijkcell
 
 	!GENERIC, PUBLIC :: ijk_to_ptr => ijk_to_ptr1, ijk_to_ptr3 ! NOT NEEDED
 	!PROCEDURE, PRIVATE :: ijk_to_ptr1, ijk_to_ptr3	! NOT NEEDED
@@ -45,17 +43,17 @@ END TYPE base_particle_t
 
 CONTAINS
 
-	SUBROUTINE init(this, ipart, iproc, igrid, ijk_cell, x, y, z, time)
+	SUBROUTINE init(this, ipart, iproc, igrid, ijkcell, x, y, z, time)
 
 		! Subroutine arguments
 	    CLASS(base_particle_t), INTENT(out) :: this
 	    INTEGER(intk), INTENT(in) :: ipart
-	    INTEGER(intk), INTENT(in) :: iproc
-	    INTEGER(intk), INTENT(in) :: igrid
-	    INTEGER(intk), INTENT(in) :: ijk_cell(3)
 	    REAL(realk), INTENT(in) :: x, y, z
-
 		REAL(realk), INTENT(in) :: time
+	    INTEGER(intk), INTENT(in), OPTIONAL :: iproc
+	    INTEGER(intk), INTENT(in), OPTIONAL :: igrid
+	    INTEGER(intk), INTENT(in), OPTIONAL :: ijkcell(3)
+		REAL(realk), INTENT(in), OPTIONAL :: D
 
 		! Local variables
         	! none...
@@ -63,16 +61,30 @@ CONTAINS
 		this%is_init = .TRUE.
 
 		this%ipart = ipart
-		this%iproc = iproc
-		this%igrid = !TODO
 
-		this%ijk_cell = !TODO
-
+		IF (PRESENT(iproc)) THEN
+			this%iproc = iproc
+		ELSE
+			this%iproc = myid
+		END IF
+		
 		this%x = x
 		this%y = y
 		this%z = z
 
-		this%time = time
+		CALL timekeeper%get_time(this%time)
+
+		IF (PRESENT(igrid)) THEN
+			this%igrid = igrid
+		ELSE 
+			CALL this%get_p_igrid()
+		END IF
+
+		IF (PRESENT(ijkcell)) THEN
+			this%ijkcell = ijkcell
+		ELSE
+			CALL this%get_p_ijkcell()
+		END IF
 
 	END SUBROUTINE init
 	
@@ -127,13 +139,13 @@ CONTAINS
 
 		END DO 
 
-		this%is_init = found ! if particle is not found, deactivate particle ???
+		this%is_init = found ! if particle is not found, deactivate particle (?)
 	
 	END SUBROUTINE get_p_igrid
 
 	!------------------------------
 	
-	SUBROUTINE get_p_cell(this)
+	SUBROUTINE get_p_ijkcell(this)
 
 		! subroutine arguments
 		CLASS(base_particle_t), INTENT(inout) :: this
@@ -141,8 +153,10 @@ CONTAINS
 		! local variables
 		TYPE(field_t) :: x_f, y_f, z_f
         REAL(realk), POINTER, CONTIGUOUS :: x, y, z
-        INTEGER(intk) :: k, j, i, kk, jj, ii
         REAL(realk) :: diff_old, diff_new
+        REAL(realk) :: minx, maxx, miny, maxy, minz, maxz
+		INTEGER(intk) :: k, j, i, kk, jj, ii
+		INTEGER(intk) :: istart, iend, istep, jstart, jend, jstep, kstart, kend, kstep
 
 		CALL get_field(x_f, "X")
         CALL get_field(y_f, "Y")
@@ -154,57 +168,82 @@ CONTAINS
 
         CALL get_mgdims(kk, jj, ii, this%igrid)
 
-        ! the following assumes that the x/y/z values are sorted ! ! ! CHECK IF THIS IS TRUE
+        minx = gridinfo(this%igrid)%bbox(1)
+		maxx = gridinfo(this%igrid)%bbox(2)
+		miny = gridinfo(this%igrid)%bbox(3)
+		maxy = gridinfo(this%igrid)%bbox(4)
+		minz = gridinfo(this%igrid)%bbox(5)
+		maxz = gridinfo(this%igrid)%bbox(6)
 
-        diff_old = x(1) - this%x
+        ! the following assumes that the x/y/z values are sorted! CHECK IF THIS IS TRUE
+        ! the following procedure is capable of handling stretched grids! IS THAT NEEDED ?
+        ! find nearest x:
+		
+		istart = FLOOR(ii * (this%x - minx)/(maxx - minx), intk) 
+		istep = NINT((this%x - x(istart)) / ABS(this%x - x(istart)), intk) ! use NINT to receive an actual integer of kind intk
+		iend = 1 + (istep + 1) / 2 * (ii - 1) 
 
-        DO i = 2, ii
+        diff_old = x(istart) - this%x
+        
+        DO i = istart + istep, iend, istep
         	diff_new = x(i) - this%x
 
         	IF (diff_new > diff_old) THEN
-        		this%ijk_cell(1) = i 
+        		this%ijkcell(1) = i - istep
         		EXIT
-        	ELSEIF (i == ii) THEN
-        		this%ijk_cell(1) = i 
+        	ELSEIF (i == iend) THEN
+        		this%ijkcell(1) = i 
         	ELSE 
         		diff_old = diff_new
         		CYCLE
         	END IF
         END DO
 
-        diff_old = y(1) - this%y
+        ! find nearest y:
 
-        DO j = 2, jj
-        	diff_new = y(i) - this%y
+		jstart = FLOOR(jj * (this%y - miny)/(maxy - miny), intk) 
+		jstep = NINT((this%y - x(jstart)) / ABS(this%y - x(jstart)), intk) ! use NINT to receive an actual integer of kind intk
+		jend = 1 + (jstep + 1) / 2 * (jj - 1) 
+
+        diff_old = y(jstart) - this%y
+        
+        DO j = jstart + jstep, jend, jstep
+        	diff_new = y(j) - this%y
 
         	IF (diff_new > diff_old) THEN
-        		this%ijk_cell(2) = j
+        		this%ijkcell(2) = j - jstep
         		EXIT
-        	ELSEIF (i == ii) THEN
-        		this%ijk_cell(2) = j
+        	ELSEIF (i == iend) THEN
+        		this%ijkcell(2) = j 
         	ELSE 
         		diff_old = diff_new
         		CYCLE
         	END IF
         END DO
 
-        diff_old = z(1) - this%z
+        ! find nearest z:
 
-        DO k = 2, kk
-        	diff_new = z(i) - this%z
+		kstart = FLOOR(kk * (this%z - minz)/(maxz - minz), intk) 
+		kstep = NINT((this%z - z(kstart)) / ABS(this%z - z(kstart)), intk) ! use NINT to receive an actual integer of kind intk
+		kend = 1 + (kstep + 1) / 2 * (kk - 1) 
+
+        diff_old = z(kstart) - this%z
+        
+        DO k = kstart + kstep, kend, kstep
+        	diff_new = z(k) - this%z
 
         	IF (diff_new > diff_old) THEN
-        		this%ijk_cell(3) = k 
+        		this%ijkcell(3) = k - kstep
         		EXIT
-        	ELSEIF (i == ii) THEN
-        		this%ijk_cell(3) = k
+        	ELSEIF (k == kend) THEN
+        		this%ijkcell(3) = k 
         	ELSE 
         		diff_old = diff_new
         		CYCLE
         	END IF
         END DO
 	
-	END SUBROUTINE get_p_cell
+	END SUBROUTINE get_p_ijkcell
 
 	!------------------------------
 
@@ -218,9 +257,9 @@ CONTAINS
         CALL y_f%get_ptr(y, this%igrid)
         CALL z_f%get_ptr(w, this%igrid)
 
-        nearest_cell_x_ptr = x(ijk_cell(1))
-        nearest_cell_y_ptr = x(ijk_cell(2))
-        nearest_cell_z_ptr = x(ijk_cell(3))
+        nearest_cell_x_ptr = x(ijkcell(1))
+        nearest_cell_y_ptr = x(ijkcell(2))
+        nearest_cell_z_ptr = x(ijkcell(3))
 
         !dxi/ddxi analogously ...
 
@@ -232,9 +271,9 @@ CONTAINS
         CALL y_f%get_ptr(v, this%igrid)
         CALL z_f%get_ptr(w, this%igrid)
 
-        nearest_cell_u_ptr = u(ijk_cell(1))
-        nearest_cell_v_ptr = v(ijk_cell(2))
-        nearest_cell_w_ptr = w(ijk_cell(3))
+        nearest_cell_u_ptr = u(ijkcell(1))
+        nearest_cell_v_ptr = v(ijkcell(2))
+        nearest_cell_w_ptr = w(ijkcell(3))
 
 	END SUBROUTINE use_ijk_cell
 
