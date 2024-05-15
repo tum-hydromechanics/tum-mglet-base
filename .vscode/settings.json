@@ -1,0 +1,10 @@
+{
+    "editor.rulers": [
+        132
+    ],
+    "fortran.fortls.path": ".venv/bin/fortls",
+    "fortran.linter.extraArgs": [
+        "J /build/modules/*.mod",
+    ],
+    "fortran.linter.compilerPath": "/usr/bin/gfortran-11",
+}
