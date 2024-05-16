@@ -382,7 +382,7 @@ CONTAINS
         ! Create a field to store the result, this creates an empty field
         CALL field%init(name, units=units)
 
-        ! Compute Dissipation
+        ! Compute Dissipation (It considers only molecular viscosity so far)
         DO i=1, nmygrids
             igrid = mygrids(i)
 
@@ -465,16 +465,16 @@ CONTAINS
                     ! function bp, which was assumed that it behaves same as in the old mglet
 
                     rddxpl = 1.0/(ddx(i) &
-                        + dx(i+1)*(sign(0.25, bp(k, j, i+1)) + 0.25) &
-                        + dx(i-1)*(sign(0.25, bp(k, j, i-1)) + 0.25))
+                        + dx(i+1)*(sign(0.25_realk, bp(k, j, i+1)) + 0.25) &
+                        + dx(i-1)*(sign(0.25_realk, bp(k, j, i-1)) + 0.25))
                     
                     rddypl = 1.0/(ddy(j) &
-                        + dy(j+1)*(sign(0.25, bp(k, j+1, i)) + 0.25) &
-                        + dy(j-1)*(sign(0.25, bp(k, j-1, i)) + 0.25))
+                        + dy(j+1)*(sign(0.25_realk, bp(k, j+1, i)) + 0.25) &
+                        + dy(j-1)*(sign(0.25_realk, bp(k, j-1, i)) + 0.25))
                     
                     rddzpl = 1.0/(ddz(k) &
-                        + dz(k+1)*(sign(0.25, bp(k+1, j, i)) + 0.25) &
-                        + dz(k-1)*(sign(0.25, bp(k-1, j, i)) + 0.25))
+                        + dz(k+1)*(sign(0.25_realk, bp(k+1, j, i)) + 0.25) &
+                        + dz(k-1)*(sign(0.25_realk, bp(k-1, j, i)) + 0.25))
 
                     dudx = rddx(i)*(u(k, j, i)-u(k, j, i-1))
 
