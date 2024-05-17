@@ -27,13 +27,18 @@ TYPE :: particle_list_t
 
 END TYPE particle_list_t
 
-! local variables
+!===================================
+
+! module variables
 
 INTEGER(intk), PARAMETER :: default_max_np = 1000 
-INTEGER(intk), PARAMETER :: default_initial_np = 100 !ONLY DUMMY VALUE FOR NOW, SHOULD BE SCALES WITH THE SIZE OF THE SPATIAL DOMAIN THAT THE PROCESS HANDLES
-TYPE(particle_list_t) :: my_particle_list
+INTEGER(intk), PARAMETER :: default_initial_np = 100 !ONLY DUMMY VALUE FOR NOW, SHOULD BE SCALED WITH THE SIZE OF THE SPATIAL DOMAIN THAT THE PROCESS HANDLES
+
+TYPE(particle_list_t) :: my_particle_list ! rather declare in init_particles?
 
 INTEGER(intk), ALLOCATABLE :: my_ipart_arr(:)
+
+!===================================
 
 CONTAINS
 
@@ -65,6 +70,8 @@ CONTAINS
 	
 
 	END SUBROUTINE init_particles
+
+	!------------------------------
 
 	SUBROUTINE dist_ipart(ipart_arr) ! this routine is supposed to hand out a list of unique particle ids (ipart) to every process ! ONLY DUMMY FOR NOW
 

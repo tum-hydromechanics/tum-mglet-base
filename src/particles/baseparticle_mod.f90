@@ -23,7 +23,8 @@ TYPE :: base_particle_t ! could be extended by a particle type that includes the
 	INTEGER(intk) :: ijkcell(3) ! stores indices of the PRESSURE grid cell the particle is in
 
 	REAL(realk) :: x, y, z
-	REAL(realk) :: time ! REMOVE? 
+
+	! time via timekeeper
 
 	CONTAINS 
 
@@ -48,13 +49,11 @@ CONTAINS
 		! Subroutine arguments
 	    CLASS(base_particle_t), INTENT(out) :: this
 	    INTEGER(intk), INTENT(in) :: ipart
-	    REAL(realk), INTENT(in) :: x, y, z
-		REAL(realk), INTENT(in) :: time
 	    INTEGER(intk), INTENT(in), OPTIONAL :: iproc
 	    INTEGER(intk), INTENT(in), OPTIONAL :: igrid
 	    INTEGER(intk), INTENT(in), OPTIONAL :: ijkcell(3)
-		REAL(realk), INTENT(in), OPTIONAL :: D
-
+		REAL(realk), INTENT(in) :: x, y, z
+		
 		! Local variables
         	! none...
 
@@ -67,12 +66,6 @@ CONTAINS
 		ELSE
 			this%iproc = myid
 		END IF
-		
-		this%x = x
-		this%y = y
-		this%z = z
-
-		CALL timekeeper%get_time(this%time)
 
 		IF (PRESENT(igrid)) THEN
 			this%igrid = igrid
@@ -85,6 +78,12 @@ CONTAINS
 		ELSE
 			CALL this%get_p_ijkcell()
 		END IF
+
+		this%x = x
+		this%y = y
+		this%z = z
+
+		!CALL timekeeper%get_time(this%time)
 
 	END SUBROUTINE init
 	
@@ -164,7 +163,7 @@ CONTAINS
 
         CALL x_f%get_ptr(x, this%igrid)
         CALL y_f%get_ptr(y, this%igrid)
-        CALL z_f%get_ptr(w, this%igrid)
+        CALL z_f%get_ptr(z, this%igrid)
 
         CALL get_mgdims(kk, jj, ii, this%igrid)
 
@@ -179,8 +178,8 @@ CONTAINS
         ! the following procedure is capable of handling stretched grids! IS THAT NEEDED ?
         ! find nearest x:
 		
-		istart = FLOOR(ii * (this%x - minx)/(maxx - minx), intk) 
-		istep = NINT((this%x - x(istart)) / ABS(this%x - x(istart)), intk) ! use NINT to receive an actual integer of kind intk
+		istart = FLOOR(ii * (this%x - minx) / (maxx - minx), intk) 
+		istep = NINT((this%x - x(istart)) / ABS(this%x - x(istart)), intk) ! use NINT to receive an actual integer of kind intk?
 		iend = 1 + (istep + 1) / 2 * (ii - 1) 
 
         diff_old = x(istart) - this%x

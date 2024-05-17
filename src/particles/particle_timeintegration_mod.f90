@@ -2,12 +2,15 @@
 
 MODULE particle_timeintegration_mod
 
+!===================================
+
 USE precision_mod, ONLY: intk, realk
 USE baseparticle_mod 
 USE particles_mod
 USE core_mod  
 USE flowcore_mod
 
+!===================================
 
 CONTAINS
 
@@ -16,11 +19,12 @@ CONTAINS
 		! local variables
 
 		TYPE(field_t), POINTER :: x_f, y_f, z_f
-		TYPE(field_t), POINTER :: dx_f, dy_f, dz_f
+		TYPE(field_t), POINTER :: xstag_f, ystag_f, zstag_f
 		TYPE(field_t), POINTER :: ddx_f, ddy_f, ddz_f
 		TYPE(field_t), POINTER :: u_f, v_f, w_f
+
 		REAL(realk), POINTER, CONTIGUOUS, DIMENSION(:, :, :) :: x, y, z
-		REAL(realk), POINTER, CONTIGUOUS, DIMENSION(:, :, :) :: dx, dy, dz
+		REAL(realk), POINTER, CONTIGUOUS, DIMENSION(:, :, :) :: xstag, ystag, zstag
 		REAL(realk), POINTER, CONTIGUOUS, DIMENSION(:, :, :) :: ddx, ddy, ddz
 		REAL(realk), POINTER, CONTIGUOUS, DIMENSION(:, :, :) :: u, v, w
 		
@@ -39,10 +43,6 @@ CONTAINS
         CALL get_field(ystag_f, "YSTAG")
         CALL get_field(zstag_f, "ZSTAG")
 
-        CALL get_field(dx_f, "DX")
-        CALL get_field(dy_f, "DY")
-        CALL get_field(dz_f, "DZ")
-
         CALL get_field(ddx_f, "DDX")
         CALL get_field(ddy_f, "DDY")
         CALL get_field(ddz_f, "DDZ")
@@ -58,10 +58,6 @@ CONTAINS
         CALL xstag_f%get_ptr(xstag, this%igrid)
         CALL ystag_f%get_ptr(ystag, this%igrid)
         CALL zstag_f%get_ptr(zstag, this%igrid)
-
-        CALL dx_f%get_ptr(dx, this%igrid)
-        CALL dy_f%get_ptr(dy, this%igrid)
-        CALL dz_f%get_ptr(dz, this%igrid)
 
         CALL ddx_f%get_ptr(ddx, this%igrid)
         CALL ddy_f%get_ptr(ddy, this%igrid)
@@ -82,14 +78,22 @@ CONTAINS
     		END IF 
 
     		p_istag = CEILING((particles(p)%x - x(ijkcell(1))) / ddx(ijkcell(1)))
-    		p_jstag = CEILING((particles(p)%y - x(ijkcell(2))) / ddy(ijkcell(2)))
-    		p_kstag = CEILING((particles(p)%z - x(ijkcell(3))) / ddz(ijkcell(3)))
+    		p_jstag = CEILING((particles(p)%y - y(ijkcell(2))) / ddy(ijkcell(2)))
+    		p_kstag = CEILING((particles(p)%z - z(ijkcell(3))) / ddz(ijkcell(3)))
 
-    		p_bbox = /( x(ijkcell(1) + p_istag - 1), x(ijkcell(1) + p_istag), &
-    					x(ijkcell(2) + p_jstag - 1), x(ijkcell(2) + p_jstag), &
-    					x(ijkcell(3) + p_kstag - 1), x(ijkcell(3) + p_kstag) /) 
+    		p_bbox_u = /(xstag(ijkcell(1) - 1), xstag(ijkcell(1)), &
+    					ystag(ijkcell(2) + p_jstag - 1), ystag(ijkcell(2) + p_jstag), &
+    					zstag(ijkcell(3) + p_kstag - 1), zstag(ijkcell(3) + p_kstag) /) 
 
-    		interp_trilinear( particles(p)%x, particles(p)%y, particles(p)%z, p_bbox, p_u,&
+    		p_bbox_v = /(xstag(ijkcell(1) + p_istag - 1), xstag(ijkcell(1) + p_istag), &
+    					ystag(ijkcell(2) - 1), ystag(ijkcell(2)), &
+    					zstag(ijkcell(3) + p_kstag - 1), zstag(ijkcell(3) + p_kstag) /) 
+
+    		p_bbox_w = /(xstag(ijkcell(1) + p_istag - 1), xstag(ijkcell(1) + p_istag),&
+    					ystag(ijkcell(2) + p_jstag - 1), ystag(ijkcell(2) + p_jstag), &
+    					zstag(ijkcell(3) - 1), zstag(ijkcell(3)) /) 
+
+    		interp_trilinear( particles(p)%x, particles(p)%y, particles(p)%z, p_bbox_u, p_u,&
     						u(ijkcell(3) + p_kstag - 1, ijkcell(2) + p_jstag -1, ijkcell(1) - 1),&
     						u(ijkcell(3) + p_kstag    , ijkcell(2) + p_jstag -1, ijkcell(1) - 1),&
     						u(ijkcell(3) + p_kstag - 1, ijkcell(2) + p_jstag   , ijkcell(1) - 1),&
@@ -99,7 +103,7 @@ CONTAINS
     						u(ijkcell(3) + p_kstag - 1, ijkcell(2) + p_jstag   , ijkcell(1)    ),&
     						u(ijkcell(3) + p_kstag    , ijkcell(2) + p_jstag   , ijkcell(1)    ) )
 
-     		interp_trilinear( particles(p)%x, particles(p)%y, particles(p)%z, p_bbox, p_v,&
+     		interp_trilinear( particles(p)%x, particles(p)%y, particles(p)%z, p_bbox_v, p_v,&
     						v(ijkcell(3) + p_kstag - 1, ijkcell(2) -1, ijkcell(1) + p_istag - 1),&
     						v(ijkcell(3) + p_kstag    , ijkcell(2) -1, ijkcell(1) + p_istag - 1),&
     						v(ijkcell(3) + p_kstag - 1, ijkcell(2)   , ijkcell(1) + p_istag - 1),&
@@ -109,7 +113,7 @@ CONTAINS
     						v(ijkcell(3) + p_kstag - 1, ijkcell(2)   , ijkcell(1) + p_istag    ),&
     						v(ijkcell(3) + p_kstag    , ijkcell(2)   , ijkcell(1) + p_istag    ) )
 
-    		interp_trilinear( particles(p)%x, particles(p)%y, particles(p)%z, p_bbox, p_w,&
+    		interp_trilinear( particles(p)%x, particles(p)%y, particles(p)%z, p_bbox_w, p_w,&
     						w(ijkcell(3) - 1, ijkcell(2) + p_jstag -1, ijkcell(1) + p_istag - 1),&
     						w(ijkcell(3)    , ijkcell(2) + p_jstag -1, ijkcell(1) + p_istag - 1),&
     						w(ijkcell(3) - 1, ijkcell(2) + p_jstag   , ijkcell(1) + p_istag - 1),&
@@ -132,6 +136,16 @@ CONTAINS
         END DO
 
 	END SUBROUTINE timeintegrate_particles 
+
+	!------------------------------
+
+	SUBROUTINE uvw_interp_trilinear(px, py, pz)
+
+	! fields and pointers as arguments?
+
+	SUBROUTINE uvw_interp_trilinear
+
+	!------------------------------
 
 	SUBROUTINE interp_trilinear(x, y, z, bbox &
 		f, f19, f20, f21, f22, f23, f24, f25, f26) ! Trilinear interpolation for a rectilinear grid !
