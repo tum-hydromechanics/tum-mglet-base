@@ -2,7 +2,6 @@
     "editor.rulers": [
         132
     ],
-    "fortran.fortls.path": ".venv/bin/fortls",
     "fortran.linter.extraArgs": [
         "J /build/modules/*.mod",
     ],
