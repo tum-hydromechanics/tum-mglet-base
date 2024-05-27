@@ -27,6 +27,17 @@ else()
     message(WARNING "HDF5 does not support parallel I/O")
 endif()
 
+include(FindOpenACC)
+if(NOT OpenACC_C_FOUND)
+    message(WARNING "OpenACC support not found for C compiler")
+endif()
+if(NOT OpenACC_CXX_FOUND)
+    message(WARNING "OpenACC support not found for CXX compiler")
+endif()
+if(NOT OpenACC_Fortran_FOUND)
+    message(WARNING "OpenACC support not found for Fortran compiler")
+endif()
+
 # CMake build options
 option(MGLET_REAL64 "Compile MGLET with double precision support" OFF)
 if(MGLET_REAL64)

@@ -23,6 +23,7 @@ MODULE core_mod
     ! in core functions
     USE hdf5common_mod
     USE mgletmath_mod
+    USE openacc_mod
     USE plugins_mod
     USE pointers_mod
     USE precision_mod
@@ -68,6 +69,9 @@ CONTAINS
         ! libraries to trigger floating point exceptions (sometimes they do)
         CALL IEEE_GET_HALTING_MODE(IEEE_ALL, saved_fpe_mode)
         CALL IEEE_SET_HALTING_MODE(IEEE_ALL, .FALSE.)
+
+        ! Initialize OpenACC
+        CALL init_openacc()
 
         ! Initialize MPI and HDF5
         CALL MPI_Init()
