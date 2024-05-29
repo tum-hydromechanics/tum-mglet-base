@@ -51,6 +51,14 @@ CONTAINS
 
         CALL register_statfield("DISSIP_AVG", comp_dissip_avg)
         
+        CALL register_statfield("UP_AVG", comp_up_avg)
+        CALL register_statfield("VP_AVG", comp_up_avg)
+        CALL register_statfield("WP_AVG", comp_up_avg)
+
+        CALL register_statfield("UXP_AVG", comp_uxp_avg)
+        CALL register_statfield("VYP_AVG", comp_uxp_avg)
+        CALL register_statfield("WZP_AVG", comp_uxp_avg)
+             
     END SUBROUTINE init_flowstat
 
 
@@ -103,7 +111,8 @@ CONTAINS
     END SUBROUTINE comp_uv_avg
 
 
-    ! Routine to compute the UUV_AVG, UUW_AVG, UVV_AVG, UVW_AVG, UWW_AVG, VVW_AVG and VWW_AVG fields
+    ! Routine to compute the UUV_AVG, UUW_AVG, UVV_AVG, UVW_AVG, UWW_AVG, 
+    ! VVW_AVG and VWW_AVG fields
     ! It just works with velocities
     SUBROUTINE comp_uvw_avg(field, name, dt)
         ! Subroutine arguments
@@ -353,7 +362,8 @@ CONTAINS
 
         INTEGER(intk), PARAMETER :: units(*) = [0, 2, -3, 0, 0, 0, 0]
         INTEGER(intk) :: i, igrid
-        ! INTEGER(intk) :: nfro, nbac, nlft, nrgt, ntop, nbot  ! They would be just needed to integrate the dissipation
+        ! INTEGER(intk) :: nfro, nbac, nlft, nrgt, ntop, nbot  ! They would be just 
+        ! needed to integrate the dissipation
         INTEGER(intk) :: kk, jj, ii
 
         IF (name /= "DISSIP_AVG") CALL errr(__FILE__, __LINE__)
@@ -462,7 +472,8 @@ CONTAINS
                     dzf = 0.5*dz(k-1)*rddz(k)
 
                     ! The following values should be checked since they used the
-                    ! function bp, which was assumed that it behaves same as in the old mglet
+                    ! function bp, which was assumed that it behaves same as in 
+                    ! the old mglet
 
                     rddxpl = 1.0/(ddx(i) &
                         + dx(i+1)*(sign(0.25_realk, bp(k, j, i+1)) + 0.25) &
@@ -516,5 +527,211 @@ CONTAINS
             END DO
         END DO
     END SUBROUTINE calc_dissip
+
+    SUBROUTINE comp_up_avg(field, name, dt)
+        !Subroutine arguments
+        TYPE(field_t), INTENT(inout) :: field
+        CHARACTER(len=*), INTENT(in) :: name
+        REAL(realk), INTENT(in) :: dt
+
+        ! Local variables
+
+        INTEGER(intk), PARAMETER :: units(*) = [1, 0, -3, 0, 0, 0, 0]
+        TYPE(field_t), POINTER :: in1, in2
+        INTEGER(intk) :: istag, jstag, kstag
+
+        SELECT CASE (TRIM(name))
+        CASE ("UP_AVG")
+            CALL get_field(in1, "U")
+            CALL get_field(in2, "P")
+            istag = 0
+            jstag = 0
+            kstag = 0
+        CASE ("VP_AVG")
+            CALL get_field(in1, "V")
+            CALL get_field(in2, "P")
+            istag = 0
+            jstag = 0
+            kstag = 0
+        CASE ("WP_AVG")
+            CALL get_field(in1, "W")
+            CALL get_field(in2, "P")
+            istag = 0
+            jstag = 0
+            kstag = 0
+        CASE DEFAULT
+            CALL errr(__FILE__, __LINE__)
+        END SELECT
+
+        CALL field%init(name, istag=istag, jstag=jstag, kstag=kstag, &
+            units=units)
+        
+        ! the multiplication consider the staggeredness
+        CALL field%multiply(in1,in2)
+    
+    END SUBROUTINE comp_up_avg
+
+    !This subroutine computes the term du_i/dx_i * P
+    SUBROUTINE comp_uxp_avg(field, name, dt)
+        !Subroutine arguments
+        TYPE(field_t), INTENT(inout) :: field
+        CHARACTER(len=*), INTENT(in) :: name
+        REAL(realk), INTENT(in) :: dt
+
+        !Local variables
+
+        INTEGER(intk), PARAMETER :: units(*) = [1, -1, -3, 0, 0, 0, 0]
+        INTEGER(intk), PARAMETER :: units_ux(*) = [0, 0, -1, 0, 0, 0, 0]
+        TYPE(field_t), POINTER :: u_f, p_f, ux_f
+        TYPE(field_t), POINTER :: rdx_f, rdy_f, rdz_f
+        TYPE(field_t), POINTER :: rddx_f, rddy_f, rddz_f
+        INTEGER(intk) :: istag, jstag, kstag
+        CHARACTER(len=3) :: ivar
+        CHARACTER(len=2) :: name_ux        
+        Real(realk), POINTER, CONTIGUOUS :: u(:, :, :)
+        REAL(realk), POINTER, CONTIGUOUS :: ux(:, :, :)  
+        REAL(realk), POINTER, CONTIGUOUS :: rdx(:), rdy(:), rdz(:)
+        REAL(realk), POINTER, CONTIGUOUS :: rddx(:), rddy(:), rddz(:)
+        
+        INTEGER(intk) :: i, igrid
+        INTEGER(intk) :: kk, jj, ii
+
+
+        SELECT CASE (TRIM(name))
+        CASE ("UXP_AVG")
+            CALL get_field(u_f, "U")  !!Fix this!! for each grid
+            CALL get_field(p_f, "P")
+            istag = 0
+            jstag = 0
+            kstag = 0
+            name_ux = 'UX'
+            ivar = 'DDX'
+        CASE ("VYP_AVG")
+            CALL get_field(u_f, "V")
+            CALL get_field(p_f, "P")
+            istag = 0
+            jstag = 0
+            kstag = 0
+            name_ux = 'VY'
+            ivar = 'DDY'
+        CASE ("WZP_AVG")
+            CALL get_field(u_f, "W")
+            CALL get_field(p_f, "P")
+            istag = 0
+            jstag = 0
+            kstag = 0
+            name_ux= 'WZ'
+            ivar = 'DDZ'
+        CASE DEFAULT
+            CALL errr(__FILE__, __LINE__)
+        END SELECT
+
+        CALL get_field(rdx_f, "RDX")
+        CALL get_field(rdy_f, "RDY")
+        CALL get_field(rdz_f, "RDZ")
+
+        CALL get_field(rddx_f, "RDDX")
+        CALL get_field(rddy_f, "RDDY")
+        CALL get_field(rddz_f, "RDDZ")
+
+        CALL field%init(name, istag=istag, jstag=jstag, kstag=kstag, &
+            units=units)
+        CALL ux_f%init(name_ux, istag=istag, jstag=jstag, kstag=kstag, &
+            units=units_ux)
+
+        DO i=1, nmygrids
+            igrid = mygrids(i)
+            
+            CALL u_f%get_ptr(u, igrid)
+            CALL ux_f%get_ptr(ux, igrid)
+
+
+            CALL rdx_f%get_ptr(rdx, igrid)
+            CALL rdy_f%get_ptr(rdy, igrid)
+            CALL rdz_f%get_ptr(rdz, igrid)
+
+            CALL rddx_f%get_ptr(rddx, igrid)
+            CALL rddy_f%get_ptr(rddy, igrid)
+            CALL rddz_f%get_ptr(rddz, igrid)
+
+            CALL get_mgdims(kk, jj, ii, igrid)
+        
+            ! Compute derivate of the velocity field
+            CALL dfdx (kk, jj, ii, rdx, rdy, rdz, rddx, rddy, rddz, ivar, u, ux)
+        
+        END DO
+
+        CALL field%multiply(ux_f, p_f)
+
+    END SUBROUTINE
+        
+    SUBROUTINE dfdx (kk, jj, ii, rdx, rdy, rdz, rddx, rddy, rddz, ivar, phi, dphi)
+        !Subroutine arguments
+        INTEGER(intk), INTENT(in) :: kk, jj, ii
+        REAL(realk), INTENT(in) :: rdx(ii), rdy(jj), rdz(kk)
+        REAL(realk), INTENT(in) :: rddx(ii), rddy(jj), rddz(kk)
+        CHARACTER(len=3), INTENT(in) :: ivar
+        REAL(realk), INTENT(in) :: phi(kk, jj, ii)
+        REAL(realk), INTENT(inout) :: dphi(kk, jj, ii)
+
+        !Local variables
+        INTEGER(intk) :: k, j, i
+
+        IF (ivar == 'DXS') THEN
+            DO i=2, ii-1
+                DO j=2, jj-1
+                    DO k=2, kk-1
+                        dphi(k,j,i) = (phi(k,j,i+1) - phi(k,j,i))*rdx(i)
+                    END DO
+                END DO
+            END DO
+        
+        ELSEIF (ivar == 'DDX') THEN
+            DO i=2, ii-1
+                DO j=2, jj-1
+                    DO k=2, kk-1
+                        dphi(k,j,i) = (phi(k,j,i) - phi(k,j,i-1))*rddx(i)
+                    END DO
+                END DO
+            END DO
+            
+        ELSEIF (ivar == 'DYS') THEN
+            DO i=2, ii-1
+                DO j=2, jj-1
+                    DO k=2, kk-1
+                        dphi(k,j,i) = (phi(k,j+1,i) - phi(k,j,i))*rdy(j)
+                    END DO
+                END DO
+            END DO
+
+        ELSEIF (ivar == 'DDY') THEN
+            DO i=2, ii-1
+                DO j=2, jj-1
+                    DO k=2, kk-1
+                        dphi(k,j,i) = (phi(k,j,i) - phi(k,j-1,i))*rddy(j)
+                    END DO
+                END DO
+            END DO
+
+        ELSEIF (ivar == 'DZS') THEN
+            DO i=2, ii-1
+                DO j=2, jj-1
+                    DO k=2, kk-1
+                        dphi(k,j,i) = (phi(k+1,j,i) - phi(k,j,i))*rdz(k)
+                    END DO
+                END DO
+            END DO
+
+        ELSEIF (ivar == 'DDZ') THEN
+            DO i=2, ii-1
+                DO j=2, jj-1
+                    DO k=2, kk-1
+                        dphi(k,j,i) = (phi(k,j,i) - phi(k-1,j,i))*rddz(k)
+                    END DO
+                END DO
+            END DO
+        ENDIF
+    END SUBROUTINE
+
 
 END MODULE flowstat_mod
