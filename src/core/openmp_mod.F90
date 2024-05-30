@@ -10,7 +10,7 @@ CONTAINS
     SUBROUTINE init_openmp()
         USE comms_mod, ONLY: myid
 
-        INTEGER :: num_devices, max_teams
+        INTEGER :: num_devices
         num_devices = omp_get_num_devices()
 
         IF (myid == 0) THEN
