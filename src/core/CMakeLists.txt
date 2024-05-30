@@ -27,7 +27,7 @@ add_library(core STATIC
     hdf5common_mod.F90
     jsoncpp_wrapper.cxx
     mgletmath_mod.F90
-    openacc_mod.F90
+    openmp_mod.F90
     plugins_mod.F90
     pointers_mod.F90
     precision_mod.F90
@@ -60,6 +60,7 @@ target_link_libraries(core
     PRIVATE ${MPI_Fortran_LIBRARIES}
     PRIVATE ${HDF5_Fortran_LIBRARIES}
     PRIVATE ZLIB::ZLIB
+    PRIVATE ${OpenMP_Fortran_LIBRARIES}
 )
 
 # Set include directories for specific files

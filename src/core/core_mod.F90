@@ -23,7 +23,7 @@ MODULE core_mod
     ! in core functions
     USE hdf5common_mod
     USE mgletmath_mod
-    USE openacc_mod
+    USE openmp_mod
     USE plugins_mod
     USE pointers_mod
     USE precision_mod
@@ -70,9 +70,6 @@ CONTAINS
         CALL IEEE_GET_HALTING_MODE(IEEE_ALL, saved_fpe_mode)
         CALL IEEE_SET_HALTING_MODE(IEEE_ALL, .FALSE.)
 
-        ! Initialize OpenACC
-        CALL init_openacc()
-
         ! Initialize MPI and HDF5
         CALL MPI_Init()
         CALL h5open_f(ierr)
@@ -85,6 +82,9 @@ CONTAINS
         ! Need to set the communicators first before set_fp_traps or
         ! set_underflow_mode since they depend on them
         CALL init_comms()
+
+        ! Check devices available to OpenMP
+        CALL init_openmp()
 
         ! Allow the user to set desired halting and underflow modes via
         ! environment variables

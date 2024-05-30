@@ -6,4 +6,12 @@
         "J /build/modules/*.mod",
     ],
     "fortran.linter.compilerPath": "/usr/bin/gfortran-11",
+    "terminal.integrated.fontSize": 16,
+    "files.associations": {
+        "functional": "cpp",
+        "chrono": "cpp",
+        "__functional_03": "cpp",
+        "target": "cpp"
+    },
+    "fortran.preferredCase": "uppercase",
 }
