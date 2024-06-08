@@ -5,7 +5,7 @@ MODULE baseparticle_mod
 !===================================
 
 USE precision_mod, ONLY: intk, realk
-USE core_mod ! should be specified in more detail later
+USE core_mod ! should be specified in more detail later ?
 USE flowcore_mod ! should be specified in more detail later
 
 !===================================
@@ -36,7 +36,7 @@ TYPE :: base_particle_t ! could be extended by a particle type that includes the
 	!GENERIC, PUBLIC :: ijk_to_ptr => ijk_to_ptr1, ijk_to_ptr3 ! NOT NEEDED
 	!PROCEDURE, PRIVATE :: ijk_to_ptr1, ijk_to_ptr3	! NOT NEEDED
 
-	! PROCEDURE :: get_ic  (could be another method) 
+	!PROCEDURE :: get_ic  (could be another method) 
 
 END TYPE base_particle_t
 
@@ -44,7 +44,7 @@ END TYPE base_particle_t
 
 CONTAINS
 
-	SUBROUTINE init(this, ipart, iproc, igrid, ijkcell, x, y, z, time)
+	SUBROUTINE init(this, ipart, iproc, igrid, ijkcell, x, y, z)
 
 		! Subroutine arguments
 	    CLASS(base_particle_t), INTENT(out) :: this
@@ -82,8 +82,6 @@ CONTAINS
 		this%x = x
 		this%y = y
 		this%z = z
-
-		!CALL timekeeper%get_time(this%time)
 
 	END SUBROUTINE init
 	
@@ -155,7 +153,6 @@ CONTAINS
         REAL(realk) :: diff_old, diff_new
         REAL(realk) :: minx, maxx, miny, maxy, minz, maxz
 		INTEGER(intk) :: k, j, i, kk, jj, ii
-		INTEGER(intk) :: istart, iend, istep, jstart, jend, jstep, kstart, kend, kstep
 
 		CALL get_field(x_f, "X")
         CALL get_field(y_f, "Y")
@@ -167,26 +164,155 @@ CONTAINS
 
         CALL get_mgdims(kk, jj, ii, this%igrid)
 
-        minx = gridinfo(this%igrid)%bbox(1)
-		maxx = gridinfo(this%igrid)%bbox(2)
-		miny = gridinfo(this%igrid)%bbox(3)
-		maxy = gridinfo(this%igrid)%bbox(4)
-		minz = gridinfo(this%igrid)%bbox(5)
-		maxz = gridinfo(this%igrid)%bbox(6)
+        CALL get_bbox(minx, maxx, miny, maxy, minz, maxz, this%igrid)
 
-        ! the following assumes that the x/y/z values are sorted! CHECK IF THIS IS TRUE
-        ! the following procedure is capable of handling stretched grids! IS THAT NEEDED ?
+        ! the following assumes that the x/y/z values are sorted such that for any i < j and any direction x, x(i) < x(j) ! 
+        ! the following procedure is capable of handling stretched grids!
+
         ! find nearest x:
 		
-		istart = FLOOR(ii * (this%x - minx) / (maxx - minx), intk) 
-		istep = NINT((this%x - x(istart)) / ABS(this%x - x(istart)), intk) ! use NINT to receive an actual integer of kind intk?
-		iend = 1 + (istep + 1) / 2 * (ii - 1) 
+		i = 1 + NINT((ii - 1) * (this%x - minx) / (maxx - minx), intk) ! this expression avoids errors for thisx = minx and thisx = maxx
 
+		diff_old = ABS(x(i) - this%x)
+		diff_new = 0 
+
+		DO WHILE (diff_new < diff_old)
+
+			this%ijkcell(1) = i
+
+			diff_old = ABS(x(i) - this%x)
+
+			IF (x(i) < this%x) THEN
+
+				i = i + FLOOR((ii - i) * (this%x - x(i)) / (maxx - x(i)), intk)
+
+			ELSEIF (x(i) > this%x) THEN 
+
+				i = CEILING(i * (this%x - minx) / (x(i) - minx), intk)
+
+			ELSE
+
+				EXIT
+
+			END IF
+
+			diff_new = ABS(x(i) - this%x)
+
+		END DO 
+
+        ! find nearest y:
+		
+		j = 1 + NINT((jj - 1) * (this%y - miny) / (maxy - miny), intk) ! this expression avoids errors for thisx = minx and thisx = maxx
+
+		diff_old = ABS(y(j) - this%y)
+		diff_new = 0 
+
+		DO WHILE (diff_new < diff_old)
+
+			this%ijkcell(2) = j
+
+			diff_old = ABS(y(j) - this%y)
+
+			IF (y(j) < this%y) THEN
+
+				j = j + FLOOR((jj - j) * (this%y - y(j)) / (maxy - y(j)), intk)
+
+			ELSEIF (y(j) > this%y) THEN 
+
+				j = CEILING(j * (this%y - miny) / (y(j) - miny), intk)
+
+			ELSE
+
+				EXIT
+
+			END IF
+
+			diff_new = ABS(y(j) - this%y)
+
+		END DO 
+
+        ! find nearest z:
+		
+		k = 1 + NINT((kk - 1) * (this%z - minz) / (maxz - minz), intk) ! this expression avoids errors for thisx = minx and thisx = maxx
+
+		diff_old = ABS(z(k) - this%z)
+		diff_new = 0 
+
+		DO WHILE (diff_new < diff_old)
+
+			this%ijkcell(3) = k
+
+			diff_old = ABS(z(k) - this%z)
+
+			IF (z(k) < this%z) THEN
+
+				k = k + FLOOR((kk - k) * (this%z - z(k)) / (maxz - z(k)), intk)
+
+			ELSEIF (z(k) > this%z) THEN 
+
+				k = CEILING(k * (this%z - minz) / (z(k) - minz), intk)
+
+			ELSE
+
+				EXIT
+
+			END IF
+
+			diff_new = ABS(z(k) - this%z)
+
+		END DO 
+	
+	END SUBROUTINE get_p_ijkcell
+
+	!------------------------------	
+
+	SUBROUTINE update_p_ijkcell(pdx, pdy, pdz)
+
+		! subroutine arguments
+		CLASS(base_particle_t), INTENT(inout) :: this
+		REAL(realk) :: pdx, pdy, pdz
+
+		! local variables
+		TYPE(field_t) :: x_f, y_f, z_f, dx_f, dy_f, dz_f
+        REAL(realk), POINTER, CONTIGUOUS :: x, y, z, dx, dy, dz
+        REAL(realk) :: diff_old, diff_new
+        REAL(realk) :: minx, maxx, miny, maxy, minz, maxz
+		INTEGER(intk) :: k, j, i, kk, jj, ii
+		INTEGER(intk) :: istart, iend, istep, jstart, jend, jstep, kstart, kend, kstep
+
+		CALL get_field(x_f, "X")
+        CALL get_field(y_f, "Y")
+        CALL get_field(z_f, "Z")
+
+        CALL get_field(dx_f, "DX")
+        CALL get_field(dy_f, "DY")
+        CALL get_field(dz_f, "DZ")
+
+        CALL x_f%get_ptr(x, this%igrid)
+        CALL y_f%get_ptr(y, this%igrid)
+        CALL z_f%get_ptr(z, this%igrid)
+
+        CALL dx_f%get_ptr(dx, this%igrid)
+        CALL dy_f%get_ptr(dy, this%igrid)
+        CALL dz_f%get_ptr(dz, this%igrid)
+
+        CALL get_mgdims(kk, jj, ii, this%igrid)
+
+        CALL get_bbox(minx, maxx, miny, maxy, minz, maxz, this%igrid)
+
+        ! the following assumes that the x/y/z values are sorted such that for any i < j and any direction x, x(i) < x(j) ! 
+        ! the following procedure is capable of handling stretched grids!
+		
+		! find nearest x:
+		istart = this%ijkcell(1) + NINT((this%x - x(this%ijkcell(1))) / dx(this%ijkcell(1)))
+		istep = SIGN(INT(1, intk), NINT((this%x - x(istart)), intk))
+		iend = 1 + (istep + 1) / 2 * (ii - 1) 
+!
         diff_old = x(istart) - this%x
         
         DO i = istart + istep, iend, istep
         	diff_new = x(i) - this%x
-
+!
         	IF (diff_new > diff_old) THEN
         		this%ijkcell(1) = i - istep
         		EXIT
@@ -200,8 +326,8 @@ CONTAINS
 
         ! find nearest y:
 
-		jstart = FLOOR(jj * (this%y - miny)/(maxy - miny), intk) 
-		jstep = NINT((this%y - x(jstart)) / ABS(this%y - x(jstart)), intk) ! use NINT to receive an actual integer of kind intk
+		jstart = this%ijkcell(2) + NINT((this%y - y(this%ijkcell(2))) / dy(this%ijkcell(2)))
+		jstep = SIGN(INT(1, intk), NINT((this%y - y(jstart)), intk))
 		jend = 1 + (jstep + 1) / 2 * (jj - 1) 
 
         diff_old = y(jstart) - this%y
@@ -222,8 +348,8 @@ CONTAINS
 
         ! find nearest z:
 
-		kstart = FLOOR(kk * (this%z - minz)/(maxz - minz), intk) 
-		kstep = NINT((this%z - z(kstart)) / ABS(this%z - z(kstart)), intk) ! use NINT to receive an actual integer of kind intk
+		kstart = this%ijkcell(3) + NINT((this%z - z(this%ijkcell(3))) / dz(this%ijkcell(3)))
+		kstep = SIGN(INT(1, intk), NINT((this%z - z(kstart)), intk))
 		kend = 1 + (kstep + 1) / 2 * (kk - 1) 
 
         diff_old = z(kstart) - this%z
@@ -241,40 +367,8 @@ CONTAINS
         		CYCLE
         	END IF
         END DO
-	
-	END SUBROUTINE get_p_ijkcell
 
-	!------------------------------
-
-	SUBROUTINE use_ijk_cell
-
-		CALL get_field(x_f, "X")
-        CALL get_field(y_f, "Y")
-        CALL get_field(z_f, "Z")
-
-        CALL x_f%get_ptr(x, this%igrid)
-        CALL y_f%get_ptr(y, this%igrid)
-        CALL z_f%get_ptr(w, this%igrid)
-
-        nearest_cell_x_ptr = x(ijkcell(1))
-        nearest_cell_y_ptr = x(ijkcell(2))
-        nearest_cell_z_ptr = x(ijkcell(3))
-
-        !dxi/ddxi analogously ...
-
-        CALL get_field(u_f, "U")
-        CALL get_field(v_f, "V")
-        CALL get_field(w_f, "W")
-
-        CALL x_f%get_ptr(u, this%igrid)
-        CALL y_f%get_ptr(v, this%igrid)
-        CALL z_f%get_ptr(w, this%igrid)
-
-        nearest_cell_u_ptr = u(ijkcell(1))
-        nearest_cell_v_ptr = v(ijkcell(2))
-        nearest_cell_w_ptr = w(ijkcell(3))
-
-	END SUBROUTINE use_ijk_cell
+	END SUBROUTINE update_p_ijkcell
 
 	!------------------------------
 

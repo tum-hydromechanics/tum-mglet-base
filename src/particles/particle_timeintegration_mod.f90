@@ -5,10 +5,10 @@ MODULE particle_timeintegration_mod
 !===================================
 
 USE precision_mod, ONLY: intk, realk
-USE baseparticle_mod 
-USE particles_mod
 USE core_mod  
 USE flowcore_mod
+USE baseparticle_mod 
+USE particles_mod
 
 !===================================
 

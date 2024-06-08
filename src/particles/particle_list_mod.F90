@@ -5,6 +5,7 @@ MODULE particle_list_mod
 !===================================
 
 USE precision_mod, ONLY: intk, realk
+USE core_mod
 USE baseparticle_mod 
 
 !===================================
@@ -46,7 +47,6 @@ CONTAINS
 
 		! local variables
  		INTEGER(intk) :: i
- 		REAL(realk) :: time = 0 
  		REAL(realk) :: x, y, z
 
 		my_particle_list%max_np = default_max_np
@@ -62,7 +62,7 @@ CONTAINS
 
  			CALL random_ic(x, y, z) ! ONLY DUMMY FOR NOW, DENPENDS ON THE PROCESS SPATIAL DOMAIN
 
- 			CALL my_particle_list%particles(i)%init(ipart = my_ipart_arr(i), x = x, y = y, z = z, time = time)
+ 			CALL my_particle_list%particles(i)%init(ipart = my_ipart_arr(i), x = x, y = y, z = z)
 
  			my_particle_list%particle_stored(i) = .TRUE.
 
