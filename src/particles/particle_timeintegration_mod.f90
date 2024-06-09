@@ -28,11 +28,10 @@ CONTAINS
 		REAL(realk), POINTER, CONTIGUOUS, DIMENSION(:, :, :) :: ddx, ddy, ddz
 		REAL(realk), POINTER, CONTIGUOUS, DIMENSION(:, :, :) :: u, v, w
 		
-		
 		REAL(realk), POINTER, CONTIGUOUS, DIMENSION(:) :: particles ! use contiguous here?
-		REAL(realk), DIMENSION(6) :: p_bbox(6)
-		REAL(realk) :: p_u, p_v, p_w, 
-		INTEGER(intk) :: p, p_istag, p_jstag, p_kstag
+		REAL(realk), DIMENSION(6) :: p_bbox(6), p_x, p_y, p_z
+		REAL(realk) :: p_u, p_v, p_w
+		INTEGER(intk) :: igrid, p, p_i, p_j, p_k, p_istag, p_jstag, p_kstag
 
 		!is calling the geometric fields obsolete when using core_mode -> corefields_mod ?
 		CALL get_field(x_f, "X")
@@ -51,87 +50,45 @@ CONTAINS
         CALL get_field(v_f, "V")
         CALL get_field(w_f, "W")
 
-        CALL x_f%get_ptr(x, this%igrid)
-        CALL y_f%get_ptr(y, this%igrid)
-        CALL z_f%get_ptr(z, this%igrid)
-
-        CALL xstag_f%get_ptr(xstag, this%igrid)
-        CALL ystag_f%get_ptr(ystag, this%igrid)
-        CALL zstag_f%get_ptr(zstag, this%igrid)
-
-        CALL ddx_f%get_ptr(ddx, this%igrid)
-        CALL ddy_f%get_ptr(ddy, this%igrid)
-        CALL ddz_f%get_ptr(ddz, this%igrid)
-
-        CALL u_f%get_ptr(u, this%igrid)
-        CALL v_f%get_ptr(v, this%igrid)
-        CALL w_f%get_ptr(w, this%igrid)
-
         particles => my_particle_list%particles
 
     	DO p = 1, my_particle_list%ifinal
 
-    		IF (.NOT. particles(p)%is_init) THEN
+    		IF (.NOT. my_particle_list%particles(p)%is_init) THEN
 
     			CYCLE
 
     		END IF 
 
-    		p_istag = CEILING((particles(p)%x - x(ijkcell(1))) / ddx(ijkcell(1)))
-    		p_jstag = CEILING((particles(p)%y - y(ijkcell(2))) / ddy(ijkcell(2)))
-    		p_kstag = CEILING((particles(p)%z - z(ijkcell(3))) / ddz(ijkcell(3)))
+    		igrid = my_particle_list%particles(p)%igrid !just for clarity of the coming expressions
 
-    		p_bbox_u = /(xstag(ijkcell(1) - 1), xstag(ijkcell(1)), &
-    					ystag(ijkcell(2) + p_jstag - 1), ystag(ijkcell(2) + p_jstag), &
-    					zstag(ijkcell(3) + p_kstag - 1), zstag(ijkcell(3) + p_kstag) /) 
+        	CALL x_f%get_ptr(x, igrid)
+       		CALL y_f%get_ptr(y, igrid)
+        	CALL z_f%get_ptr(z, igrid)
 
-    		p_bbox_v = /(xstag(ijkcell(1) + p_istag - 1), xstag(ijkcell(1) + p_istag), &
-    					ystag(ijkcell(2) - 1), ystag(ijkcell(2)), &
-    					zstag(ijkcell(3) + p_kstag - 1), zstag(ijkcell(3) + p_kstag) /) 
+        	CALL ddx_f%get_ptr(ddx, igrid)
+        	CALL ddy_f%get_ptr(ddy, igrid)
+        	CALL ddz_f%get_ptr(ddz, igrid)
 
-    		p_bbox_w = /(xstag(ijkcell(1) + p_istag - 1), xstag(ijkcell(1) + p_istag),&
-    					ystag(ijkcell(2) + p_jstag - 1), ystag(ijkcell(2) + p_jstag), &
-    					zstag(ijkcell(3) - 1), zstag(ijkcell(3)) /) 
+        	CALL xstag_f%get_ptr(xstag, igrid)
+        	CALL ystag_f%get_ptr(ystag, igrid)
+        	CALL zstag_f%get_ptr(zstag, igrid)       	
 
-    		interp_trilinear( particles(p)%x, particles(p)%y, particles(p)%z, p_bbox_u, p_u,&
-    						u(ijkcell(3) + p_kstag - 1, ijkcell(2) + p_jstag -1, ijkcell(1) - 1),&
-    						u(ijkcell(3) + p_kstag    , ijkcell(2) + p_jstag -1, ijkcell(1) - 1),&
-    						u(ijkcell(3) + p_kstag - 1, ijkcell(2) + p_jstag   , ijkcell(1) - 1),&
-    						u(ijkcell(3) + p_kstag    , ijkcell(2) + p_jstag   , ijkcell(1) - 1),&
-    						u(ijkcell(3) + p_kstag - 1, ijkcell(2) + p_jstag -1, ijkcell(1)    ),&
-    						u(ijkcell(3) + p_kstag    , ijkcell(2) + p_jstag -1, ijkcell(1)    ),&
-    						u(ijkcell(3) + p_kstag - 1, ijkcell(2) + p_jstag   , ijkcell(1)    ),&
-    						u(ijkcell(3) + p_kstag    , ijkcell(2) + p_jstag   , ijkcell(1)    ) )
+        	CALL u_f%get_ptr(u, igrid)
+        	CALL v_f%get_ptr(v, igrid)
+        	CALL w_f%get_ptr(w, igrid)
 
-     		interp_trilinear( particles(p)%x, particles(p)%y, particles(p)%z, p_bbox_v, p_v,&
-    						v(ijkcell(3) + p_kstag - 1, ijkcell(2) -1, ijkcell(1) + p_istag - 1),&
-    						v(ijkcell(3) + p_kstag    , ijkcell(2) -1, ijkcell(1) + p_istag - 1),&
-    						v(ijkcell(3) + p_kstag - 1, ijkcell(2)   , ijkcell(1) + p_istag - 1),&
-    						v(ijkcell(3) + p_kstag    , ijkcell(2)   , ijkcell(1) + p_istag - 1),&
-    						v(ijkcell(3) + p_kstag - 1, ijkcell(2) -1, ijkcell(1) + p_istag    ),&
-    						v(ijkcell(3) + p_kstag    , ijkcell(2) -1, ijkcell(1) + p_istag    ),&
-    						v(ijkcell(3) + p_kstag - 1, ijkcell(2)   , ijkcell(1) + p_istag    ),&
-    						v(ijkcell(3) + p_kstag    , ijkcell(2)   , ijkcell(1) + p_istag    ) )
-
-    		interp_trilinear( particles(p)%x, particles(p)%y, particles(p)%z, p_bbox_w, p_w,&
-    						w(ijkcell(3) - 1, ijkcell(2) + p_jstag -1, ijkcell(1) + p_istag - 1),&
-    						w(ijkcell(3)    , ijkcell(2) + p_jstag -1, ijkcell(1) + p_istag - 1),&
-    						w(ijkcell(3) - 1, ijkcell(2) + p_jstag   , ijkcell(1) + p_istag - 1),&
-    						w(ijkcell(3)    , ijkcell(2) + p_jstag   , ijkcell(1) + p_istag - 1),&
-    						w(ijkcell(3) - 1, ijkcell(2) + p_jstag -1, ijkcell(1) + p_istag    ),&
-    						w(ijkcell(3)    , ijkcell(2) + p_jstag -1, ijkcell(1) + p_istag    ),&
-    						w(ijkcell(3) - 1, ijkcell(2) + p_jstag   , ijkcell(1) + p_istag    ),&
-    						w(ijkcell(3)    , ijkcell(2) + p_jstag   , ijkcell(1) + p_istag    ) )
+    		CALL interp_particle_uvw(my_particle_list%particles(p),&
+    			p_u, p_v, p_w, xstag, ystag, zstag, ddx, ddy, ddz, u, v, w)
 
     		! TODO: proper timeintegration
     		! dummy method for now (explicit euler)
     		particles(p)%x = particles(p)%x + p_u * dt
     		particles(p)%y = particles(p)%y + p_v * dt
     		particles(p)%z = particles(p)%z + p_w * dt
-    		
-    		! TODO: use timekeeper for particle time ! ! !
 
-    		! TODO: new ijkcell
+    		! TODO: add diffusiion
+    		! TODO: exit domain handling / deactivate particles that leave the domain
 
         END DO
 
@@ -139,11 +96,84 @@ CONTAINS
 
 	!------------------------------
 
-	SUBROUTINE uvw_interp_trilinear(px, py, pz)
+	SUBROUTINE interp_particle_uvw(particle, p_u, p_v, p_w, xstag, ystag, zstag, ddx, ddy, ddz, u, v, w)
 
-	! fields and pointers as arguments?
+			! subroutine arguments
+			TYPE(base_particle_t), INTENT(in) :: particle
+			REAL(realk), INTENT(out), p_u, p_v, p_w
+			REAL(realk), POINTER, CONTIGUOUS, DIMENSION(:, :, :), INTENT(in) :: xstag, ystag, zstag
+			REAL(realk), POINTER, CONTIGUOUS, DIMENSION(:, :, :), INTENT(in) :: ddx, ddy, ddz
+			REAL(realk), POINTER, CONTIGUOUS, DIMENSION(:, :, :), INTENT(in) :: u, v, w
 
-	SUBROUTINE uvw_interp_trilinear
+			! local variables
+			INTEGER(intk) :: p_i, p_j, p_k, p_istag, p_jstag, p_kstag
+			REAL(realk) :: p_x, p_y, p_z
+
+
+	    	p_i = particle%ijkcell(1) !just for clarity of the coming expressions
+    		p_j = particle%ijkcell(2) !just for clarity of the coming expressions
+    		p_k = particle%ijkcell(3) !just for clarity of the coming expressions
+
+    		p_x = particle%x !just for clarity of the coming expressions
+    		p_y = particle%y !just for clarity of the coming expressions
+    		p_z = particle%z !just for clarity of the coming expressions
+
+    		p_istag = CEILING((p_x - x(p_i)) / ddx(p_i))
+    		p_jstag = CEILING((p_y - y(p_j)) / ddy(p_j))
+    		p_kstag = CEILING((p_z - z(p_k)) / ddz(p_k))
+
+		    p_bbox_u(1) = xstag(p_i - 1)
+    		p_bbox_u(2) = xstag(p_i)
+    		p_bbox_u(3) = ystag(p_j + p_jstag - 1)
+    		p_bbox_u(4) = ystag(p_j + p_jstag)
+    		p_bbox_u(5) = zstag(p_k + p_kstag - 1)
+    		p_bbox_u(6) = zstag(p_k + p_kstag) 
+
+    		p_bbox_v(1) = xstag(p_i + p_istag - 1)
+    		p_bbox_v(2) = xstag(p_i + p_istag)
+    		p_bbox_v(3) = ystag(p_j - 1)
+    		p_bbox_v(4) = ystag(p_j)
+    		p_bbox_v(5) = zstag(p_k + p_kstag - 1)
+    		p_bbox_v(6) = zstag(p_k + p_kstag)
+
+    		p_bbox_w(1) = xstag(p_i + p_istag - 1)
+    		p_bbox_w(2) = xstag(p_i + p_istag)
+    		p_bbox_w(3) = ystag(p_j + p_jstag - 1)
+    		p_bbox_w(4) = ystag(p_j + p_jstag)
+    		p_bbox_w(5) = zstag(p_k - 1)
+    		p_bbox_w(6) = zstag(p_k)
+
+    		interp_trilinear(p_x, p_y, p_z, p_bbox_u, p_u,&
+    						u(p_k + p_kstag - 1, p_j + p_jstag -1, p_i - 1),&
+    						u(p_k + p_kstag    , p_j + p_jstag -1, p_i - 1),&
+    						u(p_k + p_kstag - 1, p_j + p_jstag   , p_i - 1),&
+    						u(p_k + p_kstag    , p_j + p_jstag   , p_i - 1),&
+    						u(p_k + p_kstag - 1, p_j + p_jstag -1, p_i    ),&
+    						u(p_k + p_kstag    , p_j + p_jstag -1, p_i    ),&
+    						u(p_k + p_kstag - 1, p_j + p_jstag   , p_i    ),&
+    						u(p_k + p_kstag    , p_j + p_jstag   , p_i    ))
+
+     		interp_trilinear(p_x, p_y, p_z, p_bbox_v, p_v,&
+    						v(p_k + p_kstag - 1, p_j -1, p_i + p_istag - 1),&
+    						v(p_k + p_kstag    , p_j -1, p_i + p_istag - 1),&
+    						v(p_k + p_kstag - 1, p_j   , p_i + p_istag - 1),&
+    						v(p_k + p_kstag    , p_j   , p_i + p_istag - 1),&
+    						v(p_k + p_kstag - 1, p_j -1, p_i + p_istag    ),&
+    						v(p_k + p_kstag    , p_j -1, p_i + p_istag    ),&
+    						v(p_k + p_kstag - 1, p_j   , p_i + p_istag    ),&
+    						v(p_k + p_kstag    , p_j   , p_i + p_istag    ))
+
+    		interp_trilinear(p_x, p_y, p_z, p_bbox_w, p_w,&
+    						w(p_k - 1, p_j + p_jstag -1, p_i + p_istag - 1),&
+    						w(p_k    , p_j + p_jstag -1, p_i + p_istag - 1),&
+    						w(p_k - 1, p_j + p_jstag   , p_i + p_istag - 1),&
+    						w(p_k    , p_j + p_jstag   , p_i + p_istag - 1),&
+    						w(p_k - 1, p_j + p_jstag -1, p_i + p_istag    ),&
+    						w(p_k    , p_j + p_jstag -1, p_i + p_istag    ),&
+    						w(p_k - 1, p_j + p_jstag   , p_i + p_istag    ),&
+    						w(p_k    , p_j + p_jstag   , p_i + p_istag    ))
+
+	SUBROUTINE interp_particle_uvw
 
 	!------------------------------
 
