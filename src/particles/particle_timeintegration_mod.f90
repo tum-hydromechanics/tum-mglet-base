@@ -8,15 +8,24 @@ USE precision_mod, ONLY: intk, realk
 USE core_mod  
 USE flowcore_mod
 USE baseparticle_mod 
-USE particles_mod
+USE particle_list_mod
+
+!===================================
+
+REAL(realk), PARAMETER :: D = 0.1 ! Diffusion constant in m²/s (homogeneous and isotropic diffusion for now)
 
 !===================================
 
 CONTAINS
 
-	SUBROUTINE timeintegrate_particles()
+	SUBROUTINE timeintegrate_particles(dt)
 
-		! local variables
+		! subroutine arguments 
+		REAL(realk) :: dt
+
+		! local variables		
+		INTEGER(intk) :: igrid, p
+		REAL(realk) :: p_u, p_v, p_w
 
 		TYPE(field_t), POINTER :: x_f, y_f, z_f
 		TYPE(field_t), POINTER :: xstag_f, ystag_f, zstag_f
@@ -27,11 +36,8 @@ CONTAINS
 		REAL(realk), POINTER, CONTIGUOUS, DIMENSION(:, :, :) :: xstag, ystag, zstag
 		REAL(realk), POINTER, CONTIGUOUS, DIMENSION(:, :, :) :: ddx, ddy, ddz
 		REAL(realk), POINTER, CONTIGUOUS, DIMENSION(:, :, :) :: u, v, w
-		
-		REAL(realk), POINTER, CONTIGUOUS, DIMENSION(:) :: particles ! use contiguous here?
-		REAL(realk), DIMENSION(6) :: p_bbox(6), p_x, p_y, p_z
-		REAL(realk) :: p_u, p_v, p_w
-		INTEGER(intk) :: igrid, p, p_i, p_j, p_k, p_istag, p_jstag, p_kstag
+
+		REAL(realk) :: rand_dx, rand_dy, rand_dz, diffusion_dx, diffusion_dy, diffusion_dz
 
 		!is calling the geometric fields obsolete when using core_mode -> corefields_mod ?
 		CALL get_field(x_f, "X")
@@ -49,8 +55,6 @@ CONTAINS
         CALL get_field(u_f, "U")
         CALL get_field(v_f, "V")
         CALL get_field(w_f, "W")
-
-        particles => my_particle_list%particles
 
     	DO p = 1, my_particle_list%ifinal
 
@@ -83,11 +87,20 @@ CONTAINS
 
     		! TODO: proper timeintegration
     		! dummy method for now (explicit euler)
-    		particles(p)%x = particles(p)%x + p_u * dt
-    		particles(p)%y = particles(p)%y + p_v * dt
-    		particles(p)%z = particles(p)%z + p_w * dt
 
-    		! TODO: add diffusiion
+    		! how should 2 dimensional cases be handeled ? 
+    		CALL RANDOM_NUMBER(rand_dx)
+    		CALL RANDOM_NUMBER(rand_dy)
+    		CALL RANDOM_NUMBER(rand_dz)
+
+    		diffusion_dx = SQRT(2 * D * dt) * rand_dx / SQRT(rand_dx**(2) + rand_dy**(2) + rand_dz**(2))
+    		diffusion_dy = SQRT(2 * D * dt) * rand_dx / SQRT(rand_dx**(2) + rand_dy**(2) + rand_dz**(2))
+    		diffusion_dz = SQRT(2 * D * dt) * rand_dx / SQRT(rand_dx**(2) + rand_dy**(2) + rand_dz**(2))
+
+    		particles(p)%x = particles(p)%x + p_u * dt + diffusion_dx
+    		particles(p)%y = particles(p)%y + p_v * dt + diffusion_dy
+    		particles(p)%z = particles(p)%z + p_w * dt + diffusion_dz
+
     		! TODO: exit domain handling / deactivate particles that leave the domain
 
         END DO
@@ -108,6 +121,7 @@ CONTAINS
 			! local variables
 			INTEGER(intk) :: p_i, p_j, p_k, p_istag, p_jstag, p_kstag
 			REAL(realk) :: p_x, p_y, p_z
+			REAL(realk), DIMENSION(6) :: p_bbox_u, p_bbox_v, p_bbox_w
 
 
 	    	p_i = particle%ijkcell(1) !just for clarity of the coming expressions

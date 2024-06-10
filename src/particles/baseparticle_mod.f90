@@ -46,42 +46,42 @@ CONTAINS
 
 	SUBROUTINE init(this, ipart, iproc, igrid, ijkcell, x, y, z)
 
-		! Subroutine arguments
-	    CLASS(base_particle_t), INTENT(out) :: this
-	    INTEGER(intk), INTENT(in) :: ipart
-	    INTEGER(intk), INTENT(in), OPTIONAL :: iproc
-	    INTEGER(intk), INTENT(in), OPTIONAL :: igrid
-	    INTEGER(intk), INTENT(in), OPTIONAL :: ijkcell(3)
-		REAL(realk), INTENT(in) :: x, y, z
+	! Subroutine arguments
+	CLASS(base_particle_t), INTENT(out) :: this
+	INTEGER(intk), INTENT(in) :: ipart
+	INTEGER(intk), INTENT(in), OPTIONAL :: iproc
+	INTEGER(intk), INTENT(in), OPTIONAL :: igrid
+	INTEGER(intk), INTENT(in), OPTIONAL :: ijkcell(3)
+	REAL(realk), INTENT(in) :: x, y, z
 		
-		! Local variables
-        	! none...
+	! Local variables
+        ! none...
 
-		this%is_init = .TRUE.
+	this%is_init = .TRUE.
 
-		this%ipart = ipart
+	this%ipart = ipart
 
-		IF (PRESENT(iproc)) THEN
-			this%iproc = iproc
-		ELSE
-			this%iproc = myid
-		END IF
+	IF (PRESENT(iproc)) THEN
+		this%iproc = iproc
+	ELSE
+		this%iproc = myid
+	END IF
 
-		IF (PRESENT(igrid)) THEN
-			this%igrid = igrid
-		ELSE 
-			CALL this%get_p_igrid()
-		END IF
+	IF (PRESENT(igrid)) THEN
+		this%igrid = igrid
+	ELSE 
+		CALL this%get_p_igrid()
+	END IF
 
-		IF (PRESENT(ijkcell)) THEN
-			this%ijkcell = ijkcell
-		ELSE
-			CALL this%get_p_ijkcell()
-		END IF
+	IF (PRESENT(ijkcell)) THEN
+		this%ijkcell = ijkcell
+	ELSE
+		CALL this%get_p_ijkcell()
+	END IF
 
-		this%x = x
-		this%y = y
-		this%z = z
+	this%x = x
+	this%y = y
+	this%z = z
 
 	END SUBROUTINE init
 	
@@ -89,13 +89,13 @@ CONTAINS
 	
 	SUBROUTINE get_p_igrid(this)
 
-		! Subroutine arguments
-		CLASS(base_particle_t), INTENT(inout) :: this
+	! Subroutine arguments
+	CLASS(base_particle_t), INTENT(inout) :: this
 
-		!local variables:
-		LOGICAL :: found = .FALSE.
-		INTEGER(intk) :: i, igrid
-		REAL(realk) :: minx, maxx, miny, maxy, minz, maxz
+	!local variables:
+	LOGICAL :: found = .FALSE.
+	INTEGER(intk) :: i, igrid
+	REAL(realk) :: minx, maxx, miny, maxy, minz, maxz
 
         DO i = 1, nmygrids
             igrid = mygrids(i)
@@ -144,17 +144,17 @@ CONTAINS
 	
 	SUBROUTINE get_p_ijkcell(this)
 
-		! subroutine arguments
-		CLASS(base_particle_t), INTENT(inout) :: this
+	! subroutine arguments
+	CLASS(base_particle_t), INTENT(inout) :: this
 
-		! local variables
-		TYPE(field_t) :: x_f, y_f, z_f
+	! local variables
+	TYPE(field_t) :: x_f, y_f, z_f
         REAL(realk), POINTER, CONTIGUOUS :: x, y, z
         REAL(realk) :: diff_old, diff_new
         REAL(realk) :: minx, maxx, miny, maxy, minz, maxz
-		INTEGER(intk) :: k, j, i, kk, jj, ii
+	INTEGER(intk) :: k, j, i, kk, jj, ii
 
-		CALL get_field(x_f, "X")
+	CALL get_field(x_f, "X")
         CALL get_field(y_f, "Y")
         CALL get_field(z_f, "Z")
 
@@ -268,19 +268,19 @@ CONTAINS
 
 	SUBROUTINE update_p_ijkcell(pdx, pdy, pdz)
 
-		! subroutine arguments
-		CLASS(base_particle_t), INTENT(inout) :: this
-		REAL(realk) :: pdx, pdy, pdz
+	! subroutine arguments
+	CLASS(base_particle_t), INTENT(inout) :: this
+	REAL(realk) :: pdx, pdy, pdz
 
-		! local variables
-		TYPE(field_t) :: x_f, y_f, z_f, dx_f, dy_f, dz_f
+	! local variables
+	TYPE(field_t) :: x_f, y_f, z_f, dx_f, dy_f, dz_f
         REAL(realk), POINTER, CONTIGUOUS :: x, y, z, dx, dy, dz
         REAL(realk) :: diff_old, diff_new
         REAL(realk) :: minx, maxx, miny, maxy, minz, maxz
-		INTEGER(intk) :: k, j, i, kk, jj, ii
-		INTEGER(intk) :: istart, iend, istep, jstart, jend, jstep, kstart, kend, kstep
+	INTEGER(intk) :: k, j, i, kk, jj, ii
+	INTEGER(intk) :: istart, iend, istep, jstart, jend, jstep, kstart, kend, kstep
 
-		CALL get_field(x_f, "X")
+	CALL get_field(x_f, "X")
         CALL get_field(y_f, "Y")
         CALL get_field(z_f, "Z")
 
@@ -303,10 +303,10 @@ CONTAINS
         ! the following assumes that the x/y/z values are sorted such that for any i < j and any direction x, x(i) < x(j) ! 
         ! the following procedure is capable of handling stretched grids!
 		
-		! find nearest x:
-		istart = this%ijkcell(1) + NINT((this%x - x(this%ijkcell(1))) / dx(this%ijkcell(1)))
-		istep = SIGN(INT(1, intk), NINT((this%x - x(istart)), intk))
-		iend = 1 + (istep + 1) / 2 * (ii - 1) 
+	! find nearest x:
+	istart = this%ijkcell(1) + NINT((this%x - x(this%ijkcell(1))) / dx(this%ijkcell(1)))
+	istep = SIGN(INT(1, intk), NINT((this%x - x(istart)), intk))
+	iend = 1 + (istep + 1) / 2 * (ii - 1) 
 !
         diff_old = x(istart) - this%x
         
@@ -326,9 +326,9 @@ CONTAINS
 
         ! find nearest y:
 
-		jstart = this%ijkcell(2) + NINT((this%y - y(this%ijkcell(2))) / dy(this%ijkcell(2)))
-		jstep = SIGN(INT(1, intk), NINT((this%y - y(jstart)), intk))
-		jend = 1 + (jstep + 1) / 2 * (jj - 1) 
+	jstart = this%ijkcell(2) + NINT((this%y - y(this%ijkcell(2))) / dy(this%ijkcell(2)))
+	jstep = SIGN(INT(1, intk), NINT((this%y - y(jstart)), intk))
+	jend = 1 + (jstep + 1) / 2 * (jj - 1) 
 
         diff_old = y(jstart) - this%y
         
@@ -348,9 +348,9 @@ CONTAINS
 
         ! find nearest z:
 
-		kstart = this%ijkcell(3) + NINT((this%z - z(this%ijkcell(3))) / dz(this%ijkcell(3)))
-		kstep = SIGN(INT(1, intk), NINT((this%z - z(kstart)), intk))
-		kend = 1 + (kstep + 1) / 2 * (kk - 1) 
+	kstart = this%ijkcell(3) + NINT((this%z - z(this%ijkcell(3))) / dz(this%ijkcell(3)))
+	kstep = SIGN(INT(1, intk), NINT((this%z - z(kstart)), intk))
+	kend = 1 + (kstep + 1) / 2 * (kk - 1) 
 
         diff_old = z(kstart) - this%z
         
@@ -374,11 +374,11 @@ CONTAINS
 
 	SUBROUTINE print_status(this)
 	
-		CLASS(base_particle_t), INTENT(in) :: this
+	CLASS(base_particle_t), INTENT(in) :: this
 	
-		IF (this%is_init) THEN
-		print *, 'Particle ID: ', this%ipart
-		END IF
+	IF (this%is_init) THEN
+	print *, 'Particle ID: ', this%ipart
+	END IF
 		
 	END SUBROUTINE print_status
 	
@@ -394,11 +394,11 @@ CONTAINS
 
 	! for now only random values between 0 and 1:
 
-		REAL(realk), INTENT(out) :: x, y, z
+	REAL(realk), INTENT(out) :: x, y, z
 
-		CALL RANDOM_NUMBER(x)
-		CALL RANDOM_NUMBER(y)
-		CALL RANDOM_NUMBER(z)
+	CALL RANDOM_NUMBER(x)
+	CALL RANDOM_NUMBER(y)
+	CALL RANDOM_NUMBER(z)
 
 	END SUBROUTINE random_ic
 
