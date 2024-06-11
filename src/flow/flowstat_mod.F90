@@ -58,6 +58,18 @@ CONTAINS
         CALL register_statfield("UXP_AVG", comp_uxp_avg)
         CALL register_statfield("VYP_AVG", comp_uxp_avg)
         CALL register_statfield("WZP_AVG", comp_uxp_avg)
+
+        CALL register_statfield("UXUX_AVG", comp_uxux_avg)
+        CALL register_statfield("UYUY_AVG", comp_uxux_avg)
+        CALL register_statfield("UZUZ_AVG", comp_uxux_avg)
+        CALL register_statfield("VXVX_AVG", comp_uxux_avg)
+        CALL register_statfield("VYVY_AVG", comp_uxux_avg)
+        CALL register_statfield("VZVZ_AVG", comp_uxux_avg)
+        CALL register_statfield("WXWX_AVG", comp_uxux_avg)
+        CALL register_statfield("WYWY_AVG", comp_uxux_avg)
+        CALL register_statfield("WZWZ_AVG", comp_uxux_avg)
+
+
              
     END SUBROUTINE init_flowstat
 
@@ -124,8 +136,6 @@ CONTAINS
         INTEGER(intk), PARAMETER :: units(*) = [0, 3, -3, 0, 0, 0, 0]
         TYPE(field_t), POINTER :: in1, in2, in3
         INTEGER(intk) :: istag, jstag, kstag
-
-        !TO BE DONE !!!
 
         SELECT CASE (TRIM(name))
         CASE ("UUV_AVG")
@@ -731,6 +741,125 @@ CONTAINS
                 END DO
             END DO
         ENDIF
+    END SUBROUTINE
+
+    SUBROUTINE comp_uxux_avg (field, name, dt)
+        !Subroutine arguments
+        TYPE(field_t); INTENT(inout) :: field
+        CHARACTER(len=*), INTENT(in) :: name
+        REAL(realk), INTENT(in) :: dt
+
+        !Local variables
+
+        INTEGER(intk), PARAMETER :: units(*) = [0, 0, -2, 0, 0, 0, 0]
+        INTEGER(intk), PARAMETER :: units_ux(*) = [0, 0, -1, 0, 0, 0, 0]
+        TYPE(field_t), POINTER :: u_f, ux_f
+        TYPE(field_t), POINTER :: rdx_f, rdy_f, rdz_f
+        TYPE(field_t), POINTER :: rddx_f, rddy_f, rddz_f
+        INTEGER(intk) :: istag, jstag, kstag
+        CHARACTER(len=3) :: ivar
+        CHARACTER(len=2) :: name_ux        
+        Real(realk), POINTER, CONTIGUOUS :: u(:, :, :)
+        REAL(realk), POINTER, CONTIGUOUS :: ux(:, :, :)  
+        REAL(realk), POINTER, CONTIGUOUS :: rdx(:), rdy(:), rdz(:)
+        REAL(realk), POINTER, CONTIGUOUS :: rddx(:), rddy(:), rddz(:)
+
+        INTEGER(intk) :: i, igrid
+        INTEGER(intk) :: kk, jj, ii
+
+        SELECT CASE (TRIM(name))
+        CASE ("UXUX")
+            CALL get_field(u_f, "U")
+            istag = 0
+            jstag = 0
+            kstag = 0
+            name_ux = 'UX'
+            ivar = 'DDX'
+        CASE ("UYUY")
+            CALL get_field(u_f, "U")
+            istag = 1
+            jstag = 1
+            kstag = 0
+        CASE ("UZUZ")
+            CALL get_field(u_f, "U")
+            istag = 1
+            jstag = 0
+            kstag = 1
+        CASE ("VXVX")
+            CALL get_field(u_f, "V")
+            istag = 1
+            jstag = 1
+            kstag = 0
+        CASE ("VYVY")
+            CALL get_field(u_f, "V")
+            istag = 0
+            jstag = 0
+            kstag = 0
+        CASE ("VZVZ")
+            CALL get_field(u_f, "V")
+            istag = 0
+            jstag = 1
+            kstag = 1
+        CASE ("WXWX")
+            CALL get_field(u_f, "W")
+            istag = 1
+            jstag = 0
+            kstag = 1
+        CASE ("WYWY")
+            CALL get_field(u_f, "W")
+            istag = 0
+            jstag = 1
+            kstag = 1
+        CASE ("WZWZ")
+            CALL get_field(u_f, "W")
+            istag = 0
+            jstag = 0
+            kstag = 0
+        CASE DEFAULT
+            CALL errr(__FILE__, __LINE__)
+        END SELECT
+
+        CALL get_field(rdx_f, "RDX")
+        CALL get_field(rdy_f, "RDY")
+        CALL get_field(rdz_f, "RDZ")
+
+        CALL get_field(rddx_f, "RDDX")
+        CALL get_field(rddy_f, "RDDY")
+        CALL get_field(rddz_f, "RDDZ")
+
+        CALL field%init(name, istag=istag, jstag=jstag, kstag=kstag, &
+            units=units)
+        CALL ux_f%init(name_ux, istag=istag, jstag=jstag, kstag=kstag, &
+            units=units_ux)
+
+        !Calculation of UX
+        DO i=1, nmygrids
+            igrid = mygrids(i)
+            
+            CALL u_f%get_ptr(u, igrid)
+            CALL ux_f%get_ptr(ux, igrid)
+
+
+            CALL rdx_f%get_ptr(rdx, igrid)
+            CALL rdy_f%get_ptr(rdy, igrid)
+            CALL rdz_f%get_ptr(rdz, igrid)
+
+            CALL rddx_f%get_ptr(rddx, igrid)
+            CALL rddy_f%get_ptr(rddy, igrid)
+            CALL rddz_f%get_ptr(rddz, igrid)
+
+            CALL get_mgdims(kk, jj, ii, igrid)
+        
+            ! Compute derivate of the velocity field
+            CALL dfdx (kk, jj, ii, rdx, rdy, rdz, rddx, rddy, rddz, ivar, u, ux)
+        
+        END DO
+
+        CALL field%copy_from(ux_f)
+        field%units = ux_f%units*2 
+        field%arr = field%arr(:)**2
+        ! Should the field ux_f be deleted??
+
     END SUBROUTINE
 
 
