@@ -745,7 +745,7 @@ CONTAINS
 
     SUBROUTINE comp_uxux_avg (field, name, dt)
         !Subroutine arguments
-        TYPE(field_t); INTENT(inout) :: field
+        TYPE(field_t), INTENT(inout) :: field
         CHARACTER(len=*), INTENT(in) :: name
         REAL(realk), INTENT(in) :: dt
 
