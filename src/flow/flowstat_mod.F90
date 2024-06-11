@@ -780,41 +780,57 @@ CONTAINS
             istag = 1
             jstag = 1
             kstag = 0
+            name_ux = 'UY'
+            ivar = 'DYS'
         CASE ("UZUZ")
             CALL get_field(u_f, "U")
             istag = 1
             jstag = 0
             kstag = 1
+            name_ux = 'UZ'
+            ivar = 'DZS'
         CASE ("VXVX")
             CALL get_field(u_f, "V")
             istag = 1
             jstag = 1
             kstag = 0
+            name_ux = 'VX'
+            ivar = 'DXS'
         CASE ("VYVY")
             CALL get_field(u_f, "V")
             istag = 0
             jstag = 0
             kstag = 0
+            name_ux = 'VY'
+            ivar = 'DDY'
         CASE ("VZVZ")
             CALL get_field(u_f, "V")
             istag = 0
             jstag = 1
             kstag = 1
+            name_ux = 'VZ'
+            ivar = 'DZS'
         CASE ("WXWX")
             CALL get_field(u_f, "W")
             istag = 1
             jstag = 0
             kstag = 1
+            name_ux = 'WX'
+            ivar = 'DXS'
         CASE ("WYWY")
             CALL get_field(u_f, "W")
             istag = 0
             jstag = 1
             kstag = 1
+            name_ux = 'WY'
+            ivar = 'DYS'
         CASE ("WZWZ")
             CALL get_field(u_f, "W")
             istag = 0
             jstag = 0
             kstag = 0
+            name_ux = 'WZ'
+            ivar = 'DDZ'
         CASE DEFAULT
             CALL errr(__FILE__, __LINE__)
         END SELECT
@@ -854,11 +870,8 @@ CONTAINS
             CALL dfdx (kk, jj, ii, rdx, rdy, rdz, rddx, rddy, rddz, ivar, u, ux)
         
         END DO
-
-        CALL field%copy_from(ux_f)
-        field%units = ux_f%units*2 
-        field%arr = field%arr(:)**2
-        ! Should the field ux_f be deleted??
+        field%arr = ux_f%arr(:)**2
+        ! Should ux_f be deleted??
 
     END SUBROUTINE
 
