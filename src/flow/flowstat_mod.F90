@@ -69,8 +69,16 @@ CONTAINS
         CALL register_statfield("WYWY_AVG", comp_uxux_avg)
         CALL register_statfield("WZWZ_AVG", comp_uxux_avg)
 
-
-             
+        CALL register_statfield("UXVX_AVG", comp_uxvx_avg)
+        CALL register_statfield("UXWX_AVG", comp_uxvx_avg)
+        CALL register_statfield("UYVY_AVG", comp_uxvx_avg)
+        CALL register_statfield("UYWY_AVG", comp_uxvx_avg)
+        CALL register_statfield("UZVZ_AVG", comp_uxvx_avg)
+        CALL register_statfield("UZWZ_AVG", comp_uxvx_avg)
+        CALL register_statfield("VXWX_AVG", comp_uxvx_avg)
+        CALL register_statfield("VYWY_AVG", comp_uxvx_avg)
+        CALL register_statfield("VZWZ_AVG", comp_uxvx_avg)
+        
     END SUBROUTINE init_flowstat
 
 
@@ -553,7 +561,7 @@ CONTAINS
         SELECT CASE (TRIM(name))
         CASE ("UP_AVG")
             CALL get_field(in1, "U")
-            CALL get_field(in2, "P")
+            CALL get_field(in2, "P")      !This may be located outside the cases.
             istag = 0
             jstag = 0
             kstag = 0
@@ -609,7 +617,7 @@ CONTAINS
 
         SELECT CASE (TRIM(name))
         CASE ("UXP_AVG")
-            CALL get_field(u_f, "U")  !!Fix this!! for each grid
+            CALL get_field(u_f, "U")
             CALL get_field(p_f, "P")
             istag = 0
             jstag = 0
@@ -753,7 +761,7 @@ CONTAINS
 
         INTEGER(intk), PARAMETER :: units(*) = [0, 0, -2, 0, 0, 0, 0]
         INTEGER(intk), PARAMETER :: units_ux(*) = [0, 0, -1, 0, 0, 0, 0]
-        TYPE(field_t), POINTER :: u_f, ux_f
+        TYPE(field_t), POINTER :: u_f, ux_f  !! It can be in any velocity component
         TYPE(field_t), POINTER :: rdx_f, rdy_f, rdz_f
         TYPE(field_t), POINTER :: rddx_f, rddy_f, rddz_f
         INTEGER(intk) :: istag, jstag, kstag
@@ -768,63 +776,63 @@ CONTAINS
         INTEGER(intk) :: kk, jj, ii
 
         SELECT CASE (TRIM(name))
-        CASE ("UXUX")
+        CASE ("UXUX_AVG")
             CALL get_field(u_f, "U")
             istag = 0
             jstag = 0
             kstag = 0
             name_ux = 'UX'
             ivar = 'DDX'
-        CASE ("UYUY")
+        CASE ("UYUY_AVG")
             CALL get_field(u_f, "U")
             istag = 1
             jstag = 1
             kstag = 0
             name_ux = 'UY'
             ivar = 'DYS'
-        CASE ("UZUZ")
+        CASE ("UZUZ_AVG")
             CALL get_field(u_f, "U")
             istag = 1
             jstag = 0
             kstag = 1
             name_ux = 'UZ'
             ivar = 'DZS'
-        CASE ("VXVX")
+        CASE ("VXVX_AVG")
             CALL get_field(u_f, "V")
             istag = 1
             jstag = 1
             kstag = 0
             name_ux = 'VX'
             ivar = 'DXS'
-        CASE ("VYVY")
+        CASE ("VYVY_AVG")
             CALL get_field(u_f, "V")
             istag = 0
             jstag = 0
             kstag = 0
             name_ux = 'VY'
             ivar = 'DDY'
-        CASE ("VZVZ")
+        CASE ("VZVZ_AVG")
             CALL get_field(u_f, "V")
             istag = 0
             jstag = 1
             kstag = 1
             name_ux = 'VZ'
             ivar = 'DZS'
-        CASE ("WXWX")
+        CASE ("WXWX_AVG")
             CALL get_field(u_f, "W")
             istag = 1
             jstag = 0
             kstag = 1
             name_ux = 'WX'
             ivar = 'DXS'
-        CASE ("WYWY")
+        CASE ("WYWY_AVG")
             CALL get_field(u_f, "W")
             istag = 0
             jstag = 1
             kstag = 1
             name_ux = 'WY'
             ivar = 'DYS'
-        CASE ("WZWZ")
+        CASE ("WZWZ_AVG")
             CALL get_field(u_f, "W")
             istag = 0
             jstag = 0
@@ -870,10 +878,173 @@ CONTAINS
             CALL dfdx (kk, jj, ii, rdx, rdy, rdz, rddx, rddy, rddz, ivar, u, ux)
         
         END DO
+        !! Staggeredness remains the same
         field%arr = ux_f%arr(:)**2
-        ! Should ux_f be deleted??
+        ! Should u and ux_f be deleted??
 
     END SUBROUTINE
 
+    SUBROUTINE comp_uxvx_avg (field, name, dt)
+        !Subroutine arguments
+        TYPE(field_t), INTENT(inout) :: field
+        CHARACTER(len=*), INTENT(in) :: name
+        REAL(realk), INTENT(in) :: dt
+
+        INTEGER(intk), PARAMETER :: units(*) = [0, 0, -2, 0, 0, 0, 0]
+        INTEGER(intk), PARAMETER :: units_ux(*) = [0, 0, -1, 0, 0, 0, 0]
+        TYPE(field_t), POINTER :: u_f, ux_f  !! This can be in any velocity direction
+        TYPE(field_t), POINTER :: v_f, vx_f  !! It can be any velocity component different than u_f
+        TYPE(field_t), POINTER :: rdx_f, rdy_f, rdz_f
+        TYPE(field_t), POINTER :: rddx_f, rddy_f, rddz_f
+        INTEGER(intk) :: istag, jstag, kstag
+        CHARACTER(len=3) :: ivar1, ivar2
+        CHARACTER(len=2) :: name_ux, name_vx
+        Real(realk), POINTER, CONTIGUOUS :: u(:, :, :), ux(:, :, :)
+        Real(realk), POINTER, CONTIGUOUS :: v(:, :, :), vx(:, :, :)
+        REAL(realk), POINTER, CONTIGUOUS :: rdx(:), rdy(:), rdz(:)
+        REAL(realk), POINTER, CONTIGUOUS :: rddx(:), rddy(:), rddz(:)
+
+        INTEGER(intk) :: i, igrid
+        INTEGER(intk) :: kk, jj, ii
+
+        !Temporarily staggeredness similar to Legacy version; in this way, it is not considered.
+        ! Bur it should be taken into account when creating when creating both du_i/dk_j, and du_i/dk_j*du_k/dx_j (UXVX).
+        SELECT CASE (TRIM(name)) 
+        CASE ("UXVX_AVG")        
+            CALL get_field(u_f, "U")
+            istag = 0
+            jstag = 0
+            kstag = 0
+            name_ux = 'UX'
+            name_vx = 'VX'
+            ivar1 = 'DDX'
+            ivar2 = 'DXS'
+        CASE ("UXWX_AVG")
+            CALL get_field(u_f, "U")
+            istag = 0
+            jstag = 0
+            kstag = 0
+            name_ux = 'UX'
+            name_vx = 'WX'
+            ivar1 = 'DDX'
+            ivar2 = 'DXS'
+        CASE ("UYVY_AVG")
+            CALL get_field(u_f, "U")
+            istag = 0
+            jstag = 0
+            kstag = 0
+            name_ux = 'UY'
+            name_vx = 'VY'
+            ivar1 = 'DYS'
+            ivar2 = 'DDY'
+
+        CASE ("UYWY_AVG")
+            CALL get_field(u_f, "V")
+            istag = 0
+            jstag = 0
+            kstag = 0
+            name_ux = 'UY'
+            name_vx = 'WY'
+            ivar1 = 'DYS'
+            ivar2 = 'DYS'
+        CASE ("UZVZ_AVG")
+            CALL get_field(u_f, "V")
+            istag = 0
+            jstag = 0
+            kstag = 0
+            name_ux = 'UZ'
+            name_vx = 'VZ'
+            ivar1 = 'DZS'
+            ivar2 = 'DZS'
+        CASE ("UZWZ_AVG")
+            CALL get_field(u_f, "V")
+            istag = 0
+            jstag = 0
+            kstag = 0
+            name_ux = 'UZ'
+            name_vx = 'WZ'
+            ivar1 = 'DZS'
+            ivar2 = 'DDZ'
+        CASE ("VXWX_AVG")
+            CALL get_field(u_f, "W")
+            istag = 0
+            jstag = 0
+            kstag = 0
+            name_ux = 'VX'
+            name_vx = 'WX'
+            ivar1 = 'DXS'
+            ivar2 = 'DXS'
+        CASE ("VYWY_AVG")
+            CALL get_field(u_f, "W")
+            istag = 0
+            jstag = 0
+            kstag = 0
+            name_ux = 'VY'
+            name_vx = 'WY'
+            ivar1 = 'DDY'
+            ivar2 = 'DYS'
+
+        CASE ("VZWZ_AVG")
+            CALL get_field(u_f, "W")
+            istag = 0
+            jstag = 0
+            kstag = 0
+            name_ux = 'VZ'
+            name_vx = 'WZ'
+            ivar1 = 'DZS'
+            ivar2 = 'DDZ'
+        CASE DEFAULT
+            CALL errr(__FILE__, __LINE__)
+        END SELECT
+
+        CALL get_field(rdx_f, "RDX")
+        CALL get_field(rdy_f, "RDY")
+        CALL get_field(rdz_f, "RDZ")
+
+        CALL get_field(rddx_f, "RDDX")
+        CALL get_field(rddy_f, "RDDY")
+        CALL get_field(rddz_f, "RDDZ")
+
+        CALL field%init(name, istag=istag, jstag=jstag, kstag=kstag, &
+            units=units)
+        CALL ux_f%init(name_ux, istag=istag, jstag=jstag, kstag=kstag, &
+            units=units_ux)
+        CALL vx_f%init(name_vx, istag=istag, jstag=jstag, kstag=kstag, &
+            units=units_ux)
+
+        !Calculation of UX and VX
+
+        DO i=1, nmygrids
+            igrid = mygrids(i)
+            
+            CALL u_f%get_ptr(u, igrid)
+            CALL ux_f%get_ptr(ux, igrid)
+            
+            CALL v_f%get_ptr(v, igrid)
+            CALL vx_f%get_ptr(vx, igrid)
+
+            CALL rdx_f%get_ptr(rdx, igrid)
+            CALL rdy_f%get_ptr(rdy, igrid)
+            CALL rdz_f%get_ptr(rdz, igrid)
+
+            CALL rddx_f%get_ptr(rddx, igrid)
+            CALL rddy_f%get_ptr(rddy, igrid)
+            CALL rddz_f%get_ptr(rddz, igrid)
+
+            CALL get_mgdims(kk, jj, ii, igrid)
+        
+            ! Compute derivates of the velocity field
+            CALL dfdx (kk, jj, ii, rdx, rdy, rdz, rddx, rddy, rddz, ivar1, u, ux)
+            CALL dfdx (kk, jj, ii, rdx, rdy, rdz, rddx, rddy, rddz, ivar2, v, vx)
+
+        END DO
+
+        !Since temporarily ux and vx are located at the same point multiply method
+        ! won't be used. But, afterwards, if location is not the same multiply should be used.
+        
+        field%arr = ux_f%arr(:)*vx_f%arr(:)
+        !Should ux_f and vx_f be deleted??
+           
+    END SUBROUTINE
 
 END MODULE flowstat_mod
