@@ -89,12 +89,11 @@ CONTAINS
 
 	!------------------------------
 
-	SUBROUTINE write_psnapshot_piece(my_particle_list, time)
+	SUBROUTINE write_psnapshot_piece(my_particle_list)
 	! writes vtp (xml) file containing all particles of the respective process   
 
 		! subroutine arguments 
-		TYPE(particle_list_t) :: my_particle_list
-		REAL(realk) :: time
+		CLASS(particle_list_t) :: my_particle_list
 
 		! local variables 
 		INTEGER :: i, unit
@@ -115,6 +114,21 @@ CONTAINS
 		WRITE(unit, '(A)') '  <PolyData>'
 		WRITE(unit, '(A)') '    <Piece NumberOfPoints="' // TRIM(active_np_char) // & 
 						  	'" NumberOfVerts="0" NumberOfLines="0" NumberOfStrips="0" NumberOfPolys="0">'
+		WRITE(unit, '(A)') '      <PointData Name="particle_id">'
+		WRITE(unit, '(A)') '        <DataArray type="Int32" format="ascii" NumberOfComponents="1" Name="particle_id">'
+		
+		DO i = 1, my_particle_list%ifinal
+
+			IF (.NOT. my_particle_list%particle_stored(i)) THEN
+				CYCLE
+			END IF
+
+			WRITE(unit, '(I0)') my_particle_list%particles(i)%ipart
+
+		END DO 
+
+		WRITE(unit, '(A)') '        </DataArray>'	
+		WRITE(unit, '(A)') '      <PointData>'
 		WRITE(unit, '(A)') '      <Points>'
 		WRITE(unit, '(A)') '        <DataArray type="Float32" NumberOfComponents="3">'
 
@@ -144,11 +158,14 @@ CONTAINS
 
 	!------------------------------
 
-	SUBROUTINE write_psnapshot_master()
+	SUBROUTINE write_psnapshot_master(time)
 	! writes pvtp (xml) file (master file for all pieces of the same time)
-	
-		INTEGER :: proc, unit
+		
+		INTEGER(intk) :: proc, unit
+		REAL(realk) :: time
 		CHARACTER(len = mglet_filename_max) :: filename, piece
+
+		psnapshot_info%timesteps(psnapshot_info%counter) = time
 
 		IF (myid == 0) THEN
 
@@ -159,6 +176,9 @@ CONTAINS
 			WRITE(unit, '(A)') '<?xml version="1.0"?>'
 			WRITE(unit, '(A)') '<VTKFile type="PPolyData" version="0.1" byte_order="LittleEndian">'
 			WRITE(unit, '(A)') '  <PPolyData>'
+			WRITE(unit, '(A)') '    <PPointData Name="particle_id">'
+			WRITE(unit, '(A)') '       <PDataArray type="Int32" format="ascii" NumberOfComponents="1" Name="particle_id"/>'
+			WRITE(unit, '(A)') '    </PPointData>'
 			WRITE(unit, '(A)') '    <PPoints>'
 			WRITE(unit, '(A)') '      <PDataArray type="Float32" format="ascii" NumberOfComponents="3"/>'
 			WRITE(unit, '(A)') '    </PPoints>'
@@ -179,9 +199,31 @@ CONTAINS
 
 	!------------------------------
 
-	SUBROUTINE write_psnapshot_info()
+	SUBROUTINE write_psnapshot_timeinfo()
 
-	END SUBROUTINE write_psnapshot_info
+		INTEGER(intk) :: i, unit
+		CHARACTER(len = mglet_filename_max) :: filename
+
+		IF (myid == 0) THEN
+
+			WRITE(filename,'("PARTICLE_SNAPSHOTS/timeinfo.txt")')
+	
+			OPEN(unit, file = TRIM(filename), status = 'NEW', action = 'WRITE')
+	
+			WRITE(unit, '("Number of timesteps: ", I0)') psnapshot_info%ntimesteps
+	
+			WRITE(unit, '("-------- snapshot times: ---------")') 
+	
+			DO i = 1, psnapshot_info%ntimesteps
+	
+				WRITE(unit, '("timestep ", I0, ": time = ")', advance = "no") i
+				WRITE(unit, psnapshot_info%coordinate_format) psnapshot_info%timesteps(i) 
+	
+			END DO 
+	
+		END IF
+
+	END SUBROUTINE write_psnapshot_timeinfo
 
 	!------------------------------
 

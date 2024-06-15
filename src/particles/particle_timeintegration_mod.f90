@@ -5,12 +5,16 @@ MODULE particle_timeintegration_mod
 !===================================
 
 USE precision_mod, ONLY: intk, realk
+
 USE core_mod  
 USE flowcore_mod
+
 USE baseparticle_mod 
 USE particle_list_mod
 
 !===================================
+
+IMPLICIT NONE
 
 REAL(realk), PARAMETER :: D = 0.1 ! Diffusion constant in m²/s (homogeneous and isotropic diffusion for now)
 
@@ -24,7 +28,7 @@ CONTAINS
 		REAL(realk) :: dt
 
 		! local variables		
-		INTEGER(intk) :: igrid, p
+		INTEGER(intk) :: igrid, i
 		REAL(realk) :: p_u, p_v, p_w
 
 		TYPE(field_t), POINTER :: x_f, y_f, z_f
@@ -56,15 +60,15 @@ CONTAINS
         CALL get_field(v_f, "V")
         CALL get_field(w_f, "W")
 
-    	DO p = 1, my_particle_list%ifinal
+    	DO i = 1, my_particle_list%ifinal
 
-    		IF (.NOT. my_particle_list%particles(p)%is_init) THEN
+    		IF (.NOT. my_particle_list%particles(i)%is_init) THEN
 
     			CYCLE
 
     		END IF 
 
-    		igrid = my_particle_list%particles(p)%igrid !just for clarity of the coming expressions
+    		igrid = my_particle_list%particles(i)%igrid !just for clarity of the coming expressions
 
         	CALL x_f%get_ptr(x, igrid)
        		CALL y_f%get_ptr(y, igrid)
@@ -82,7 +86,7 @@ CONTAINS
         	CALL v_f%get_ptr(v, igrid)
         	CALL w_f%get_ptr(w, igrid)
 
-    		CALL interp_particle_uvw(my_particle_list%particles(p),&
+    		CALL interp_particle_uvw(my_particle_list%particles(i),&
     			p_u, p_v, p_w, xstag, ystag, zstag, ddx, ddy, ddz, u, v, w)
 
     		! TODO: proper timeintegration
@@ -94,14 +98,33 @@ CONTAINS
     		CALL RANDOM_NUMBER(rand_dz)
 
     		diffusion_dx = SQRT(2 * D * dt) * rand_dx / SQRT(rand_dx**(2) + rand_dy**(2) + rand_dz**(2))
-    		diffusion_dy = SQRT(2 * D * dt) * rand_dx / SQRT(rand_dx**(2) + rand_dy**(2) + rand_dz**(2))
-    		diffusion_dz = SQRT(2 * D * dt) * rand_dx / SQRT(rand_dx**(2) + rand_dy**(2) + rand_dz**(2))
+    		diffusion_dy = SQRT(2 * D * dt) * rand_dy / SQRT(rand_dx**(2) + rand_dy**(2) + rand_dz**(2))
+    		diffusion_dz = SQRT(2 * D * dt) * rand_dz / SQRT(rand_dx**(2) + rand_dy**(2) + rand_dz**(2))
 
-    		particles(p)%x = particles(p)%x + p_u * dt + diffusion_dx
-    		particles(p)%y = particles(p)%y + p_v * dt + diffusion_dy
-    		particles(p)%z = particles(p)%z + p_w * dt + diffusion_dz
+    		my_particle_list%particles(i)%x = my_particle_list%particles(i)%x + p_u * dt + diffusion_dx
+    		my_particle_list%particles(i)%y = my_particle_list%particles(i)%y + p_v * dt + diffusion_dy
+    		my_particle_list%particles(i)%z = my_particle_list%particles(i)%z + p_w * dt + diffusion_dz
 
-    		! TODO: exit domain handling / deactivate particles that leave the domain
+    		! deactivate particles that leave the domain (only for simple tests with one grid for now) ...
+
+    		CALL get_bbox(minx, maxx, miny, maxy, minz, maxz, igrid)
+
+    		IF (my_particle_list%particles(i)%x < minx .OR. &
+    			my_particle_list%particles(i)%x > maxx .OR. &
+    			my_particle_list%particles(i)%y < miny .OR. &
+    			my_particle_list%particles(i)%y > maxy .OR. &
+    			my_particle_list%particles(i)%z < minz .OR. &
+    			my_particle_list%particles(i)%z > maxz) THEN
+
+    			my_particle_list%particles(i)%is_init = .FALSE.
+
+    			my_particle_list%particle_stored(i) = .FALSE.
+
+    			WRITE(*,'("Particle ", I0, " left domian!")') ipart
+    			WRITE(*,'("Final Particle Coordinates: ", 3F6.2)') my_particle_list%particles(i)%x, &
+    			 my_particle_list%particles(i)%y, my_particle_list%particles(i)%z
+
+    		END IF
 
         END DO
 
@@ -112,7 +135,7 @@ CONTAINS
 	SUBROUTINE interp_particle_uvw(particle, p_u, p_v, p_w, xstag, ystag, zstag, ddx, ddy, ddz, u, v, w)
 
 			! subroutine arguments
-			TYPE(base_particle_t), INTENT(in) :: particle
+			CLASS(baseparticle_t), INTENT(in) :: particle
 			REAL(realk), INTENT(out), p_u, p_v, p_w
 			REAL(realk), POINTER, CONTIGUOUS, DIMENSION(:, :, :), INTENT(in) :: xstag, ystag, zstag
 			REAL(realk), POINTER, CONTIGUOUS, DIMENSION(:, :, :), INTENT(in) :: ddx, ddy, ddz

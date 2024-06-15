@@ -14,13 +14,13 @@ IMPLICIT NONE
 
 TYPE :: particle_list_t
 
-	INTEGER(intk) :: iproc = myid	
+	INTEGER(intk) :: iproc = myid	    ! REMOVE (obsolete) ?
 
 	INTEGER(intk) :: max_np    			! max number of particles of this process/list
 	INTEGER(intk) :: active_np 			! number of active particles of this process/list
 	INTEGER(intk) :: ifinal 			! index of last entry of the list which holds an active particle
 
-	TYPE(base_particle_t), ALLOCATABLE :: particles(:)
+	CLASS(baseparticle_t), ALLOCATABLE :: particles(:)
 	LOGICAL, ALLOCATABLE :: particle_stored(:) 	! each logical value reflects whether a particle is stored in the list 
 												! at the respective index. Is this a feasable and good way to keep track 
 												! of particle storage (especially as is_init in particle_t carries the same information?
@@ -47,6 +47,7 @@ CONTAINS
 
 		! local variables
  		INTEGER(intk) :: i
+ 		INTEGER(intk), ALLOCATABLE :: ipart_arr(:)
  		REAL(realk) :: x, y, z
 
 		my_particle_list%max_np = default_max_np
@@ -56,13 +57,15 @@ CONTAINS
 		ALLOCATE(my_particle_list%particles(my_particle_list%max_np))
 		ALLOCATE(my_particle_list%particle_stored(my_particle_list%max_np))
 
+		CALL dist_ipart(ipart_arr)
+
 		my_particle_list%particle_stored = .FALSE.
 
  		DO i = 1, my_particle_list%active_np
 
  			CALL random_ic(x, y, z) ! ONLY DUMMY FOR NOW, DENPENDS ON THE PROCESS SPATIAL DOMAIN
 
- 			CALL my_particle_list%particles(i)%init(ipart = my_ipart_arr(i), x = x, y = y, z = z)
+ 			CALL my_particle_list%particles(i)%init(ipart = my_ipart_arr(i), x, y, z)
 
  			my_particle_list%particle_stored(i) = .TRUE.
 
@@ -73,17 +76,19 @@ CONTAINS
 
 	!------------------------------
 
-	SUBROUTINE dist_ipart(ipart_arr) ! this routine is supposed to hand out a list of unique particle ids (ipart) to every process ! ONLY DUMMY FOR NOW
+	SUBROUTINE dist_ipart(ipart_arr) ! this routine is supposed to hand out a list of unique particle ids (ipart) to every process ! ONLY NON MPI RUNS FOR NOW
 
 	! subroutine arguments
-	INTEGER, ALLOCATABLE, INTENT(out) :: ipart_arr(:)
+	INTEGER(intk), ALLOCATABLE, INTENT(out) :: ipart_arr(:)
 	
 	! local variables
-	INTEGER :: i
+	INTEGER(intk) :: i
 
  	ALLOCATE(ipart_arr(default_initial_np)) 
 	
-	ipart_arr = (/(i, i = myid * default_initial_np + 1, myid * default_initial_np + default_initial_np)/)
+	ipart_arr = [(i, i = myid * default_initial_np + 1, myid * default_initial_np + default_initial_np)]
+
+	! MPI barrier
 
 	END SUBROUTINE dist_ipart
 
