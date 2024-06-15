@@ -15,7 +15,7 @@ CONTAINS
         ! Local variables
         ! none....
 
-        ! zeroth order 
+        ! zeroth order
         CALL register_statfield("U_AVG", comp_avg)
         CALL register_statfield("V_AVG", comp_avg)
         CALL register_statfield("W_AVG", comp_avg)
@@ -50,7 +50,7 @@ CONTAINS
         CALL register_statfield("laplaceP_SQR_AVG", comp_laplacep_sqr_avg)
 
         CALL register_statfield("DISSIP_AVG", comp_dissip_avg)
-        
+
         CALL register_statfield("UP_AVG", comp_up_avg)
         CALL register_statfield("VP_AVG", comp_up_avg)
         CALL register_statfield("WP_AVG", comp_up_avg)
@@ -78,7 +78,7 @@ CONTAINS
         CALL register_statfield("VXWX_AVG", comp_uxvx_avg)
         CALL register_statfield("VYWY_AVG", comp_uxvx_avg)
         CALL register_statfield("VZWZ_AVG", comp_uxvx_avg)
-        
+
     END SUBROUTINE init_flowstat
 
 
@@ -131,7 +131,7 @@ CONTAINS
     END SUBROUTINE comp_uv_avg
 
 
-    ! Routine to compute the UUV_AVG, UUW_AVG, UVV_AVG, UVW_AVG, UWW_AVG, 
+    ! Routine to compute the UUV_AVG, UUW_AVG, UVV_AVG, UVW_AVG, UWW_AVG,
     ! VVW_AVG and VWW_AVG fields
     ! It just works with velocities
     SUBROUTINE comp_uvw_avg(field, name, dt)
@@ -204,7 +204,7 @@ CONTAINS
 
         ! the multiplication respects the staggeredness
         CALL field%multiply(in1, in2, in3)
-        
+
     END SUBROUTINE comp_uvw_avg
 
 
@@ -299,7 +299,7 @@ CONTAINS
         ! lpp is declared INTENT(inout), therefore there are no need to set
         ! buffers (where no lpp is computed) to zero. If it were INTENT(out)
         ! the entire field should have been completely defined inside this
-        ! routine 
+        ! routine
 
         DO i = 3, ii-2
             IF (ifr == 1 .AND. i == 3) THEN
@@ -372,15 +372,15 @@ CONTAINS
         TYPE(field_t), POINTER :: rddx_f, rddy_f, rddz_f
 
         REAL(realk), POINTER, CONTIGUOUS :: u(:, :, :), v(:, :, :), &
-            w(:, :, :), dfg(:, :, :), bp(:, :, :) 
-        ! TYPE(field_t), POINTER :: x(:), y(:), z(:)    
+            w(:, :, :), dfg(:, :, :), bp(:, :, :)
+        ! TYPE(field_t), POINTER :: x(:), y(:), z(:)
         REAL(realk), POINTER, CONTIGUOUS :: dx(:), dy(:), dz(:)
         REAL(realk), POINTER, CONTIGUOUS :: ddx(:), ddy(:), ddz(:)
         REAL(realk), POINTER, CONTIGUOUS :: rddx(:), rddy(:), rddz(:)
 
         INTEGER(intk), PARAMETER :: units(*) = [0, 2, -3, 0, 0, 0, 0]
         INTEGER(intk) :: i, igrid
-        ! INTEGER(intk) :: nfro, nbac, nlft, nrgt, ntop, nbot  ! They would be just 
+        ! INTEGER(intk) :: nfro, nbac, nlft, nrgt, ntop, nbot  ! They would be just
         ! needed to integrate the dissipation
         INTEGER(intk) :: kk, jj, ii
 
@@ -420,7 +420,7 @@ CONTAINS
             CALL v_f%get_ptr(v,igrid)
             CALL w_f%get_ptr(w,igrid)
             CALL bp_f%get_ptr(bp,igrid)
-            
+
             ! CALL x_f%get_ptr(x, igrid)
             ! CALL y_f%get_ptr(y, igris)
             ! CALL z_f%get_ptr(z, igrid)
@@ -441,7 +441,7 @@ CONTAINS
             ! CALL get_mgbasb(nfro, nbac, nrgt, nlft, nbot, ntop, igrid)
 
             CALL calc_dissip (kk, jj, ii, dfg, u, v, w, bp, gmol, & !x, y, z &
-                dx, dy, dz, ddx, ddy, ddz, rddx, rddy, rddz) ! nfro, nbac & 
+                dx, dy, dz, ddx, ddy, ddz, rddx, rddy, rddz) ! nfro, nbac &
                 ! nrgt, nlft, nbot, ntop)
         END DO
     END SUBROUTINE comp_dissip_avg
@@ -449,7 +449,7 @@ CONTAINS
     SUBROUTINE calc_dissip (kk, jj, ii, dfg, u, v, w, bp, gmol, & !x, y, z &
         dx, dy, dz, ddx, ddy, ddz, rddx, rddy, rddz) ! nfro, nbac, nrgt &
         ! nlft, nbot, ntop)
-        
+
         ! Subroutine arguments
         INTEGER(intk), INTENT(in) :: kk, jj, ii
         REAL(realk), INTENT(inout) :: dfg (kk, jj, ii)
@@ -482,7 +482,7 @@ CONTAINS
 
         DO i = 3, ii-2
             dxf = 0.5*dx(i-1)*rddx(i)
-            
+
             DO j = 3, jj-2
                 dyf = 0.5*dy(j-1)*rddy(j)
 
@@ -490,17 +490,17 @@ CONTAINS
                     dzf = 0.5*dz(k-1)*rddz(k)
 
                     ! The following values should be checked since they used the
-                    ! function bp, which was assumed that it behaves same as in 
+                    ! function bp, which was assumed that it behaves same as in
                     ! the old mglet
 
                     rddxpl = 1.0/(ddx(i) &
                         + dx(i+1)*(sign(0.25_realk, bp(k, j, i+1)) + 0.25) &
                         + dx(i-1)*(sign(0.25_realk, bp(k, j, i-1)) + 0.25))
-                    
+
                     rddypl = 1.0/(ddy(j) &
                         + dy(j+1)*(sign(0.25_realk, bp(k, j+1, i)) + 0.25) &
                         + dy(j-1)*(sign(0.25_realk, bp(k, j-1, i)) + 0.25))
-                    
+
                     rddzpl = 1.0/(ddz(k) &
                         + dz(k+1)*(sign(0.25_realk, bp(k+1, j, i)) + 0.25) &
                         + dz(k-1)*(sign(0.25_realk, bp(k-1, j, i)) + 0.25))
@@ -514,7 +514,7 @@ CONTAINS
                     dudz = rddzpl * &
                            ((u(k+1,j  ,i  )-u(k-1,j  ,i  )) * dxf &
                         +   (u(k+1,j  ,i-1)-u(k-1,j  ,i-1)) * (1.0-dxf))
-                        
+
                     dvdx = rddxpl * &
                            ((v(k  ,j  ,i+1)-v(k  ,j  ,i-1)) * dyf &
                         +   (v(k  ,j-1,i+1)-v(k  ,j-1,i-1)) * (1.0-dyf))
@@ -528,7 +528,7 @@ CONTAINS
                     dwdx = rddxpl * &
                            ((w(k  ,j  ,i+1)-w(k  ,j  ,i-1)) * dzf &
                         +   (w(k-1,j  ,i+1)-w(k-1,j  ,i-1)) * (1.0-dzf))
-                        
+
                     dwdy = rddypl * &
                            ((w(k  ,j+1,i  )-w(k  ,j-1,i  )) * dzf &
                         +   (w(k-1,j+1,i  )-w(k-1,j-1,i  )) * (1.0-dzf))
@@ -583,10 +583,10 @@ CONTAINS
 
         CALL field%init(name, istag=istag, jstag=jstag, kstag=kstag, &
             units=units)
-        
+
         ! the multiplication consider the staggeredness
         CALL field%multiply(in1,in2)
-    
+
     END SUBROUTINE comp_up_avg
 
     !This subroutine computes the term du_i/dx_i * P
@@ -597,20 +597,20 @@ CONTAINS
         REAL(realk), INTENT(in) :: dt
 
         !Local variables
-
+        TYPE(field_t) :: ux_f
         INTEGER(intk), PARAMETER :: units(*) = [1, -1, -3, 0, 0, 0, 0]
         INTEGER(intk), PARAMETER :: units_ux(*) = [0, 0, -1, 0, 0, 0, 0]
-        TYPE(field_t), POINTER :: u_f, p_f, ux_f
+        TYPE(field_t), POINTER :: u_f, p_f
         TYPE(field_t), POINTER :: rdx_f, rdy_f, rdz_f
         TYPE(field_t), POINTER :: rddx_f, rddy_f, rddz_f
         INTEGER(intk) :: istag, jstag, kstag
         CHARACTER(len=3) :: ivar
-        CHARACTER(len=2) :: name_ux        
+        CHARACTER(len=2) :: name_ux
         Real(realk), POINTER, CONTIGUOUS :: u(:, :, :)
-        REAL(realk), POINTER, CONTIGUOUS :: ux(:, :, :)  
+        REAL(realk), POINTER, CONTIGUOUS :: ux(:, :, :)
         REAL(realk), POINTER, CONTIGUOUS :: rdx(:), rdy(:), rdz(:)
         REAL(realk), POINTER, CONTIGUOUS :: rddx(:), rddy(:), rddz(:)
-        
+
         INTEGER(intk) :: i, igrid
         INTEGER(intk) :: kk, jj, ii
 
@@ -659,7 +659,7 @@ CONTAINS
 
         DO i=1, nmygrids
             igrid = mygrids(i)
-            
+
             CALL u_f%get_ptr(u, igrid)
             CALL ux_f%get_ptr(ux, igrid)
 
@@ -673,16 +673,16 @@ CONTAINS
             CALL rddz_f%get_ptr(rddz, igrid)
 
             CALL get_mgdims(kk, jj, ii, igrid)
-        
+
             ! Compute derivate of the velocity field
-            CALL dfdx (kk, jj, ii, rdx, rdy, rdz, rddx, rddy, rddz, ivar, u, ux)
-        
+            CALL dfdx(kk, jj, ii, rdx, rdy, rdz, rddx, rddy, rddz, ivar, u, ux)
+
         END DO
 
         CALL field%multiply(ux_f, p_f)
 
     END SUBROUTINE
-        
+
     SUBROUTINE dfdx (kk, jj, ii, rdx, rdy, rdz, rddx, rddy, rddz, ivar, phi, dphi)
         !Subroutine arguments
         INTEGER(intk), INTENT(in) :: kk, jj, ii
@@ -703,7 +703,7 @@ CONTAINS
                     END DO
                 END DO
             END DO
-        
+
         ELSEIF (ivar == 'DDX') THEN
             DO i=2, ii-1
                 DO j=2, jj-1
@@ -712,7 +712,7 @@ CONTAINS
                     END DO
                 END DO
             END DO
-            
+
         ELSEIF (ivar == 'DYS') THEN
             DO i=2, ii-1
                 DO j=2, jj-1
@@ -766,9 +766,9 @@ CONTAINS
         TYPE(field_t), POINTER :: rddx_f, rddy_f, rddz_f
         INTEGER(intk) :: istag, jstag, kstag
         CHARACTER(len=3) :: ivar
-        CHARACTER(len=2) :: name_ux        
+        CHARACTER(len=2) :: name_ux
         Real(realk), POINTER, CONTIGUOUS :: u(:, :, :)
-        REAL(realk), POINTER, CONTIGUOUS :: ux(:, :, :)  
+        REAL(realk), POINTER, CONTIGUOUS :: ux(:, :, :)
         REAL(realk), POINTER, CONTIGUOUS :: rdx(:), rdy(:), rdz(:)
         REAL(realk), POINTER, CONTIGUOUS :: rddx(:), rddy(:), rddz(:)
 
@@ -859,7 +859,7 @@ CONTAINS
         !Calculation of UX
         DO i=1, nmygrids
             igrid = mygrids(i)
-            
+
             CALL u_f%get_ptr(u, igrid)
             CALL ux_f%get_ptr(ux, igrid)
 
@@ -873,10 +873,10 @@ CONTAINS
             CALL rddz_f%get_ptr(rddz, igrid)
 
             CALL get_mgdims(kk, jj, ii, igrid)
-        
+
             ! Compute derivate of the velocity field
             CALL dfdx (kk, jj, ii, rdx, rdy, rdz, rddx, rddy, rddz, ivar, u, ux)
-        
+
         END DO
         !! Staggeredness remains the same
         field%arr = ux_f%arr(:)**2
@@ -909,8 +909,8 @@ CONTAINS
 
         !Temporarily staggeredness similar to Legacy version; in this way, it is not considered.
         ! Bur it should be taken into account when creating when creating both du_i/dk_j, and du_i/dk_j*du_k/dx_j (UXVX).
-        SELECT CASE (TRIM(name)) 
-        CASE ("UXVX_AVG")        
+        SELECT CASE (TRIM(name))
+        CASE ("UXVX_AVG")
             CALL get_field(u_f, "U")
             istag = 0
             jstag = 0
@@ -1016,10 +1016,10 @@ CONTAINS
 
         DO i=1, nmygrids
             igrid = mygrids(i)
-            
+
             CALL u_f%get_ptr(u, igrid)
             CALL ux_f%get_ptr(ux, igrid)
-            
+
             CALL v_f%get_ptr(v, igrid)
             CALL vx_f%get_ptr(vx, igrid)
 
@@ -1032,7 +1032,7 @@ CONTAINS
             CALL rddz_f%get_ptr(rddz, igrid)
 
             CALL get_mgdims(kk, jj, ii, igrid)
-        
+
             ! Compute derivates of the velocity field
             CALL dfdx (kk, jj, ii, rdx, rdy, rdz, rddx, rddy, rddz, ivar1, u, ux)
             CALL dfdx (kk, jj, ii, rdx, rdy, rdz, rddx, rddy, rddz, ivar2, v, vx)
@@ -1041,10 +1041,10 @@ CONTAINS
 
         !Since temporarily ux and vx are located at the same point multiply method
         ! won't be used. But, afterwards, if location is not the same multiply should be used.
-        
+
         field%arr = ux_f%arr(:)*vx_f%arr(:)
         !Should ux_f and vx_f be deleted??
-           
+
     END SUBROUTINE
 
 END MODULE flowstat_mod
