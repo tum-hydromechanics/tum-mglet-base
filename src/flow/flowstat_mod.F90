@@ -55,29 +55,29 @@ CONTAINS
         CALL register_statfield("VP_AVG", comp_up_avg)
         CALL register_statfield("WP_AVG", comp_up_avg)
 
-        CALL register_statfield("UXP_AVG", comp_uxp_avg)
-        CALL register_statfield("VYP_AVG", comp_uxp_avg)
-        CALL register_statfield("WZP_AVG", comp_uxp_avg)
+        CALL register_statfield("UxP_AVG", comp_uxp_avg)
+        CALL register_statfield("VyP_AVG", comp_uxp_avg)
+        CALL register_statfield("WzP_AVG", comp_uxp_avg)
 
-        CALL register_statfield("UXUX_AVG", comp_uxux_avg)
-        CALL register_statfield("UYUY_AVG", comp_uxux_avg)
-        CALL register_statfield("UZUZ_AVG", comp_uxux_avg)
-        CALL register_statfield("VXVX_AVG", comp_uxux_avg)
-        CALL register_statfield("VYVY_AVG", comp_uxux_avg)
-        CALL register_statfield("VZVZ_AVG", comp_uxux_avg)
-        CALL register_statfield("WXWX_AVG", comp_uxux_avg)
-        CALL register_statfield("WYWY_AVG", comp_uxux_avg)
-        CALL register_statfield("WZWZ_AVG", comp_uxux_avg)
+        CALL register_statfield("UxUx_AVG", comp_uxux_avg)
+        CALL register_statfield("UyUy_AVG", comp_uxux_avg)
+        CALL register_statfield("UzUz_AVG", comp_uxux_avg)
+        CALL register_statfield("VxVx_AVG", comp_uxux_avg)
+        CALL register_statfield("VyVy_AVG", comp_uxux_avg)
+        CALL register_statfield("VzVz_AVG", comp_uxux_avg)
+        CALL register_statfield("WxWx_AVG", comp_uxux_avg)
+        CALL register_statfield("WyWy_AVG", comp_uxux_avg)
+        CALL register_statfield("WzWz_AVG", comp_uxux_avg)
 
-        CALL register_statfield("UXVX_AVG", comp_uxvx_avg)
-        CALL register_statfield("UXWX_AVG", comp_uxvx_avg)
-        CALL register_statfield("UYVY_AVG", comp_uxvx_avg)
-        CALL register_statfield("UYWY_AVG", comp_uxvx_avg)
-        CALL register_statfield("UZVZ_AVG", comp_uxvx_avg)
-        CALL register_statfield("UZWZ_AVG", comp_uxvx_avg)
-        CALL register_statfield("VXWX_AVG", comp_uxvx_avg)
-        CALL register_statfield("VYWY_AVG", comp_uxvx_avg)
-        CALL register_statfield("VZWZ_AVG", comp_uxvx_avg)
+        CALL register_statfield("UxVx_AVG", comp_uxvx_avg)
+        CALL register_statfield("UxWx_AVG", comp_uxvx_avg)
+        CALL register_statfield("UyVy_AVG", comp_uxvx_avg)
+        CALL register_statfield("UyWy_AVG", comp_uxvx_avg)
+        CALL register_statfield("UzVz_AVG", comp_uxvx_avg)
+        CALL register_statfield("UzWz_AVG", comp_uxvx_avg)
+        CALL register_statfield("VxWx_AVG", comp_uxvx_avg)
+        CALL register_statfield("VyWy_AVG", comp_uxvx_avg)
+        CALL register_statfield("VzWz_AVG", comp_uxvx_avg)
 
     END SUBROUTINE init_flowstat
 
@@ -364,16 +364,14 @@ CONTAINS
         CHARACTER(len=*), INTENT(in) :: name
         REAL(realk), INTENT(in) :: dt
 
-        !Local Variables
+        ! Local variables
         TYPE(field_t), POINTER :: u_f, v_f, w_f, bp_f
-        ! TYPE(field_t), POINTER :: x_f, y_f, z_f
         TYPE(field_t), POINTER :: dx_f, dy_f, dz_f
         TYPE(field_t), POINTER :: ddx_f, ddy_f, ddz_f
         TYPE(field_t), POINTER :: rddx_f, rddy_f, rddz_f
 
         REAL(realk), POINTER, CONTIGUOUS :: u(:, :, :), v(:, :, :), &
             w(:, :, :), dfg(:, :, :), bp(:, :, :)
-        ! TYPE(field_t), POINTER :: x(:), y(:), z(:)
         REAL(realk), POINTER, CONTIGUOUS :: dx(:), dy(:), dz(:)
         REAL(realk), POINTER, CONTIGUOUS :: ddx(:), ddy(:), ddz(:)
         REAL(realk), POINTER, CONTIGUOUS :: rddx(:), rddy(:), rddz(:)
@@ -446,7 +444,7 @@ CONTAINS
         END DO
     END SUBROUTINE comp_dissip_avg
 
-    SUBROUTINE calc_dissip (kk, jj, ii, dfg, u, v, w, bp, gmol, & !x, y, z &
+    SUBROUTINE calc_dissip (kk, jj, ii, dfg, u, v, w, bp, gmol, &
         dx, dy, dz, ddx, ddy, ddz, rddx, rddy, rddz) ! nfro, nbac, nrgt &
         ! nlft, nbot, ntop)
 
@@ -614,9 +612,8 @@ CONTAINS
         INTEGER(intk) :: i, igrid
         INTEGER(intk) :: kk, jj, ii
 
-
         SELECT CASE (TRIM(name))
-        CASE ("UXP_AVG")
+        CASE ("UxP_AVG")
             CALL get_field(u_f, "U")
             CALL get_field(p_f, "P")
             istag = 0
@@ -624,7 +621,7 @@ CONTAINS
             kstag = 0
             name_ux = 'UX'
             ivar = 'DDX'
-        CASE ("VYP_AVG")
+        CASE ("VyP_AVG")
             CALL get_field(u_f, "V")
             CALL get_field(p_f, "P")
             istag = 0
@@ -632,7 +629,7 @@ CONTAINS
             kstag = 0
             name_ux = 'VY'
             ivar = 'DDY'
-        CASE ("WZP_AVG")
+        CASE ("WzP_AVG")
             CALL get_field(u_f, "W")
             CALL get_field(p_f, "P")
             istag = 0
@@ -751,13 +748,14 @@ CONTAINS
         ENDIF
     END SUBROUTINE
 
-    SUBROUTINE comp_uxux_avg (field, name, dt)
-        !Subroutine arguments
+    SUBROUTINE comp_uxux_avg(field, name, dt)
+
+        ! subroutine arguments
         TYPE(field_t), INTENT(inout) :: field
         CHARACTER(len=*), INTENT(in) :: name
         REAL(realk), INTENT(in) :: dt
 
-        !Local variables
+        ! local variables
         TYPE(field_t) :: ux_f  ! = can represent any velocity component
         INTEGER(intk), PARAMETER :: units(*) = [0, 0, -2, 0, 0, 0, 0]
         INTEGER(intk), PARAMETER :: units_ux(*) = [0, 0, -1, 0, 0, 0, 0]
@@ -776,63 +774,63 @@ CONTAINS
         INTEGER(intk) :: kk, jj, ii
 
         SELECT CASE (TRIM(name))
-        CASE ("UXUX_AVG")
+        CASE ("UxUx_AVG")
             CALL get_field(u_f, "U")
             istag = 0
             jstag = 0
             kstag = 0
             name_ux = 'UX'
             ivar = 'DDX'
-        CASE ("UYUY_AVG")
+        CASE ("UyUy_AVG")
             CALL get_field(u_f, "U")
             istag = 1
             jstag = 1
             kstag = 0
             name_ux = 'UY'
             ivar = 'DYS'
-        CASE ("UZUZ_AVG")
+        CASE ("UzUz_AVG")
             CALL get_field(u_f, "U")
             istag = 1
             jstag = 0
             kstag = 1
             name_ux = 'UZ'
             ivar = 'DZS'
-        CASE ("VXVX_AVG")
+        CASE ("VxVx_AVG")
             CALL get_field(u_f, "V")
             istag = 1
             jstag = 1
             kstag = 0
             name_ux = 'VX'
             ivar = 'DXS'
-        CASE ("VYVY_AVG")
+        CASE ("VyVy_AVG")
             CALL get_field(u_f, "V")
             istag = 0
             jstag = 0
             kstag = 0
             name_ux = 'VY'
             ivar = 'DDY'
-        CASE ("VZVZ_AVG")
+        CASE ("VzVz_AVG")
             CALL get_field(u_f, "V")
             istag = 0
             jstag = 1
             kstag = 1
             name_ux = 'VZ'
             ivar = 'DZS'
-        CASE ("WXWX_AVG")
+        CASE ("WxWx_AVG")
             CALL get_field(u_f, "W")
             istag = 1
             jstag = 0
             kstag = 1
             name_ux = 'WX'
             ivar = 'DXS'
-        CASE ("WYWY_AVG")
+        CASE ("WyWy_AVG")
             CALL get_field(u_f, "W")
             istag = 0
             jstag = 1
             kstag = 1
             name_ux = 'WY'
             ivar = 'DYS'
-        CASE ("WZWZ_AVG")
+        CASE ("WzWz_AVG")
             CALL get_field(u_f, "W")
             istag = 0
             jstag = 0
@@ -863,7 +861,6 @@ CONTAINS
             CALL u_f%get_ptr(u, igrid)
             CALL ux_f%get_ptr(ux, igrid)
 
-
             CALL rdx_f%get_ptr(rdx, igrid)
             CALL rdy_f%get_ptr(rdy, igrid)
             CALL rdz_f%get_ptr(rdz, igrid)
@@ -875,12 +872,15 @@ CONTAINS
             CALL get_mgdims(kk, jj, ii, igrid)
 
             ! Compute derivate of the velocity field
-            CALL dfdx (kk, jj, ii, rdx, rdy, rdz, rddx, rddy, rddz, ivar, u, ux)
+            CALL dfdx(kk, jj, ii, rdx, rdy, rdz, &
+                rddx, rddy, rddz, ivar, u, ux)
 
         END DO
-        !! Staggeredness remains the same
+
+        ! staggeredness remains the same
         field%arr = ux_f%arr(:)**2
-        ! Should u and ux_f be deleted??
+
+        CALL ux_f%finish()
 
     END SUBROUTINE
 
