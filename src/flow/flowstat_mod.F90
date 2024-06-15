@@ -758,10 +758,10 @@ CONTAINS
         REAL(realk), INTENT(in) :: dt
 
         !Local variables
-
+        TYPE(field_t) :: ux_f  ! = can represent any velocity component
         INTEGER(intk), PARAMETER :: units(*) = [0, 0, -2, 0, 0, 0, 0]
         INTEGER(intk), PARAMETER :: units_ux(*) = [0, 0, -1, 0, 0, 0, 0]
-        TYPE(field_t), POINTER :: u_f, ux_f  !! It can be in any velocity component
+        TYPE(field_t), POINTER :: u_f
         TYPE(field_t), POINTER :: rdx_f, rdy_f, rdz_f
         TYPE(field_t), POINTER :: rddx_f, rddy_f, rddz_f
         INTEGER(intk) :: istag, jstag, kstag
