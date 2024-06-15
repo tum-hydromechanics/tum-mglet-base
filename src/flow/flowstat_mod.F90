@@ -884,16 +884,18 @@ CONTAINS
 
     END SUBROUTINE
 
-    SUBROUTINE comp_uxvx_avg (field, name, dt)
-        !Subroutine arguments
+    SUBROUTINE comp_uxvx_avg(field, name, dt)
+
+        ! subroutine arguments
         TYPE(field_t), INTENT(inout) :: field
         CHARACTER(len=*), INTENT(in) :: name
         REAL(realk), INTENT(in) :: dt
 
+        ! local variables
+        TYPE(field_t) :: ux_f, vx_f
         INTEGER(intk), PARAMETER :: units(*) = [0, 0, -2, 0, 0, 0, 0]
         INTEGER(intk), PARAMETER :: units_ux(*) = [0, 0, -1, 0, 0, 0, 0]
-        TYPE(field_t), POINTER :: u_f, ux_f  !! This can be in any velocity direction
-        TYPE(field_t), POINTER :: v_f, vx_f  !! It can be any velocity component different than u_f
+        TYPE(field_t), POINTER :: u_f, v_f
         TYPE(field_t), POINTER :: rdx_f, rdy_f, rdz_f
         TYPE(field_t), POINTER :: rddx_f, rddy_f, rddz_f
         INTEGER(intk) :: istag, jstag, kstag
@@ -1012,7 +1014,7 @@ CONTAINS
         CALL vx_f%init(name_vx, istag=istag, jstag=jstag, kstag=kstag, &
             units=units_ux)
 
-        !Calculation of UX and VX
+        ! calculation of UX and VX
 
         DO i=1, nmygrids
             igrid = mygrids(i)
@@ -1033,17 +1035,22 @@ CONTAINS
 
             CALL get_mgdims(kk, jj, ii, igrid)
 
-            ! Compute derivates of the velocity field
-            CALL dfdx (kk, jj, ii, rdx, rdy, rdz, rddx, rddy, rddz, ivar1, u, ux)
-            CALL dfdx (kk, jj, ii, rdx, rdy, rdz, rddx, rddy, rddz, ivar2, v, vx)
+            ! compute derivates of the velocity field
+            CALL dfdx(kk, jj, ii, rdx, rdy, rdz, &
+                rddx, rddy, rddz, ivar1, u, ux)
+            CALL dfdx(kk, jj, ii, rdx, rdy, rdz, &
+                rddx, rddy, rddz, ivar2, v, vx)
 
         END DO
 
-        !Since temporarily ux and vx are located at the same point multiply method
-        ! won't be used. But, afterwards, if location is not the same multiply should be used.
+        ! Since temporarily ux and vx are located at the same point
+        ! multiply method won't be used.
+        ! TO DO: If location is not the same multiply should be used.
 
-        field%arr = ux_f%arr(:)*vx_f%arr(:)
-        !Should ux_f and vx_f be deleted??
+        field%arr = ux_f%arr(:) * vx_f%arr(:)
+
+        CALL ux_f%finish()
+        CALL vx_f%finish()
 
     END SUBROUTINE
 
