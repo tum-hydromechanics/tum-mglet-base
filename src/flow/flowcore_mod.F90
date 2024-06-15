@@ -130,8 +130,12 @@ CONTAINS
             required=dread, dwrite=dwrite, buffers=.TRUE.)
         CALL set_field("P", units=units_p, dread=dread, &
             required=dread, dwrite=dwrite, buffers=.TRUE.)
+
+
         CALL set_field("G", units=units_g, dread=dread, &
             required=dread, dwrite=dwrite, buffers=.TRUE.)
+
+        ! CALL set_field("G", units=units_g, buffers=.TRUE.)
 
         ! For RK time integration
         CALL set_field("DU", istag=1)
