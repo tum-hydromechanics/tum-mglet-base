@@ -23,6 +23,7 @@ MODULE core_mod
     ! in core functions
     USE hdf5common_mod
     USE mgletmath_mod
+    USE openmp_mod
     USE plugins_mod
     USE pointers_mod
     USE precision_mod
@@ -81,6 +82,9 @@ CONTAINS
         ! Need to set the communicators first before set_fp_traps or
         ! set_underflow_mode since they depend on them
         CALL init_comms()
+
+        ! Show number of devices available for offloading
+        CALL init_openmp()
 
         ! Allow the user to set desired halting and underflow modes via
         ! environment variables
