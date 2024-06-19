@@ -8,14 +8,14 @@ MODULE particle_list_mod
 
     TYPE :: particle_list_t
 
-        INTEGER(intk) :: iproc	            ! REMOVE (obsolete) ?
+        INTEGER(intk) :: iproc           ! REMOVE (obsolete) ?
 
-        INTEGER(intk) :: max_np    			! max number of particles of this process/list
-        INTEGER(intk) :: active_np 			! number of active particles of this process/list
-        INTEGER(intk) :: ifinal 			! index of last entry of the list which holds an active particle
+        INTEGER(intk) :: max_np          ! max number of particles of this process/list
+        INTEGER(intk) :: active_np       ! number of active particles of this process/list
+        INTEGER(intk) :: ifinal          ! index of last entry of the list which holds an active particle
 
         TYPE(baseparticle_t), ALLOCATABLE :: particles(:)
-        LOGICAL, ALLOCATABLE :: particle_stored(:) 	! each logical value reflects whether a particle is stored in the list
+        LOGICAL, ALLOCATABLE :: particle_stored(:)  ! each logical value reflects whether a particle is stored in the list
                                                     ! at the respective index. Is this a feasable and good way to keep track
                                                     ! of particle storage (especially as is_init in particle_t carries the same information?
 
