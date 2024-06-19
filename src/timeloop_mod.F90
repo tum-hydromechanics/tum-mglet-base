@@ -5,10 +5,10 @@ MODULE timeloop_mod
     USE scalar_mod, ONLY: timeintegrate_scalar, itinfo_scalar
     USE runinfo_mod
 
-    USE baseparticle_mod ! <------------------------------------partilces
-    USE particle_list_mod ! <------------------------------------partilces
-    USE particle_timeintegration_mod ! <------------------------------------partilces
-    USE particle_io_mod ! <------------------------------------partilces
+    ! USE baseparticle_mod ! <------------------------------------partilces
+    ! USE particle_list_mod ! <------------------------------------partilces
+    ! USE particle_timeintegration_mod ! <------------------------------------partilces
+    ! USE particle_io_mod ! <------------------------------------partilces
 
     IMPLICIT NONE(type, external)
     PRIVATE
@@ -191,7 +191,7 @@ CONTAINS
         CALL init_statistics()
 
         ! Initialize particle snapshots
-        CALL init_psnapshots(mtstep, dt) ! <------------------------------------partilces
+        ! CALL init_psnapshots(mtstep, dt) ! <------------------------------------partilces
 
     END SUBROUTINE init_timeloop
 
@@ -236,6 +236,10 @@ CONTAINS
         END IF
 
         timeintegration: DO itstep = 1, mtstep
+
+            ! Timeintegrate particles
+            ! CALL timeintegrate_particles(dt) ! <------------------------------------partilces
+
             ! Global RK loop for tightly coupled quantities like flow and
             ! scalar transport
             rkloop: DO irk = 1, rkscheme%nrk
@@ -248,17 +252,13 @@ CONTAINS
             ! Timeintegrate, _before_ time is globally incremented
             CALL timeintegrate_plugins(itstep, ittot, timeph, dt)
 
-            ! Timeintegrate particles
-            CALL timeintegrate_particles(dt) ! <------------------------------------partilces
-
-
             ! Increment time values - timestepping finished!
             ittot = ittot + 1
             CALL timekeeper%add_to_time(dt)
             CALL timekeeper%get_time(timeph)
 
             ! Particle Snapshots
-            CALL write_psnapshots(timeph) ! <------------------------------------partilces  
+            ! CALL write_psnapshots(timeph) ! <------------------------------------partilces  
 
             ! Print to terminal (itinfo frequency)
             !

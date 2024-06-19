@@ -18,7 +18,7 @@ MODULE particle_list_mod
         INTEGER(intk) :: active_np 			! number of active particles of this process/list
         INTEGER(intk) :: ifinal 			! index of last entry of the list which holds an active particle
 
-        CLASS(baseparticle_t), ALLOCATABLE :: particles(:)
+        TYPE(baseparticle_t), ALLOCATABLE :: particles(:)
         LOGICAL, ALLOCATABLE :: particle_stored(:) 	! each logical value reflects whether a particle is stored in the list 
                                                     ! at the respective index. Is this a feasable and good way to keep track 
                                                     ! of particle storage (especially as is_init in particle_t carries the same information?
@@ -31,10 +31,10 @@ MODULE particle_list_mod
 
     INTEGER(intk), PARAMETER :: default_max_np = 1000 
     INTEGER(intk), PARAMETER :: default_initial_np = 100 !ONLY DUMMY VALUE FOR NOW, SHOULD BE SCALED WITH THE SIZE OF THE SPATIAL DOMAIN THAT THE PROCESS HANDLES
-
+    
     TYPE(particle_list_t) :: my_particle_list ! rather declare in init_particles?
 
-    INTEGER(intk), ALLOCATABLE :: my_ipart_arr(:)
+    PUBLIC :: my_particle_list
 
     !===================================
 
@@ -63,7 +63,7 @@ CONTAINS
 
  			CALL random_ic(x, y, z) ! ONLY DUMMY FOR NOW, DENPENDS ON THE PROCESS SPATIAL DOMAIN
 
- 			CALL my_particle_list%particles(i)%init(my_ipart_arr(i), x, y, z)
+ 			CALL my_particle_list%particles(i)%init(ipart_arr(i), x, y, z)
 
  			my_particle_list%particle_stored(i) = .TRUE.
 
@@ -80,11 +80,15 @@ CONTAINS
 	INTEGER(intk), ALLOCATABLE, INTENT(out) :: ipart_arr(:)
 	
 	! local variables
-	INTEGER(intk) :: i
+	INTEGER(intk) :: i, count
 
  	ALLOCATE(ipart_arr(default_initial_np)) 
-	
-	ipart_arr = [(i, i = myid * default_initial_np + 1, myid * default_initial_np + default_initial_np)]
+
+    count = 1
+    DO i = myid * default_initial_np + 1, myid * default_initial_np + default_initial_np
+        ipart_arr(count) = i
+        count = count + 1 
+    END DO
 
 	! MPI barrier
 

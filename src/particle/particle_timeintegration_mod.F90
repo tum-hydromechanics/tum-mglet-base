@@ -3,15 +3,8 @@
 MODULE particle_timeintegration_mod
 
 !===================================
-
-USE precision_mod, ONLY: intk, realk
-
-USE core_mod  
-USE flowcore_mod
-
-USE baseparticle_mod 
-USE particle_list_mod
-
+USE particle_list_mod  
+USE flow_mod
 !===================================
 
 IMPLICIT NONE
@@ -28,8 +21,9 @@ CONTAINS
 		REAL(realk) :: dt
 
 		! local variables		
-		INTEGER(intk) :: igrid, i
+		INTEGER(intk) :: igrid, i, ii, jj, kk
 		REAL(realk) :: p_u, p_v, p_w
+        REAL(realk) :: minx, maxx, miny, maxy, minz, maxz
 
 		TYPE(field_t), POINTER :: x_f, y_f, z_f
 		TYPE(field_t), POINTER :: xstag_f, ystag_f, zstag_f
@@ -76,8 +70,11 @@ CONTAINS
         	CALL v_f%get_ptr(v, igrid)
         	CALL w_f%get_ptr(w, igrid)
 
-    		CALL interp_particle_uvw(my_particle_list%particles(i),&
-    			p_u, p_v, p_w, xstag, ystag, zstag, u, v, w)
+            CALL get_mgdims(kk, jj, ii, igrid)
+
+    		CALL interp_particle_uvw(kk, jj, ii, &
+                my_particle_list%particles(i), &
+    			p_u, p_v, p_w, xstag, ystag, zstag, u, v, w, x, y, z)
 
     		! TODO: proper timeintegration
     		! dummy method for now (explicit euler)
@@ -110,7 +107,7 @@ CONTAINS
 
     			my_particle_list%particle_stored(i) = .FALSE.
 
-    			WRITE(*,'("Particle ", I0, " left domian!")') ipart
+    			WRITE(*,'("Particle ", I0, " left domian!")') my_particle_list%particles(i)%ipart
     			WRITE(*,'("Final Particle Coordinates: ", 3F6.2)') my_particle_list%particles(i)%x, &
     			 my_particle_list%particles(i)%y, my_particle_list%particles(i)%z
 
@@ -122,13 +119,16 @@ CONTAINS
 
 	!------------------------------
 
-	SUBROUTINE interp_particle_uvw(particle, p_u, p_v, p_w, xstag, ystag, zstag, u, v, w)
+	SUBROUTINE interp_particle_uvw(kk, jj, ii, particle, p_u, p_v, p_w, &
+        xstag, ystag, zstag, u, v, w, x, y, z)
 
 			! subroutine arguments
+            INTEGER(intk), INTENT(in) :: kk, jj, ii
 			CLASS(baseparticle_t), INTENT(in) :: particle
-			REAL(realk), INTENT(out), p_u, p_v, p_w
-			REAL(realk), POINTER, CONTIGUOUS, DIMENSION(:, :, :), INTENT(in) :: xstag, ystag, zstag
-			REAL(realk), POINTER, CONTIGUOUS, DIMENSION(:, :, :), INTENT(in) :: u, v, w
+			REAL(realk), INTENT(out) :: p_u, p_v, p_w
+			REAL(realk), INTENT(in) :: xstag(ii), ystag(jj), zstag(kk)
+			REAL(realk), INTENT(in) :: u(kk,jj,ii), v(kk,jj,ii), w(kk,jj,ii)
+            REAL(realk), INTENT(in) :: x(ii), y(jj), z(kk)
 
 			! local variables
 			INTEGER(intk) :: p_i, p_j, p_k, p_istag, p_jstag, p_kstag
@@ -145,9 +145,9 @@ CONTAINS
     		p_y = particle%y 
     		p_z = particle%z
 
-    		p_istag = SIGN(NINT(1, intk), p_x - x(p_i))
-    		p_jstag = SIGN(NINT(1, intk), p_y - x(p_j))
-    		p_kstag = SIGN(NINT(1, intk), p_z - x(p_k))
+    		p_istag = NINT( SIGN(1.0_realk, p_x - x(p_i)), intk )
+    		p_jstag = NINT( SIGN(1.0_realk, p_y - x(p_j)), intk )
+    		p_kstag = NINT( SIGN(1.0_realk, p_z - x(p_k)), intk )
 
 		    p_bbox_u(1) = xstag(p_i - 1)
     		p_bbox_u(2) = xstag(p_i)
@@ -170,7 +170,7 @@ CONTAINS
     		p_bbox_w(5) = zstag(p_k - 1)
     		p_bbox_w(6) = zstag(p_k)
 
-    		interp_trilinear(p_x, p_y, p_z, p_bbox_u, p_u,&
+    		CALL interp_trilinear(p_x, p_y, p_z, p_bbox_u, p_u, &
     						u(p_k + p_kstag - 1, p_j + p_jstag -1, p_i - 1),&
     						u(p_k + p_kstag    , p_j + p_jstag -1, p_i - 1),&
     						u(p_k + p_kstag - 1, p_j + p_jstag   , p_i - 1),&
@@ -180,7 +180,7 @@ CONTAINS
     						u(p_k + p_kstag - 1, p_j + p_jstag   , p_i    ),&
     						u(p_k + p_kstag    , p_j + p_jstag   , p_i    ))
 
-     		interp_trilinear(p_x, p_y, p_z, p_bbox_v, p_v,&
+     		CALL interp_trilinear(p_x, p_y, p_z, p_bbox_v, p_v,&
     						v(p_k + p_kstag - 1, p_j -1, p_i + p_istag - 1),&
     						v(p_k + p_kstag    , p_j -1, p_i + p_istag - 1),&
     						v(p_k + p_kstag - 1, p_j   , p_i + p_istag - 1),&
@@ -190,7 +190,7 @@ CONTAINS
     						v(p_k + p_kstag - 1, p_j   , p_i + p_istag    ),&
     						v(p_k + p_kstag    , p_j   , p_i + p_istag    ))
 
-    		interp_trilinear(p_x, p_y, p_z, p_bbox_w, p_w,&
+    		CALL interp_trilinear(p_x, p_y, p_z, p_bbox_w, p_w,&
     						w(p_k - 1, p_j + p_jstag -1, p_i + p_istag - 1),&
     						w(p_k    , p_j + p_jstag -1, p_i + p_istag - 1),&
     						w(p_k - 1, p_j + p_jstag   , p_i + p_istag - 1),&
@@ -200,11 +200,11 @@ CONTAINS
     						w(p_k - 1, p_j + p_jstag   , p_i + p_istag    ),&
     						w(p_k    , p_j + p_jstag   , p_i + p_istag    ))
 
-	SUBROUTINE interp_particle_uvw
+	END SUBROUTINE interp_particle_uvw
 
 	!------------------------------
 
-	SUBROUTINE interp_trilinear(x, y, z, bbox &
+	SUBROUTINE interp_trilinear(x, y, z, bbox, &
 		f, f19, f20, f21, f22, f23, f24, f25, f26) ! Trilinear interpolation for a rectilinear grid !
 
 		! subroutine arguments 
@@ -223,6 +223,6 @@ CONTAINS
 		f = (f19 * (1 - xd) + f23 * xd)  * (1 - yd) + (f21 * (1 - xd) + f25 * xd) * yd * (1 - zd) + &
 			(f20 * (1 - xd) + f24 * xd) * (1 - yd) + (f22 * (1 - xd) + f26 * xd) * yd * zd
 
-	END SUBROUTINE interpolate_trilinear
+	END SUBROUTINE interp_trilinear
 
 END MODULE 

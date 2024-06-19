@@ -7,9 +7,8 @@ PROGRAM main
     USE ib_mod, ONLY: init_ib, finish_ib, ib
     USE timeloop_mod, ONLY: init_timeloop, finish_timeloop, timeloop
     USE scalar_mod, ONLY: init_scalar, finish_scalar
+    USE particle_mod, ONLY: init_particle   ! <------------------------------------partilces
 
-    ! particles
-    USE particle_list_mod ! ONLY init_particles (?) ! <------------------------------------partilces
 
     IMPLICIT NONE (type, external)
 
@@ -36,7 +35,7 @@ PROGRAM main
         ! Initialize builtin physical models
         CALL init_flow()
         CALL init_scalar()
-        CALL init_particles() ! <------------------------------------partilces
+        CALL init_particle() ! <------------------------------------partilces
 
         ! This initialize the time loop. Reads the RUNINFO table in case of
         ! DCONT.

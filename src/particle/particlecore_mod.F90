@@ -37,15 +37,16 @@ MODULE particlecore_mod
 
 CONTAINS
 
-	SUBROUTINE init(this, ipart, iproc, igrid, ijkcell, x, y, z)
+	SUBROUTINE init(this, ipart, x, y, z, iproc, igrid, ijkcell )
 
 	! Subroutine arguments
 	CLASS(baseparticle_t), INTENT(out) :: this
 	INTEGER(intk), INTENT(in) :: ipart
+    REAL(realk), INTENT(in) :: x, y, z
 	INTEGER(intk), INTENT(in), OPTIONAL :: iproc
 	INTEGER(intk), INTENT(in), OPTIONAL :: igrid
 	INTEGER(intk), INTENT(in), OPTIONAL :: ijkcell(3)
-	REAL(realk), INTENT(in) :: x, y, z
+	
 		
 	! Local variables
         ! none...

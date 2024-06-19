@@ -7,12 +7,8 @@ MODULE particle_io_mod
 ! TODO: psnapshot_info_t to store number of serial files per time, times and accuracy/format of point coordinates
 ! (sort of as a log file) 
 
-USE pvtp_mod ! REMOVE ?
-USE utils_mod
-USE core_mod
-USE timekeeper_mod 
-USE baseparticle_mod
 USE particle_list_mod
+USE MPI_f08
 
 !===================================
 
@@ -20,8 +16,8 @@ IMPLICIT NONE
 
 TYPE psnapshot_info_t
 
-	INTEGER(intk) :: iproc = myid
-	INTEGER(intk) :: nprocs = numprocs
+	INTEGER(intk) :: iproc
+	INTEGER(intk) :: nprocs
 
 	REAL(realk) :: dt_psnapshot = 1
 	CHARACTER(6) :: coordinate_format = '(F6.2)' !should depend on the domain lengths and be determined in init_psnapshots
@@ -46,11 +42,12 @@ CONTAINS
 
 	!------------------------------
 
-	SUBROUTINE init_psnapshots(mtstep, dt)
+	SUBROUTINE init_psnapshots(mtstep, dt, timeph)
 
 		! subroutine arguments ... 
 		INTEGER(intk) :: mtstep
 		REAL(realk) :: dt
+        REAL(realk), INTENT(in) :: timeph
 
 		! local variables ...
 		INTEGER(intk) :: i 
@@ -61,7 +58,7 @@ CONTAINS
         
         CALL MPI_Barrier(MPI_COMM_WORLD)
 
-        psnapshot_info%nsnapshots = CEILING((tend - timeph) / psnapshot_info%dt_psnapshot) + 1
+        psnapshot_info%nsnapshots = CEILING(( (mtstep*dt) - timeph) / psnapshot_info%dt_psnapshot) + 1
 		
 		ALLOCATE(psnapshot_info%nparticles(psnapshot_info%nsnapshots))
         ALLOCATE(psnapshot_info%timesteps(psnapshot_info%nsnapshots))
@@ -69,6 +66,8 @@ CONTAINS
 
         psnapshot_info%timesteps(1) = 1
         psnapshot_info%timesteps(psnapshot_info%nsnapshots) = mtstep
+        psnapshot_info%iproc = myid
+        psnapshot_info%nprocs = numprocs
 
         DO i = 2, psnapshot_info%nsnapshots - 1
 
@@ -188,14 +187,13 @@ CONTAINS
 
 		!local variables...
 		INTEGER(intk) :: proc, unit
-		REAL(realk) :: time
 		CHARACTER(len = mglet_filename_max) :: filename, piece
 
 		psnapshot_info%times(psnapshot_info%counter) = time
 
 		IF (myid == 0) THEN
 
-			WRITE(filename,'("PARTICLE_SNAPSHOTS/snapshot", I0, ".pvtp")') , psnapshot_info%counter
+			WRITE(filename,'("PARTICLE_SNAPSHOTS/snapshot", I0, ".pvtp")') psnapshot_info%counter
 
 			OPEN(unit, file = TRIM(filename), status = 'NEW', action = 'WRITE')
 
