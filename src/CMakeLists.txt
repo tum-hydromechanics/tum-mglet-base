@@ -4,6 +4,7 @@ add_subdirectory("flow")
 add_subdirectory("ib")
 add_subdirectory("plugins")
 add_subdirectory("scalar")
+add_subdirectory("particle")
 
 add_library(mgletlib SHARED
     runinfo_mod.F90
@@ -22,6 +23,7 @@ target_link_libraries(mgletlib
     PUBLIC ib
     PUBLIC plugins
     PUBLIC scalar
+    PUBLIC particle
     PRIVATE ${MPI_Fortran_LIBRARIES}
 )
 
