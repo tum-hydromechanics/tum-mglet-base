@@ -1,5 +1,6 @@
 add_library(particle STATIC
     particlecore_mod.F90
+    particle_list_mod.F90
 )
 
 target_include_directories(particle
