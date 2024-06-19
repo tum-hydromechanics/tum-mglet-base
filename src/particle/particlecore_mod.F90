@@ -10,9 +10,9 @@ MODULE particlecore_mod
 
         LOGICAL :: is_init = .FALSE. ! if a list of particles is handled, this can be used to identify if an entry is an actual particly
 
-        INTEGER(intk) :: ipart  ! particle ID in global scope (of all processes)
-        INTEGER(intk) :: iproc  ! id of process that currently handles the particle
-        INTEGER(intk) :: igrid 	! stores the index of grid, which the particle is currently on
+        INTEGER(intk) :: ipart   ! particle ID in global scope (of all processes)
+        INTEGER(intk) :: iproc   ! id of process that currently handles the particle
+        INTEGER(intk) :: igrid   ! stores the index of grid, which the particle is currently on
 
         INTEGER(intk) :: ijkcell(3) ! stores indices of the PRESSURE grid cell the particle is in
 
