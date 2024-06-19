@@ -7,6 +7,7 @@ MODULE particle_mod
     IMPLICIT NONE(type, external)
 
 CONTAINS
+
     SUBROUTINE init_particle()
         USE particle_timeintegration_mod
         USE particle_io_mod
