@@ -33,12 +33,10 @@ CONTAINS
 
 		TYPE(field_t), POINTER :: x_f, y_f, z_f
 		TYPE(field_t), POINTER :: xstag_f, ystag_f, zstag_f
-		TYPE(field_t), POINTER :: ddx_f, ddy_f, ddz_f
 		TYPE(field_t), POINTER :: u_f, v_f, w_f
 
 		REAL(realk), POINTER, CONTIGUOUS, DIMENSION(:, :, :) :: x, y, z
 		REAL(realk), POINTER, CONTIGUOUS, DIMENSION(:, :, :) :: xstag, ystag, zstag
-		REAL(realk), POINTER, CONTIGUOUS, DIMENSION(:, :, :) :: ddx, ddy, ddz
 		REAL(realk), POINTER, CONTIGUOUS, DIMENSION(:, :, :) :: u, v, w
 
 		REAL(realk) :: rand_dx, rand_dy, rand_dz, diffusion_dx, diffusion_dy, diffusion_dz
@@ -51,10 +49,6 @@ CONTAINS
         CALL get_field(xstag_f, "XSTAG")
         CALL get_field(ystag_f, "YSTAG")
         CALL get_field(zstag_f, "ZSTAG")
-
-        CALL get_field(ddx_f, "DDX")
-        CALL get_field(ddy_f, "DDY")
-        CALL get_field(ddz_f, "DDZ")
 
         CALL get_field(u_f, "U")
         CALL get_field(v_f, "V")
@@ -74,10 +68,6 @@ CONTAINS
        		CALL y_f%get_ptr(y, igrid)
         	CALL z_f%get_ptr(z, igrid)
 
-        	CALL ddx_f%get_ptr(ddx, igrid)
-        	CALL ddy_f%get_ptr(ddy, igrid)
-        	CALL ddz_f%get_ptr(ddz, igrid)
-
         	CALL xstag_f%get_ptr(xstag, igrid)
         	CALL ystag_f%get_ptr(ystag, igrid)
         	CALL zstag_f%get_ptr(zstag, igrid)       	
@@ -87,7 +77,7 @@ CONTAINS
         	CALL w_f%get_ptr(w, igrid)
 
     		CALL interp_particle_uvw(my_particle_list%particles(i),&
-    			p_u, p_v, p_w, xstag, ystag, zstag, ddx, ddy, ddz, u, v, w)
+    			p_u, p_v, p_w, xstag, ystag, zstag, u, v, w)
 
     		! TODO: proper timeintegration
     		! dummy method for now (explicit euler)
@@ -132,13 +122,12 @@ CONTAINS
 
 	!------------------------------
 
-	SUBROUTINE interp_particle_uvw(particle, p_u, p_v, p_w, xstag, ystag, zstag, ddx, ddy, ddz, u, v, w)
+	SUBROUTINE interp_particle_uvw(particle, p_u, p_v, p_w, xstag, ystag, zstag, u, v, w)
 
 			! subroutine arguments
 			CLASS(baseparticle_t), INTENT(in) :: particle
 			REAL(realk), INTENT(out), p_u, p_v, p_w
 			REAL(realk), POINTER, CONTIGUOUS, DIMENSION(:, :, :), INTENT(in) :: xstag, ystag, zstag
-			REAL(realk), POINTER, CONTIGUOUS, DIMENSION(:, :, :), INTENT(in) :: ddx, ddy, ddz
 			REAL(realk), POINTER, CONTIGUOUS, DIMENSION(:, :, :), INTENT(in) :: u, v, w
 
 			! local variables
@@ -146,18 +135,19 @@ CONTAINS
 			REAL(realk) :: p_x, p_y, p_z
 			REAL(realk), DIMENSION(6) :: p_bbox_u, p_bbox_v, p_bbox_w
 
+			!just for readability of the coming expressions
+	    	p_i = particle%ijkcell(1) 
+    		p_j = particle%ijkcell(2)
+    		p_k = particle%ijkcell(3)
+			
+			!just for readability
+    		p_x = particle%x 
+    		p_y = particle%y 
+    		p_z = particle%z
 
-	    	p_i = particle%ijkcell(1) !just for clarity of the coming expressions
-    		p_j = particle%ijkcell(2) !just for clarity of the coming expressions
-    		p_k = particle%ijkcell(3) !just for clarity of the coming expressions
-
-    		p_x = particle%x !just for clarity of the coming expressions
-    		p_y = particle%y !just for clarity of the coming expressions
-    		p_z = particle%z !just for clarity of the coming expressions
-
-    		p_istag = CEILING((p_x - x(p_i)) / ddx(p_i))
-    		p_jstag = CEILING((p_y - y(p_j)) / ddy(p_j))
-    		p_kstag = CEILING((p_z - z(p_k)) / ddz(p_k))
+    		p_istag = SIGN(NINT(1, intk), p_x - x(p_i))
+    		p_jstag = SIGN(NINT(1, intk), p_y - x(p_j))
+    		p_kstag = SIGN(NINT(1, intk), p_z - x(p_k))
 
 		    p_bbox_u(1) = xstag(p_i - 1)
     		p_bbox_u(2) = xstag(p_i)
