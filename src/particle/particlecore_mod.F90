@@ -64,7 +64,7 @@ CONTAINS
 
         IF (PRESENT(ijkcell)) THEN
             this%ijkcell = ijkcell
-        ELSE
+        ELSEIF (this%is_init) THEN
             CALL this%get_p_ijkcell()
         END IF
 
@@ -114,10 +114,12 @@ CONTAINS
             found = .TRUE.
             this%igrid = igrid
 
+            EXIT
+
         END DO
 
         this%is_init = found ! if particle is not found, deactivate particle (?)
-        WRITE(*,'("Particle ", I0, " could not be found on any grid its process owns!")') this%ipart
+        WRITE(*,'("Particle ", I0, " could not be found on any grid, process ", I0, " owns!")') this%ipart, this%iproc
 
     END SUBROUTINE get_p_igrid
 
@@ -132,125 +134,129 @@ CONTAINS
         INTEGER(intk) :: k, j, i, kk, jj, ii
 
         TYPE(field_t), POINTER :: x_f, y_f, z_f
-            REAL(realk), POINTER, CONTIGUOUS :: x(:), y(:), z(:)
+        REAL(realk), POINTER, CONTIGUOUS :: x(:), y(:), z(:)
 
-            REAL(realk) :: diff_old, diff_new
-            REAL(realk) :: minx, maxx, miny, maxy, minz, maxz
+        REAL(realk) :: diff_old, diff_new
+        REAL(realk) :: minx, maxx, miny, maxy, minz, maxz
+
+        IF (this%is_init) THEN
+
+            CALL get_bbox(minx, maxx, miny, maxy, minz, maxz, this%igrid)
+
+            ! check if particle is located on igrid, KEEP this check up?
+
+            IF (this%x < minx .OR. this%x > maxx .OR. this%y < miny .OR. this%y > maxy .OR. this%z < minz .OR. this%z > maxz) THEN
+                CALL this%get_p_igrid()
+            END IF
 
 
-        CALL get_bbox(minx, maxx, miny, maxy, minz, maxz, this%igrid)
+            CALL get_field(x_f, "X")
+            CALL get_field(y_f, "Y")
+            CALL get_field(z_f, "Z")
 
-        ! check if particle is located on igrid, KEEP this check up?
+            CALL x_f%get_ptr(x, this%igrid)
+            CALL y_f%get_ptr(y, this%igrid)
+            CALL z_f%get_ptr(z, this%igrid)
 
-        IF (this%x < minx .OR. this%x > maxx .OR. this%y < miny .OR. this%y > maxy .OR. this%z < minz .OR. this%z > maxz) THEN
-            CALL this%get_p_igrid()
-        END IF
+            CALL get_mgdims(kk, jj, ii, this%igrid)
 
-        CALL get_field(x_f, "X")
-        CALL get_field(y_f, "Y")
-        CALL get_field(z_f, "Z")
+            ! the following assumes that the x/y/z values are sorted such that for any i < j and any direction x, x(i) < x(j) !
+            ! the following procedure is capable of handling stretched grids!
 
-        CALL x_f%get_ptr(x, this%igrid)
-        CALL y_f%get_ptr(y, this%igrid)
-        CALL z_f%get_ptr(z, this%igrid)
+            ! find nearest x(i):
 
-        CALL get_mgdims(kk, jj, ii, this%igrid)
-
-        ! the following assumes that the x/y/z values are sorted such that for any i < j and any direction x, x(i) < x(j) !
-        ! the following procedure is capable of handling stretched grids!
-
-        ! find nearest x(i):
-
-        i = 1 + NINT((ii - 1) * (this%x - minx) / (maxx - minx), intk) ! this expression avoids errors for thisx = minx and thisx = maxx
-
-        diff_old = ABS(x(i) - this%x)
-        diff_new = 0
-
-        DO WHILE (diff_new < diff_old)
-
-            this%ijkcell(1) = i
+            i = 1 + NINT((ii - 1) * (this%x - minx) / (maxx - minx), intk) ! this expression avoids errors for thisx = minx and thisx = maxx
 
             diff_old = ABS(x(i) - this%x)
+            diff_new = 0
 
-            IF (x(i) <= this%x) THEN
+            DO WHILE (diff_new < diff_old)
 
-                i = i + CEILING((ii - i) * (this%x - x(i)) / (maxx - x(i)), intk)
+                this%ijkcell(1) = i
 
-            ELSEIF (x(i) > this%x) THEN
+                diff_old = ABS(x(i) - this%x)
 
-                i = 1 + FLOOR(i * (this%x - minx) / (x(i) - minx), intk)
+                IF (x(i) <= this%x) THEN
 
-            ELSE
+                    i = i + CEILING((ii - i) * (this%x - x(i)) / (maxx - x(i)), intk)
 
-                EXIT
+                ELSEIF (x(i) > this%x) THEN
 
-            END IF
+                    i = 1 + FLOOR(i * (this%x - minx) / (x(i) - minx), intk)
 
-            diff_new = ABS(x(i) - this%x)
+                ELSE
 
-        END DO
+                    EXIT
 
-        ! find nearest y(j):
+                END IF
 
-        j = 1 + NINT((jj - 1) * (this%y - miny) / (maxy - miny), intk) ! this expression avoids errors for thisy = miny and thisy = maxy
+                diff_new = ABS(x(i) - this%x)
 
-        diff_old = ABS(y(j) - this%y)
-        diff_new = 0
+            END DO
 
-        DO WHILE (diff_new < diff_old)
+            ! find nearest y(j):
 
-            this%ijkcell(2) = j
+            j = 1 + NINT((jj - 1) * (this%y - miny) / (maxy - miny), intk) ! this expression avoids errors for thisy = miny and thisy = maxy
 
             diff_old = ABS(y(j) - this%y)
+            diff_new = 0
 
-            IF (y(j) <= this%y) THEN
+            DO WHILE (diff_new < diff_old)
 
-                j = j + CEILING((jj - j) * (this%y - y(j)) / (maxy - y(j)), intk)
+                this%ijkcell(2) = j
 
-            ELSEIF (y(j) > this%y) THEN
+                diff_old = ABS(y(j) - this%y)
 
-                j = 1 + FLOOR(j * (this%y - miny) / (y(j) - miny), intk)
+                IF (y(j) <= this%y) THEN
 
-            ELSE
+                    j = j + CEILING((jj - j) * (this%y - y(j)) / (maxy - y(j)), intk)
 
-                EXIT
+                ELSEIF (y(j) > this%y) THEN
 
-            END IF
+                    j = 1 + FLOOR(j * (this%y - miny) / (y(j) - miny), intk)
 
-            diff_new = ABS(y(j) - this%y)
+                ELSE
 
-        END DO
+                    EXIT
 
-        ! find nearest z(k):
+                END IF
 
-        k = 1 + NINT((kk - 1) * (this%z - minz) / (maxz - minz), intk) ! this expression avoids errors for thisz = minz and thisz = maxz
+                diff_new = ABS(y(j) - this%y)
 
-        diff_old = ABS(z(k) - this%z)
-        diff_new = 0
+            END DO
 
-        DO WHILE (diff_new < diff_old)
+            ! find nearest z(k):
 
-            this%ijkcell(3) = k
+            k = 1 + NINT((kk - 1) * (this%z - minz) / (maxz - minz), intk) ! this expression avoids errors for thisz = minz and thisz = maxz
 
             diff_old = ABS(z(k) - this%z)
+            diff_new = 0
 
-            IF (z(k) <= this%z) THEN
+            DO WHILE (diff_new < diff_old)
 
-                k = k + CEILING((kk - k) * (this%z - z(k)) / (maxz - z(k)), intk)
+                this%ijkcell(3) = k
 
-            ELSEIF (z(k) > this%z) THEN
+                diff_old = ABS(z(k) - this%z)
 
-                k = 1 + FLOOR(k * (this%z - minz) / (z(k) - minz), intk)
+                IF (z(k) <= this%z) THEN
 
-            ELSE
+                    k = k + CEILING((kk - k) * (this%z - z(k)) / (maxz - z(k)), intk)
 
-                EXIT
+                ELSEIF (z(k) > this%z) THEN
 
-            END IF
+                    k = 1 + FLOOR(k * (this%z - minz) / (z(k) - minz), intk)
 
-            diff_new = ABS(z(k) - this%z)
+                ELSE
 
-        END DO
+                    EXIT
+
+                END IF
+
+                diff_new = ABS(z(k) - this%z)
+
+            END DO
+
+        END IF
 
     END SUBROUTINE get_p_ijkcell
 
