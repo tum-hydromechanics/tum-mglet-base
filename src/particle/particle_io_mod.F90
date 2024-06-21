@@ -18,7 +18,7 @@ MODULE particle_io_mod
         INTEGER(intk) :: iproc
         INTEGER(intk) :: nprocs
 
-        REAL(realk) :: dt_psnapshot = 1
+        REAL(realk) :: itstep = 8
         CHARACTER(6) :: coordinate_format = '(F6.2)' !should depend on the domain lengths and be determined in init_psnapshots
 
         INTEGER(intk) :: nsnapshots
@@ -54,7 +54,10 @@ CONTAINS
 
         CALL MPI_Barrier(MPI_COMM_WORLD)
 
-        psnapshot_info%nsnapshots = CEILING(( (mtstep*dt) - timeph) / psnapshot_info%dt_psnapshot) + 1
+        psnapshot_info%iproc = myid
+        psnapshot_info%nprocs = numprocs
+
+        psnapshot_info%nsnapshots = CEILING(mtstep / psnapshot_info%itstep) + 1
 
         ALLOCATE(psnapshot_info%nparticles(psnapshot_info%nsnapshots))
         ALLOCATE(psnapshot_info%timesteps(psnapshot_info%nsnapshots))
@@ -62,12 +65,11 @@ CONTAINS
 
         psnapshot_info%timesteps(1) = 1
         psnapshot_info%timesteps(psnapshot_info%nsnapshots) = mtstep
-        psnapshot_info%iproc = myid
-        psnapshot_info%nprocs = numprocs
+
 
         DO i = 2, psnapshot_info%nsnapshots - 1
 
-            psnapshot_info%timesteps(i) = MIN(1 + NINT(psnapshot_info%dt_psnapshot / dt), mtstep) ! assumes that dt is constant for the whole run
+            psnapshot_info%timesteps(i) = (i - 1) * psnapshot_info%itstep ! assumes that dt is constant for the whole run
 
         END DO
 
