@@ -2,9 +2,13 @@
 
 MODULE particlecore_mod
 
+    !===================================
+
     USE core_mod
 
     IMPLICIT NONE
+
+    !-----------------------------------
 
     TYPE :: baseparticle_t ! could be extended by a particle type that includes the mass
 
@@ -29,11 +33,15 @@ MODULE particlecore_mod
 
     END TYPE baseparticle_t
 
-!===================================
+    !-----------------------------------
+
+    REAL(realk), PARAMETER :: D = 0.1 ! Diffusion constant in m²/s (homogeneous and isotropic diffusion for now)
+
+    !===================================
 
 CONTAINS
 
-    SUBROUTINE init(this, ipart, x, y, z, iproc, igrid, ijkcell )
+    SUBROUTINE init(this, ipart, x, y, z, iproc, igrid, ijkcell)
 
         ! Subroutine arguments
         CLASS(baseparticle_t), INTENT(out) :: this
@@ -70,7 +78,7 @@ CONTAINS
 
     END SUBROUTINE init
 
-    !------------------------------
+    !-----------------------------------
 
     SUBROUTINE get_p_igrid(this)
 
@@ -123,7 +131,7 @@ CONTAINS
 
     END SUBROUTINE get_p_igrid
 
-    !------------------------------
+    !-----------------------------------
 
     SUBROUTINE get_p_ijkcell(this)
 
@@ -260,7 +268,7 @@ CONTAINS
 
     END SUBROUTINE get_p_ijkcell
 
-    !------------------------------
+    !-----------------------------------
 
     SUBROUTINE update_p_ijkcell(this, pdx, pdy, pdz)
 
@@ -395,20 +403,6 @@ CONTAINS
 
     END SUBROUTINE update_p_ijkcell
 
-    !-----------------------------
-
-    SUBROUTINE random_ic(x, y, z)
-
-        ! should this be a method of baseparticle_t?
-        ! velocity of the massless particle should be equal to the veocity of the field at (x,y,z, t= time)
-        ! x, y, and z should be within the spacial domain covvered by the working process
-        ! for now only random values between 0 and 1:
-        REAL(realk), INTENT(out) :: x, y, z
-
-        CALL RANDOM_NUMBER(x)
-        CALL RANDOM_NUMBER(y)
-        CALL RANDOM_NUMBER(z)
-
-    END SUBROUTINE random_ic
+    !===================================
 
 END MODULE particlecore_mod

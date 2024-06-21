@@ -2,9 +2,13 @@
 
 MODULE particle_list_mod
 
+    !===================================
+
     USE particlecore_mod
 
     IMPLICIT NONE
+
+    !-----------------------------------
 
     TYPE :: particle_list_t
 
@@ -21,9 +25,7 @@ MODULE particle_list_mod
 
     END TYPE particle_list_t
 
-    !===================================
-
-    ! module variables
+    !-----------------------------------
 
     INTEGER(intk), PARAMETER :: default_max_np = 1000
     INTEGER(intk), PARAMETER :: default_initial_np = 100 !ONLY DUMMY VALUE FOR NOW, SHOULD BE SCALED WITH THE SIZE OF THE SPATIAL DOMAIN THAT THE PROCESS HANDLES
@@ -40,11 +42,11 @@ CONTAINS
 
         ! local variables
          INTEGER(intk) :: i
-         INTEGER(intk), ALLOCATABLE :: ipart_arr(:)
-         REAL(realk) :: x, y, z
+         INTEGER(intk), ALLOCATABLE :: ipart_arr(:), p_igrid_arr(:)
+         REAL(realk), ALLOCATABLE :: x(:), y(:), z(:)
 
         my_particle_list%max_np = default_max_np
-         my_particle_list%active_np = default_initial_np
+        my_particle_list%active_np = default_initial_np
         my_particle_list%ifinal = default_initial_np
         my_particle_list%iproc = myid
 
@@ -53,13 +55,18 @@ CONTAINS
 
         CALL dist_ipart(ipart_arr)
 
+        ALLOCATE(p_igrid_arr(default_initial_np))
+        ALLOCATE(x(default_initial_np))
+        ALLOCATE(y(default_initial_np))
+        ALLOCATE(z(default_initial_np))
+
+        CALL dist_part(default_initial_np, p_igrid_arr, x, y, z)
+
         my_particle_list%particle_stored = .FALSE.
 
          DO i = 1, my_particle_list%active_np
 
-             CALL random_ic(x, y, z) ! ONLY DUMMY FOR NOW, DENPENDS ON THE PROCESS SPATIAL DOMAIN
-
-             CALL my_particle_list%particles(i)%init(ipart_arr(i), x, y, z)
+             CALL my_particle_list%particles(i)%init(ipart = ipart_arr(i), x = x(i), y = y(i), z = z(i), igrid = p_igrid_arr(i))
 
              my_particle_list%particle_stored(i) = .TRUE.
 
@@ -68,7 +75,7 @@ CONTAINS
 
     END SUBROUTINE init_particles
 
-    !------------------------------
+    !-----------------------------------
 
     SUBROUTINE dist_ipart(ipart_arr) ! this routine is supposed to hand out a list of unique particle ids (ipart) to every process ! ONLY NON MPI RUNS FOR NOW
 
@@ -90,5 +97,76 @@ CONTAINS
 
     END SUBROUTINE dist_ipart
 
+    !-----------------------------------
+
+    SUBROUTINE dist_part(npart, p_igrid_arr, x, y, z)
+
+        ! subroutine arguments...
+        INTEGER(intk), INTENT(in) :: npart
+        INTEGER(intk), INTENT(out) :: p_igrid_arr(npart)
+        REAL(realk), INTENT(out) :: x(npart), y(npart), z(npart)
+
+        ! local variables...
+        INTEGER(intk) :: i, j, igrid
+        REAL(realk) :: myvolume, volume_fractions(nmygrids), grid_rn
+        REAL(realk) :: minx, maxx, miny, maxy, minz, maxz
+        REAL(realk), POINTER, CONTIGUOUS, DIMENSION(:, :, :) :: x, y, z
+        TYPE(field_t), POINTER :: x_f, y_f, z_f
+
+        myvolume = 0
+
+        DO i = 1, nmygrids
+
+            igrid = mygrids(i)
+            get_bbox(minx, maxx, miny, maxy, minz, maxz, igrid)
+
+            myvolume = myvolume + (maxx - minx) * (maxy - miny) * (maxz - minz)
+
+        END DO
+
+        igrid = mygrids(1)
+        get_bbox(minx, maxx, miny, maxy, minz, maxz, igrid)
+
+        volume_fractions(1) = (maxx - minx) * (maxy - miny) * (maxz - minz) / myvolume
+
+        DO i = 2, nmygrids
+
+            igrid = mygrids(i)
+            get_bbox(minx, maxx, miny, maxy, minz, maxz, igrid)
+
+            volume_fractions(i) = volume_fractions(i-1) + ((maxx - minx) * (maxy - miny) * (maxz - minz) / myvolume)
+
+        END DO
+
+        DO j = 1, npart
+
+            i = 1
+
+            CALL RANDOM_NUMBER(grid_rn)
+
+            DO WHILE (grid_rn > volume_fractions(i))
+
+                i = i + 1
+
+            END DO
+
+            igrid = mygrids(i)
+            get_bbox(minx, maxx, miny, maxy, minz, maxz, igrid)
+
+            p_igrid_arr(j) = igrid
+
+            CALL RANDOM_NUMBER(x(j))
+            CALL RANDOM_NUMBER(y(j))
+            CALL RANDOM_NUMBER(z(j))
+
+            x(j) = minx + x(j) * (maxx - minx)
+            y(j) = miny + y(j) * (maxy - miny)
+            z(j) = minz + z(j) * (maxz - minz)
+
+        END DO
+
+    END SUBROUTINE dist_part
+
+    !===================================
 
 END MODULE

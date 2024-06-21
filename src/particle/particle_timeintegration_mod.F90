@@ -7,8 +7,6 @@ MODULE particle_timeintegration_mod
 
     IMPLICIT NONE
 
-    REAL(realk), PARAMETER :: D = 0.1 ! Diffusion constant in m²/s (homogeneous and isotropic diffusion for now)
-
 CONTAINS
 
     SUBROUTINE timeintegrate_particles(dt)
@@ -25,8 +23,8 @@ CONTAINS
         TYPE(field_t), POINTER :: xstag_f, ystag_f, zstag_f
         TYPE(field_t), POINTER :: u_f, v_f, w_f
 
-        REAL(realk), POINTER, CONTIGUOUS, DIMENSION(:, :, :) :: x, y, z
-        REAL(realk), POINTER, CONTIGUOUS, DIMENSION(:, :, :) :: xstag, ystag, zstag
+        REAL(realk), POINTER, CONTIGUOUS, DIMENSION(:) :: x, y, z
+        REAL(realk), POINTER, CONTIGUOUS, DIMENSION(:) :: xstag, ystag, zstag
         REAL(realk), POINTER, CONTIGUOUS, DIMENSION(:, :, :) :: u, v, w
 
         REAL(realk) :: rand_dx, rand_dy, rand_dz, diffusion_dx, diffusion_dy, diffusion_dz
@@ -55,7 +53,7 @@ CONTAINS
             igrid = my_particle_list%particles(i)%igrid !just for clarity of the coming expressions
 
             CALL x_f%get_ptr(x, igrid)
-               CALL y_f%get_ptr(y, igrid)
+            CALL y_f%get_ptr(y, igrid)
             CALL z_f%get_ptr(z, igrid)
 
             CALL xstag_f%get_ptr(xstag, igrid)
@@ -123,7 +121,7 @@ CONTAINS
             CLASS(baseparticle_t), INTENT(in) :: particle
             REAL(realk), INTENT(out) :: p_u, p_v, p_w
             REAL(realk), INTENT(in) :: xstag(ii), ystag(jj), zstag(kk)
-            REAL(realk), INTENT(in) :: u(kk,jj,ii), v(kk,jj,ii), w(kk,jj,ii)
+            REAL(realk), INTENT(in) :: u(kk, jj, ii), v(kk, jj, ii), w(kk, jj, ii)
             REAL(realk), INTENT(in) :: x(ii), y(jj), z(kk)
 
             ! local variables
