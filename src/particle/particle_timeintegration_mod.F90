@@ -3,7 +3,7 @@
 MODULE particle_timeintegration_mod
 
     USE particle_list_mod
-    USE flow_mod
+    !USE flow_mod
 
     IMPLICIT NONE
 
