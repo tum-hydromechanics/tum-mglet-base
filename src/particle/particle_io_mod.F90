@@ -57,7 +57,7 @@ CONTAINS
         psnapshot_info%iproc = myid
         psnapshot_info%nprocs = numprocs
 
-        psnapshot_info%nsnapshots = CEILING(mtstep / psnapshot_info%itstep) + 1
+        psnapshot_info%nsnapshots = mtstep / psnapshot_info%itstep + 1_intk
 
         ALLOCATE(psnapshot_info%nparticles(psnapshot_info%nsnapshots))
         ALLOCATE(psnapshot_info%timesteps(psnapshot_info%nsnapshots))
