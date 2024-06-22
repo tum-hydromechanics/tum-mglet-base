@@ -12,7 +12,7 @@ CONTAINS
     SUBROUTINE timeintegrate_particles(dt)
 
         ! subroutine arguments
-        REAL(realk) :: dt
+        REAL(realk), INTENT(in) :: dt
 
         ! local variables
         INTEGER(intk) :: igrid, i, ii, jj, kk
@@ -204,7 +204,7 @@ CONTAINS
         ! subroutine arguments
         REAL(realk), INTENT(in) :: x, y, z
         REAL(realk), DIMENSION(6), INTENT(in) :: bbox
-        REAL(realk), INTENT(in) :: f19, f20, f21, f22, f23, f24, f25, f26 ! number indicate the corners (see convention on the numbering of faces/edges/corners)
+        REAL(realk), INTENT(in) :: f19, f20, f21, f22, f23, f24, f25, f26 ! numbers indicate the corners (see convention on the numbering of faces/edges/corners)
         REAL(realk), INTENT(out) :: f
 
         ! local variables
