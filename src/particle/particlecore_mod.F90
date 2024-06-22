@@ -35,7 +35,7 @@ MODULE particlecore_mod
 
     !-----------------------------------
 
-    REAL(realk), PARAMETER :: D = 0.1 ! Diffusion constant in m²/s (homogeneous and isotropic diffusion for now)
+    REAL(realk), PARAMETER :: D = 0.1_realk ! Diffusion constant in m²/s (homogeneous and isotropic diffusion for now)
 
     !===================================
 
@@ -196,7 +196,7 @@ CONTAINS
         i = 1 + NINT((ii - 1) * (this%x - minx) / (maxx - minx), intk) ! this expression avoids errors for thisx = minx and thisx = maxx
 
         diff_old = ABS(x(i) - this%x)
-        diff_new = 0
+        diff_new = 0_realk
 
         DO WHILE (diff_new < diff_old)
 
@@ -210,7 +210,7 @@ CONTAINS
 
             ELSEIF (x(i) > this%x) THEN
 
-                i = 1 + FLOOR(i * (this%x - minx) / (x(i) - minx), intk)
+                i = 1_intk + FLOOR(i * (this%x - minx) / (x(i) - minx), intk)
 
             ELSE
 
@@ -227,7 +227,7 @@ CONTAINS
         j = 1 + NINT((jj - 1) * (this%y - miny) / (maxy - miny), intk) ! this expression avoids errors for thisy = miny and thisy = maxy
 
         diff_old = ABS(y(j) - this%y)
-        diff_new = 0
+        diff_new = 0_realk
 
         DO WHILE (diff_new < diff_old)
 
@@ -241,7 +241,7 @@ CONTAINS
 
             ELSEIF (y(j) > this%y) THEN
 
-                j = 1 + FLOOR(j * (this%y - miny) / (y(j) - miny), intk)
+                j = 1_intk + FLOOR(j * (this%y - miny) / (y(j) - miny), intk)
 
             ELSE
 
@@ -258,7 +258,7 @@ CONTAINS
         k = 1 + NINT((kk - 1) * (this%z - minz) / (maxz - minz), intk) ! this expression avoids errors for thisz = minz and thisz = maxz
 
         diff_old = ABS(z(k) - this%z)
-        diff_new = 0
+        diff_new = 0_realk
 
         DO WHILE (diff_new < diff_old)
 
@@ -272,7 +272,7 @@ CONTAINS
 
             ELSEIF (z(k) > this%z) THEN
 
-                k = 1 + FLOOR(k * (this%z - minz) / (z(k) - minz), intk)
+                k = 1_intk + FLOOR(k * (this%z - minz) / (z(k) - minz), intk)
 
             ELSE
 
@@ -335,11 +335,11 @@ CONTAINS
 
         ! find nearest x:
         istart = this%ijkcell(1) + NINT((this%x - x(this%ijkcell(1))) / dx(this%ijkcell(1)))
-        istart = MAX(istart, 1)
+        istart = MAX(istart, 1_intk)
         istart = MIN(istart, ii)
 
         istep = SIGN(INT(1, intk), NINT((this%x - x(istart)), intk))
-        iend = 1 + (istep + 1) / 2 * (ii - 1)
+        iend = 1_intk + (istep + 1_intk) / 2_intk * (ii - 1_intk)
 
         diff_old = x(istart) - this%x
 
@@ -366,11 +366,11 @@ CONTAINS
         ! find nearest y:
 
         jstart = this%ijkcell(2) + NINT((this%y - y(this%ijkcell(2))) / dy(this%ijkcell(2)))
-        jstart = MAX(jstart, 1)
+        jstart = MAX(jstart, 1_intk)
         jstart = MIN(jstart, jj)
 
         jstep = SIGN(INT(1, intk), NINT((this%y - y(jstart)), intk))
-        jend = 1 + (jstep + 1) / 2 * (jj - 1)
+        jend = 1_intk + (jstep + 1_intk) / 2_intk * (jj - 1_intk)
 
         diff_old = y(jstart) - this%y
 
@@ -397,11 +397,11 @@ CONTAINS
         ! find nearest z:
 
         kstart = this%ijkcell(3) + NINT((this%z - z(this%ijkcell(3))) / dz(this%ijkcell(3)))
-        kstart = MAX(kstart, 1)
+        kstart = MAX(kstart, 1_intk)
         kstart = MIN(kstart, kk)
 
         kstep = SIGN(INT(1, intk), NINT((this%z - z(kstart)), intk))
-        kend = 1 + (kstep + 1) / 2 * (kk - 1)
+        kend = 1_intk + (kstep + 1_intk) / 2_intk * (kk - 1_intk)
 
         diff_old = z(kstart) - this%z
 

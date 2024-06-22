@@ -18,7 +18,7 @@ MODULE particle_io_mod
         INTEGER(intk) :: iproc
         INTEGER(intk) :: nprocs
 
-        REAL(realk) :: itstep = 8
+        INTEGER(intk) :: itstep = 8
         CHARACTER(6) :: coordinate_format = '(F6.2)' !should depend on the domain lengths and be determined in init_psnapshots
 
         INTEGER(intk) :: nsnapshots
@@ -26,7 +26,7 @@ MODULE particle_io_mod
         INTEGER(intk), ALLOCATABLE :: timesteps(:) ! stores the integer of all timesteps for which a particle snapshot will be produced
         REAL(realk), ALLOCATABLE :: times(:) ! stores the time for each snapshot; will be allocated to length = nsnapshots
 
-        INTEGER(intk) :: counter = 0 ! stores the id (starting from 1 and rising contiguously) of the current snapshot
+        INTEGER(intk) :: counter = 0_intk ! stores the id (starting from 1 and rising contiguously) of the current snapshot
 
     END TYPE psnapshot_info_t
 
@@ -63,13 +63,13 @@ CONTAINS
         ALLOCATE(psnapshot_info%timesteps(psnapshot_info%nsnapshots))
         ALLOCATE(psnapshot_info%times(psnapshot_info%nsnapshots))
 
-        psnapshot_info%timesteps(1) = 1
+        psnapshot_info%timesteps(1) = 1_intk
         psnapshot_info%timesteps(psnapshot_info%nsnapshots) = mtstep
 
 
         DO i = 2, psnapshot_info%nsnapshots - 1
 
-            psnapshot_info%timesteps(i) = (i - 1) * psnapshot_info%itstep ! assumes that dt is constant for the whole run
+            psnapshot_info%timesteps(i) = (i - 1_intk) * psnapshot_info%itstep ! assumes that dt is constant for the whole run
 
         END DO
 
@@ -95,7 +95,7 @@ CONTAINS
 
         CHARACTER(len = mglet_filename_max) :: subfolder
 
-        psnapshot_info%counter = psnapshot_info%counter + 1 ! should be broadcasted via MPI so that no missmatches occur ?
+        psnapshot_info%counter = psnapshot_info%counter + 1_intk ! should be broadcasted via MPI so that no missmatches occur ?
 
         IF (myid == 0) THEN
 

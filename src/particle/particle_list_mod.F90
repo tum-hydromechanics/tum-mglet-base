@@ -83,14 +83,14 @@ CONTAINS
         INTEGER(intk), ALLOCATABLE, INTENT(out) :: ipart_arr(:)
 
         ! local variables
-        INTEGER(intk) :: i, count
+        INTEGER(intk) :: i, counter
 
         ALLOCATE(ipart_arr(default_initial_np))
 
-        count = 1
+        counter = 1
         DO i = myid * default_initial_np + 1, myid * default_initial_np + default_initial_np
-            ipart_arr(count) = i
-            count = count + 1
+            ipart_arr(counter) = i
+            counter = counter + 1_intk
         END DO
 
         ! MPI barrier
@@ -138,13 +138,13 @@ CONTAINS
 
         DO j = 1, npart
 
-            i = 1
+            i = 1_intk
 
             CALL RANDOM_NUMBER(grid_rn)
 
             DO WHILE (grid_rn > volume_fractions(i))
 
-                i = i + 1
+                i = i + 1_intk
 
             END DO
 
