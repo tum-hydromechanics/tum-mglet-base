@@ -110,7 +110,7 @@ CONTAINS
         INTEGER(intk) :: i, j, igrid
         REAL(realk) :: myvolume, volume_fractions(nmygrids), grid_rn
         REAL(realk) :: minx, maxx, miny, maxy, minz, maxz
-        REAL(realk), POINTER, CONTIGUOUS, DIMENSION(:, :, :) :: x, y, z
+        REAL(realk), POINTER, CONTIGUOUS, DIMENSION(:) :: x, y, z
         TYPE(field_t), POINTER :: x_f, y_f, z_f
 
         myvolume = 0
@@ -118,21 +118,21 @@ CONTAINS
         DO i = 1, nmygrids
 
             igrid = mygrids(i)
-            get_bbox(minx, maxx, miny, maxy, minz, maxz, igrid)
+            CALL get_bbox(minx, maxx, miny, maxy, minz, maxz, igrid)
 
             myvolume = myvolume + (maxx - minx) * (maxy - miny) * (maxz - minz)
 
         END DO
 
         igrid = mygrids(1)
-        get_bbox(minx, maxx, miny, maxy, minz, maxz, igrid)
+        CALL get_bbox(minx, maxx, miny, maxy, minz, maxz, igrid)
 
         volume_fractions(1) = (maxx - minx) * (maxy - miny) * (maxz - minz) / myvolume
 
         DO i = 2, nmygrids
 
             igrid = mygrids(i)
-            get_bbox(minx, maxx, miny, maxy, minz, maxz, igrid)
+            CALL get_bbox(minx, maxx, miny, maxy, minz, maxz, igrid)
 
             volume_fractions(i) = volume_fractions(i-1) + ((maxx - minx) * (maxy - miny) * (maxz - minz) / myvolume)
 
@@ -151,7 +151,7 @@ CONTAINS
             END DO
 
             igrid = mygrids(i)
-            get_bbox(minx, maxx, miny, maxy, minz, maxz, igrid)
+            CALL get_bbox(minx, maxx, miny, maxy, minz, maxz, igrid)
 
             p_igrid_arr(j) = igrid
 
