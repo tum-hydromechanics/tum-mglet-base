@@ -110,7 +110,6 @@ CONTAINS
         INTEGER(intk) :: i, j, igrid
         REAL(realk) :: myvolume, volume_fractions(nmygrids), grid_rn
         REAL(realk) :: minx, maxx, miny, maxy, minz, maxz
-        REAL(realk), POINTER, CONTIGUOUS, DIMENSION(:) :: x, y, z
         TYPE(field_t), POINTER :: x_f, y_f, z_f
 
         myvolume = 0
