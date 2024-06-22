@@ -5,10 +5,7 @@ MODULE timeloop_mod
     USE scalar_mod, ONLY: timeintegrate_scalar, itinfo_scalar
     USE runinfo_mod
 
-    ! USE baseparticle_mod ! <------------------------------------partilces
-    ! USE particle_list_mod ! <------------------------------------partilces
-    ! USE particle_timeintegration_mod ! <------------------------------------partilces
-    ! USE particle_io_mod ! <------------------------------------partilces
+    USE particle_mod ! <------------------------------------partilces
 
     IMPLICIT NONE(type, external)
     PRIVATE
@@ -191,7 +188,7 @@ CONTAINS
         CALL init_statistics()
 
         ! Initialize particle snapshots
-        ! CALL init_psnapshots(mtstep, dt) ! <------------------------------------partilces
+        CALL init_psnapshots(mtstep, dt) ! <------------------------------------partilces
 
     END SUBROUTINE init_timeloop
 
@@ -238,7 +235,7 @@ CONTAINS
         timeintegration: DO itstep = 1, mtstep
 
             ! Timeintegrate particles
-            ! CALL timeintegrate_particles(dt) ! <------------------------------------partilces
+            CALL timeintegrate_particles(dt) ! <------------------------------------partilces
 
             ! Global RK loop for tightly coupled quantities like flow and
             ! scalar transport
@@ -258,7 +255,7 @@ CONTAINS
             CALL timekeeper%get_time(timeph)
 
             ! Particle Snapshots
-            ! CALL write_psnapshots(timeph) ! <------------------------------------partilces  
+            CALL write_psnapshots(itstep, timeph) ! <------------------------------------partilces
 
             ! Print to terminal (itinfo frequency)
             !

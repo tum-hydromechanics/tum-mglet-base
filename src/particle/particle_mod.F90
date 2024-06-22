@@ -3,6 +3,7 @@ MODULE particle_mod
     ! Do not 'USE' core_mod or ib_mod here, because they will get exported
     ! (this module had no 'PRIVATE' default)
     USE particle_timeintegration_mod
+    USE particle_io_mod
 
     IMPLICIT NONE(type, external)
 

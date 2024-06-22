@@ -38,12 +38,11 @@ CONTAINS
 
     !------------------------------
 
-    SUBROUTINE init_psnapshots(mtstep, dt, timeph)
+    SUBROUTINE init_psnapshots(mtstep, dt)
 
         ! subroutine arguments ...
         INTEGER(intk) :: mtstep
         REAL(realk) :: dt
-        REAL(realk), INTENT(in) :: timeph
 
         ! local variables ...
         INTEGER(intk) :: i
@@ -77,15 +76,22 @@ CONTAINS
 
     !------------------------------
 
-    SUBROUTINE write_psnapshots(time)
+    SUBROUTINE write_psnapshots(itstep, timeph)
 
-        REAL(realk), INTENT(in) :: time
+        INTEGER(intk) INTENT(in) :: itstep
+        REAL(realk), INTENT(in) :: timeph
 
-        CALL init_psnapshot_subfolder()
+        IF (psnapshot_info%timesteps(counter + 1) == itstep) THEN
 
-        CALL write_psnapshot_piece()
+            psnapshot_info%counter = psnapshot_info%counter + 1_intk ! should be broadcasted via MPI so that no missmatches occur ?
 
-        CALL write_psnapshot_master(time)
+            CALL init_psnapshot_subfolder()
+
+            CALL write_psnapshot_piece()
+
+            CALL write_psnapshot_master(timeph)
+
+        END IF
 
     END SUBROUTINE write_psnapshots
 
@@ -94,8 +100,6 @@ CONTAINS
     SUBROUTINE init_psnapshot_subfolder()
 
         CHARACTER(len = mglet_filename_max) :: subfolder
-
-        psnapshot_info%counter = psnapshot_info%counter + 1_intk ! should be broadcasted via MPI so that no missmatches occur ?
 
         IF (myid == 0) THEN
 
@@ -176,17 +180,17 @@ CONTAINS
 
     !------------------------------
 
-    SUBROUTINE write_psnapshot_master(time)
+    SUBROUTINE write_psnapshot_master(timeph)
     ! writes pvtp (xml) file (master file for all pieces of the same time)
 
         !subroutine arguments...
-        REAL(realk), INTENT(in) :: time
+        REAL(realk), INTENT(in) :: timeph
 
         !local variables...
         INTEGER(intk) :: proc, unit
         CHARACTER(len = mglet_filename_max) :: filename, piece
 
-        psnapshot_info%times(psnapshot_info%counter) = time
+        psnapshot_info%times(psnapshot_info%counter) = timeph
 
         IF (myid == 0) THEN
 
