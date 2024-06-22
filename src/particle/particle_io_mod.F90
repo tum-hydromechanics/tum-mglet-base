@@ -78,10 +78,10 @@ CONTAINS
 
     SUBROUTINE write_psnapshots(itstep, timeph)
 
-        INTEGER(intk) INTENT(in) :: itstep
+        INTEGER(intk), INTENT(in) :: itstep
         REAL(realk), INTENT(in) :: timeph
 
-        IF (psnapshot_info%timesteps(counter + 1) == itstep) THEN
+        IF (psnapshot_info%timesteps(psnapshot_info%counter + 1) == itstep) THEN
 
             psnapshot_info%counter = psnapshot_info%counter + 1_intk ! should be broadcasted via MPI so that no missmatches occur ?
 
