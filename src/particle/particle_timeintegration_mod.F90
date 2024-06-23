@@ -101,6 +101,8 @@ CONTAINS
 
                 my_particle_list%particle_stored(i) = .FALSE.
 
+                my_particle_list%active_np = my_particle_list%active_np - 1_intk
+
                 WRITE(*,'("Particle ", I0, " left domian!")') my_particle_list%particles(i)%ipart
                 WRITE(*,'("Final Particle Coordinates: ", 3F6.2)') my_particle_list%particles(i)%x, &
                  my_particle_list%particles(i)%y, my_particle_list%particles(i)%z

@@ -145,12 +145,13 @@ CONTAINS
                 CYCLE
             END IF
 
+            WRITE(unit, '("          ")', advance="no")
             WRITE(unit, '(I0)') my_particle_list%particles(i)%ipart
 
         END DO
 
         WRITE(unit, '(A)') '        </DataArray>'
-        WRITE(unit, '(A)') '      <PointData>'
+        WRITE(unit, '(A)') '      </PointData>'
         WRITE(unit, '(A)') '      <Points>'
         WRITE(unit, '(A)') '        <DataArray type="Float32" NumberOfComponents="3">'
 
@@ -160,6 +161,7 @@ CONTAINS
                 CYCLE
             END IF
 
+            WRITE(unit, '("          ")', advance="no")
             WRITE(unit, psnapshot_info%coordinate_format, advance="no") my_particle_list%particles(i)%x
             WRITE(unit, '(A)', advance="no") ' '
             WRITE(unit, psnapshot_info%coordinate_format, advance="no") my_particle_list%particles(i)%y
