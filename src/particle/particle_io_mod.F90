@@ -161,7 +161,7 @@ CONTAINS
                 CYCLE
             END IF
 
-            WRITE(unit, '("          ")', advance="no")
+            WRITE(unit, '("        ")', advance="no")
             WRITE(unit, psnapshot_info%coordinate_format, advance="no") my_particle_list%particles(i)%x
             WRITE(unit, '(A)', advance="no") ' '
             WRITE(unit, psnapshot_info%coordinate_format, advance="no") my_particle_list%particles(i)%y

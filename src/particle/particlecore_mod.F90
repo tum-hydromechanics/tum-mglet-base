@@ -35,7 +35,7 @@ MODULE particlecore_mod
 
     !-----------------------------------
 
-    REAL(realk), PARAMETER :: D = 0.1_realk ! Diffusion constant in m²/s (homogeneous and isotropic diffusion for now)
+    REAL(realk), PARAMETER :: D = 3_realk / 10 ** 9 ! Diffusion constant in m²/s (homogeneous and isotropic diffusion for now)
 
     !===================================
 
