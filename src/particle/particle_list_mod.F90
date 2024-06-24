@@ -41,9 +41,9 @@ CONTAINS
     SUBROUTINE init_particle_list()
 
         ! local variables
-         INTEGER(intk) :: i
-         INTEGER(intk), ALLOCATABLE :: ipart_arr(:), p_igrid_arr(:)
-         REAL(realk), ALLOCATABLE :: x(:), y(:), z(:)
+        INTEGER(intk) :: i
+        INTEGER(intk), ALLOCATABLE :: ipart_arr(:), p_igrid_arr(:)
+        REAL(realk), ALLOCATABLE :: x(:), y(:), z(:)
 
         my_particle_list%max_np = default_max_np
         my_particle_list%active_np = default_initial_np
@@ -55,12 +55,7 @@ CONTAINS
 
         CALL dist_ipart(ipart_arr)
 
-        ALLOCATE(p_igrid_arr(default_initial_np))
-        ALLOCATE(x(default_initial_np))
-        ALLOCATE(y(default_initial_np))
-        ALLOCATE(z(default_initial_np))
-
-        CALL dist_part(default_initial_np, p_igrid_arr, x, y, z)
+        CALL dist_part(my_particle_list%active_np, p_igrid_arr, x, y, z)
 
         my_particle_list%particle_stored = .FALSE.
 
@@ -103,13 +98,18 @@ CONTAINS
 
         ! subroutine arguments...
         INTEGER(intk), INTENT(in) :: npart
-        INTEGER(intk), INTENT(out) :: p_igrid_arr(npart)
-        REAL(realk), INTENT(out) :: x(npart), y(npart), z(npart)
+        INTEGER(intk), ALLOCATABLE, INTENT(inout) :: p_igrid_arr(:) !p_igrid_arr(npart)
+        REAL(realk), ALLOCATABLE, INTENT(inout) :: x(:), y(:), z(:) !x(npart), y(npart), z(npart)
 
         ! local variables...
         INTEGER(intk) :: i, j, igrid
         REAL(realk) :: myvolume, volume_fractions(nmygrids), grid_rn
         REAL(realk) :: minx, maxx, miny, maxy, minz, maxz
+
+        ALLOCATE(p_igrid_arr(npart))
+        ALLOCATE(x(npart))
+        ALLOCATE(y(npart))
+        ALLOCATE(z(npart))
 
         myvolume = 0
 
