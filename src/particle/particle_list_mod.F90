@@ -21,16 +21,16 @@ MODULE particle_list_mod
         TYPE(baseparticle_t), ALLOCATABLE :: particles(:)
         LOGICAL, ALLOCATABLE :: particle_stored(:)  ! each logical value reflects whether a particle is stored in the list
                                                     ! at the respective index. Is this a feasable and good way to keep track
-                                                    ! of particle storage (especially as is_init in particle_t carries the same information?
+                                                    ! of particle storage (especially as is_active in particle_t carries the same information?
 
     END TYPE particle_list_t
 
     !-----------------------------------
 
     INTEGER(intk), PARAMETER :: default_max_np = 1000
-    INTEGER(intk), PARAMETER :: default_initial_np = 100 !ONLY DUMMY VALUE FOR NOW, SHOULD BE SCALED WITH THE SIZE OF THE SPATIAL DOMAIN THAT THE PROCESS HANDLES
+    INTEGER(intk), PARAMETER :: default_initial_np = 100 !ONLY DUMMY VALUE FOR NOW
 
-    TYPE(particle_list_t) :: my_particle_list ! rather declare in init_particles?
+    TYPE(particle_list_t) :: my_particle_list ! rather declare in init_particle_list? NO
 
     PUBLIC :: my_particle_list
 
@@ -38,7 +38,7 @@ MODULE particle_list_mod
 
 CONTAINS
 
-    SUBROUTINE init_particles()
+    SUBROUTINE init_particle_list()
 
         ! local variables
          INTEGER(intk) :: i
@@ -73,7 +73,7 @@ CONTAINS
          END DO
 
 
-    END SUBROUTINE init_particles
+    END SUBROUTINE init_particle_list
 
     !-----------------------------------
 

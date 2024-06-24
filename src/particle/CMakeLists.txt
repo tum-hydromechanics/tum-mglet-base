@@ -1,7 +1,7 @@
 add_library(particle STATIC
     particlecore_mod.F90
     particle_list_mod.F90
-    particle_io_mod.F90
+    particle_snapshot_mod.F90
     particle_timeintegration_mod.F90
     particle_mod.F90
 )

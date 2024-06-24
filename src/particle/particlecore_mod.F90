@@ -12,7 +12,7 @@ MODULE particlecore_mod
 
     TYPE :: baseparticle_t ! could be extended by a particle type that includes the mass
 
-        LOGICAL :: is_init = .FALSE. ! if a list of particles is handled, this can be used to identify if an entry is an actual particly
+        LOGICAL :: is_active = .FALSE. ! if a list of particles is handled, this can be used to identify if an entry is an actual particle
 
         INTEGER(intk) :: ipart   ! particle ID in global scope (of all processes)
         INTEGER(intk) :: iproc   ! id of process that currently handles the particle
@@ -53,7 +53,7 @@ CONTAINS
         INTEGER(intk), INTENT(in), OPTIONAL :: igrid
         INTEGER(intk), INTENT(in), OPTIONAL :: ijkcell(3)
 
-        this%is_init = .TRUE.
+        this%is_active = .TRUE.
         this%ipart = ipart
         this%iproc = myid
         this%x = x
@@ -84,7 +84,7 @@ CONTAINS
 
             this%ijkcell = ijkcell
 
-        ELSEIF (this%is_init) THEN
+        ELSEIF (this%is_active) THEN
 
             CALL this%get_p_ijkcell()
 
@@ -140,7 +140,7 @@ CONTAINS
 
         END DO
 
-        this%is_init = found ! if particle is not found, deactivate particle (?)
+        this%is_active = found ! if particle is not found, deactivate particle (?)
         WRITE(*,'("In get_p_igrid: Particle ", I0, " could not be found on any grid, process ", I0, " owns!")') this%ipart, this%iproc
 
     END SUBROUTINE get_p_igrid
@@ -162,7 +162,7 @@ CONTAINS
         REAL(realk) :: minx, maxx, miny, maxy, minz, maxz
 
 
-        IF (.NOT. this%is_init) THEN
+        IF (.NOT. this%is_active) THEN
 
             WRITE(*,*) "In get_p_ijkcell: Tried to locate particle that is not active!"
             RETURN
@@ -303,7 +303,7 @@ CONTAINS
         INTEGER(intk) :: k, j, i, kk, jj, ii
         INTEGER(intk) :: istart, iend, istep, jstart, jend, jstep, kstart, kend, kstep
 
-        IF (.NOT. this%is_init) THEN
+        IF (.NOT. this%is_active) THEN
 
             WRITE(*,*) "In update_p_ijkcell: Tried to locate particle that is not active!"
             RETURN

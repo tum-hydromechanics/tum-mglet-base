@@ -44,7 +44,7 @@ CONTAINS
 
         DO i = 1, my_particle_list%ifinal
 
-            IF (.NOT. my_particle_list%particles(i)%is_init) THEN
+            IF (.NOT. my_particle_list%particles(i)%is_active) THEN
 
                 CYCLE
 
@@ -97,7 +97,7 @@ CONTAINS
                 my_particle_list%particles(i)%z < minz .OR. &
                 my_particle_list%particles(i)%z > maxz) THEN
 
-                my_particle_list%particles(i)%is_init = .FALSE.
+                my_particle_list%particles(i)%is_active = .FALSE.
 
                 my_particle_list%particle_stored(i) = .FALSE.
 

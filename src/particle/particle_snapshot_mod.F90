@@ -2,7 +2,7 @@
 ! or boundary conditions (bc) should be read from a file or information should
 ! be written to a file
 
-MODULE particle_io_mod
+MODULE particle_snapshot_mod
 
     ! TODO: psnapshot_info_t to store number of serial files per time, times and accuracy/format of point coordinates
     ! (sort of as a log file)
@@ -256,4 +256,4 @@ CONTAINS
 
     ! TODO: particle trajectories
 
-END MODULE
+END MODULE particle_snapshot_mod
