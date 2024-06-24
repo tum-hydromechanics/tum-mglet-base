@@ -19,7 +19,7 @@ MODULE particle_list_mod
         INTEGER(intk) :: ifinal          ! index of last entry of the list which holds an active particle
 
         TYPE(baseparticle_t), ALLOCATABLE :: particles(:)
-        LOGICAL, ALLOCATABLE :: particle_stored(:)  ! each logical value reflects whether a particle is stored in the list
+        !LOGICAL, ALLOCATABLE :: particle_stored(:)  ! each logical value reflects whether a particle is stored in the list
                                                     ! at the respective index. Is this a feasable and good way to keep track
                                                     ! of particle storage (especially as is_active in particle_t carries the same information?
 
@@ -51,19 +51,19 @@ CONTAINS
         my_particle_list%iproc = myid
 
         ALLOCATE(my_particle_list%particles(my_particle_list%max_np))
-        ALLOCATE(my_particle_list%particle_stored(my_particle_list%max_np))
+        !ALLOCATE(my_particle_list%particle_stored(my_particle_list%max_np))
 
         CALL dist_ipart(ipart_arr)
 
         CALL dist_part(my_particle_list%active_np, p_igrid_arr, x, y, z)
 
-        my_particle_list%particle_stored = .FALSE.
+        !my_particle_list%particle_stored = .FALSE.
 
          DO i = 1, my_particle_list%active_np
 
              CALL my_particle_list%particles(i)%init(ipart = ipart_arr(i), x = x(i), y = y(i), z = z(i), igrid = p_igrid_arr(i))
 
-             my_particle_list%particle_stored(i) = .TRUE.
+             !my_particle_list%particle_stored(i) = .TRUE.
 
          END DO
 

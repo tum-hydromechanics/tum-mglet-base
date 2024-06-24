@@ -99,8 +99,6 @@ CONTAINS
 
                 my_particle_list%particles(i)%is_active = .FALSE.
 
-                my_particle_list%particle_stored(i) = .FALSE.
-
                 my_particle_list%active_np = my_particle_list%active_np - 1_intk
 
                 WRITE(*,'("Particle ", I0, " left domian!")') my_particle_list%particles(i)%ipart

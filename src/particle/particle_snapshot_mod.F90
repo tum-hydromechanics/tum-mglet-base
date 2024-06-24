@@ -141,7 +141,7 @@ CONTAINS
 
         DO i = 1, my_particle_list%ifinal
 
-            IF (.NOT. my_particle_list%particle_stored(i)) THEN
+            IF (.NOT. my_particle_list%particles(i)%is_active) THEN
                 CYCLE
             END IF
 
@@ -157,7 +157,7 @@ CONTAINS
 
         DO i = 1, my_particle_list%ifinal
 
-            IF (.NOT. my_particle_list%particle_stored(i)) THEN
+            IF (.NOT. my_particle_list%particles(i)%is_active) THEN
                 CYCLE
             END IF
 
