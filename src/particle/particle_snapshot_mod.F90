@@ -18,7 +18,7 @@ MODULE particle_snapshot_mod
         INTEGER(intk) :: iproc
         INTEGER(intk) :: nprocs
 
-        INTEGER(intk) :: itstep = 8
+        INTEGER(intk) :: itstep = 20
         CHARACTER(6) :: coordinate_format = '(F6.2)' !should depend on the domain lengths and be determined in init_psnapshots
 
         INTEGER(intk) :: nsnapshots
@@ -48,7 +48,7 @@ CONTAINS
         INTEGER(intk) :: i
 
         IF (myid == 0) THEN
-            CALL create_directory("PARTICLE_SNAPSHOTS") ! ! ! realtive to working directory ! ! !
+            CALL create_directory("Particle_Snapshots") ! ! ! realtive to working directory ! ! !
         END IF
 
         CALL MPI_Barrier(MPI_COMM_WORLD)

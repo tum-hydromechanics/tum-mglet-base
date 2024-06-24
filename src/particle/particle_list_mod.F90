@@ -45,25 +45,21 @@ CONTAINS
         INTEGER(intk), ALLOCATABLE :: ipart_arr(:), p_igrid_arr(:)
         REAL(realk), ALLOCATABLE :: x(:), y(:), z(:)
 
+        my_particle_list%iproc = myid
+
         my_particle_list%max_np = default_max_np
         my_particle_list%active_np = default_initial_np
         my_particle_list%ifinal = default_initial_np
-        my_particle_list%iproc = myid
 
         ALLOCATE(my_particle_list%particles(my_particle_list%max_np))
-        !ALLOCATE(my_particle_list%particle_stored(my_particle_list%max_np))
 
         CALL dist_ipart(ipart_arr)
 
         CALL dist_part(my_particle_list%active_np, p_igrid_arr, x, y, z)
 
-        !my_particle_list%particle_stored = .FALSE.
-
          DO i = 1, my_particle_list%active_np
 
              CALL my_particle_list%particles(i)%init(ipart = ipart_arr(i), x = x(i), y = y(i), z = z(i), igrid = p_igrid_arr(i))
-
-             !my_particle_list%particle_stored(i) = .TRUE.
 
          END DO
 
@@ -111,6 +107,8 @@ CONTAINS
         ALLOCATE(y(npart))
         ALLOCATE(z(npart))
 
+        ! compute combined volume of all grids this process owns (for now assumning ther is only one level)...
+
         myvolume = 0
 
         DO i = 1, nmygrids
@@ -122,10 +120,15 @@ CONTAINS
 
         END DO
 
+        ! compute fraction of the combined volume of each grids volume (for now assumning ther is only one level)...
+
         igrid = mygrids(1)
         CALL get_bbox(minx, maxx, miny, maxy, minz, maxz, igrid)
 
         volume_fractions(1) = (maxx - minx) * (maxy - miny) * (maxz - minz) / myvolume
+
+        volume_fractions(1) = MAX(0_realk, volume_fractions(1))
+        volume_fractions(1) = MIN(1_realk, volume_fractions(1))
 
         DO i = 2, nmygrids
 
@@ -134,7 +137,12 @@ CONTAINS
 
             volume_fractions(i) = volume_fractions(i-1) + ((maxx - minx) * (maxy - miny) * (maxz - minz) / myvolume)
 
+            volume_fractions(i) = MAX(0_realk, volume_fractions(i))
+            volume_fractions(i) = MIN(1_realk, volume_fractions(i))
+
         END DO
+
+        ! distribute particles along all grids this process owns (uniformely distibuted)
 
         DO j = 1, npart
 
