@@ -103,7 +103,7 @@ CONTAINS
 
         IF (myid == 0) THEN
 
-            WRITE(subfolder, '("PARTICLE_SNAPSHOTS/snapshot", I0)') psnapshot_info%counter
+            WRITE(subfolder, '("Particle_Snapshots/snapshot", I0)') psnapshot_info%counter
             CALL create_directory(TRIM(subfolder)) ! ! ! realtive to working directory ! ! !
 
         END IF
@@ -122,7 +122,7 @@ CONTAINS
         CHARACTER(len = mglet_filename_max) :: subfolder, filename, active_np_char
         !CHARACTER(:), ALLOCATABLE :: active_np_char
 
-        WRITE(subfolder, '("PARTICLE_SNAPSHOTS/snapshot", I0)') psnapshot_info%counter
+        WRITE(subfolder, '("Particle_Snapshots/snapshot", I0)') psnapshot_info%counter
 
         WRITE(filename, '(A, "/piece", I0, ".vtp")') TRIM(subfolder), myid
 
@@ -196,7 +196,7 @@ CONTAINS
 
         IF (myid == 0) THEN
 
-            WRITE(filename,'("PARTICLE_SNAPSHOTS/snapshot", I0, ".pvtp")') psnapshot_info%counter
+            WRITE(filename,'("Particle_Snapshots/snapshot", I0, ".pvtp")') psnapshot_info%counter
 
             OPEN(unit, file = TRIM(filename), status = 'NEW', action = 'WRITE')
 
@@ -233,7 +233,7 @@ CONTAINS
 
         IF (myid == 0) THEN
 
-            WRITE(filename,'("PARTICLE_SNAPSHOTS/timeinfo.txt")')
+            WRITE(filename,'("Particle_Snapshots/timeinfo.txt")')
 
             OPEN(unit, file = TRIM(filename), status = 'NEW', action = 'WRITE')
 
