@@ -127,8 +127,8 @@ CONTAINS
 
         volume_fractions(1) = (maxx - minx) * (maxy - miny) * (maxz - minz) / myvolume
 
-        volume_fractions(1) = MAX(0_realk, volume_fractions(1))
-        volume_fractions(1) = MIN(1_realk, volume_fractions(1))
+        volume_fractions(1) = MAX(0.0_realk, volume_fractions(1))
+        volume_fractions(1) = MIN(1.0_realk, volume_fractions(1))
 
         DO i = 2, nmygrids
 
@@ -137,8 +137,8 @@ CONTAINS
 
             volume_fractions(i) = volume_fractions(i-1) + ((maxx - minx) * (maxy - miny) * (maxz - minz) / myvolume)
 
-            volume_fractions(i) = MAX(0_realk, volume_fractions(i))
-            volume_fractions(i) = MIN(1_realk, volume_fractions(i))
+            volume_fractions(i) = MAX(0.0_realk, volume_fractions(i))
+            volume_fractions(i) = MIN(1.0_realk, volume_fractions(i))
 
         END DO
 
