@@ -27,15 +27,10 @@ else()
     message(WARNING "HDF5 does not support parallel I/O")
 endif()
 
-include(FindOpenMP)
-if(NOT OpenMP_C_FOUND)
-    message(WARNING "OpenMP support for C compiler not found")
-endif()
-if(NOT OpenMP_CXX_FOUND)
-    message(WARNING "OpenMP support for CXX compiler not found")
-endif()
-if(NOT OpenMP_Fortran_FOUND)
-    message(WARNING "OpenMP support for Fortran compiler not found")
+find_package(OpenMP REQUIRED)
+# Set compiler flags explicitly for cmake offloading test
+if(OpenMP_Fortran_FOUND)
+  set(CMAKE_Fortran_FLAGS "${CMAKE_Fortran_FLAGS} ${OpenMP_Fortran_FLAGS}")
 endif()
 
 # CMake build options
