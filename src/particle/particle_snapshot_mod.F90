@@ -18,7 +18,7 @@ MODULE particle_snapshot_mod
         INTEGER(intk) :: iproc
         INTEGER(intk) :: nprocs
 
-        INTEGER(intk) :: itstep = psnapshot_step
+        INTEGER(intk) :: itstep
         CHARACTER(6) :: coordinate_format = '(F6.2)' !should depend on the domain lengths and be determined in init_psnapshots
 
         INTEGER(intk) :: nsnapshots
@@ -56,6 +56,7 @@ CONTAINS
 
         psnapshot_info%iproc = myid
         psnapshot_info%nprocs = numprocs
+        psnapshot_info%itstep = psnapshot_step
 
         psnapshot_info%nsnapshots = mtstep / psnapshot_info%itstep + 1_intk
 
