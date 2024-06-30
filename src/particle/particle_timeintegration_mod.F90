@@ -126,6 +126,7 @@ CONTAINS
     ! no interpolation of velocity, just the velocity components of the nearest staggered cells respectively
 
                 !subroutine_arguments
+                INTEGER(intk), INTENT(in) :: kk, jj, ii
                 CLASS(baseparticle_t), INTENT(in) :: particle
                 REAL(realk), INTENT(out) :: p_u, p_v, p_w
                 REAL(realk), INTENT(in) :: u(kk, jj, ii), v(kk, jj, ii), w(kk, jj, ii)
