@@ -66,9 +66,17 @@ CONTAINS
 
             CALL get_mgdims(kk, jj, ii, igrid)
 
-            CALL interp_particle_uvw(kk, jj, ii, &
-                my_particle_list%particles(i), &
-                p_u, p_v, p_w, xstag, ystag, zstag, u, v, w, x, y, z)
+            IF (dinterp_particles) THEN
+
+                CALL interp_particle_uvw(kk, jj, ii, my_particle_list%particles(i), &
+                 p_u, p_v, p_w, xstag, ystag, zstag, u, v, w, x, y, z)
+
+            ELSE
+
+                CALL get_particle_uvw(kk, jj, ii, my_particle_list%particles(i), &
+                 p_u, p_v, p_w, u, v, w, x, y, z)
+
+            END IF
 
             ! TODO: proper timeintegration
             ! dummy method for now (explicit euler)
@@ -113,8 +121,33 @@ CONTAINS
 
     !------------------------------
 
+    SUBROUTINE get_particle_uvw(kk, jj, ii, particle, p_u, p_v, p_w, &
+         u, v, w, x, y, z)
+    ! no interpolation of velocity, just the velocity components of the nearest staggered cells respectively
+
+                !subroutine_arguments
+                CLASS(baseparticle_t), INTENT(in) :: particle
+                REAL(realk), INTENT(out) :: p_u, p_v, p_w
+                REAL(realk), INTENT(in) :: u(kk, jj, ii), v(kk, jj, ii), w(kk, jj, ii)
+                REAL(realk), INTENT(in) :: x(ii), y(jj), z(kk)
+
+                !local variables
+                INTEGER(intk) :: p_istag, p_jstag, p_kstag
+
+                p_istag = MAX( 0_intk, NINT( SIGN( 1.0_realk, particle%x - x(particle%ijkcell(1)) ), intk ))
+                p_jstag = MAX( 0_intk, NINT( SIGN( 1.0_realk, particle%y - x(particle%ijkcell(2)) ), intk ))
+                p_kstag = MAX( 0_intk, NINT( SIGN( 1.0_realk, particle%z - x(particle%ijkcell(3)) ), intk ))
+
+                p_u = u(particle%ijkcell(3), particle%ijkcell(2), particle%ijkcell(1) + p_istag - 1)
+                p_v = v(particle%ijkcell(3), particle%ijkcell(2) + p_jstag - 1, particle%ijkcell(1))
+                p_w = w(particle%ijkcell(3) + p_kstag - 1, particle%ijkcell(2), particle%ijkcell(1))
+
+    END SUBROUTINE get_particle_uvw
+
+    !------------------------------
+
     SUBROUTINE interp_particle_uvw(kk, jj, ii, particle, p_u, p_v, p_w, &
-        xstag, ystag, zstag, u, v, w, x, y, z)
+         xstag, ystag, zstag, u, v, w, x, y, z)
 
             ! subroutine arguments
             INTEGER(intk), INTENT(in) :: kk, jj, ii
@@ -139,28 +172,28 @@ CONTAINS
             p_y = particle%y
             p_z = particle%z
 
-            p_istag = NINT( SIGN(1.0_realk, p_x - x(p_i)), intk )
-            p_jstag = NINT( SIGN(1.0_realk, p_y - x(p_j)), intk )
-            p_kstag = NINT( SIGN(1.0_realk, p_z - x(p_k)), intk )
+            p_istag = MAX( 0_intk, NINT( SIGN(1.0_realk, p_x - x(p_i)), intk ) )
+            p_jstag = MAX( 0_intk, NINT( SIGN(1.0_realk, p_y - y(p_j)), intk ) )
+            p_kstag = MAX( 0_intk, NINT( SIGN(1.0_realk, p_z - z(p_k)), intk ) )
 
             p_bbox_u(1) = xstag(p_i - 1)
             p_bbox_u(2) = xstag(p_i)
-            p_bbox_u(3) = ystag(p_j + p_jstag - 1)
-            p_bbox_u(4) = ystag(p_j + p_jstag)
-            p_bbox_u(5) = zstag(p_k + p_kstag - 1)
-            p_bbox_u(6) = zstag(p_k + p_kstag)
+            p_bbox_u(3) = y(p_j + p_jstag - 1)
+            p_bbox_u(4) = y(p_j + p_jstag)
+            p_bbox_u(5) = z(p_k + p_kstag - 1)
+            p_bbox_u(6) = z(p_k + p_kstag)
 
-            p_bbox_v(1) = xstag(p_i + p_istag - 1)
-            p_bbox_v(2) = xstag(p_i + p_istag)
+            p_bbox_v(1) = x(p_i + p_istag - 1)
+            p_bbox_v(2) = x(p_i + p_istag)
             p_bbox_v(3) = ystag(p_j - 1)
             p_bbox_v(4) = ystag(p_j)
-            p_bbox_v(5) = zstag(p_k + p_kstag - 1)
-            p_bbox_v(6) = zstag(p_k + p_kstag)
+            p_bbox_v(5) = z(p_k + p_kstag - 1)
+            p_bbox_v(6) = z(p_k + p_kstag)
 
-            p_bbox_w(1) = xstag(p_i + p_istag - 1)
-            p_bbox_w(2) = xstag(p_i + p_istag)
-            p_bbox_w(3) = ystag(p_j + p_jstag - 1)
-            p_bbox_w(4) = ystag(p_j + p_jstag)
+            p_bbox_w(1) = x(p_i + p_istag - 1)
+            p_bbox_w(2) = x(p_i + p_istag)
+            p_bbox_w(3) = y(p_j + p_jstag - 1)
+            p_bbox_w(4) = y(p_j + p_jstag)
             p_bbox_w(5) = zstag(p_k - 1)
             p_bbox_w(6) = zstag(p_k)
 
@@ -174,7 +207,7 @@ CONTAINS
                             u(p_k + p_kstag - 1, p_j + p_jstag   , p_i    ),&
                             u(p_k + p_kstag    , p_j + p_jstag   , p_i    ))
 
-             CALL interp_trilinear(p_x, p_y, p_z, p_bbox_v, p_v,&
+            CALL interp_trilinear(p_x, p_y, p_z, p_bbox_v, p_v,&
                             v(p_k + p_kstag - 1, p_j -1, p_i + p_istag - 1),&
                             v(p_k + p_kstag    , p_j -1, p_i + p_istag - 1),&
                             v(p_k + p_kstag - 1, p_j   , p_i + p_istag - 1),&

@@ -8,6 +8,8 @@ LOGICAL :: dsim_particles = .TRUE.
 
 LOGICAL :: dread_particles = .FALSE.
 
+LOGICAL :: dinterp_particles = .FALSE.
+
 LOGICAL :: dwrite_particles = .TRUE.
 
 INTEGER(intk) :: psnapshot_step = 2
