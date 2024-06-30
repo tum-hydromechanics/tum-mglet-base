@@ -48,15 +48,19 @@ CONTAINS
 
         ALLOCATE(my_particle_list%particles(my_particle_list%max_np))
 
+        ALLOCATE(ipart_arr(my_particle_list%active_np))
+        ALLOCATE(p_igrid_arr(my_particle_list%active_np))
+        ALLOCATE(x(my_particle_list%active_np))
+        ALLOCATE(y(my_particle_list%active_np))
+        ALLOCATE(z(my_particle_list%active_np))
+
         IF (dread_particles) THEN
 
-            CALL dist_ipart(ipart_arr)
-
-            CALL dist_part(my_particle_list%active_np, p_igrid_arr, x, y, z)
+            !CALL read_particles(dread_particles, my_particle_list%active_np, ipart_arr, p_igrid_arr, x, y, z)
 
         ELSE
 
-            CALL dist_ipart(ipart_arr)
+            CALL dist_ipart(my_particle_list%active_np, ipart_arr)
 
             CALL dist_part(my_particle_list%active_np, p_igrid_arr, x, y, z)
 
@@ -73,18 +77,17 @@ CONTAINS
 
     !-----------------------------------
 
-    SUBROUTINE dist_ipart(ipart_arr) ! this routine is supposed to hand out a list of unique particle ids (ipart) to every process ! ONLY NON MPI RUNS FOR NOW
+    SUBROUTINE dist_ipart(npart, ipart_arr) ! this routine is supposed to hand out a list of unique particle ids (ipart) to every process ! ONLY NON MPI RUNS FOR NOW
 
         ! subroutine arguments
-        INTEGER(intk), ALLOCATABLE, INTENT(out) :: ipart_arr(:)
+        INTEGER(intk), INTENT(IN) :: npart
+        INTEGER(intk), INTENT(out) :: ipart_arr(npart)
 
         ! local variables
         INTEGER(intk) :: i, counter
 
-        ALLOCATE(ipart_arr(default_initial_np))
-
         counter = 1
-        DO i = myid * default_initial_np + 1, myid * default_initial_np + default_initial_np
+        DO i = myid * npart + 1, myid * npart + npart
             ipart_arr(counter) = i
             counter = counter + 1_intk
         END DO
@@ -99,18 +102,13 @@ CONTAINS
 
         ! subroutine arguments...
         INTEGER(intk), INTENT(in) :: npart
-        INTEGER(intk), ALLOCATABLE, INTENT(inout) :: p_igrid_arr(:) !p_igrid_arr(npart)
-        REAL(realk), ALLOCATABLE, INTENT(inout) :: x(:), y(:), z(:) !x(npart), y(npart), z(npart)
+        INTEGER(intk), INTENT(inout) :: p_igrid_arr(npart)
+        REAL(realk), INTENT(inout) :: x(npart), y(npart), z(npart)
 
         ! local variables...
         INTEGER(intk) :: i, j, igrid
         REAL(realk) :: myvolume, volume_fractions(nmygrids), grid_rn
         REAL(realk) :: minx, maxx, miny, maxy, minz, maxz
-
-        ALLOCATE(p_igrid_arr(npart))
-        ALLOCATE(x(npart))
-        ALLOCATE(y(npart))
-        ALLOCATE(z(npart))
 
         ! compute combined volume of all grids this process owns (for now assumning ther is only one level)...
 
