@@ -18,7 +18,7 @@ MODULE particle_snapshot_mod
         INTEGER(intk) :: iproc
         INTEGER(intk) :: nprocs
 
-        INTEGER(intk) :: itstep = 20
+        INTEGER(intk) :: itstep = psnapshot_step
         CHARACTER(6) :: coordinate_format = '(F6.2)' !should depend on the domain lengths and be determined in init_psnapshots
 
         INTEGER(intk) :: nsnapshots
@@ -30,7 +30,7 @@ MODULE particle_snapshot_mod
 
     END TYPE psnapshot_info_t
 
-    LOGICAL :: dwrite_particles = .TRUE.
+    !LOGICAL :: dwrite_particles = .TRUE.
     TYPE(psnapshot_info_t) :: psnapshot_info
 
 

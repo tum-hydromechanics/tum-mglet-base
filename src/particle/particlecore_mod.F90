@@ -5,6 +5,7 @@ MODULE particlecore_mod
     !===================================
 
     USE core_mod
+    USE particle_config_mod
 
     IMPLICIT NONE
 
@@ -32,10 +33,6 @@ MODULE particlecore_mod
         PROCEDURE :: update_p_ijkcell ! how to get one pointer for get_p_ijkcell and update_p_ijkcell ? RENAME ?
 
     END TYPE baseparticle_t
-
-    !-----------------------------------
-
-    REAL(realk), PARAMETER :: D = (3_realk) / (10_realk ** 9_realk) ! Diffusion constant in m²/s (homogeneous and isotropic diffusion for now)
 
     !===================================
 

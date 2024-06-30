@@ -7,7 +7,7 @@ MODULE particle_mod
 
     IMPLICIT NONE(type, external)
 
-    LOGICAL :: dsim_particles = .TRUE.
+    !LOGICAL :: dsim_particles = .TRUE.
 
 CONTAINS
 

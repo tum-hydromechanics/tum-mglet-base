@@ -27,7 +27,7 @@ MODULE particle_list_mod
 
     !-----------------------------------
 
-    LOGICAL :: dread_particles = .FALSE.
+    ! LOGICAL :: dread_particles = .FALSE.
 
     TYPE(particle_list_t) :: my_particle_list ! rather declare in init_particle_list? NO
 

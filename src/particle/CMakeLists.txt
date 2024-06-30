@@ -1,4 +1,5 @@
 add_library(particle STATIC
+    particle_config_mod.F90
     particlecore_mod.F90
     particle_list_mod.F90
     particle_snapshot_mod.F90
