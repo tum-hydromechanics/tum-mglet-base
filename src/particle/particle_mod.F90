@@ -7,14 +7,26 @@ MODULE particle_mod
 
     IMPLICIT NONE(type, external)
 
+    LOGICAL :: dsim_particles = .TRUE.
+
 CONTAINS
 
     SUBROUTINE init_particles()
+
         USE particle_timeintegration_mod
         USE particle_snapshot_mod
 
-        WRITE(*,*) "HELLO WORLD PARTICLE(s)---"
-        CALL init_particle_list()
+        IF (dsim_particles) THEN
+
+            WRITE(*,*) "PARTICLE SIMULATION INITIALIZED"
+
+            CALL init_particle_list()
+
+        ELSE
+
+            WRITE(*,*) "NO PARTICLE SIMULATION"
+
+        END IF
 
     END SUBROUTINE init_particles
 

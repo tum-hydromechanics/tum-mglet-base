@@ -14,9 +14,9 @@ MODULE particle_list_mod
 
         INTEGER(intk) :: iproc           ! REMOVE (obsolete) ?
 
-        INTEGER(intk) :: max_np          ! max number of particles of this process/list
-        INTEGER(intk) :: active_np       ! number of active particles of this process/list
-        INTEGER(intk) :: ifinal          ! index of last entry of the list which holds an active particle
+        INTEGER(intk) :: max_np = 1000          ! max number of particles of this process/list
+        INTEGER(intk) :: active_np = 100       ! number of active particles of this process/list
+        INTEGER(intk) :: ifinal = 100          ! index of last entry of the list which holds an active particle
 
         TYPE(baseparticle_t), ALLOCATABLE :: particles(:)
         !LOGICAL, ALLOCATABLE :: particle_stored(:)  ! each logical value reflects whether a particle is stored in the list
@@ -27,8 +27,7 @@ MODULE particle_list_mod
 
     !-----------------------------------
 
-    INTEGER(intk), PARAMETER :: default_max_np = 1000
-    INTEGER(intk), PARAMETER :: default_initial_np = 100 !ONLY DUMMY VALUE FOR NOW
+    LOGICAL :: dread_particles = .FALSE.
 
     TYPE(particle_list_t) :: my_particle_list ! rather declare in init_particle_list? NO
 
@@ -47,15 +46,21 @@ CONTAINS
 
         my_particle_list%iproc = myid
 
-        my_particle_list%max_np = default_max_np
-        my_particle_list%active_np = default_initial_np
-        my_particle_list%ifinal = default_initial_np
-
         ALLOCATE(my_particle_list%particles(my_particle_list%max_np))
 
-        CALL dist_ipart(ipart_arr)
+        IF (dread_particles) THEN
 
-        CALL dist_part(my_particle_list%active_np, p_igrid_arr, x, y, z)
+            CALL dist_ipart(ipart_arr)
+
+            CALL dist_part(my_particle_list%active_np, p_igrid_arr, x, y, z)
+
+        ELSE
+
+            CALL dist_ipart(ipart_arr)
+
+            CALL dist_part(my_particle_list%active_np, p_igrid_arr, x, y, z)
+
+        END IF
 
          DO i = 1, my_particle_list%active_np
 
@@ -109,7 +114,7 @@ CONTAINS
 
         ! compute combined volume of all grids this process owns (for now assumning ther is only one level)...
 
-        myvolume = 0
+        myvolume = 0.0_realk
 
         DO i = 1, nmygrids
 

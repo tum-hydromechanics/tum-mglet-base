@@ -30,8 +30,9 @@ MODULE particle_snapshot_mod
 
     END TYPE psnapshot_info_t
 
-
+    LOGICAL :: dwrite_particles = .TRUE.
     TYPE(psnapshot_info_t) :: psnapshot_info
+
 
 
 CONTAINS
