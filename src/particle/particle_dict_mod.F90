@@ -4,14 +4,15 @@ MODULE particle_dict_mod
 
 CONTAINS
 
-    SUBROUTINE read_particles(dread_particles, npart, ipart_arr, p_igrid_arr, x, y, z)
+    SUBROUTINE read_particles(dread_particles, max_npart, npart, ipart_arr, p_igrid_arr, x, y, z)
 
     !subroutine arguments
     LOGICAL, INTENT(inout) :: dread_particles
+    INTEGER(intk), INTENT(in) :: max_npart
     INTEGER(intk), INTENT(out) :: npart
-    INTEGER(intk), INTENT(out) :: ipart_arr(npart)
-    INTEGER(intk), INTENT(out) :: p_igrid_arr(npart)
-    REAL(realk), INTENT(out) :: x(npart), y(npart), z(npart)
+    INTEGER(intk), ALLOCATABLE, INTENT(out) :: ipart_arr(:)
+    INTEGER(intk), ALLOCATABLE, INTENT(out) :: p_igrid_arr(:)
+    REAL(realk), ALLOCATABLE, INTENT(out) :: x(:), y(:), z(:)
 
     !local variables
     INTEGER(intk) :: unit, i, ipart, igrid
@@ -22,7 +23,7 @@ CONTAINS
 
     IF (.NOT. dread_particles) THEN
 
-        !WRITE(*,*) 'No file for reading detected! Using automated initial particle distribution instead.'
+        WRITE(*,*) 'No file for reading detected! Using automated initial particle distribution instead.'
 
         RETURN
 
@@ -33,6 +34,14 @@ CONTAINS
 	OPEN(unit, file = 'ParticleDict.txt', status = 'OLD', action = 'READ') ! can file be opened by more than 1 process at the same time?
 
 	READ(unit, fmt = *) npart
+
+    npart = MIN(npart, max_npart)
+
+    ALLOCATE(ipart_arr(npart))
+    ALLOCATE(p_igrid_arr(npart))
+    ALLOCATE(x(npart))
+    ALLOCATE(y(npart))
+    ALLOCATE(z(npart))
 
     DO ipart = 1, npart
 

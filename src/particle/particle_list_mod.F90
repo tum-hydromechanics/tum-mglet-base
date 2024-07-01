@@ -15,9 +15,9 @@ MODULE particle_list_mod
 
         INTEGER(intk) :: iproc           ! REMOVE (obsolete) ?
 
-        INTEGER(intk) :: max_np = 1000          ! max number of particles of this process/list
-        INTEGER(intk) :: active_np = 100       ! number of active particles of this process/list
-        INTEGER(intk) :: ifinal = 100          ! index of last entry of the list which holds an active particle
+        INTEGER(intk) :: max_np = max_np_per_list         ! max number of particles of this process/list
+        INTEGER(intk) :: active_np = init_np             ! number of active particles of this process/list
+        INTEGER(intk) :: ifinal = init_np          ! index of last entry of the list which holds an active particle
 
         TYPE(baseparticle_t), ALLOCATABLE :: particles(:)
         !LOGICAL, ALLOCATABLE :: particle_stored(:)  ! each logical value reflects whether a particle is stored in the list
@@ -49,19 +49,19 @@ CONTAINS
 
         ALLOCATE(my_particle_list%particles(my_particle_list%max_np))
 
-        ALLOCATE(ipart_arr(my_particle_list%active_np))
-        ALLOCATE(p_igrid_arr(my_particle_list%active_np))
-        ALLOCATE(x(my_particle_list%active_np))
-        ALLOCATE(y(my_particle_list%active_np))
-        ALLOCATE(z(my_particle_list%active_np))
-
         IF (dread_particles) THEN
 
-            CALL read_particles(dread_particles, my_particle_list%active_np, ipart_arr, p_igrid_arr, x, y, z)
+            CALL read_particles(dread_particles, my_particle_list%max_np, my_particle_list%active_np, ipart_arr, p_igrid_arr, x, y, z)
 
         END IF
 
         IF (.NOT. dread_particles) THEN
+
+            ALLOCATE(ipart_arr(my_particle_list%active_np))
+            ALLOCATE(p_igrid_arr(my_particle_list%active_np))
+            ALLOCATE(x(my_particle_list%active_np))
+            ALLOCATE(y(my_particle_list%active_np))
+            ALLOCATE(z(my_particle_list%active_np))
 
             CALL dist_ipart(my_particle_list%active_np, ipart_arr)
 
