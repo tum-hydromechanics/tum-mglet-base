@@ -78,6 +78,10 @@ CONTAINS
         CALL register_statfield("VxWx_AVG", comp_uxvx_avg)
         CALL register_statfield("VyWy_AVG", comp_uxvx_avg)
         CALL register_statfield("VzWz_AVG", comp_uxvx_avg)
+
+        CALL register_statfield("UyP+VxP", comp_uyvxp_avg)
+        CALL register_statfield("UzP+WxP", comp_uyvxp_avg)
+        CALL register_statfield("VzP+WyP", comp_uyvxp_avg)
         
     END SUBROUTINE init_flowstat
 
@@ -585,6 +589,9 @@ CONTAINS
         ! the multiplication consider the staggeredness
         CALL field%multiply(in1,in2)
 
+        !CALL in1%finish()
+        !CALL in2%finish()
+
     END SUBROUTINE comp_up_avg
 
     !This subroutine computes the term du_i/dx_i * P
@@ -679,6 +686,7 @@ CONTAINS
         CALL field%multiply(ux_f, p_f)
 
         CALL ux_f%finish()
+        !CALL p_f%finish()
 
     END SUBROUTINE
 
@@ -916,6 +924,7 @@ CONTAINS
         SELECT CASE (TRIM(name)) 
         CASE ("UxVx_AVG")        
             CALL get_field(u_f, "U")
+            CALL get_field(v_f, "V")
             istag = 0
             jstag = 0
             kstag = 0
@@ -925,6 +934,7 @@ CONTAINS
             ivar2 = 'DXS'
         CASE ("UxWx_AVG")
             CALL get_field(u_f, "U")
+            CALL get_field(v_f, "W")
             istag = 0
             jstag = 0
             kstag = 0
@@ -934,6 +944,7 @@ CONTAINS
             ivar2 = 'DXS'
         CASE ("UyVy_AVG")
             CALL get_field(u_f, "U")
+            CALL get_field(v_f, "V")
             istag = 0
             jstag = 0
             kstag = 0
@@ -942,7 +953,8 @@ CONTAINS
             ivar1 = 'DYS'
             ivar2 = 'DDY'
         CASE ("UyWy_AVG")
-            CALL get_field(u_f, "V")
+            CALL get_field(u_f, "U")
+            CALL get_field(v_f, "W")
             istag = 0
             jstag = 0
             kstag = 0
@@ -951,7 +963,8 @@ CONTAINS
             ivar1 = 'DYS'
             ivar2 = 'DYS'
         CASE ("UzVz_AVG")
-            CALL get_field(u_f, "V")
+            CALL get_field(u_f, "U")
+            CALL get_field(v_f, "V")
             istag = 0
             jstag = 0
             kstag = 0
@@ -960,7 +973,8 @@ CONTAINS
             ivar1 = 'DZS'
             ivar2 = 'DZS'
         CASE ("UzWz_AVG")
-            CALL get_field(u_f, "V")
+            CALL get_field(u_f, "U")
+            CALL get_field(v_f, "W")
             istag = 0
             jstag = 0
             kstag = 0
@@ -969,7 +983,8 @@ CONTAINS
             ivar1 = 'DZS'
             ivar2 = 'DDZ'
         CASE ("VxWx_AVG")
-            CALL get_field(u_f, "W")
+            CALL get_field(u_f, "V")
+            CALL get_field(v_f, "W")
             istag = 0
             jstag = 0
             kstag = 0
@@ -978,7 +993,8 @@ CONTAINS
             ivar1 = 'DXS'
             ivar2 = 'DXS'
         CASE ("VyWy_AVG")
-            CALL get_field(u_f, "W")
+            CALL get_field(u_f, "V")
+            CALL get_field(v_f, "W")
             istag = 0
             jstag = 0
             kstag = 0
@@ -987,7 +1003,8 @@ CONTAINS
             ivar1 = 'DDY'
             ivar2 = 'DYS'
         CASE ("VzWz_AVG")
-            CALL get_field(u_f, "W")
+            CALL get_field(u_f, "V")
+            CALL get_field(v_f, "W")
             istag = 0
             jstag = 0
             kstag = 0
@@ -1045,7 +1062,7 @@ CONTAINS
 
         !Since temporarily ux and vx are located at the same point multiply method
         ! won't be used. 
-        !TO DO: if location is not the same multiply should be used.
+        !TO DO: if location is not the same multiply method should be used.
         
         field%arr = ux_f%arr(:) * vx_f%arr(:)
         
@@ -1054,4 +1071,117 @@ CONTAINS
            
     END SUBROUTINE
 
+    SUBROUTINE comp_uyvxp_avg (field, name, dt)
+        ! Subroutine arguments
+        TYPE(field_t), INTENT(inout) :: field
+        CHARACTER(len=*), INTENT(in) :: name
+        REAL(realk), INTENT(in) :: dt
+
+        ! Local Variables
+        TYPE(field_t) :: uy_f, vx_f, temp_f
+        INTEGER(intk), PARAMETER :: units(*) = [0, 0, -2, 0, 0, 0, 0]
+        INTEGER(intk), PARAMETER :: units_ux(*) = [0, 0, -1, 0, 0, 0, 0]
+        TYPE(field_t), POINTER :: u_f, v_f, p_f  !! 
+        TYPE(field_t), POINTER :: rdx_f, rdy_f, rdz_f
+        TYPE(field_t), POINTER :: rddx_f, rddy_f, rddz_f
+        INTEGER(intk) :: istag, jstag, kstag
+        CHARACTER(len=3) :: ivar1, ivar2
+        CHARACTER(len=2) :: name_uy, name_vx
+        Real(realk), POINTER, CONTIGUOUS :: u(:, :, :), uy(:, :, :)
+        Real(realk), POINTER, CONTIGUOUS :: v(:, :, :), vx(:, :, :)
+        REAL(realk), POINTER, CONTIGUOUS :: rdx(:), rdy(:), rdz(:)
+        REAL(realk), POINTER, CONTIGUOUS :: rddx(:), rddy(:), rddz(:)
+
+        INTEGER(intk) :: i, igrid
+        INTEGER(intk) :: kk, jj, ii
+
+        SELECT CASE (TRIM(name))
+        CASE ("UyP+VxP")
+            CALL get_field(u_f, "U")
+            CALL get_field(v_f, "V")
+            istag = 1
+            jstag = 1
+            kstag = 0
+            name_uy = 'UY'
+            name_vx = 'VX'
+            ivar1 = 'DYS'
+            ivar2 = 'DXS'
+        CASE("UzP+WxP")
+            CALL get_field(u_f, "U")
+            CALL get_field(v_f, "W")
+            istag = 1
+            jstag = 0
+            kstag = 1
+            name_uy = 'UZ'
+            name_vx = 'WX'
+            ivar1 = 'DZS'
+            ivar2 = 'DXS'
+        CASE ("VzP+WyP")
+            CALL get_field(u_f, "V")
+            CALL get_field(v_f, "W")
+            istag = 0
+            jstag = 1
+            kstag = 1
+            name_uy = 'VZ'
+            name_vx = 'WY'
+            ivar1 = 'DZS'
+            ivar2 = 'DYS'
+        CASE DEFAULT
+            CALL errr(__FILE__, __LINE__)
+        END SELECT
+
+        CALL get_field(rdx_f, "RDX")
+        CALL get_field(rdy_f, "RDY")
+        CALL get_field(rdz_f, "RDZ")
+
+        CALL get_field(rddx_f, "RDDX")
+        CALL get_field(rddy_f, "RDDY")
+        CALL get_field(rddz_f, "RDDZ")
+
+        CALL field%init(name, istag=istag, jstag=jstag, kstag=kstag, &
+            units=units)
+        CALL uy_f%init(name_uy, istag=istag, jstag=jstag, kstag=kstag, &
+            units=units_ux)
+        CALL vx_f%init(name_vx, istag=istag, jstag=jstag, kstag=kstag, &
+            units=units_ux)
+
+        ! Calculation of UX and VX
+        
+        DO i=1, nmygrids
+            igrid = mygrids(i)
+                
+            CALL u_f%get_ptr(u, igrid)
+            CALL uy_f%get_ptr(uy, igrid)
+                
+            CALL v_f%get_ptr(v, igrid)
+            CALL vx_f%get_ptr(vx, igrid)
+
+            CALL rdx_f%get_ptr(rdx, igrid)
+            CALL rdy_f%get_ptr(rdy, igrid)
+            CALL rdz_f%get_ptr(rdz, igrid)
+
+            CALL rddx_f%get_ptr(rddx, igrid)
+            CALL rddy_f%get_ptr(rddy, igrid)
+            CALL rddz_f%get_ptr(rddz, igrid)
+
+            CALL get_mgdims(kk, jj, ii, igrid)
+
+            ! Compute derivates of the velocity field
+            CALL dfdx (kk, jj, ii, rdx, rdy, rdz, &
+                rddx, rddy, rddz, ivar1, u, uy)
+            CALL dfdx (kk, jj, ii, rdx, rdy, rdz, &
+                rddx, rddy, rddz, ivar2, v, vx)
+    
+        END DO
+    
+        temp_f%arr = uy_f%arr(:) + vx_f%arr(:)
+
+        CALL field%multiply(temp_f, p_f)
+
+        CALL uy_f%finish()
+        CALL vx_f%finish()
+        CALL temp_f%finish()
+        !CALL p_f%finish()
+    END SUBROUTINE
+        
 END MODULE flowstat_mod
