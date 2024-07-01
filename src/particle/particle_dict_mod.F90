@@ -8,13 +8,13 @@ CONTAINS
 
     !subroutine arguments
     LOGICAL, INTENT(inout) :: dread_particles
-    INTEGER(intk), INTENT(in) :: npart
+    INTEGER(intk), INTENT(out) :: npart
     INTEGER(intk), INTENT(out) :: ipart_arr(npart)
     INTEGER(intk), INTENT(out) :: p_igrid_arr(npart)
     REAL(realk), INTENT(out) :: x(npart), y(npart), z(npart)
 
     !local variables
-    INTEGER(intk) :: unit, n, i, ipart, igrid
+    INTEGER(intk) :: unit, i, ipart, igrid
     REAL(realk) :: xtemp, ytemp, ztemp
     REAL(realk) :: minx, maxx, miny, maxy, minz, maxz
 
@@ -32,9 +32,9 @@ CONTAINS
 
 	OPEN(unit, file = 'ParticleDict.txt', status = 'OLD', action = 'READ') ! can file be opened by more than 1 process at the same time?
 
-	READ(unit, fmt = *) n
+	READ(unit, fmt = *) npart
 
-    DO ipart = 1, MIN(n, npart)
+    DO ipart = 1, npart
 
         READ(unit, fmt = *) xtemp, ytemp, ztemp
 
