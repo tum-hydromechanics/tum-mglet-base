@@ -22,7 +22,7 @@ CONTAINS
 
     IF (.NOT. dread_particles) THEN
 
-        WRITE(*,*) 'No file for reading detected! Using automated initial particle distribution instead.'
+        !WRITE(*,*) 'No file for reading detected! Using automated initial particle distribution instead.'
 
         RETURN
 
@@ -30,7 +30,7 @@ CONTAINS
 
     ! the following is not optimized for multiple processes !
 
-	OPEN(unit, file = 'ParticleDict.txt', action = 'read') ! can file be opened by more than 1 process at the same time?
+	OPEN(unit, file = 'ParticleDict.txt', status = 'OLD', action = 'READ') ! can file be opened by more than 1 process at the same time?
 
 	READ(unit, fmt = *) n
 

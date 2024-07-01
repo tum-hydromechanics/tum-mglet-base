@@ -59,7 +59,9 @@ CONTAINS
 
             CALL read_particles(dread_particles, my_particle_list%active_np, ipart_arr, p_igrid_arr, x, y, z)
 
-        ELSE
+        END IF
+
+        IF (.NOT. dread_particles) THEN
 
             CALL dist_ipart(my_particle_list%active_np, ipart_arr)
 
