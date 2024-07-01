@@ -6,7 +6,7 @@ IMPLICIT NONE
 
 LOGICAL :: dsim_particles = .TRUE.
 
-LOGICAL :: dread_particles = .FALSE.
+LOGICAL :: dread_particles = .TRUE.
 
 LOGICAL :: dinterp_particles = .FALSE.
 

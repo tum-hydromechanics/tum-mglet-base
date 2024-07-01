@@ -34,7 +34,7 @@ CONTAINS
 
 	READ(unit, fmt = *) n
 
-    DO ipart = 1, n
+    DO ipart = 1, MIN(n, npart)
 
         READ(unit, fmt = *) xtemp, ytemp, ztemp
 
