@@ -5,6 +5,7 @@ MODULE particle_list_mod
     !===================================
 
     USE particlecore_mod
+    USE particle_dict_mod
 
     IMPLICIT NONE
 
