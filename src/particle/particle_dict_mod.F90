@@ -73,6 +73,8 @@ CONTAINS
             y(ipart) = ytemp
             z(ipart) = ztemp
 
+            WRITE(*,*) 'Particle ' ipart 'read: ' 'x = ' xtemp 'y = ' ytemp 'z = ' ztemp
+
         END DO
 
     END DO
