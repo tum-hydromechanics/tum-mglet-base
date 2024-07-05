@@ -18,7 +18,7 @@
     	"solve": true,
         "gmol": 0.01,
         "rho": 1.0,
-        "uinf": [1.0, 0.0, 0.0],
+        "uinf": [0.0, 0.0, 0.0],
         "gradp": [0.0, 0.0, 0.0],
         "pressuresolver": {
             "type": "sip",

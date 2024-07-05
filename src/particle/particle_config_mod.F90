@@ -17,6 +17,6 @@ INTEGER(intk) :: max_np_per_list = 1000
 
 INTEGER(intk) :: psnapshot_step = 1
 
-REAL(realk), PARAMETER :: D = 0.0_realk ! (3_realk) / (10_realk ** 9_realk) ! Diffusion constant in m²/s (homogeneous and isotropic diffusion for now)
+REAL(realk), PARAMETER :: D = 1.0_realk * (3.0_realk) !/ (10.0_realk ** 9.0_realk) ! Diffusion constant in m²/s (homogeneous and isotropic diffusion for now)
 
 END MODULE particle_config_mod
