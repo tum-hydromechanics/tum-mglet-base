@@ -81,8 +81,9 @@ CONTAINS
         END DO
 
         WRITE(*,*) 'Writing Particle Snapshots for timesteps: '
+        WRITE(*,*) ' '
 
-        DO i = 1, psnapshot_info%nsnapshots
+        DO i = 2, psnapshot_info%nsnapshots
 
             IF (MOD(i, 10) == 0) THEN
 
@@ -96,6 +97,8 @@ CONTAINS
             END IF
 
         END DO
+
+        WRITE(*,*) ' '
 
     END SUBROUTINE init_psnapshots
 
@@ -128,7 +131,7 @@ CONTAINS
 
         IF (myid == 0) THEN
 
-            WRITE(subfolder, '("Particle_Snapshots/snapshot", I0)') psnapshot_info%counter
+            WRITE(subfolder, '("Particle_Snapshots/snapshot", I0)') psnapshot_info%counter - 1_intk
             CALL create_directory(TRIM(subfolder)) ! ! ! realtive to working directory ! ! !
 
         END IF
@@ -147,7 +150,7 @@ CONTAINS
         CHARACTER(len = mglet_filename_max) :: subfolder, filename, active_np_char
         !CHARACTER(:), ALLOCATABLE :: active_np_char
 
-        WRITE(subfolder, '("Particle_Snapshots/snapshot", I0)') psnapshot_info%counter
+        WRITE(subfolder, '("Particle_Snapshots/snapshot", I0)') psnapshot_info%counter - 1_intk
 
         WRITE(filename, '(A, "/piece", I0, ".vtp")') TRIM(subfolder), myid
 
@@ -221,7 +224,7 @@ CONTAINS
 
         IF (myid == 0) THEN
 
-            WRITE(filename,'("Particle_Snapshots/snapshot", I0, ".pvtp")') psnapshot_info%counter
+            WRITE(filename,'("Particle_Snapshots/snapshot", I0, ".pvtp")') psnapshot_info%counter - 1
 
             OPEN(unit, file = TRIM(filename), status = 'NEW', action = 'WRITE')
 
