@@ -80,7 +80,7 @@ CONTAINS
 
         DO i = 1, psnapshot_info%nsnapshots
 
-            WRITE(*, *, advance="no") psnapshot_info%timesteps(i)
+            WRITE(*, '(I0)', advance="no") psnapshot_info%timesteps(i)
 
         END DO
 
