@@ -80,7 +80,16 @@ CONTAINS
 
         DO i = 1, psnapshot_info%nsnapshots
 
-            WRITE(*, '(I0)', advance="no") psnapshot_info%timesteps(i)
+            IF (MOD(i, 10) == 0) THEN
+
+                WRITE(*, '(I0)', advance="yes") psnapshot_info%timesteps(i)
+
+            ELSE
+
+                WRITE(*, '(I0)', advance="no") psnapshot_info%timesteps(i)
+                WRITE(*, '(A)', advance="no") ' '
+
+            END IF
 
         END DO
 
