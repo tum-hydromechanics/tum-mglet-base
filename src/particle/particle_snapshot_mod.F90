@@ -78,6 +78,14 @@ CONTAINS
 
         END DO
 
+        WRITE(*,*) 'Writing Particle Snapshots for timesteps: '
+
+        DO i = 1, psnapshot_info%nsnapshots
+
+            WRITE(*, *, advance="no") psnapshot_info%timesteps(i)
+
+        END DO
+
     END SUBROUTINE init_psnapshots
 
     !------------------------------
