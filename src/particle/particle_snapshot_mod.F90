@@ -33,8 +33,6 @@ MODULE particle_snapshot_mod
     !LOGICAL :: dwrite_particles = .TRUE.
     TYPE(psnapshot_info_t) :: psnapshot_info
 
-
-
 CONTAINS
 
     !------------------------------
