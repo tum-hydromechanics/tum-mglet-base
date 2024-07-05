@@ -8,7 +8,7 @@ LOGICAL :: dsim_particles = .TRUE.
 
 LOGICAL :: dread_particles = .TRUE.
 
-LOGICAL :: dinterp_particles = .FALSE.
+LOGICAL :: dinterp_particles = .TRUE.
 
 LOGICAL :: dwrite_particles = .TRUE.
 
