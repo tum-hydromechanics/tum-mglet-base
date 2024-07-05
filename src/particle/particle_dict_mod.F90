@@ -43,6 +43,8 @@ CONTAINS
     ALLOCATE(y(npart))
     ALLOCATE(z(npart))
 
+    WRITE(*,*) 'Reading ', npart, 'Particles ...'
+
     DO ipart = 1, npart
 
         READ(unit, fmt = *) xtemp, ytemp, ztemp
@@ -82,7 +84,7 @@ CONTAINS
             y(ipart) = ytemp
             z(ipart) = ztemp
 
-            WRITE(*,*) 'Particle ', ipart, 'read: ', 'x = ', xtemp, 'y = ', ytemp, 'z = ', ztemp
+            WRITE(*,*) 'Particle read: ID = ', ipart, 'x = ', xtemp, 'y = ', ytemp, 'z = ', ztemp
 
         END DO
 

@@ -57,16 +57,20 @@ CONTAINS
         psnapshot_info%itstep = psnapshot_step
 
         IF (psnapshot_info%itstep == 1_intk) THEN
-            psnapshot_info%nsnapshots = mtstep
+
+            psnapshot_info%nsnapshots = mtstep + 1
+
         ELSE
-            psnapshot_info%nsnapshots = mtstep / psnapshot_info%itstep + 1_intk
+
+            psnapshot_info%nsnapshots = CEILING(mtstep / psnapshot_info%itstep, intk) + 1_intk
+
         END IF
 
         ALLOCATE(psnapshot_info%nparticles(psnapshot_info%nsnapshots))
         ALLOCATE(psnapshot_info%timesteps(psnapshot_info%nsnapshots))
         ALLOCATE(psnapshot_info%times(psnapshot_info%nsnapshots))
 
-        psnapshot_info%timesteps(1) = 1_intk
+        psnapshot_info%timesteps(1) = 0_intk
         psnapshot_info%timesteps(psnapshot_info%nsnapshots) = mtstep
 
 
