@@ -260,7 +260,7 @@ CONTAINS
 
             ! Particle Snapshots
             IF (dsim_particles .AND. dwrite_particles) THEN
-                CALL write_psnapshots(itstep, timeph) ! <------------------------------------particles
+                CALL write_psnapshot(itstep, timeph) ! <------------------------------------particles
             END IF
 
             ! Print to terminal (itinfo frequency)

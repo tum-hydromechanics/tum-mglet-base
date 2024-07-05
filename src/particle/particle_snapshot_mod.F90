@@ -58,7 +58,11 @@ CONTAINS
         psnapshot_info%nprocs = numprocs
         psnapshot_info%itstep = psnapshot_step
 
-        psnapshot_info%nsnapshots = mtstep / psnapshot_info%itstep + 1_intk
+        IF (psnapshot_info%itstep == 1_intk) THEN
+            psnapshot_info%nsnapshots = mtstep
+        ELSE
+            psnapshot_info%nsnapshots = mtstep / psnapshot_info%itstep + 1_intk
+        END IF
 
         ALLOCATE(psnapshot_info%nparticles(psnapshot_info%nsnapshots))
         ALLOCATE(psnapshot_info%timesteps(psnapshot_info%nsnapshots))
@@ -78,7 +82,7 @@ CONTAINS
 
     !------------------------------
 
-    SUBROUTINE write_psnapshots(itstep, timeph)
+    SUBROUTINE write_psnapshot(itstep, timeph)
 
         INTEGER(intk), INTENT(in) :: itstep
         REAL(realk), INTENT(in) :: timeph
@@ -87,7 +91,7 @@ CONTAINS
 
             psnapshot_info%counter = psnapshot_info%counter + 1_intk ! should be broadcasted via MPI so that no missmatches occur ?
 
-            CALL init_psnapshot_subfolder()
+            CALL create_psnapshot_subfolder()
 
             CALL write_psnapshot_piece()
 
@@ -95,11 +99,11 @@ CONTAINS
 
         END IF
 
-    END SUBROUTINE write_psnapshots
+    END SUBROUTINE write_psnapshot
 
     !------------------------------
 
-    SUBROUTINE init_psnapshot_subfolder()
+    SUBROUTINE create_psnapshot_subfolder()
 
         CHARACTER(len = mglet_filename_max) :: subfolder
 
@@ -112,7 +116,7 @@ CONTAINS
 
         CALL MPI_Barrier(MPI_COMM_WORLD)
 
-    END SUBROUTINE init_psnapshot_subfolder
+    END SUBROUTINE create_psnapshot_subfolder
 
     !------------------------------
 
