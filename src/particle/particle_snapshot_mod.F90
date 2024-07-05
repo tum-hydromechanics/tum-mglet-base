@@ -62,7 +62,7 @@ CONTAINS
 
         ELSE
 
-            psnapshot_info%nsnapshots = CEILING(mtstep / psnapshot_info%itstep, intk) + 1_intk
+            psnapshot_info%nsnapshots = CEILING(REAL(mtstep / psnapshot_info%itstep), intk) + 1_intk
 
         END IF
 
