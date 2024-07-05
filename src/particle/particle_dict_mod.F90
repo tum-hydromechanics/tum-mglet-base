@@ -43,6 +43,7 @@ CONTAINS
     ALLOCATE(y(npart))
     ALLOCATE(z(npart))
 
+    WRITE(*,*) ' '
     WRITE(*,*) 'Reading ', npart, 'Particles:'
     WRITE(*,*) ' '
 
@@ -85,12 +86,13 @@ CONTAINS
             y(ipart) = ytemp
             z(ipart) = ztemp
 
-            WRITE(*,'("Particle read. ID: ", I0, "Initial Coordinates: ", 3F6.2)') ipart, xtemp, ytemp, ztemp
+            WRITE(*,'("Particle ID: ", I0, " Initial Coordinates: ", 3F6.2)') ipart, xtemp, ytemp, ztemp
 
         END DO
 
     END DO
 
+    WRITE(*,*) 'Reading of Particles finished.'
     WRITE(*,*) ' '
 
     END SUBROUTINE read_particles

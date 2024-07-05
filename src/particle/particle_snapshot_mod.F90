@@ -85,7 +85,7 @@ CONTAINS
 
         DO i = 2, psnapshot_info%nsnapshots
 
-            IF (MOD(i, 10) == 0) THEN
+            IF (MOD(i - 1_intk, 10) == 0) THEN
 
                 WRITE(*, '(I0)', advance="yes") psnapshot_info%timesteps(i)
 
