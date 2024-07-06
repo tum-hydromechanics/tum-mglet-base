@@ -60,6 +60,13 @@ CONTAINS
             D = 0.0_realk
         END IF
 
+        CALL pconf%get_value("/snapshot_step", snapshot_step, 10_intk)
+
+        IF (snapshot_step <= 1_intk) THEN
+            WRITE(*, *) "Invalid snapshot step. Should be integer greater or equal to 1. Using snapshot_step = 10 instead."
+            snapshot_step = 10_intk
+        END IF
+
     END SUBROUTINE init_particle_config
 
 END MODULE particle_config_mod
