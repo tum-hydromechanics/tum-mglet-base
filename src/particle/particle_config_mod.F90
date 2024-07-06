@@ -62,7 +62,7 @@ CONTAINS
 
         CALL pconf%get_value("/snapshot_step", psnapshot_step, 10_intk)
 
-        IF (psnapshot_step <= 1_intk) THEN
+        IF (psnapshot_step < 1_intk) THEN
             WRITE(*, *) "Invalid snapshot step. Should be integer greater or equal to 1. Using snapshot_step = 10 instead."
             psnapshot_step = 10_intk
         END IF
