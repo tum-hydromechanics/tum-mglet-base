@@ -45,5 +45,13 @@
                 ]
             }
         ]
+    },
+    "particles": {
+        "read": true,
+        "interp": false,
+        "write": true,
+        "init_np": 100,
+        "list_len": 1000,
+        "D":0.05
     }
 }
