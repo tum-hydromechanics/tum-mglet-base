@@ -16,9 +16,11 @@ CONTAINS
         USE particle_timeintegration_mod
         USE particle_snapshot_mod
 
+        CALL init_particle_config()
+
         IF (dsim_particles) THEN
 
-            WRITE(*,*) "PARTICLE SIMULATION INITIALIZED"
+            WRITE(*,*) "PARTICLE SIMULATION IS INITIALIZED ..."
 
             CALL init_particle_list()
 

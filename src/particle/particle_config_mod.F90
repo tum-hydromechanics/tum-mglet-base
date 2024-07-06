@@ -1,22 +1,65 @@
 MODULE particle_config_mod
 
-USE precision_mod
+USE core_mod
 
 IMPLICIT NONE
 
-LOGICAL :: dsim_particles = .TRUE.
+LOGICAL :: dsim_particles
+LOGICAL :: dread_particles
+LOGICAL :: dinterp_particles
+LOGICAL :: dwrite_particles
 
-LOGICAL :: dread_particles = .TRUE.
+INTEGER(intk) :: init_npart
+INTEGER(intk) :: plist_len
+INTEGER(intk) :: psnapshot_step
 
-LOGICAL :: dinterp_particles = .FALSE.
+REAL(realk) :: D
 
-LOGICAL :: dwrite_particles = .TRUE.
+CONTAINS
 
-INTEGER(intk) :: init_npart = 100
-INTEGER(intk) :: max_np_per_list = 1000
+    SUBROUTINE init_particle_config()
 
-INTEGER(intk) :: psnapshot_step = 1
+        TYPE(config_t) :: pconf
 
-REAL(realk), PARAMETER :: D = 1.0_realk / (10.0_realk ** 2.0_realk) ! Diffusion constant in m²/s (homogeneous and isotropic diffusion for now)
+        IF (.NOT. fort7%exists("/particles")) THEN
+            IF (myid == 0) THEN
+                WRITE(*, '("NO PARTICLE CONFIGURATION DATA")')
+                WRITE(*, '()')
+            END IF
+            RETURN
+        END IF
+
+        dsim_particles = .TRUE.
+
+        CALL fort7%get(pconf, "/particles")
+
+        CALL pconf%get_value("/read_particles", dread_particles, .FALSE.)
+
+        CALL pconf%get_value("/interpolate_particles", dinterp_particles, .FALSE.)
+
+        CALL pconf%get_value("/write_particles", dwrite_particles, .TRUE.)
+
+        CALL pconf%get_value("/init_npart_pp", init_npart, 100_intk)
+
+        IF (init_npart <= 0_intk) THEN
+            WRITE(*, *) "Initial Number of Particles must be positve. Using default Number instead."
+            init_npart = 100_intk
+        END IF
+
+        CALL pconf%get_value("/list_length_pp", plist_len, 1000_intk)
+
+        IF (plist_len <= 0_intk) THEN
+            WRITE(*, *) "Particle List Length must be positve. Using default Number instead."
+            plist_len = 1000_intk
+        END IF
+
+        CALL pconf%get_value("/D", D, 0.0_realk)
+
+        IF (D <= 0.0_realk) THEN
+            WRITE(*, *) "Diffusion Constant must be positve. Using D = 0 instead (pure Advection)."
+            D = 0.0_realk
+        END IF
+
+    END SUBROUTINE init_particle_config
 
 END MODULE particle_config_mod

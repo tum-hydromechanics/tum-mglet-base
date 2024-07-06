@@ -46,7 +46,7 @@ CONTAINS
         REAL(realk), ALLOCATABLE :: x(:), y(:), z(:)
 
         my_particle_list%iproc = myid
-        my_particle_list%max_np = max_np_per_list
+        my_particle_list%max_np = plist_len
 
         ALLOCATE(my_particle_list%particles(my_particle_list%max_np))
 
