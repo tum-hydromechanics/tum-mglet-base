@@ -224,7 +224,7 @@ CONTAINS
 
         IF (myid == 0) THEN
 
-            WRITE(filename,'("Particle_Snapshots/snapshot", I0, ".pvtp")') psnapshot_info%counter - 1
+            WRITE(filename,'("Particle_Snapshots/snapshot", I0, ".pvtp")') psnapshot_info%counter - 1_intk
 
             OPEN(unit, file = TRIM(filename), status = 'NEW', action = 'WRITE')
 
@@ -240,7 +240,7 @@ CONTAINS
 
             DO proc = 0, numprocs - 1
 
-                WRITE(piece, '("snapshot", I0, "/piece", I0, ".vtp")') psnapshot_info%counter, proc
+                WRITE(piece, '("snapshot", I0, "/piece", I0, ".vtp")') (psnapshot_info%counter - 1_intk), proc
                 WRITE(unit, '(A)') '    <Piece Source="' // TRIM(piece) // '"/>'
 
             END DO
