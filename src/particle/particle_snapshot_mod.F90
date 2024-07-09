@@ -19,7 +19,7 @@ MODULE particle_snapshot_mod
         INTEGER(intk) :: nprocs
 
         INTEGER(intk) :: itstep
-        CHARACTER(6) :: coordinate_format = '(F6.2)' !should depend on the domain lengths and be determined in init_psnapshots
+        CHARACTER(6) :: coordinate_format = '(F8.4)' !should depend on the domain lengths and be determined in init_psnapshots
 
         INTEGER(intk) :: nsnapshots
         INTEGER(intk), ALLOCATABLE :: nparticles(:) ! stores the number of particles for each snapshot; will be allocated to length = nsnapshots
@@ -224,7 +224,7 @@ CONTAINS
 
         IF (myid == 0) THEN
 
-            WRITE(filename,'("Particle_Snapshots/snapshot", I0, ".pvtp")') psnapshot_info%counter - 1_intk
+            WRITE(filename,'("Particle_Snapshots/snapshot", I0, ".pvtp")') (psnapshot_info%counter - 1_intk)
 
             OPEN(unit, file = TRIM(filename), status = 'NEW', action = 'WRITE')
 

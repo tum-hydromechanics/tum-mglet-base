@@ -7,7 +7,7 @@
         "itcheck": 10
     },
     "io": {
-        "grids": "output.h5",
+        "grids": "particle_grids.h5",
         "infile": "fields.h5",
         "outfile": "fields.h5"
     },

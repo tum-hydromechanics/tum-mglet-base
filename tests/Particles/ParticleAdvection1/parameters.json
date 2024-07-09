@@ -1,0 +1,58 @@
+{
+    "time": {
+        "mtstep": 100,
+        "dt": 0.01,
+        "tend": 1.0,
+        "itinfo": 1,
+        "itcheck": 10
+    },
+    "io": {
+        "grids": "particle_grids.h5",
+        "infile": "fields.h5",
+        "outfile": "fields.h5"
+    },
+    "ib": {
+        "type": "noib"
+    },
+    "flow": {
+    	"solve": false,
+        "gmol": 0.01,
+        "rho": 1.0,
+        "uinf": [1.0, 0.0, 0.0],
+        "gradp": [0.0, 0.0, 0.0],
+        "pressuresolver": {
+            "type": "sip",
+            "epcorr": 0.000768,
+            "nouter_min": 2,
+            "nouter": 9,
+            "ninner": 5,
+            "omega": 1.1,
+            "loglevel": 3
+        },
+        "lesmodel": {
+            "model": "none"
+        }
+    },
+    "probes": {
+        "itsamp": 8,
+        "tstart": 0.0,
+        "arrays": [
+            {
+                "name": "the_probe",
+                "variables": ["P"],
+                "positions": [
+                    [ 0.5, 0.5, 0.5 ]
+                ]
+            }
+        ]
+    },
+    "particles": {
+        "read": true,
+        "interp": false,
+        "write": true,
+        "snapshot_step": 1,
+        "init_np": 100,
+        "list_len": 1000,
+        "D":0.0
+    }
+}
