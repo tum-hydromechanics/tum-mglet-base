@@ -7,7 +7,7 @@
         "itcheck": 10
     },
     "io": {
-        "grids": "grids.h5",
+        "grids": "particle_grids.h5",
         "infile": "fields.h5",
         "outfile": "fields.h5"
     },
@@ -52,7 +52,7 @@
         "write": true,
         "init_np": 100,
         "list_len": 1000,
-        "D":0.05,
+        "D":0.1,
         "snapshot_step": 1
     }
 }
