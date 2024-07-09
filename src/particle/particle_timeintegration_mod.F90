@@ -82,12 +82,15 @@ CONTAINS
             ! dummy method for now (explicit euler)
 
             ! how should 2 dimensional cases be handeled ?
+            WRITE(*, *) ''
+            WRITE(*, *) 'Diffusion random vector components: '
             CALL RANDOM_SEED()
             CALL RANDOM_NUMBER(rand_dx)
             CALL RANDOM_SEED()
             CALL RANDOM_NUMBER(rand_dy)
             CALL RANDOM_SEED()
             CALL RANDOM_NUMBER(rand_dz)
+            WRITE(*, *) rand_dx, rand_dy, rand_dz
 
             diffusion_dx = SQRT(2 * D * dt) * rand_dx / SQRT(rand_dx**(2) + rand_dy**(2) + rand_dz**(2))
             diffusion_dy = SQRT(2 * D * dt) * rand_dy / SQRT(rand_dx**(2) + rand_dy**(2) + rand_dz**(2))
