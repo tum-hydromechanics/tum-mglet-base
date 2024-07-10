@@ -59,7 +59,7 @@ CONTAINS
             WRITE(*, *) "Diffusion Constant must be positve. Using D = 0 instead (pure Advection)."
             D = 0.0_realk
         ELSE
-            WRITE(*, *) 'Diffusion Constant: ' D
+            WRITE(*, *) 'Diffusion Constant: ', D
         END IF
 
         CALL pconf%get_value("/snapshot_step", psnapshot_step, 10_intk)
