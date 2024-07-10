@@ -93,9 +93,9 @@ CONTAINS
             diffusion_dy = SQRT(2 * D * dt) * rand(2) / SQRT(rand(1)**(2) + rand(2)**(2) + rand(3)**(2))
             diffusion_dz = SQRT(2 * D * dt) * rand(3) / SQRT(rand(1)**(2) + rand(2)**(2) + rand(3)**(2))
 
-            my_particle_list%particles(i)%x = my_particle_list%particles(i)%x + diffusion_dx !+ p_u * dt
-            my_particle_list%particles(i)%y = my_particle_list%particles(i)%y + diffusion_dy !+ p_v * dt
-            my_particle_list%particles(i)%z = my_particle_list%particles(i)%z + diffusion_dz !+ p_w * dt
+            my_particle_list%particles(i)%x = my_particle_list%particles(i)%x + diffusion_dx + p_u * dt
+            my_particle_list%particles(i)%y = my_particle_list%particles(i)%y + diffusion_dy + p_v * dt
+            my_particle_list%particles(i)%z = my_particle_list%particles(i)%z + diffusion_dz + p_w * dt
 
             ! deactivate particles that leave the domain (only for simple tests with one grid for now) ...
 
