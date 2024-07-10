@@ -50,7 +50,7 @@
         "read": true,
         "interp": false,
         "write": true,
-        "snapshot_step": 1,
+        "snapshot_step": 10,
         "init_np": 100,
         "list_len": 1000,
         "D":0.005
