@@ -86,8 +86,11 @@ CONTAINS
             WRITE(*, *) 'Diffusion random vector components: '
             CALL RANDOM_SEED()
             CALL RANDOM_NUMBER(rand)
-
             WRITE(*, *) rand
+
+            rand(1) = rand(1) - 0.5_realk
+            rand(2) = rand(2) - 0.5_realk
+            rand(3) = rand(3) - 0.5_realk
 
             diffusion_dx = SQRT(2 * D * dt) * rand(1) / SQRT(rand(1)**(2) + rand(2)**(2) + rand(3)**(2))
             diffusion_dy = SQRT(2 * D * dt) * rand(2) / SQRT(rand(1)**(2) + rand(2)**(2) + rand(3)**(2))
