@@ -27,7 +27,7 @@ CONTAINS
         REAL(realk), POINTER, CONTIGUOUS, DIMENSION(:) :: xstag, ystag, zstag
         REAL(realk), POINTER, CONTIGUOUS, DIMENSION(:, :, :) :: u, v, w
 
-        REAL(realk) :: rand_dx, rand_dy, rand_dz, diffusion_dx, diffusion_dy, diffusion_dz
+        REAL(realk) :: rand(3), rand_dx, rand_dy, rand_dz, diffusion_dx, diffusion_dy, diffusion_dz
 
         !is calling the geometric fields obsolete when using core_mode -> corefields_mod ?
         CALL get_field(x_f, "X")
@@ -85,16 +85,13 @@ CONTAINS
             WRITE(*, *) ''
             WRITE(*, *) 'Diffusion random vector components: '
             CALL RANDOM_SEED()
-            CALL RANDOM_NUMBER(rand_dx)
-            CALL RANDOM_SEED()
-            CALL RANDOM_NUMBER(rand_dy)
-            CALL RANDOM_SEED()
-            CALL RANDOM_NUMBER(rand_dz)
-            WRITE(*, *) rand_dx, rand_dy, rand_dz
+            CALL RANDOM_NUMBER(rand)
 
-            diffusion_dx = SQRT(2 * D * dt) * rand_dx / SQRT(rand_dx**(2) + rand_dy**(2) + rand_dz**(2))
-            diffusion_dy = SQRT(2 * D * dt) * rand_dy / SQRT(rand_dx**(2) + rand_dy**(2) + rand_dz**(2))
-            diffusion_dz = SQRT(2 * D * dt) * rand_dz / SQRT(rand_dx**(2) + rand_dy**(2) + rand_dz**(2))
+            WRITE(*, *) rand
+
+            diffusion_dx = SQRT(2 * D * dt) * rand(1) / SQRT(rand(1)**(2) + rand(2)**(2) + rand(3)**(2))
+            diffusion_dy = SQRT(2 * D * dt) * rand(2) / SQRT(rand(1)**(2) + rand(2)**(2) + rand(3)**(2))
+            diffusion_dz = SQRT(2 * D * dt) * rand(3) / SQRT(rand(1)**(2) + rand(2)**(2) + rand(3)**(2))
 
             my_particle_list%particles(i)%x = my_particle_list%particles(i)%x + diffusion_dx !+ p_u * dt
             my_particle_list%particles(i)%y = my_particle_list%particles(i)%y + diffusion_dy !+ p_v * dt
