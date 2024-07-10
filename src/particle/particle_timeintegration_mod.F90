@@ -27,7 +27,7 @@ CONTAINS
         REAL(realk), POINTER, CONTIGUOUS, DIMENSION(:) :: xstag, ystag, zstag
         REAL(realk), POINTER, CONTIGUOUS, DIMENSION(:, :, :) :: u, v, w
 
-        REAL(realk) :: rand(3), rand_dx, rand_dy, rand_dz, diffusion_dx, diffusion_dy, diffusion_dz
+        REAL(realk) :: rand(3), diffusion_dx, diffusion_dy, diffusion_dz
 
         !is calling the geometric fields obsolete when using core_mode -> corefields_mod ?
         CALL get_field(x_f, "X")
@@ -82,11 +82,8 @@ CONTAINS
             ! dummy method for now (explicit euler)
 
             ! how should 2 dimensional cases be handeled ?
-            WRITE(*, *) ''
-            WRITE(*, *) 'Diffusion random vector components: '
             CALL RANDOM_SEED()
             CALL RANDOM_NUMBER(rand)
-            WRITE(*, *) rand
 
             rand(1) = rand(1) - 0.5_realk
             rand(2) = rand(2) - 0.5_realk

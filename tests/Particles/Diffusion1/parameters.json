@@ -52,7 +52,7 @@
         "write": true,
         "init_np": 100,
         "list_len": 1000,
-        "D":0.1,
+        "D":0.05,
         "snapshot_step": 1
     }
 }
