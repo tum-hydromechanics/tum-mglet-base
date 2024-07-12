@@ -26,7 +26,7 @@ CONTAINS
 
         IF (.NOT. fort7%exists("/particles")) THEN
             IF (myid == 0) THEN
-                WRITE(*, '("NO PARTICLE CONFIGURATION DATA")')
+                WRITE(*, '("NO PARTICLE CONFIGURATION DATA. NO PARTICLE SIMULATION.")')
                 WRITE(*, '()')
             END IF
             RETURN
@@ -136,7 +136,15 @@ CONTAINS
                 CASE ("normal")
                     CONTINUE
                 CASE ("verbose")
-                    WRITE(*, *) 'DIFFUSION CONSTANT: ', D
+                    WRITE(*, *) 'PARTICLE CONFIGURATION: '
+                    WRITE(*, *) 'Particle related Terminal Output: ', particle_terminal
+                    WRITE(*, *) 'Reading of ParticlesDict.txt: ', dread_particles
+                    WRITE(*, *) 'Interpolation of flow field: ', dinterp_particles
+                    WRITE(*, *) 'Writing of Particle Snapshots: ', dwrite_particles
+                    WRITE(*, *) 'Particcle Snapshot Step: ', snapshot_step
+                    WRITE(*, *) 'Maximum Particle List Length: ', plist_len
+                    WRITE(*, *) 'Initial number of particles for automated Generation: ', init_npart
+                    WRITE(*, *) 'Diffusion Constant: ', D
         END SELECT
 
 
