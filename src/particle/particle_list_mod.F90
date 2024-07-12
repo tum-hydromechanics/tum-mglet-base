@@ -87,17 +87,9 @@ CONTAINS
 
          DO i = 1, my_particle_list%active_np
 
-             CALL my_particle_list%particles(i)%init(ipart = ipart_arr(i), x = x(i), y = y(i), z = z(i), igrid = p_igrid_arr(i))
+            CALL my_particle_list%particles(i)%init(ipart = ipart_arr(i), x = x(i), y = y(i), z = z(i), igrid = p_igrid_arr(i))
 
-            SELECT CASE (TRIM(particle_terminal))
-                CASE ("none")
-                    CONTINUE
-                CASE ("normal")
-                    CONTINUE
-                CASE ("verbose")
-                    WRITE(*,'("Particle initialized: ID = ", I0, " |  x/y/z = ", 3F12.6)') my_particle_list%particles(i)%ipart, &
-                     my_particle_list%particles(i)%x, my_particle_list%particles(i)%y, my_particle_list%particles(i)%z
-            END SELECT
+            CALL my_particle_list%particles(i)%print_status
 
          END DO
 

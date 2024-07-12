@@ -93,16 +93,6 @@ CONTAINS
             diffusion_dy = SQRT(2 * D * dt) * rand(2) / SQRT(rand(1)**(2) + rand(2)**(2) + rand(3)**(2))
             diffusion_dz = SQRT(2 * D * dt) * rand(3) / SQRT(rand(1)**(2) + rand(2)**(2) + rand(3)**(2))
 
-            SELECT CASE (TRIM(particle_terminal))
-                CASE ("none")
-                    CONTINUE
-                CASE ("normal")
-                    CONTINUE
-                CASE ("verbose")
-                    WRITE(*,'("Particle ", I0, " moved from ", 3F12.6, " ")', advance = "no") my_particle_list%particles(i)%ipart, my_particle_list%particles(i)%x, &
-                     my_particle_list%particles(i)%y, my_particle_list%particles(i)%z
-            END SELECT
-
             my_particle_list%particles(i)%x = my_particle_list%particles(i)%x + diffusion_dx + p_u * dt
             my_particle_list%particles(i)%y = my_particle_list%particles(i)%y + diffusion_dy + p_v * dt
             my_particle_list%particles(i)%z = my_particle_list%particles(i)%z + diffusion_dz + p_w * dt
@@ -113,8 +103,7 @@ CONTAINS
                 CASE ("normal")
                     CONTINUE
                 CASE ("verbose")
-                    WRITE(*,'("   to ", 3F12.6)') my_particle_list%particles(i)%x, &
-                     my_particle_list%particles(i)%y, my_particle_list%particles(i)%z
+                    WRITE(*,'("Timeintegrating Particle ", I0, ":")') my_particle_list%particles(i)%ipart
                     WRITE(*,'("Particle velocity [m/s] = ", 3F12.6, " | dt [s] = ", F12.6)') p_u, p_v, p_w, dt
                     WRITE(*,'("Particle diffusion step [m] = ", 3F12.6)') diffusion_dx, diffusion_dx, diffusion_dx
                     WRITE(*, *) ' '
@@ -146,6 +135,8 @@ CONTAINS
                 END SELECT
 
             END IF
+
+            CALL my_particle_list%particles(i)%print_status
 
         END DO
 
@@ -181,7 +172,7 @@ CONTAINS
                     CASE ("normal")
                         CONTINUE
                     CASE ("verbose")
-                        WRITE(*,'("ijkcell of particle", I0, " : ", 3I0)') particle%ipart, particle%ijkcell(1), &
+                        WRITE(*,'("Current ijkcell of Particle ", I0, ": ", I0, " ", I0, " ", I0)') particle%ipart, particle%ijkcell(1), &
                          particle%ijkcell(2), particle%ijkcell(3)
                 END SELECT
 

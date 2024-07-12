@@ -31,6 +31,7 @@ MODULE particlecore_mod
         PROCEDURE :: get_p_igrid
         PROCEDURE :: get_p_ijkcell ! RENAME ?
         PROCEDURE :: update_p_ijkcell ! how to get one pointer for get_p_ijkcell and update_p_ijkcell ? RENAME ?
+        PROCEDURE :: print_status
 
     END TYPE baseparticle_t
 
@@ -451,6 +452,34 @@ CONTAINS
         END DO
 
     END SUBROUTINE update_p_ijkcell
+
+    SUBROUTINE print_status(this, time)
+
+    ! subroutine arguments
+    CLASS(baseparticle_t), INTENT(inout) :: this
+    REAL(realk) :: time
+
+        IF (this%is_active) THEN
+
+            SELECT CASE (TRIM(particle_terminal))
+                CASE ("none")
+                    CONTINUE
+                CASE ("normal")
+                    CONTINUE
+                CASE ("verbose")
+                    WRITE(*,'("Particle ", I0, " - Status at t = ", 3F12.6, ":")') this%ipart, time
+                    WRITE(*,'("iproc       = ", I12,   " igrid = ", I12)') this%iproc, this%igrid
+                    WRITE(*,'("x/y/z       = ", F12.6, " / ", F12.6, " / ", F12.6)') this%x, this%y, this%z
+                    WRITE(*,'("i/j/k cell  = ", I12  , " / ", I12  , " / ", I12)') this%ijkcell(1), this%ijkcell(2), this%ijkcell(3)
+            END SELECT
+
+        ELSE
+
+            RETURN
+
+        END IF
+
+    END SUBROUTINE print_status
 
     !===================================
 
