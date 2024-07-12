@@ -1,6 +1,8 @@
 MODULE particle_dict_mod
 
     USE core_mod
+    USE particle_config_mod
+    IMPLICIT NONE
 
 CONTAINS
 
