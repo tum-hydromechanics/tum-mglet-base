@@ -97,10 +97,10 @@ CONTAINS
             CASE ("none")
                 CONTINUE
             CASE ("normal")
-                WRITE(*, *) "Initialization of Particle(s) finished successfully."
+                WRITE(*, '("Initialization of Particle(s) finished successfully.")')
                 WRITE(*,*) ' '
             CASE ("verbose")
-                WRITE(*, *) "Initialization of Particle(s) finished successfully."
+                WRITE(*, '("Initialization of Particle(s) finished successfully.")')
                 WRITE(*,*) ' '
         END SELECT
 

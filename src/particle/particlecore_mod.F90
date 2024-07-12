@@ -466,10 +466,12 @@ CONTAINS
                 CASE ("normal")
                     CONTINUE
                 CASE ("verbose")
-                    WRITE(*,'("Particle ", I0, " - Status:")') this%ipart
-                    WRITE(*,'("iproc       = ", I12,   " igrid = ", I12)') this%iproc, this%igrid
-                    WRITE(*,'("x/y/z       = ", F12.6, " / ", F12.6, " / ", F12.6)') this%x, this%y, this%z
-                    WRITE(*,'("i/j/k cell  = ", I12  , " / ", I12  , " / ", I12)') this%ijkcell(1), this%ijkcell(2), this%ijkcell(3)
+                    WRITE(*, '("Particle ", I0, " - Status:")') this%ipart
+                    WRITE(*, '("iproc       = ", I12)') this%iproc
+                    WRITE(*, '("igrid       = ", I12)') this%igrid
+                    WRITE(*, '("x/y/z       = ", 3F12.6)') this%x, this%y, this%z
+                    WRITE(*, '("i/j/k cell  = ", 3I12)') this%ijkcell(1), this%ijkcell(2), this%ijkcell(3)
+                    WRITE(*, *) ' '
             END SELECT
 
         ELSE

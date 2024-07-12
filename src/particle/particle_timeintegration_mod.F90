@@ -104,8 +104,8 @@ CONTAINS
                     CONTINUE
                 CASE ("verbose")
                     WRITE(*,'("Timeintegrating Particle ", I0, ":")') my_particle_list%particles(i)%ipart
-                    WRITE(*,'("Particle velocity [m/s] = ", 3F12.6, " | dt [s] = ", F12.6)') p_u, p_v, p_w, dt
-                    WRITE(*,'("Particle diffusion step [m] = ", 3F12.6)') diffusion_dx, diffusion_dx, diffusion_dx
+                    WRITE(*,'("Particle velocity [m/s] = ", 3F12.8, " | dt [s] = ", F12.8)') p_u, p_v, p_w, dt
+                    WRITE(*,'("Particle diffusion step [m] = ", 3F12.8)') diffusion_dx, diffusion_dx, diffusion_dx
                     WRITE(*, *) ' '
             END SELECT
 
@@ -165,16 +165,6 @@ CONTAINS
                 p_u = u(particle%ijkcell(3), particle%ijkcell(2), particle%ijkcell(1) + p_istag - 1)
                 p_v = v(particle%ijkcell(3), particle%ijkcell(2) + p_jstag - 1, particle%ijkcell(1))
                 p_w = w(particle%ijkcell(3) + p_kstag - 1, particle%ijkcell(2), particle%ijkcell(1))
-
-                SELECT CASE (TRIM(particle_terminal))
-                    CASE ("none")
-                        CONTINUE
-                    CASE ("normal")
-                        CONTINUE
-                    CASE ("verbose")
-                        WRITE(*,'("Current ijkcell of Particle ", I0, ": ", I0, " ", I0, " ", I0)') particle%ipart, particle%ijkcell(1), &
-                         particle%ijkcell(2), particle%ijkcell(3)
-                END SELECT
 
     END SUBROUTINE get_particle_uvw
 

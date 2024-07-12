@@ -121,10 +121,10 @@ CONTAINS
         CASE ("none")
             CONTINUE
         CASE ("normal")
-            WRITE(*, *) "Reading ParticleDict finished successfully."
+            WRITE(*, '("Reading ParticleDict finished successfully.")')
             WRITE(*, *) ' '
         CASE ("verbose")
-            WRITE(*, *) "Reading ParticleDict finished successfully."
+            WRITE(*, '("Reading ParticleDict finished successfully.")')
             WRITE(*, *) ' '
     END SELECT
 
