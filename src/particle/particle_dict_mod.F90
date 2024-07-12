@@ -42,6 +42,7 @@ CONTAINS
     END IF
 
     ! the following is not optimized for multiple processes !
+    unit = 161
 
 	OPEN(unit, file = 'ParticleDict.txt', status = 'OLD', action = 'READ') ! can file be opened by more than 1 process at the same time?
 
