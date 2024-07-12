@@ -19,7 +19,7 @@ MODULE particle_snapshot_mod
         INTEGER(intk) :: nprocs
 
         INTEGER(intk) :: itstep
-        CHARACTER(6) :: coordinate_format = '(F12.6)' !should depend on the domain lengths and be determined in init_psnapshots
+        CHARACTER(7) :: coordinate_format = '(F12.6)' !should depend on the domain lengths and be determined in init_psnapshots
 
         INTEGER(intk) :: nsnapshots
         INTEGER(intk), ALLOCATABLE :: nparticles(:) ! stores the number of particles for each snapshot; will be allocated to length = nsnapshots
@@ -146,8 +146,7 @@ CONTAINS
     ! writes vtp (xml) file containing all particles of the respective process
 
         ! local variables
-        INTEGER(intk) :: i
-        INTEGER :: unit
+        INTEGER(intk) :: i, unit = 162
         CHARACTER(len = mglet_filename_max) :: subfolder, filename, active_np_char
         !CHARACTER(:), ALLOCATABLE :: active_np_char
 
@@ -218,7 +217,7 @@ CONTAINS
         REAL(realk), INTENT(in) :: timeph
 
         !local variables...
-        INTEGER(intk) :: proc, unit
+        INTEGER(intk) :: proc, unit = 163
         CHARACTER(len = mglet_filename_max) :: filename, piece
 
         psnapshot_info%times(psnapshot_info%counter) = timeph
@@ -257,7 +256,7 @@ CONTAINS
 
     SUBROUTINE write_psnapshot_timeinfo()
 
-        INTEGER(intk) :: i, unit
+        INTEGER(intk) :: i, unit = 164
         CHARACTER(len = mglet_filename_max) :: filename
 
         IF (myid == 0) THEN
