@@ -145,6 +145,7 @@ CONTAINS
                     WRITE(*, *) 'Maximum Particle List Length: ', plist_len
                     WRITE(*, *) 'Initial number of particles for automated Generation: ', init_npart
                     WRITE(*, *) 'Diffusion Constant: ', D
+                    WRITE(*, *) ' '
         END SELECT
 
 
