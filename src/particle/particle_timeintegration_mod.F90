@@ -99,7 +99,7 @@ CONTAINS
                 CASE ("normal")
                     CONTINUE
                 CASE ("verbose")
-                    WRITE(*,'("Particle ", I0, " moved from ", 3F12.6)', advance = "no") my_particle_list%particles(i)%ipart, my_particle_list%particles(i)%x, &
+                    WRITE(*,'("Particle ", I0, " moved from ", 3F12.6, " ")', advance = "no") my_particle_list%particles(i)%ipart, my_particle_list%particles(i)%x, &
                      my_particle_list%particles(i)%y, my_particle_list%particles(i)%z
             END SELECT
 

@@ -59,10 +59,10 @@ CONTAINS
             CONTINUE
         CASE ("normal")
             WRITE(*,*) ' '
-            WRITE(*, '("Reading ", I0, "Particles:")') npart
+            WRITE(*, '("Reading ", I0, " Particle(s):")') npart
         CASE ("verbose")
-            WRITE(*,*) ' '
-            WRITE(*, '("Reading ", I0, "Particles:")') npart
+            WRITE(*, *) ' '
+            WRITE(*, '("Reading ", I0, " Particle(s):")') npart
     END SELECT
 
     DO ipart = 1, npart
@@ -121,11 +121,11 @@ CONTAINS
         CASE ("none")
             CONTINUE
         CASE ("normal")
+            WRITE(*, *) "Reading ParticleDict finished successfully."
             WRITE(*, *) ' '
-            WRITE(*, *) "Reading Particles finished successfully."
         CASE ("verbose")
+            WRITE(*, *) "Reading ParticleDict finished successfully."
             WRITE(*, *) ' '
-            WRITE(*, *) "Reading Particles finished successfully."
     END SELECT
 
     END SUBROUTINE read_particles

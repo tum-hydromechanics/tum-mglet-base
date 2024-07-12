@@ -77,10 +77,10 @@ CONTAINS
                 CONTINUE
             CASE ("normal")
                 WRITE(*,*) ' '
-                WRITE(*, '("Initializing ", I0, "Particles:")') my_particle_list%active_np
+                WRITE(*, '("Initializing ", I0, " Particle(s):")') my_particle_list%active_np
             CASE ("verbose")
                 WRITE(*,*) ' '
-                WRITE(*, '("Initializing ", I0, "Particles:")') my_particle_list%active_np
+                WRITE(*, '("Initializing ", I0, " Particle(s):")') my_particle_list%active_np
         END SELECT
 
         my_particle_list%ifinal = my_particle_list%active_np
@@ -105,11 +105,11 @@ CONTAINS
             CASE ("none")
                 CONTINUE
             CASE ("normal")
-                WRITE(*, *) ' '
-                WRITE(*, *) "Initialization of Particles finished successfully."
+                WRITE(*, *) "Initialization of Particle(s) finished successfully."
+                WRITE(*,*) ' '
             CASE ("verbose")
-                WRITE(*, *) ' '
-                WRITE(*, *) "Initialization of Particles finished successfully."
+                WRITE(*, *) "Initialization of Particle(s) finished successfully."
+                WRITE(*,*) ' '
         END SELECT
 
     END SUBROUTINE init_particle_list
