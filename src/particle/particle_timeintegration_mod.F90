@@ -99,7 +99,7 @@ CONTAINS
                 CASE ("normal")
                     CONTINUE
                 CASE ("verbose")
-                    WRITE(*,'("Particle ", I0, " moved from ", 3F14.8)', advance = "no") my_particle_list%particles(i)%ipart, my_particle_list%particles(i)%x, &
+                    WRITE(*,'("Particle ", I0, " moved from ", 3F12.6)', advance = "no") my_particle_list%particles(i)%ipart, my_particle_list%particles(i)%x, &
                      my_particle_list%particles(i)%y, my_particle_list%particles(i)%z
             END SELECT
 
@@ -113,8 +113,10 @@ CONTAINS
                 CASE ("normal")
                     CONTINUE
                 CASE ("verbose")
-                    WRITE(*,'("to ", 3F14.8)') my_particle_list%particles(i)%x, &
+                    WRITE(*,'("   to ", 3F12.6)') my_particle_list%particles(i)%x, &
                      my_particle_list%particles(i)%y, my_particle_list%particles(i)%z
+                    WRITE(*,'("Particle velocity = ", 3F12.6, " | dt = ", F12.6)') p_u, p_v, p_w, dt
+                    WRITE(*, *) ' '
             END SELECT
 
             ! deactivate particles that leave the domain (only for simple tests with one grid for now) ...
