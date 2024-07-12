@@ -19,7 +19,7 @@ MODULE particle_snapshot_mod
         INTEGER(intk) :: nprocs
 
         INTEGER(intk) :: itstep
-        CHARACTER(6) :: coordinate_format = '(F14.8)' !should depend on the domain lengths and be determined in init_psnapshots
+        CHARACTER(6) :: coordinate_format = '(F12.6)' !should depend on the domain lengths and be determined in init_psnapshots
 
         INTEGER(intk) :: nsnapshots
         INTEGER(intk), ALLOCATABLE :: nparticles(:) ! stores the number of particles for each snapshot; will be allocated to length = nsnapshots

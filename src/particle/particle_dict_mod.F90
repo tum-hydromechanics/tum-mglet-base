@@ -43,8 +43,6 @@ CONTAINS
 
     ! the following is not optimized for multiple processes !
 
-    WRITE(*, *) unit
-
 	OPEN(unit, file = 'ParticleDict.txt', status = 'OLD', action = 'READ') ! can file be opened by more than 1 process at the same time?
 
 	READ(unit, fmt = *) npart
@@ -113,7 +111,7 @@ CONTAINS
                 CASE ("normal")
                     CONTINUE
                 CASE ("verbose")
-                    WRITE(*,'("Particle read: ID = ", I0, " x/y/z = ", 3F6.2)') ipart, xtemp, ytemp, ztemp
+                    WRITE(*,'("Particle read: ID = ", I0, " | x/y/z = ", 3F12.6)') ipart, xtemp, ytemp, ztemp
             END SELECT
 
         END DO

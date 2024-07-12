@@ -95,7 +95,7 @@ CONTAINS
                 CASE ("normal")
                     CONTINUE
                 CASE ("verbose")
-                    WRITE(*,'("Particle initialized: ID = ", I0, " x/y/z = ", 3F6.2)') my_particle_list%particles(i)%ipart, &
+                    WRITE(*,'("Particle initialized: ID = ", I0, " |  x/y/z = ", 3F12.6)') my_particle_list%particles(i)%ipart, &
                      my_particle_list%particles(i)%x, my_particle_list%particles(i)%y, my_particle_list%particles(i)%z
             END SELECT
 
