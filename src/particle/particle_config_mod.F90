@@ -39,7 +39,7 @@ CONTAINS
 
         CALL pconf%get_value("/terminal", particle_terminal, "normal")
 
-        IF (TRIM(particle_terminal) == "none" .OR. TRIM(particle_terminal) == "normal" .OR. TRIM(particle_terminal) == "verbose")
+        IF (TRIM(particle_terminal) == "none" .OR. TRIM(particle_terminal) == "normal" .OR. TRIM(particle_terminal) == "verbose") THEN
 
             CONTINUE
 
@@ -72,9 +72,9 @@ CONTAINS
                 CASE ("none")
                     CONTINUE
                 CASE ("normal")
-                    WRITE(*, *) "WARNING: Particle List Length must be positve. Using default Number ", plist_len "instead."
+                    WRITE(*, *) "WARNING: Particle List Length must be positve. Using default Number ", plist_len, "instead."
                 CASE ("verbose")
-                    WRITE(*, *) "WARNING: Particle List Length must be positve. Using default Number ", plist_len "instead."
+                    WRITE(*, *) "WARNING: Particle List Length must be positve. Using default Number ", plist_len, "instead."
             END SELECT
 
             plist_len = 1000_intk
@@ -90,22 +90,22 @@ CONTAINS
                 CASE ("none")
                     CONTINUE
                 CASE ("normal")
-                    WRITE(*, *) "WARNING: Initial Number of Particles must be positve. Using default Number ", init_np "instead."
+                    WRITE(*, *) "WARNING: Initial Number of Particles must be positve. Using default Number ", init_npart, "instead."
                 CASE ("verbose")
-                    WRITE(*, *) "WARNING: Initial Number of Particles must be positve. Using default Number ", init_np "instead."
+                    WRITE(*, *) "WARNING: Initial Number of Particles must be positve. Using default Number ", init_npart, "instead."
             END SELECT
 
             init_npart = 100_intk
 
-        ELSEIF (init_np > plist_len) THEN
+        ELSEIF (init_npart > plist_len) THEN
 
             SELECT CASE (TRIM(particle_terminal))
                 CASE ("none")
                     CONTINUE
                 CASE ("normal")
-                    WRITE(*, *) "WARNING: Initial Number of Particles must be smaller than the maximum List Length. Using default Number ", init_np "instead."
+                    WRITE(*, *) "WARNING: Initial Number of Particles must be smaller than the maximum List Length. Using default Number ", init_npart, "instead."
                 CASE ("verbose")
-                    WRITE(*, *) "WARNING: Initial Number of Particles must be smaller than the maximum List Length. Using default Number ", init_np "instead."
+                    WRITE(*, *) "WARNING: Initial Number of Particles must be smaller than the maximum List Length. Using default Number ", init_npart, "instead."
             END SELECT
 
             init_npart = 100_intk
