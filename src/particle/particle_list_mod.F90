@@ -72,14 +72,45 @@ CONTAINS
 
         END IF
 
+        SELECT CASE (TRIM(particle_terminal))
+            CASE ("none")
+                CONTINUE
+            CASE ("normal")
+                WRITE(*,*) ' '
+                WRITE(*, '("Initializing ", I0, "Particles:")') my_particle_list%active_np
+            CASE ("verbose")
+                WRITE(*,*) ' '
+                WRITE(*, '("Initializing ", I0, "Particles:")') my_particle_list%active_np
+        END SELECT
+
         my_particle_list%ifinal = my_particle_list%active_np
 
          DO i = 1, my_particle_list%active_np
 
              CALL my_particle_list%particles(i)%init(ipart = ipart_arr(i), x = x(i), y = y(i), z = z(i), igrid = p_igrid_arr(i))
 
+            SELECT CASE (TRIM(particle_terminal))
+                CASE ("none")
+                    CONTINUE
+                CASE ("normal")
+                    CONTINUE
+                CASE ("verbose")
+                    WRITE(*,'("Particle initialized: ID = ", I0, " x/y/z = ", 3F6.2)') my_particle_list%particles(i)%ipart, &
+                     my_particle_list%particles(i)%x, my_particle_list%particles(i)%y, my_particle_list%particles(i)%z
+            END SELECT
+
          END DO
 
+        SELECT CASE (TRIM(particle_terminal))
+            CASE ("none")
+                CONTINUE
+            CASE ("normal")
+                WRITE(*, *) ' '
+                WRITE(*, *) "Initialization of Particles finished successfully."
+            CASE ("verbose")
+                WRITE(*, *) ' '
+                WRITE(*, *) "Initialization of Particles finished successfully."
+        END SELECT
 
     END SUBROUTINE init_particle_list
 
@@ -172,8 +203,11 @@ CONTAINS
 
             p_igrid_arr(j) = igrid
 
+            CALL RANDOM_SEED()
             CALL RANDOM_NUMBER(x(j))
+            CALL RANDOM_SEED()
             CALL RANDOM_NUMBER(y(j))
+            CALL RANDOM_SEED()
             CALL RANDOM_NUMBER(z(j))
 
             x(j) = minx + x(j) * (maxx - minx)

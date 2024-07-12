@@ -93,9 +93,29 @@ CONTAINS
             diffusion_dy = SQRT(2 * D * dt) * rand(2) / SQRT(rand(1)**(2) + rand(2)**(2) + rand(3)**(2))
             diffusion_dz = SQRT(2 * D * dt) * rand(3) / SQRT(rand(1)**(2) + rand(2)**(2) + rand(3)**(2))
 
+            SELECT CASE (TRIM(particle_terminal))
+                CASE ("none")
+                    CONTINUE
+                CASE ("normal")
+                    CONTINUE
+                CASE ("verbose")
+                    WRITE(*,'("Particle ", I0, " moved from ", 3F14.8)', advance = "no") my_particle_list%particles(i)%ipart, my_particle_list%particles(i)%x, &
+                     my_particle_list%particles(i)%y, my_particle_list%particles(i)%z
+            END SELECT
+
             my_particle_list%particles(i)%x = my_particle_list%particles(i)%x + diffusion_dx + p_u * dt
             my_particle_list%particles(i)%y = my_particle_list%particles(i)%y + diffusion_dy + p_v * dt
             my_particle_list%particles(i)%z = my_particle_list%particles(i)%z + diffusion_dz + p_w * dt
+
+            SELECT CASE (TRIM(particle_terminal))
+                CASE ("none")
+                    CONTINUE
+                CASE ("normal")
+                    CONTINUE
+                CASE ("verbose")
+                    WRITE(*,'("to ", 3F14.8)') my_particle_list%particles(i)%x, &
+                     my_particle_list%particles(i)%y, my_particle_list%particles(i)%z
+            END SELECT
 
             ! deactivate particles that leave the domain (only for simple tests with one grid for now) ...
 
@@ -112,8 +132,15 @@ CONTAINS
 
                 my_particle_list%active_np = my_particle_list%active_np - 1_intk
 
-                WRITE(*,'("Particle ", I0, " left domian at ", 3F6.2)') my_particle_list%particles(i)%ipart, my_particle_list%particles(i)%x, &
-                 my_particle_list%particles(i)%y, my_particle_list%particles(i)%z
+                SELECT CASE (TRIM(particle_terminal))
+                CASE ("none")
+                    CONTINUE
+                CASE ("normal")
+                    CONTINUE
+                CASE ("verbose")
+                    WRITE(*,'("Particle ", I0, " left domian at ", 3F6.2)') my_particle_list%particles(i)%ipart, my_particle_list%particles(i)%x, &
+                     my_particle_list%particles(i)%y, my_particle_list%particles(i)%z
+                END SELECT
 
             END IF
 

@@ -23,7 +23,16 @@ CONTAINS
 
     IF (.NOT. dread_particles) THEN
 
-        WRITE(*,*) 'No file for reading detected! Using automated initial particle distribution instead.'
+        SELECT CASE (TRIM(particle_terminal))
+            CASE ("none")
+                CONTINUE
+            CASE ("normal")
+                WRITE(*,*) ' '
+                WRITE(*, *) "WARNING: No file for reading particles detected! Using automated initial particle distribution instead."
+            CASE ("verbose")
+                WRITE(*,*) ' '
+                WRITE(*, *) "WARNING: No file for reading particles detected! Using automated initial particle distribution instead."
+        END SELECT
 
         RETURN
 
@@ -43,9 +52,16 @@ CONTAINS
     ALLOCATE(y(npart))
     ALLOCATE(z(npart))
 
-    WRITE(*,*) ' '
-    WRITE(*,*) 'Reading ', npart, 'Particles:'
-    WRITE(*,*) ' '
+    SELECT CASE (TRIM(particle_terminal))
+        CASE ("none")
+            CONTINUE
+        CASE ("normal")
+            WRITE(*,*) ' '
+            WRITE(*, '("Reading ", I0, "Particles:")') npart
+        CASE ("verbose")
+            WRITE(*,*) ' '
+            WRITE(*, '("Reading ", I0, "Particles:")') npart
+    END SELECT
 
     DO ipart = 1, npart
 
@@ -86,14 +102,29 @@ CONTAINS
             y(ipart) = ytemp
             z(ipart) = ztemp
 
-            WRITE(*,'("Particle ID: ", I0, " Initial Coordinates: ", 3F6.2)') ipart, xtemp, ytemp, ztemp
+            SELECT CASE (TRIM(particle_terminal))
+                CASE ("none")
+                    CONTINUE
+                CASE ("normal")
+                    CONTINUE
+                CASE ("verbose")
+                    WRITE(*,'("Particle read: ID = ", I0, " x/y/z = ", 3F6.2)') ipart, xtemp, ytemp, ztemp
+            END SELECT
 
         END DO
 
     END DO
 
-    WRITE(*,*) 'Reading of Particles finished.'
-    WRITE(*,*) ' '
+    SELECT CASE (TRIM(particle_terminal))
+        CASE ("none")
+            CONTINUE
+        CASE ("normal")
+            WRITE(*, *) ' '
+            WRITE(*, *) "Reading Particles finished successfully."
+        CASE ("verbose")
+            WRITE(*, *) ' '
+            WRITE(*, *) "Reading Particles finished successfully."
+    END SELECT
 
     END SUBROUTINE read_particles
 

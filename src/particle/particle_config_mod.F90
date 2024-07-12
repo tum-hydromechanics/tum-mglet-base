@@ -5,6 +5,9 @@ USE core_mod
 IMPLICIT NONE
 
 LOGICAL :: dsim_particles
+
+CHARACTER(len = 7) :: particle_terminal
+
 LOGICAL :: dread_particles
 LOGICAL :: dinterp_particles
 LOGICAL :: dwrite_particles
@@ -33,40 +36,124 @@ CONTAINS
 
         CALL fort7%get(pconf, "/particles")
 
+
+        CALL pconf%get_value("/terminal", particle_terminal, "normal")
+
+        IF (TRIM(particle_terminal) == "none" .OR. TRIM(particle_terminal) == "normal" .OR. TRIM(particle_terminal) == "verbose")
+
+            CONTINUE
+
+        ELSE
+
+            SELECT CASE (TRIM(particle_terminal))
+                CASE ("none")
+                    CONTINUE
+                CASE ("normal")
+                    WRITE(*, *) "WARNING: Unknown Terminal Output Specifier for Particle Modules. Using normal instead"
+                CASE ("verbose")
+                    WRITE(*, *) "WARNING: Unknown Terminal Output Specifier for Particle Modules. Using normal instead"
+            END SELECT
+
+        END IF
+
+
         CALL pconf%get_value("/read", dread_particles, .FALSE.)
 
         CALL pconf%get_value("/interp", dinterp_particles, .FALSE.)
 
         CALL pconf%get_value("/write", dwrite_particles, .TRUE.)
 
-        CALL pconf%get_value("/init_np", init_npart, 100_intk)
-
-        IF (init_npart <= 0_intk) THEN
-            WRITE(*, *) "Initial Number of Particles must be positve. Using default Number instead."
-            init_npart = 100_intk
-        END IF
 
         CALL pconf%get_value("/list_len", plist_len, 1000_intk)
 
         IF (plist_len <= 0_intk) THEN
-            WRITE(*, *) "Particle List Length must be positve. Using default Number instead."
+
+            SELECT CASE (TRIM(particle_terminal))
+                CASE ("none")
+                    CONTINUE
+                CASE ("normal")
+                    WRITE(*, *) "WARNING: Particle List Length must be positve. Using default Number ", plist_len "instead."
+                CASE ("verbose")
+                    WRITE(*, *) "WARNING: Particle List Length must be positve. Using default Number ", plist_len "instead."
+            END SELECT
+
             plist_len = 1000_intk
+
         END IF
+
+
+        CALL pconf%get_value("/init_np", init_npart, 100_intk)
+
+        IF (init_npart <= 0_intk) THEN
+
+            SELECT CASE (TRIM(particle_terminal))
+                CASE ("none")
+                    CONTINUE
+                CASE ("normal")
+                    WRITE(*, *) "WARNING: Initial Number of Particles must be positve. Using default Number ", init_np "instead."
+                CASE ("verbose")
+                    WRITE(*, *) "WARNING: Initial Number of Particles must be positve. Using default Number ", init_np "instead."
+            END SELECT
+
+            init_npart = 100_intk
+
+        ELSEIF (init_np > plist_len) THEN
+
+            SELECT CASE (TRIM(particle_terminal))
+                CASE ("none")
+                    CONTINUE
+                CASE ("normal")
+                    WRITE(*, *) "WARNING: Initial Number of Particles must be smaller than the maximum List Length. Using default Number ", init_np "instead."
+                CASE ("verbose")
+                    WRITE(*, *) "WARNING: Initial Number of Particles must be smaller than the maximum List Length. Using default Number ", init_np "instead."
+            END SELECT
+
+            init_npart = 100_intk
+
+        END IF
+
 
         CALL pconf%get_value("/D", D, 0.0_realk)
 
         IF (D < 0.0_realk) THEN
-            WRITE(*, *) "Diffusion Constant must be positve. Using D = 0 instead (pure Advection)."
+
+            SELECT CASE (TRIM(particle_terminal))
+                CASE ("none")
+                    CONTINUE
+                CASE ("normal")
+                    WRITE(*, *) "WARNING: Diffusion Constant must be positve. Using D = 0 instead (pure Advection)."
+                CASE ("verbose")
+                    WRITE(*, *) "WARNING: Diffusion Constant must be positve. Using D = 0 instead (pure Advection)."
+            END SELECT
+
             D = 0.0_realk
+
         END IF
 
-        WRITE(*, *) 'Diffusion Constant: ', D
+        SELECT CASE (TRIM(particle_terminal))
+                CASE ("none")
+                    CONTINUE
+                CASE ("normal")
+                    CONTINUE
+                CASE ("verbose")
+                    WRITE(*, *) 'DIFFUSION CONSTANT: ', D
+        END SELECT
+
 
         CALL pconf%get_value("/snapshot_step", psnapshot_step, 10_intk)
 
         IF (psnapshot_step < 1_intk) THEN
-            WRITE(*, *) "Invalid snapshot step. Should be integer greater or equal to 1. Using snapshot_step = 10 instead."
+            SELECT CASE (TRIM(particle_terminal))
+                CASE ("none")
+                    CONTINUE
+                CASE ("normal")
+                    WRITE(*, *) "Invalid snapshot step. Should be integer greater or equal to 1. Using snapshot_step = 10 instead."
+                CASE ("verbose")
+                    WRITE(*, *) "Invalid snapshot step. Should be integer greater or equal to 1. Using snapshot_step = 10 instead."
+            END SELECT
+
             psnapshot_step = 10_intk
+
         END IF
 
     END SUBROUTINE init_particle_config

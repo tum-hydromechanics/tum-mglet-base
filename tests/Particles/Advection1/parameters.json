@@ -47,6 +47,7 @@
         ]
     },
     "particles": {
+        "terminal": "verbose",
         "read": true,
         "interp": false,
         "write": true,

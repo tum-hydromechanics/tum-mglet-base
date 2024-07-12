@@ -137,8 +137,17 @@ CONTAINS
 
         END DO
 
-        this%is_active = found ! if particle is not found, deactivate particle (?)
-        WRITE(*,'("In get_p_igrid: Particle ", I0, " could not be found on any grid, process ", I0, " owns!")') this%ipart, this%iproc
+        this%is_active = found ! if particle is not found, deactivate particle
+
+        SELECT CASE (TRIM(particle_terminal))
+            CASE ("none")
+                CONTINUE
+            CASE ("normal")
+                CONTINUE
+            CASE ("verbose")
+                WRITE(*,*) ' '
+                WRITE(*, '("WARNING: In get_p_igrid: Particle ", I0, " could not be found on any grid, process ", I0, " owns!")') this%ipart, this%iproc
+        END SELECT
 
     END SUBROUTINE get_p_igrid
 
@@ -161,7 +170,16 @@ CONTAINS
 
         IF (.NOT. this%is_active) THEN
 
-            WRITE(*,*) "In get_p_ijkcell: Tried to locate particle that is not active!"
+            SELECT CASE (TRIM(particle_terminal))
+                CASE ("none")
+                    CONTINUE
+                CASE ("normal")
+                    CONTINUE
+                CASE ("verbose")
+                    WRITE(*,*) ' '
+                    WRITE(*, *) "WARNING: In get_p_ijkcell: Tried to locate particle that is not active!"
+            END SELECT
+
             RETURN
 
         END IF
@@ -185,7 +203,7 @@ CONTAINS
 
         CALL get_mgdims(kk, jj, ii, this%igrid)
 
-        ! the following assumes that the x/y/z values are sorted such that for any i < j and any direction x, x(i) < x(j) !
+        ! the following assumes that the x/y/z values are sorted such that for any i < j and any direction x_k, x_k(i) < x_k(j) !
         ! the following procedure is capable of handling stretched grids!
 
         ! find nearest x(i):
@@ -302,7 +320,16 @@ CONTAINS
 
         IF (.NOT. this%is_active) THEN
 
-            WRITE(*,*) "In update_p_ijkcell: Tried to locate particle that is not active!"
+            SELECT CASE (TRIM(particle_terminal))
+                CASE ("none")
+                    CONTINUE
+                CASE ("normal")
+                    CONTINUE
+                CASE ("verbose")
+                    WRITE(*,*) ' '
+                    WRITE(*, *) "WARNING: In update_p_ijkcell: Tried to locate particle that is not active!"
+            END SELECT
+
             RETURN
 
         END IF
