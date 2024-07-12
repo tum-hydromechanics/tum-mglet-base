@@ -146,7 +146,8 @@ CONTAINS
     ! writes vtp (xml) file containing all particles of the respective process
 
         ! local variables
-        INTEGER(intk) :: i, unit
+        INTEGER(intk) :: i
+        INTEGER :: unit
         CHARACTER(len = mglet_filename_max) :: subfolder, filename, active_np_char
         !CHARACTER(:), ALLOCATABLE :: active_np_char
 

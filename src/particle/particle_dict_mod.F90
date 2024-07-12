@@ -17,7 +17,8 @@ CONTAINS
     REAL(realk), ALLOCATABLE, INTENT(out) :: x(:), y(:), z(:)
 
     !local variables
-    INTEGER(intk) :: unit, i, ipart, igrid
+    INTEGER(intk) :: i, ipart, igrid
+    INTEGER :: unit
     REAL(realk) :: xtemp, ytemp, ztemp
     REAL(realk) :: minx, maxx, miny, maxy, minz, maxz
 
@@ -29,10 +30,10 @@ CONTAINS
             CASE ("none")
                 CONTINUE
             CASE ("normal")
-                WRITE(*,*) ' '
+                WRITE(*, *) ' '
                 WRITE(*, *) "WARNING: No file for reading particles detected! Using automated initial particle distribution instead."
             CASE ("verbose")
-                WRITE(*,*) ' '
+                WRITE(*, *) ' '
                 WRITE(*, *) "WARNING: No file for reading particles detected! Using automated initial particle distribution instead."
         END SELECT
 
