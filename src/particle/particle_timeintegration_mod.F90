@@ -181,8 +181,8 @@ CONTAINS
                     CASE ("normal")
                         CONTINUE
                     CASE ("verbose")
-                        WRITE(*,'("ijkcell of particle", I0, " : ", 3I0)') my_particle_list%particles(i)%ipart, my_particle_list%particles(i)%ijkcell(1), &
-                        my_particle_list%particles(i)%ijkcell(2), my_particle_list%particles(i)%ijkcell(3)
+                        WRITE(*,'("ijkcell of particle", I0, " : ", 3I0)') particle%ipart, particle%ijkcell(1), &
+                         particle%ijkcell(2), particle%ijkcell(3)
                 END SELECT
 
     END SUBROUTINE get_particle_uvw
