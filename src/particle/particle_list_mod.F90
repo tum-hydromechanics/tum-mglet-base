@@ -89,7 +89,7 @@ CONTAINS
 
             CALL my_particle_list%particles(i)%init(ipart = ipart_arr(i), x = x(i), y = y(i), z = z(i), igrid = p_igrid_arr(i))
 
-            CALL my_particle_list%particles(i)%print_status
+            CALL my_particle_list%particles(i)%print_status()
 
          END DO
 

@@ -453,11 +453,10 @@ CONTAINS
 
     END SUBROUTINE update_p_ijkcell
 
-    SUBROUTINE print_status(this, time)
+    SUBROUTINE print_status(this)
 
     ! subroutine arguments
     CLASS(baseparticle_t), INTENT(inout) :: this
-    REAL(realk) :: time
 
         IF (this%is_active) THEN
 
@@ -467,7 +466,7 @@ CONTAINS
                 CASE ("normal")
                     CONTINUE
                 CASE ("verbose")
-                    WRITE(*,'("Particle ", I0, " - Status at t = ", 3F12.6, ":")') this%ipart, time
+                    WRITE(*,'("Particle ", I0, " - Status:")') this%ipart
                     WRITE(*,'("iproc       = ", I12,   " igrid = ", I12)') this%iproc, this%igrid
                     WRITE(*,'("x/y/z       = ", F12.6, " / ", F12.6, " / ", F12.6)') this%x, this%y, this%z
                     WRITE(*,'("i/j/k cell  = ", I12  , " / ", I12  , " / ", I12)') this%ijkcell(1), this%ijkcell(2), this%ijkcell(3)

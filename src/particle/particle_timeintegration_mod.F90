@@ -136,7 +136,7 @@ CONTAINS
 
             END IF
 
-            CALL my_particle_list%particles(i)%print_status
+            CALL my_particle_list%particles(i)%print_status()
 
         END DO
 
