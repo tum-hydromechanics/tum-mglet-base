@@ -137,7 +137,7 @@ CONTAINS
                     CONTINUE
                 CASE ("verbose")
                     WRITE(*, *) 'PARTICLE CONFIGURATION: '
-                    WRITE(*, *) 'Particle related Terminal Output: ', particle_terminal
+                    WRITE(*, *) 'Terminal Output: ', particle_terminal
                     WRITE(*, *) 'Reading of ParticlesDict.txt: ', dread_particles
                     WRITE(*, *) 'Interpolation of flow field: ', dinterp_particles
                     WRITE(*, *) 'Writing of Particle Snapshots: ', dwrite_particles
@@ -163,6 +163,23 @@ CONTAINS
             psnapshot_step = 10_intk
 
         END IF
+
+        SELECT CASE (TRIM(particle_terminal))
+                CASE ("none")
+                    CONTINUE
+                CASE ("normal")
+                    CONTINUE
+                CASE ("verbose")
+                    WRITE(*, *) 'PARTICLE CONFIGURATION: '
+                    WRITE(*, *) 'Terminal Output: ', particle_terminal
+                    WRITE(*, *) 'Reading ParticlesDict: ', dread_particles
+                    WRITE(*, *) 'Field Interpolation: ', dinterp_particles
+                    WRITE(*, *) 'Writing Particle Snapshots: ', dwrite_particles
+                    WRITE(*, *) 'Particcle Snapshot Step: ', psnapshot_step
+                    WRITE(*, *) 'Max Particle List Length: ', plist_len
+                    WRITE(*, *) 'Initial number of Particles: ', init_npart
+                    WRITE(*, *) 'Diffusion Constant: ', D
+        END SELECT
 
     END SUBROUTINE init_particle_config
 
