@@ -27,7 +27,7 @@ CONTAINS
         REAL(realk), POINTER, CONTIGUOUS, DIMENSION(:) :: xstag, ystag, zstag
         REAL(realk), POINTER, CONTIGUOUS, DIMENSION(:, :, :) :: u, v, w
 
-        REAL(realk) :: rand(3), diffusion_dx, diffusion_dy, diffusion_dz
+        REAL(realk) :: rand(3), diffusion_dx, diffusion_dy, diffusion_dz, advection_dx, advection_dy, advection_dz, dx, dy, dz
 
         !is calling the geometric fields obsolete when using core_mode -> corefields_mod ?
         CALL get_field(x_f, "X")
@@ -81,7 +81,12 @@ CONTAINS
             ! TODO: proper timeintegration
             ! dummy method for now (explicit euler)
 
-            ! how should 2 dimensional cases be handeled ?
+            advection_dx = p_u * dt
+            advection_dy = p_v * dt
+            advection_dz = p_w * dt
+
+
+            ! how should 2 dimensional diffusion cases be handeled ?
             CALL RANDOM_SEED()
             CALL RANDOM_NUMBER(rand)
 
@@ -93,9 +98,13 @@ CONTAINS
             diffusion_dy = SQRT(2 * D * dt) * rand(2) / SQRT(rand(1)**(2) + rand(2)**(2) + rand(3)**(2))
             diffusion_dz = SQRT(2 * D * dt) * rand(3) / SQRT(rand(1)**(2) + rand(2)**(2) + rand(3)**(2))
 
-            my_particle_list%particles(i)%x = my_particle_list%particles(i)%x + diffusion_dx + p_u * dt
-            my_particle_list%particles(i)%y = my_particle_list%particles(i)%y + diffusion_dy + p_v * dt
-            my_particle_list%particles(i)%z = my_particle_list%particles(i)%z + diffusion_dz + p_w * dt
+            dx = advection_dx + diffusion_dx
+            dy = advection_dy + diffusion_dy
+            dz = advection_dz + diffusion_dz
+
+            my_particle_list%particles(i)%x = my_particle_list%particles(i)%x + dx
+            my_particle_list%particles(i)%y = my_particle_list%particles(i)%y + dy
+            my_particle_list%particles(i)%z = my_particle_list%particles(i)%z + dz
 
             SELECT CASE (TRIM(particle_terminal))
                 CASE ("none")
@@ -103,11 +112,13 @@ CONTAINS
                 CASE ("normal")
                     CONTINUE
                 CASE ("verbose")
-                    WRITE(*,'("Timeintegrating Particle ", I0, ":")') my_particle_list%particles(i)%ipart
-                    WRITE(*,'("Particle velocity [m/s] = ", 3F12.8, " | dt [s] = ", F12.8)') p_u, p_v, p_w, dt
-                    WRITE(*,'("Particle diffusion step [m] = ", 3F12.8)') diffusion_dx, diffusion_dx, diffusion_dx
+                    WRITE(*,'("Timeintegrating Particle ", I0, "(dt = ", F12.8,"):")') my_particle_list%particles(i)%ipart, dt
+                    WRITE(*,'("Particle ADVECTION [m] = ", 3F12.8)') advection_dx, advection_dy, advection_dz
+                    WRITE(*,'("Particle DIFFUSION [m] = ", 3F12.8)') diffusion_dx, diffusion_dy, diffusion_dz
                     WRITE(*, *) ' '
             END SELECT
+
+            CALL my_particle_list%particles(i)%update_p_ijkcell(dx, dy, dz)
 
             ! deactivate particles that leave the domain (only for simple tests with one grid for now) ...
 
