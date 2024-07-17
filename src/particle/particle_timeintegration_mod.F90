@@ -3,6 +3,7 @@
 MODULE particle_timeintegration_mod
 
     USE particle_list_mod
+    USE particle_connect_mod
     !USE flow_mod
 
     IMPLICIT NONE
@@ -119,7 +120,7 @@ CONTAINS
                     WRITE(*, *) ' '
             END SELECT
 
-            CALL my_particle_list%particles(i)%update_p_ijkcell(dx, dy, dz)
+            ! CALL my_particle_list%particles(i)%update_p_ijkcell(dx, dy, dz)
 
             ! deactivate particles that leave the domain (only for simple tests with one grid for now) ...
 
@@ -132,9 +133,11 @@ CONTAINS
                 my_particle_list%particles(i)%z < minz .OR. &
                 my_particle_list%particles(i)%z > maxz) THEN
 
-                my_particle_list%particles(i)%is_active = .FALSE.
+                !my_particle_list%particles(i)%is_active = .FALSE.
 
-                my_particle_list%active_np = my_particle_list%active_np - 1_intk
+                !my_particle_list%active_np = my_particle_list%active_np - 1_intk
+
+                CALL get_target_grid(my_particle_list%particles(i), nbrgrid)
 
                 SELECT CASE (TRIM(particle_terminal))
                 CASE ("none")
@@ -142,9 +145,25 @@ CONTAINS
                 CASE ("normal")
                     CONTINUE
                 CASE ("verbose")
-                    WRITE(*,'("Particle ", I0, " left domian at ", 3F12.6)') my_particle_list%particles(i)%ipart, my_particle_list%particles(i)%x, &
+                    WRITE(*,'("Particle ", I0, " left grid ", "I0", " at ", 3F12.6)') my_particle_list%particles(i)%ipart, my_particle_list%particles(i)%igrid, my_particle_list%particles(i)%x, &
                      my_particle_list%particles(i)%y, my_particle_list%particles(i)%z
                 END SELECT
+
+                my_particle_list%particles(i)%igrid = nbrgrid
+                CALL my_particle_list%particles(i)%get_p_ijkcell()
+
+                SELECT CASE (TRIM(particle_terminal))
+                CASE ("none")
+                    CONTINUE
+                CASE ("normal")
+                    CONTINUE
+                CASE ("verbose")
+                    WRITE(*,'("New Grid: ", I0)') my_particle_list%particles(i)%igrid
+                END SELECT
+
+            ELSE
+
+                CALL my_particle_list%particles(i)%update_p_ijkcell(dx, dy, dz)
 
             END IF
 
