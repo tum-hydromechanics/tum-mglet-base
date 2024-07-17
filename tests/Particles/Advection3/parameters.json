@@ -15,7 +15,8 @@
         "type": "noib"
     },
     "flow": {
-    	"solve": true,
+        "tu_level": 0.0,
+    	"solve": false,
         "gmol": 0.01,
         "rho": 1.0,
         "uinf": [1.0, 0.0, 0.0],
