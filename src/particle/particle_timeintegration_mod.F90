@@ -81,12 +81,12 @@ CONTAINS
             ! TODO: proper timeintegration
             ! dummy method for now (explicit euler)
 
+            ! Advection
             advection_dx = p_u * dt
             advection_dy = p_v * dt
             advection_dz = p_w * dt
 
-
-            ! how should 2 dimensional diffusion cases be handeled ?
+            ! Diffusion
             CALL RANDOM_SEED()
             CALL RANDOM_NUMBER(rand)
 
@@ -94,14 +94,15 @@ CONTAINS
             rand(2) = rand(2) - 0.5_realk
             rand(3) = rand(3) - 0.5_realk
 
-            diffusion_dx = SQRT(2 * D * dt) * rand(1) / SQRT(rand(1)**(2) + rand(2)**(2) + rand(3)**(2))
-            diffusion_dy = SQRT(2 * D * dt) * rand(2) / SQRT(rand(1)**(2) + rand(2)**(2) + rand(3)**(2))
-            diffusion_dz = SQRT(2 * D * dt) * rand(3) / SQRT(rand(1)**(2) + rand(2)**(2) + rand(3)**(2))
+            diffusion_dx = SQRT(2 * D(1) * dt) * rand(1) / SQRT(rand(1)**(2) + rand(2)**(2) + rand(3)**(2))
+            diffusion_dy = SQRT(2 * D(2) * dt) * rand(2) / SQRT(rand(1)**(2) + rand(2)**(2) + rand(3)**(2))
+            diffusion_dz = SQRT(2 * D(3) * dt) * rand(3) / SQRT(rand(1)**(2) + rand(2)**(2) + rand(3)**(2))
 
             dx = advection_dx + diffusion_dx
             dy = advection_dy + diffusion_dy
             dz = advection_dz + diffusion_dz
 
+            ! Particle Displacement
             my_particle_list%particles(i)%x = my_particle_list%particles(i)%x + dx
             my_particle_list%particles(i)%y = my_particle_list%particles(i)%y + dy
             my_particle_list%particles(i)%z = my_particle_list%particles(i)%z + dz

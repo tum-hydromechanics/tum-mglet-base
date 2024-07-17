@@ -16,11 +16,14 @@ INTEGER(intk) :: init_npart
 INTEGER(intk) :: plist_len
 INTEGER(intk) :: psnapshot_step
 
-REAL(realk) :: D
+REAL(integer) :: D_dim
+REAL(realk) :: D(3)
 
 CONTAINS
 
     SUBROUTINE init_particle_config()
+
+        !-----------------------------------
 
         TYPE(config_t) :: pconf
 
@@ -36,6 +39,7 @@ CONTAINS
 
         CALL fort7%get(pconf, "/particles")
 
+        !-----------------------------------
 
         CALL pconf%get_value("/terminal", particle_terminal, "normal")
 
@@ -56,13 +60,19 @@ CONTAINS
 
         END IF
 
+        !-----------------------------------
 
         CALL pconf%get_value("/read", dread_particles, .FALSE.)
 
+        !-----------------------------------
+
         CALL pconf%get_value("/interp", dinterp_particles, .FALSE.)
+
+        !-----------------------------------
 
         CALL pconf%get_value("/write", dwrite_particles, .TRUE.)
 
+        !-----------------------------------
 
         CALL pconf%get_value("/list_len", plist_len, 1000_intk)
 
@@ -81,6 +91,7 @@ CONTAINS
 
         END IF
 
+        !-----------------------------------
 
         CALL pconf%get_value("/init_np", init_npart, 100_intk)
 
@@ -112,42 +123,56 @@ CONTAINS
 
         END IF
 
+        !-----------------------------------
 
-        CALL pconf%get_value("/D", D, 0.0_realk)
+        CALL pconf%get_array("/D", D, [0.0_realk, 0.0_realk, 0.0_realk])
 
-        IF (D < 0.0_realk) THEN
+        IF (D(1) < 0.0_realk) THEN
 
             SELECT CASE (TRIM(particle_terminal))
                 CASE ("none")
                     CONTINUE
                 CASE ("normal")
-                    WRITE(*, *) "WARNING: Diffusion Constant must be positve. Using D = 0 instead (pure Advection)."
+                    WRITE(*, *) "WARNING: Diffusion Constant Dx must be positve. Using Dx = 0 instead (pure Advection)."
                 CASE ("verbose")
-                    WRITE(*, *) "WARNING: Diffusion Constant must be positve. Using D = 0 instead (pure Advection)."
+                    WRITE(*, *) "WARNING: Diffusion Constant Dx must be positve. Using Dx = 0 instead (pure Advection)."
             END SELECT
 
-            D = 0.0_realk
+            D(1) = 0.0_realk
 
         END IF
 
-        SELECT CASE (TRIM(particle_terminal))
+        IF (D(2) < 0.0_realk) THEN
+
+            SELECT CASE (TRIM(particle_terminal))
                 CASE ("none")
                     CONTINUE
                 CASE ("normal")
-                    CONTINUE
+                    WRITE(*, *) "WARNING: Diffusion Constant Dy must be positve. Using D = 0 instead (pure Advection)."
                 CASE ("verbose")
-                    WRITE(*, *) 'PARTICLE CONFIGURATION: '
-                    WRITE(*, *) 'Terminal Output: ', particle_terminal
-                    WRITE(*, *) 'Reading of ParticlesDict.txt: ', dread_particles
-                    WRITE(*, *) 'Interpolation of flow field: ', dinterp_particles
-                    WRITE(*, *) 'Writing of Particle Snapshots: ', dwrite_particles
-                    WRITE(*, *) 'Particcle Snapshot Step: ', psnapshot_step
-                    WRITE(*, *) 'Maximum Particle List Length: ', plist_len
-                    WRITE(*, *) 'Initial number of particles for automated Generation: ', init_npart
-                    WRITE(*, *) 'Diffusion Constant: ', D
-                    WRITE(*, *) ' '
-        END SELECT
+                    WRITE(*, *) "WARNING: Diffusion Constant Dy must be positve. Using D = 0 instead (pure Advection)."
+            END SELECT
 
+            D(2) = 0.0_realk
+
+        END IF
+
+        IF (D(3) < 0.0_realk) THEN
+
+            SELECT CASE (TRIM(particle_terminal))
+                CASE ("none")
+                    CONTINUE
+                CASE ("normal")
+                    WRITE(*, *) "WARNING: Diffusion Constant Dz must be positve. Using Dz = 0 instead (pure Advection)."
+                CASE ("verbose")
+                    WRITE(*, *) "WARNING: Diffusion Constant Dz must be positve. Using Dz = 0 instead (pure Advection)."
+            END SELECT
+
+            D(3) = 0.0_realk
+
+        END IF
+
+        !-----------------------------------
 
         CALL pconf%get_value("/snapshot_step", psnapshot_step, 10_intk)
 
@@ -164,6 +189,8 @@ CONTAINS
             psnapshot_step = 10_intk
 
         END IF
+
+        !-----------------------------------
 
         SELECT CASE (TRIM(particle_terminal))
                 CASE ("none")

@@ -9,6 +9,9 @@ cd ~/tum-mglet-base/tests/Particles/Advection2
 cd ~/tum-mglet-base/tests/Particles/Advection3
 ./run.sh newtest ../../../build/src/mglet
 
+cd ~/tum-mglet-base/tests/Particles/Advection4
+./run.sh newtest ../../../build/src/mglet
+
 cd ~/tum-mglet-base/tests/Particles/AdvectionDiffusion1
 ./run.sh newtest ../../../build/src/mglet
 
