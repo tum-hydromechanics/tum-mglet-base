@@ -197,15 +197,15 @@ CONTAINS
                 CASE ("normal")
                     CONTINUE
                 CASE ("verbose")
-                    WRITE(*, *) 'PARTICLE CONFIGURATION: '
-                    WRITE(*, *) 'Terminal Output: ', particle_terminal
-                    WRITE(*, *) 'Reading ParticlesDict: ', dread_particles
-                    WRITE(*, *) 'Field Interpolation: ', dinterp_particles
-                    WRITE(*, *) 'Writing Particle Snapshots: ', dwrite_particles
-                    WRITE(*, *) 'Particcle Snapshot Step: ', psnapshot_step
-                    WRITE(*, *) 'Max Particle List Length: ', plist_len
-                    WRITE(*, *) 'Initial number of Particles: ', init_npart
-                    WRITE(*, *) 'Diffusion Constant: ', D
+                    WRITE(*, '("PARTICLE CONFIGURATION:")')
+                    WRITE(*, '("Terminal Output:              ", A11)') particle_terminal
+                    WRITE(*, '("Reading ParticlesDict:        ", L11)') dread_particles
+                    WRITE(*, '("Field Interpolation:          ", L11)') dinterp_particles
+                    WRITE(*, '("Writing Particle Snapshots:   ", L11)') dwrite_particles
+                    WRITE(*, '("Particle Snapshot Step:       ", I11)') psnapshot_step
+                    WRITE(*, '("Max Particle List Length:     ", I11)') plist_len
+                    WRITE(*, '("Initial number of Particles:  ", I11)') init_npart
+                    WRITE(*, '("Diffusion Vector:             ", F11.9, " ", F11.9, " ", F11.9)') D(1), D(2), D(3)
         END SELECT
 
     END SUBROUTINE init_particle_config
