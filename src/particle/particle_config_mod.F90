@@ -16,8 +16,7 @@ INTEGER(intk) :: init_npart
 INTEGER(intk) :: plist_len
 INTEGER(intk) :: psnapshot_step
 
-REAL(integer) :: D_dim
-REAL(realk) :: D(3)
+REAL(realk) :: D(3) = 0.0_realk
 
 CONTAINS
 
@@ -125,7 +124,7 @@ CONTAINS
 
         !-----------------------------------
 
-        CALL pconf%get_array("/D", D, [0.0_realk, 0.0_realk, 0.0_realk])
+        CALL pconf%get_array("/D", D)
 
         IF (D(1) < 0.0_realk) THEN
 
@@ -133,9 +132,9 @@ CONTAINS
                 CASE ("none")
                     CONTINUE
                 CASE ("normal")
-                    WRITE(*, *) "WARNING: Diffusion Constant Dx must be positve. Using Dx = 0 instead (pure Advection)."
+                    WRITE(*, *) "WARNING: Diffusion Constant Dx must be positve. Using Dx = 0 instead."
                 CASE ("verbose")
-                    WRITE(*, *) "WARNING: Diffusion Constant Dx must be positve. Using Dx = 0 instead (pure Advection)."
+                    WRITE(*, *) "WARNING: Diffusion Constant Dx must be positve. Using Dx = 0 instead."
             END SELECT
 
             D(1) = 0.0_realk
@@ -148,9 +147,9 @@ CONTAINS
                 CASE ("none")
                     CONTINUE
                 CASE ("normal")
-                    WRITE(*, *) "WARNING: Diffusion Constant Dy must be positve. Using D = 0 instead (pure Advection)."
+                    WRITE(*, *) "WARNING: Diffusion Constant Dy must be positve. Using Dy = 0 instead."
                 CASE ("verbose")
-                    WRITE(*, *) "WARNING: Diffusion Constant Dy must be positve. Using D = 0 instead (pure Advection)."
+                    WRITE(*, *) "WARNING: Diffusion Constant Dy must be positve. Using Dy = 0 instead."
             END SELECT
 
             D(2) = 0.0_realk
@@ -163,9 +162,9 @@ CONTAINS
                 CASE ("none")
                     CONTINUE
                 CASE ("normal")
-                    WRITE(*, *) "WARNING: Diffusion Constant Dz must be positve. Using Dz = 0 instead (pure Advection)."
+                    WRITE(*, *) "WARNING: Diffusion Constant Dz must be positve. Using Dz = 0 instead."
                 CASE ("verbose")
-                    WRITE(*, *) "WARNING: Diffusion Constant Dz must be positve. Using Dz = 0 instead (pure Advection)."
+                    WRITE(*, *) "WARNING: Diffusion Constant Dz must be positve. Using Dz = 0 instead."
             END SELECT
 
             D(3) = 0.0_realk
