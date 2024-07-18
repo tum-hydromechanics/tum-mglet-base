@@ -120,10 +120,6 @@ CONTAINS
                     WRITE(*, *) ' '
             END SELECT
 
-            ! CALL my_particle_list%particles(i)%update_p_ijkcell(dx, dy, dz)
-
-            ! deactivate particles that leave the domain (only for simple tests with one grid for now) ...
-
             CALL get_bbox(minx, maxx, miny, maxy, minz, maxz, igrid)
 
             IF (my_particle_list%particles(i)%x < minx .OR. &
@@ -155,6 +151,8 @@ CONTAINS
                     CASE ("verbose")
                         WRITE(*,'("New Grid: ", I0)') my_particle_list%particles(i)%igrid
                 END SELECT
+
+                CALL get_bbox(minx, maxx, miny, maxy, minz, maxz, nbrgrid)
 
                 IF (my_particle_list%particles(i)%x < minx .OR. &
                     my_particle_list%particles(i)%x > maxx .OR. &
