@@ -4,6 +4,7 @@ add_library(particle STATIC
     particle_list_mod.F90
     particle_dict_mod.F90
     particle_snapshot_mod.F90
+    particle_connect_mod.F90
     particle_timeintegration_mod.F90
     particle_mod.F90
 )
