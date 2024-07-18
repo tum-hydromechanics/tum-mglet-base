@@ -189,12 +189,12 @@ CONTAINS
 
     END SUBROUTINE get_target_grid
 
-    SUBROUTINE get_exit_face(particle, pdx, pdy, pdz, iface)
+    SUBROUTINE get_exit_face(particle, pdx, pdy, pdz, sface_arr)
 
         ! subroutine arguments
         CLASS(baseparticle_t), INTENT(in) :: particle
         REAL(realk), INTENT(in) :: pdx, pdy, pdz
-        INTEGER(intk), INTENT(out) :: iface
+        INTEGER(intk), INTENT(out) :: sface_arr(3)
 
         !local variables
         REAL(realk) :: minx, maxx, miny, maxy, minz, maxz
@@ -250,35 +250,390 @@ CONTAINS
 
         END IF
 
-        IF (pdx == 0 .AND. pdy == 0 .AND. pdz == 0) THEN
+        IF (rx <= 1.0_real .AND. ry <= 1.0_real .AND. rz <= 1.0_realk) THEN
 
-            iface = 0
+            sface_arr = 0
 
-        ELSEIF (pdx < 0 .AND. ry <= rx .AND. rz <= rx) THEN
+            RETURN
 
-            iface = 1
+        END
+
+
+        IF (pdx < 0 .AND. ry <= rx .AND. rz <= rx) THEN
+
+            sface_arr(1) = 1
+
+            IF (pdy < 0 .AND. rz <= ry) THEN
+
+                sface_arr(2) = 3
+
+                IF (pdz < 0) THEN
+
+                    sface_arr(3) = 5
+
+                ELSE (0 < pdz) THEN
+
+                    sface_arr(3) = 6
+
+                END IF
+
+            ELSEIF (0 < pdy .AND. rz <= ry) THEN
+
+                sface_arr(2) = 4
+
+                IF (pdz < 0) THEN
+
+                    sface_arr(3) = 5
+
+                ELSEIF (0 < pdz) THEN
+
+                    sface_arr(3) = 6
+
+                END IF
+
+            ELSEIF (pdz < 0) THEN
+
+                sface_arr(2) = 5
+
+                IF (pdy < 0) THEN
+
+                    sface_arr(3) = 3
+
+                ELSEIF (0 < pdy) THEN
+
+                    sface_arr(3) = 4
+
+                END IF
+
+            ELSEIF (0 < pdz) THEN
+
+                sface_arr(2) = 6
+
+                IF (pdy < 0) THEN
+
+                    sface_arr(3) = 3
+
+                ELSEIF (0 < pdy) THEN
+
+                    sface_arr(3) = 4
+
+                END IF
+
+            END IF
 
         ELSEIF (0 < pdx .AND. ry <= rx .AND. rz <= rx) THEN
 
-            iface = 2
+            sface_arr(1) = 2
+
+            IF (pdy < 0 .AND. rz <= ry) THEN
+
+                sface_arr(2) = 3
+
+                IF (pdz < 0) THEN
+
+                    sface_arr(3) = 5
+
+                ELSE (0 < pdz) THEN
+
+                    sface_arr(3) = 6
+
+                END IF
+
+            ELSEIF (0 < pdy .AND. rz <= ry) THEN
+
+                sface_arr(2) = 4
+
+                IF (pdz < 0) THEN
+
+                    sface_arr(3) = 5
+
+                ELSEIF (0 < pdz) THEN
+
+                    sface_arr(3) = 6
+
+                END IF
+
+            ELSEIF (pdz < 0) THEN
+
+                sface_arr(2) = 5
+
+                IF (pdy < 0) THEN
+
+                    sface_arr(3) = 3
+
+                ELSEIF (0 < pdy) THEN
+
+                    sface_arr(3) = 4
+
+                END IF
+
+            ELSEIF (0 < pdz) THEN
+
+                sface_arr(2) = 6
+
+                IF (pdy < 0) THEN
+
+                    sface_arr(3) = 3
+
+                ELSEIF (0 < pdy) THEN
+
+                    sface_arr(3) = 4
+
+                END IF
+
+            END IF
 
         ELSEIF (pdy < 0 .AND. rx <= ry .AND. rz <= ry) THEN
 
-            iface = 3
+            sface_arr(1) = 3
+
+            IF (pdx < 0 .AND. rz <= rx) THEN
+
+                sface_arr(2) = 1
+
+                IF (pdz < 0) THEN
+
+                    sface_arr(3) = 5
+
+                ELSE (0 < pdz) THEN
+
+                    sface_arr(3) = 6
+
+                END IF
+
+            ELSEIF (0 < pdx .AND. rz <= rx) THEN
+
+                sface_arr(2) = 2
+
+                IF (pdz < 0) THEN
+
+                    sface_arr(3) = 5
+
+                ELSEIF (0 < pdz) THEN
+
+                    sface_arr(3) = 6
+
+                END IF
+
+            ELSEIF (pdz < 0) THEN
+
+                sface_arr(2) = 5
+
+                IF (pdx < 0) THEN
+
+                    sface_arr(3) = 1
+
+                ELSEIF (0 < pdx) THEN
+
+                    sface_arr(3) = 2
+
+                END IF
+
+            ELSEIF (0 < pdz) THEN
+
+                sface_arr(2) = 6
+
+                IF (pdx < 0) THEN
+
+                    sface_arr(3) = 1
+
+                ELSEIF (0 < pdx) THEN
+
+                    sface_arr(3) = 2
+
+                END IF
+
+            END IF
 
         ELSEIF (0 < pdy .AND. rx <= ry .AND. rz <= ry) THEN
 
-            iface = 4
+            sface_arr(1) = 4
+
+            IF (pdx < 0 .AND. rz <= rx) THEN
+
+                sface_arr(2) = 1
+
+                IF (pdz < 0) THEN
+
+                    sface_arr(3) = 5
+
+                ELSEIF (0 < pdz) THEN
+
+                    sface_arr(3) = 6
+
+                END IF
+
+            ELSEIF (0 < pdx .AND. rz <= rx) THEN
+
+                sface_arr(2) = 2
+
+                IF (pdz < 0) THEN
+
+                    sface_arr(3) = 5
+
+                ELSEIF (0 < pdz) THEN
+
+                    sface_arr(3) = 6
+
+                END IF
+
+            ELSEIF (pdz < 0) THEN
+
+                sface_arr(2) = 5
+
+                IF (pdx < 0) THEN
+
+                    sface_arr(3) = 1
+
+                ELSEIF (0 < pdx) THEN
+
+                    sface_arr(3) = 2
+
+                END IF
+
+            ELSEIF (0 < pdz) THEN
+
+                sface_arr(2) = 6
+
+                IF (pdx < 0) THEN
+
+                    sface_arr(3) = 1
+
+                ELSEIF (0 < pdx) THEN
+
+                    sface_arr(3) = 2
+
+                END IF
+
+            END IF
 
         ELSEIF (pdz < 0 .AND. rx <= rz .AND. ry <= rz) THEN
 
-            iface = 5
+            sface_arr(1) = 5
+
+            IF (pdx < 0 .AND. ry <= rx) THEN
+
+                sface_arr(2) = 1
+
+                IF (pdy < 0) THEN
+
+                    sface_arr(3) = 3
+
+                ELSEIF (0 < pdy) THEN
+
+                    sface_arr(3) = 4
+
+                END IF
+
+            ELSEIF (0 < pdx .AND. ry <= rx) THEN
+
+                sface_arr(2) = 2
+
+                IF (pdy < 0) THEN
+
+                    sface_arr(3) = 3
+
+                ELSEIF (0 < pdy) THEN
+
+                    sface_arr(3) = 4
+
+                END IF
+
+            ELSEIF (pdy < 0) THEN
+
+                sface_arr(2) = 3
+
+                IF (pdx < 0) THEN
+
+                    sface_arr(3) = 1
+
+                ELSEIF (0 < pdx) THEN
+
+                    sface_arr(3) = 2
+
+                END IF
+
+            ELSEIF (0 < pdy) THEN
+
+                sface_arr(2) = 4
+
+                IF (pdx < 0) THEN
+
+                    sface_arr(3) = 1
+
+                ELSEIF (0 < pdx) THEN
+
+                    sface_arr(3) = 2
+
+                END IF
+
+            END IF
 
         ELSEIF (0 < pdz .AND. rx <= rz .AND. ry <= rz) THEN
 
-            iface = 6
+            sface_arr(1) = 6
+
+            IF (pdx < 0 .AND. ry <= rx) THEN
+
+                sface_arr(2) = 1
+
+                IF (pdy < 0) THEN
+
+                    sface_arr(3) = 3
+
+                ELSEIF (0 < pdy) THEN
+
+                    sface_arr(3) = 4
+
+                END IF
+
+            ELSEIF (0 < pdx .AND. ry <= rx) THEN
+
+                sface_arr(2) = 2
+
+                IF (pdy < 0) THEN
+
+                    sface_arr(3) = 3
+
+                ELSEIF (0 < pdy) THEN
+
+                    sface_arr(3) = 4
+
+                END IF
+
+            ELSEIF (pdy < 0) THEN
+
+                sface_arr(2) = 3
+
+                IF (pdx < 0) THEN
+
+                    sface_arr(3) = 1
+
+                ELSEIF (0 < pdx) THEN
+
+                    sface_arr(3) = 2
+
+                END IF
+
+            ELSEIF (0 < pdy) THEN
+
+                sface_arr(2) = 4
+
+                IF (pdx < 0) THEN
+
+                    sface_arr(3) = 1
+
+                ELSEIF (0 < pdx) THEN
+
+                    sface_arr(3) = 2
+
+                END IF
+
+            END IF
 
         END IF
+
+        DO
 
     END SUBROUTINE get_exit_face
 
