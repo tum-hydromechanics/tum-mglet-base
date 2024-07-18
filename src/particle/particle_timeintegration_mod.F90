@@ -133,33 +133,52 @@ CONTAINS
                 my_particle_list%particles(i)%z < minz .OR. &
                 my_particle_list%particles(i)%z > maxz) THEN
 
-                !my_particle_list%particles(i)%is_active = .FALSE.
-
-                !my_particle_list%active_np = my_particle_list%active_np - 1_intk
-
                 CALL get_target_grid(my_particle_list%particles(i), nbrgrid)
 
                 SELECT CASE (TRIM(particle_terminal))
-                CASE ("none")
-                    CONTINUE
-                CASE ("normal")
-                    CONTINUE
-                CASE ("verbose")
-                    WRITE(*,'("Particle ", I0, " left grid ", "I0", " at ", 3F12.6)') my_particle_list%particles(i)%ipart, my_particle_list%particles(i)%igrid, my_particle_list%particles(i)%x, &
-                     my_particle_list%particles(i)%y, my_particle_list%particles(i)%z
+                    CASE ("none")
+                        CONTINUE
+                    CASE ("normal")
+                        CONTINUE
+                    CASE ("verbose")
+                        WRITE(*,'("Particle ", I0, " left grid ", "I0", " at ", 3F12.6)') my_particle_list%particles(i)%ipart, my_particle_list%particles(i)%igrid, my_particle_list%particles(i)%x, &
+                        my_particle_list%particles(i)%y, my_particle_list%particles(i)%z
                 END SELECT
 
                 my_particle_list%particles(i)%igrid = nbrgrid
-                CALL my_particle_list%particles(i)%get_p_ijkcell()
 
                 SELECT CASE (TRIM(particle_terminal))
-                CASE ("none")
-                    CONTINUE
-                CASE ("normal")
-                    CONTINUE
-                CASE ("verbose")
-                    WRITE(*,'("New Grid: ", I0)') my_particle_list%particles(i)%igrid
+                    CASE ("none")
+                        CONTINUE
+                    CASE ("normal")
+                        CONTINUE
+                    CASE ("verbose")
+                        WRITE(*,'("New Grid: ", I0)') my_particle_list%particles(i)%igrid
                 END SELECT
+
+                IF (my_particle_list%particles(i)%x < minx .OR. &
+                    my_particle_list%particles(i)%x > maxx .OR. &
+                    my_particle_list%particles(i)%y < miny .OR. &
+                    my_particle_list%particles(i)%y > maxy .OR. &
+                    my_particle_list%particles(i)%z < minz .OR. &
+                    my_particle_list%particles(i)%z > maxz) THEN
+
+                    SELECT CASE (TRIM(particle_terminal))
+                        CASE ("none")
+                            CONTINUE
+                        CASE ("normal")
+                            CONTINUE
+                        CASE ("verbose")
+                            WRITE(*,'("Particle ", I0, " crossed Periodic Boundary and was deactivated.")') my_particle_list%particles(i)%ipart
+                    END SELECT
+
+                    my_particle_list%particles(i)%is_active = .FALSE.
+
+                    my_particle_list%active_np = my_particle_list%active_np - 1_intk
+
+                END IF
+
+                CALL my_particle_list%particles(i)%get_p_ijkcell()
 
             ELSE
 

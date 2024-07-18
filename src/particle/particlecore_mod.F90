@@ -102,6 +102,22 @@ CONTAINS
         INTEGER(intk) :: i, igrid
         REAL(realk) :: minx, maxx, miny, maxy, minz, maxz
 
+        IF (.NOT. this%is_active) THEN
+
+            SELECT CASE (TRIM(particle_terminal))
+                CASE ("none")
+                    CONTINUE
+                CASE ("normal")
+                    CONTINUE
+                CASE ("verbose")
+                    WRITE(*,*) ' '
+                    WRITE(*, *) "WARNING: In get_p_ijkcell: Tried to locate particle that is not active!"
+            END SELECT
+
+            RETURN
+
+        END IF
+
         DO i = 1, nmygrids
 
             igrid = mygrids(i)
