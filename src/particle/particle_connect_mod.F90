@@ -38,9 +38,9 @@ CONTAINS
 
                 END IF
 
-            ELSEIF (miny <= particle%y .AND. particle%.y <= maxy) THEN !--------------- mid y, low x
+            ELSEIF (miny <= particle%y .AND. particle%y <= maxy) THEN !--------------- mid y, low x
 
-                IF (particle%z < minz) THEN !----------------------------------- low z, mid y, low x
+                IF (particle%z < minz) THEN !---------------------------------- low z, mid y, low x
 
                     iface = 9
 
