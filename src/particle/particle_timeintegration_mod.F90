@@ -16,7 +16,7 @@ CONTAINS
         REAL(realk), INTENT(in) :: dt
 
         ! local variables
-        INTEGER(intk) :: igrid, i, ii, jj, kk
+        INTEGER(intk) :: igrid, nbrgrid, i, ii, jj, kk
         REAL(realk) :: p_u, p_v, p_w
         REAL(realk) :: minx, maxx, miny, maxy, minz, maxz
 
