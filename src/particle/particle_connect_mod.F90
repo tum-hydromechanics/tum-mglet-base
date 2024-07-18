@@ -20,51 +20,51 @@ CONTAINS
 
         CALL get_bbox(minx, maxx, miny, maxy, minz, maxz, particle%igrid)
 
-        IF (particle%x < minx) THEN !--------------------------------------- low x
+        IF (particle%x < minx) THEN !-------------------------------------------------------- low x
 
-            IF (particle%y < miny) THEN !---------------------------- low y, low x
+            IF (particle%y < miny) THEN !--------------------------------------------- low y, low x
 
-                IF (particle%z < minz) THEN !----------------- low z, low y, low x
+                IF (particle%z < minz) THEN !---------------------------------- low z, low y, low x
 
                     iface = 19
 
-                ELSEIF (minz <= particle%z <= maxz) THEN !---- mid z, low y, low x
+                ELSEIF (minz <= particle%z .AND. particle%z <= maxz) THEN !---- mid z, low y, low x
 
                     iface = 7
 
-                ELSEIF (maxz < particle%z) THEN !------------ high z, low y, low x
+                ELSEIF (maxz < particle%z) THEN !----------------------------- high z, low y, low x
 
                     iface = 20
 
                 END IF
 
-            ELSEIF (miny <= particle%y <= maxy) THEN !--------------- mid y, low x
+            ELSEIF (miny <= particle%y .AND. particle%.y <= maxy) THEN !--------------- mid y, low x
 
-                IF (particle%z < minz) THEN !----------------- low z, mid y, low x
+                IF (particle%z < minz) THEN !----------------------------------- low z, mid y, low x
 
                     iface = 9
 
-                ELSEIF (minz <= particle%z <= maxz) THEN !---- mid z, mid y, low x
+                ELSEIF (minz <= particle%z .AND. particle%z <= maxz) THEN !---- mid z, mid y, low x
 
                     iface = 1
 
-                ELSEIF (maxz < particle%z) THEN !------------ high z, mid y, low x
+                ELSEIF (maxz < particle%z) THEN !----------------------------- high z, mid y, low x
 
                     iface = 10
 
                 END IF
 
-            ELSEIF (maxy < particle%y) THEN !----------------------- high y, low x
+            ELSEIF (maxy < particle%y) THEN !---------------------------------------- high y, low x
 
-                IF (particle%z < minz) THEN !---------------- low z, high y, low x
+                IF (particle%z < minz) THEN !--------------------------------- low z, high y, low x
 
                     iface = 21
 
-                ELSEIF (minz <= particle%z <= maxz) THEN !--- mid z, high y, low x
+                ELSEIF (minz <= particle%z .AND. particle%z <= maxz) THEN !--- mid z, high y, low x
 
                     iface = 8
 
-                ELSEIF (maxz < particle%z) THEN !----------- high z, high y, low x
+                ELSEIF (maxz < particle%z) THEN !---------------------------- high z, high y, low x
 
                     iface = 22
 
@@ -72,51 +72,51 @@ CONTAINS
 
             END IF
 
-        ELSEIF (minx <= particle%x <= maxx) THEN !-------------------------- mid x
+        ELSEIF (minx <= particle%x .AND. particle%x <= maxx) THEN !-------------------------- mid x
 
-            IF (particle%y < miny) THEN !---------------------------- low y, mid x
+            IF (particle%y < miny) THEN !--------------------------------------------- low y, mid x
 
-                IF (particle%z < minz) THEN !----------------- low z, low y, mid x
+                IF (particle%z < minz) THEN !---------------------------------- low z, low y, mid x
 
                     iface = 15
 
-                ELSEIF (minz <= particle%z <= maxz) THEN !---- mid z, low y, mid x
+                ELSEIF (minz <= particle%z .AND. particle%z <= maxz) THEN !---- mid z, low y, mid x
 
                     iface = 3
 
-                ELSEIF (maxz < particle%z) THEN !------------ high z, low y, mid x
+                ELSEIF (maxz < particle%z) THEN !----------------------------- high z, low y, mid x
 
                     iface = 16
 
                 END IF
 
-            ELSEIF (miny <= particle%y <= maxy) THEN !--------------- mid y, mid x
+            ELSEIF (miny <= particle%y .AND. particle%y <= maxy) THEN !--------------- mid y, mid x
 
-                IF (particle%z < minz) THEN !----------------- low z, mid y, mid x
+                IF (particle%z < minz) THEN !---------------------------------- low z, mid y, mid x
 
                     iface = 5
 
-                ELSEIF (minz <= particle%z <= maxz) THEN !---- mid z, mid y, mid x
+                ELSEIF (minz <= particle%z .AND. particle%z <= maxz) THEN !---- mid z, mid y, mid x
 
                     iface = 0
 
-                ELSEIF (maxz < particle%z) THEN !------------ high z, mid y, mid x
+                ELSEIF (maxz < particle%z) THEN !----------------------------- high z, mid y, mid x
 
                     iface = 6
 
                 END IF
 
-            ELSEIF (maxy < particle%y) THEN !----------------------- high y, mid x
+            ELSEIF (maxy < particle%y) THEN !---------------------------------------- high y, mid x
 
-                IF (particle%z < minz) THEN !---------------- low z, high y, mid x
+                IF (particle%z < minz) THEN !--------------------------------- low z, high y, mid x
 
                     iface = 17
 
-                ELSEIF (minz <= particle%z <= maxz) THEN !--- mid z, high y, mid x
+                ELSEIF (minz <= particle%z .AND. particle%z <= maxz) THEN !--- mid z, high y, mid x
 
                     iface = 4
 
-                ELSEIF (maxz < particle%z) THEN !----------- high z, high y, mid x
+                ELSEIF (maxz < particle%z) THEN !---------------------------- high z, high y, mid x
 
                     iface = 18
 
@@ -124,51 +124,51 @@ CONTAINS
 
             END IF
 
-        ELSEIF (maxx < particle%x) THEN !---------------------------------- high x
+        ELSEIF (maxx < particle%x) THEN !--------------------------------------------------- high x
 
-            IF (particle%y < miny) THEN !--------------------------- low y, high x
+            IF (particle%y < miny) THEN !-------------------------------------------- low y, high x
 
-                IF (particle%z < minz) THEN !---------------  low z, low y, high x
+                IF (particle%z < minz) THEN !--------------------------------- low z, low y, high x
 
                     iface = 23
 
-                ELSEIF (minz <= particle%z <= maxz) THEN !--- mid z, low y, high x
+                ELSEIF (minz <= particle%z .AND. particle%z <= maxz) THEN !--- mid z, low y, high x
 
                     iface = 11
 
-                ELSEIF (maxz < particle%z) THEN !----------- high z, low y, high x
+                ELSEIF (maxz < particle%z) THEN !---------------------------- high z, low y, high x
 
                     iface = 24
 
                 END IF
 
-            ELSEIF (miny <= particle%y <= maxy) THEN !-------------- mid y, high x
+            ELSEIF (miny <= particle%y .AND. particle%y <= maxy) THEN !-------------- mid y, high x
 
-                IF (particle%z < minz) THEN !---------------- low z, mid y, high x
+                IF (particle%z < minz) THEN !--------------------------------- low z, mid y, high x
 
                     iface = 13
 
-                ELSEIF (minz <= particle%z <= maxz) THEN !--- mid z, mid y, high x
+                ELSEIF (minz <= particle%z .AND. particle%z <= maxz) THEN !--- mid z, mid y, high x
 
                     iface = 2
 
-                ELSEIF (maxz < particle%z) THEN !----------- high z, mid y, high x
+                ELSEIF (maxz < particle%z) THEN !---------------------------- high z, mid y, high x
 
                     iface = 14
 
                 END IF
 
-            ELSEIF (maxy < particle%y) THEN !---------------------- high y, high x
+            ELSEIF (maxy < particle%y) THEN !--------------------------------------- high y, high x
 
-                IF (particle%z < minz) THEN !--------------- low z, high y, high x
+                IF (particle%z < minz) THEN !-------------------------------- low z, high y, high x
 
                     iface = 25
 
-                ELSEIF (minz <= particle%z <= maxz) THEN !-- mid z, high y, high x
+                ELSEIF (minz <= particle%z .AND. particle%z <= maxz) THEN !-- mid z, high y, high x
 
                     iface = 12
 
-                ELSEIF (maxz < particle%z) THEN !---------- high z, high y, high x
+                ELSEIF (maxz < particle%z) THEN !--------------------------- high z, high y, high x
 
                     iface = 26
 
@@ -250,7 +250,7 @@ CONTAINS
 
         END IF
 
-        IF (pdx == 0 .AND. pdy == 0 .AND. pdz == 0)
+        IF (pdx == 0 .AND. pdy == 0 .AND. pdz == 0) THEN
 
             iface = 0
 
