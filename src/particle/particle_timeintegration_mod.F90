@@ -18,7 +18,7 @@ CONTAINS
         ! local variables
         INTEGER(intk) :: igrid, nbrgrid, i, ii, jj, kk
         REAL(realk) :: p_u, p_v, p_w
-        REAL(realk) :: minx, maxx, miny, maxy, minz, maxz
+        REAL(realk) :: minx, maxx, miny, maxy, minz, maxz, nbrminx, nbrmaxx, nbrminy, nbrmaxy, nbrminz, nbrmaxz
 
         TYPE(field_t), POINTER :: x_f, y_f, z_f
         TYPE(field_t), POINTER :: xstag_f, ystag_f, zstag_f
@@ -28,7 +28,7 @@ CONTAINS
         REAL(realk), POINTER, CONTIGUOUS, DIMENSION(:) :: xstag, ystag, zstag
         REAL(realk), POINTER, CONTIGUOUS, DIMENSION(:, :, :) :: u, v, w
 
-        REAL(realk) :: rand(3), diffusion_dx, diffusion_dy, diffusion_dz, advection_dx, advection_dy, advection_dz, dx, dy, dz
+        REAL(realk) :: rand(3), diffusion_dx, diffusion_dy, diffusion_dz, advection_dx, advection_dy, advection_dz, pdx, pdy, pdz
 
         !is calling the geometric fields obsolete when using core_mode -> corefields_mod ?
         CALL get_field(x_f, "X")
@@ -99,14 +99,14 @@ CONTAINS
             diffusion_dy = SQRT(2 * D(2) * dt) * rand(2) / SQRT(rand(1)**(2) + rand(2)**(2) + rand(3)**(2))
             diffusion_dz = SQRT(2 * D(3) * dt) * rand(3) / SQRT(rand(1)**(2) + rand(2)**(2) + rand(3)**(2))
 
-            dx = advection_dx + diffusion_dx
-            dy = advection_dy + diffusion_dy
-            dz = advection_dz + diffusion_dz
+            pdx = advection_dx + diffusion_dx
+            pdy = advection_dy + diffusion_dy
+            pdz = advection_dz + diffusion_dz
 
             ! Particle Displacement
-            my_particle_list%particles(i)%x = my_particle_list%particles(i)%x + dx
-            my_particle_list%particles(i)%y = my_particle_list%particles(i)%y + dy
-            my_particle_list%particles(i)%z = my_particle_list%particles(i)%z + dz
+            my_particle_list%particles(i)%x = my_particle_list%particles(i)%x + pdx
+            my_particle_list%particles(i)%y = my_particle_list%particles(i)%y + pdy
+            my_particle_list%particles(i)%z = my_particle_list%particles(i)%z + pdz
 
             SELECT CASE (TRIM(particle_terminal))
                 CASE ("none")
@@ -141,6 +141,29 @@ CONTAINS
                         my_particle_list%particles(i)%y, my_particle_list%particles(i)%z
                 END SELECT
 
+
+                ! coordinate adaption if particle passes periodic boundary
+                CALL get_bbox(nbrminx, nbrmaxx, nbrminy, nbrmaxy, nbrminz, nbrmaxz, nbrgrid)
+
+                IF (pdx > 0) THEN
+                    my_particle_list%particles(i)%x = my_particle_list%particles(i)%x + nbrminx - maxx
+                ELSE
+                    my_particle_list%particles(i)%x = my_particle_list%particles(i)%x + nbrmaxx - minx
+                END IF
+
+                IF (pdy > 0) THEN
+                    my_particle_list%particles(i)%y = my_particle_list%particles(i)%y + nbrminy - maxy
+                ELSE
+                    my_particle_list%particles(i)%y = my_particle_list%particles(i)%y + nbrmaxy - miny
+                END IF
+
+                IF (pdz > 0) THEN
+                    my_particle_list%particles(i)%z = my_particle_list%particles(i)%z + nbrminz - maxz
+                ELSE
+                    my_particle_list%particles(i)%z = my_particle_list%particles(i)%z + nbrmaxz - minz
+                END IF
+
+                ! new grid for particle
                 my_particle_list%particles(i)%igrid = nbrgrid
 
                 SELECT CASE (TRIM(particle_terminal))
@@ -180,7 +203,7 @@ CONTAINS
 
             ELSE
 
-                CALL my_particle_list%particles(i)%update_p_ijkcell(dx, dy, dz)
+                CALL my_particle_list%particles(i)%update_p_ijkcell(pdx, pdy, pdz)
 
             END IF
 

@@ -21,6 +21,8 @@ MODULE particlecore_mod
 
         INTEGER(intk) :: ijkcell(3) ! stores indices of the PRESSURE grid cell the particle is in
 
+        INTEGER(4) :: facepath(3) ! temporarily stores the faces a particle will (potentially) pass within the next motion
+
         REAL(realk) :: x, y, z
 
         ! time via timekeeper
@@ -487,6 +489,7 @@ CONTAINS
                     WRITE(*, '("igrid       = ", I12)') this%igrid
                     WRITE(*, '("x/y/z       = ", 3F12.6)') this%x, this%y, this%z
                     WRITE(*, '("i/j/k cell  = ", 3I12)') this%ijkcell(1), this%ijkcell(2), this%ijkcell(3)
+                    WRITE(*, '("facepath    = ", 3I12)') this%facepath(1), this%facepath(2), this%facepath(3)
                     WRITE(*, *) ' '
             END SELECT
 

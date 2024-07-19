@@ -189,12 +189,12 @@ CONTAINS
 
     END SUBROUTINE get_target_grid
 
-    SUBROUTINE get_exit_face(particle, pdx, pdy, pdz, sface_arr)
+    SUBROUTINE get_exit_face(particle, pdx, pdy, pdz)
 
         ! subroutine arguments
-        CLASS(baseparticle_t), INTENT(in) :: particle
+        CLASS(baseparticle_t), INTENT(inout) :: particle
         REAL(realk), INTENT(in) :: pdx, pdy, pdz
-        INTEGER(intk), INTENT(out) :: sface_arr(3)
+        !INTEGER(intk), INTENT(out) :: sface_arr(3)
 
         !local variables
         REAL(realk) :: minx, maxx, miny, maxy, minz, maxz
@@ -252,7 +252,7 @@ CONTAINS
 
         IF (rx <= 1.0_realk .AND. ry <= 1.0_realk .AND. rz <= 1.0_realk) THEN
 
-            sface_arr = 0
+            particle%facepath = 0
 
             RETURN
 
@@ -260,61 +260,61 @@ CONTAINS
 
         IF (pdx < 0 .AND. ry <= rx .AND. rz <= rx) THEN
 
-            sface_arr(1) = 1
+            particle%facepath(1) = 1
 
             IF (pdy < 0 .AND. rz <= ry) THEN
 
-                sface_arr(2) = 3
+                particle%facepath(2) = 3
 
                 IF (pdz < 0) THEN
 
-                    sface_arr(3) = 5
+                    particle%facepath(3) = 5
 
                 ELSEIF (0 < pdz) THEN
 
-                    sface_arr(3) = 6
+                    particle%facepath(3) = 6
 
                 END IF
 
             ELSEIF (0 < pdy .AND. rz <= ry) THEN
 
-                sface_arr(2) = 4
+                particle%facepath(2) = 4
 
                 IF (pdz < 0) THEN
 
-                    sface_arr(3) = 5
+                    particle%facepath(3) = 5
 
                 ELSEIF (0 < pdz) THEN
 
-                    sface_arr(3) = 6
+                    particle%facepath(3) = 6
 
                 END IF
 
             ELSEIF (pdz < 0) THEN
 
-                sface_arr(2) = 5
+                particle%facepath(2) = 5
 
                 IF (pdy < 0) THEN
 
-                    sface_arr(3) = 3
+                    particle%facepath(3) = 3
 
                 ELSEIF (0 < pdy) THEN
 
-                    sface_arr(3) = 4
+                    particle%facepath(3) = 4
 
                 END IF
 
             ELSEIF (0 < pdz) THEN
 
-                sface_arr(2) = 6
+                particle%facepath(2) = 6
 
                 IF (pdy < 0) THEN
 
-                    sface_arr(3) = 3
+                    particle%facepath(3) = 3
 
                 ELSEIF (0 < pdy) THEN
 
-                    sface_arr(3) = 4
+                    particle%facepath(3) = 4
 
                 END IF
 
@@ -322,61 +322,61 @@ CONTAINS
 
         ELSEIF (0 < pdx .AND. ry <= rx .AND. rz <= rx) THEN
 
-            sface_arr(1) = 2
+            particle%facepath(1) = 2
 
             IF (pdy < 0 .AND. rz <= ry) THEN
 
-                sface_arr(2) = 3
+                particle%facepath(2) = 3
 
                 IF (pdz < 0) THEN
 
-                    sface_arr(3) = 5
+                    particle%facepath(3) = 5
 
                 ELSEIF (0 < pdz) THEN
 
-                    sface_arr(3) = 6
+                    particle%facepath(3) = 6
 
                 END IF
 
             ELSEIF (0 < pdy .AND. rz <= ry) THEN
 
-                sface_arr(2) = 4
+                particle%facepath(2) = 4
 
                 IF (pdz < 0) THEN
 
-                    sface_arr(3) = 5
+                    particle%facepath(3) = 5
 
                 ELSEIF (0 < pdz) THEN
 
-                    sface_arr(3) = 6
+                    particle%facepath(3) = 6
 
                 END IF
 
             ELSEIF (pdz < 0) THEN
 
-                sface_arr(2) = 5
+                particle%facepath(2) = 5
 
                 IF (pdy < 0) THEN
 
-                    sface_arr(3) = 3
+                    particle%facepath(3) = 3
 
                 ELSEIF (0 < pdy) THEN
 
-                    sface_arr(3) = 4
+                    particle%facepath(3) = 4
 
                 END IF
 
             ELSEIF (0 < pdz) THEN
 
-                sface_arr(2) = 6
+                particle%facepath(2) = 6
 
                 IF (pdy < 0) THEN
 
-                    sface_arr(3) = 3
+                    particle%facepath(3) = 3
 
                 ELSEIF (0 < pdy) THEN
 
-                    sface_arr(3) = 4
+                    particle%facepath(3) = 4
 
                 END IF
 
@@ -384,61 +384,61 @@ CONTAINS
 
         ELSEIF (pdy < 0 .AND. rx <= ry .AND. rz <= ry) THEN
 
-            sface_arr(1) = 3
+            particle%facepath(1) = 3
 
             IF (pdx < 0 .AND. rz <= rx) THEN
 
-                sface_arr(2) = 1
+                particle%facepath(2) = 1
 
                 IF (pdz < 0) THEN
 
-                    sface_arr(3) = 5
+                    particle%facepath(3) = 5
 
                 ELSEIF (0 < pdz) THEN
 
-                    sface_arr(3) = 6
+                    particle%facepath(3) = 6
 
                 END IF
 
             ELSEIF (0 < pdx .AND. rz <= rx) THEN
 
-                sface_arr(2) = 2
+                particle%facepath(2) = 2
 
                 IF (pdz < 0) THEN
 
-                    sface_arr(3) = 5
+                    particle%facepath(3) = 5
 
                 ELSEIF (0 < pdz) THEN
 
-                    sface_arr(3) = 6
+                    particle%facepath(3) = 6
 
                 END IF
 
             ELSEIF (pdz < 0) THEN
 
-                sface_arr(2) = 5
+                particle%facepath(2) = 5
 
                 IF (pdx < 0) THEN
 
-                    sface_arr(3) = 1
+                    particle%facepath(3) = 1
 
                 ELSEIF (0 < pdx) THEN
 
-                    sface_arr(3) = 2
+                    particle%facepath(3) = 2
 
                 END IF
 
             ELSEIF (0 < pdz) THEN
 
-                sface_arr(2) = 6
+                particle%facepath(2) = 6
 
                 IF (pdx < 0) THEN
 
-                    sface_arr(3) = 1
+                    particle%facepath(3) = 1
 
                 ELSEIF (0 < pdx) THEN
 
-                    sface_arr(3) = 2
+                    particle%facepath(3) = 2
 
                 END IF
 
@@ -446,61 +446,61 @@ CONTAINS
 
         ELSEIF (0 < pdy .AND. rx <= ry .AND. rz <= ry) THEN
 
-            sface_arr(1) = 4
+            particle%facepath(1) = 4
 
             IF (pdx < 0 .AND. rz <= rx) THEN
 
-                sface_arr(2) = 1
+                particle%facepath(2) = 1
 
                 IF (pdz < 0) THEN
 
-                    sface_arr(3) = 5
+                    particle%facepath(3) = 5
 
                 ELSEIF (0 < pdz) THEN
 
-                    sface_arr(3) = 6
+                    particle%facepath(3) = 6
 
                 END IF
 
             ELSEIF (0 < pdx .AND. rz <= rx) THEN
 
-                sface_arr(2) = 2
+                particle%facepath(2) = 2
 
                 IF (pdz < 0) THEN
 
-                    sface_arr(3) = 5
+                    particle%facepath(3) = 5
 
                 ELSEIF (0 < pdz) THEN
 
-                    sface_arr(3) = 6
+                    particle%facepath(3) = 6
 
                 END IF
 
             ELSEIF (pdz < 0) THEN
 
-                sface_arr(2) = 5
+                particle%facepath(2) = 5
 
                 IF (pdx < 0) THEN
 
-                    sface_arr(3) = 1
+                    particle%facepath(3) = 1
 
                 ELSEIF (0 < pdx) THEN
 
-                    sface_arr(3) = 2
+                    particle%facepath(3) = 2
 
                 END IF
 
             ELSEIF (0 < pdz) THEN
 
-                sface_arr(2) = 6
+                particle%facepath(2) = 6
 
                 IF (pdx < 0) THEN
 
-                    sface_arr(3) = 1
+                    particle%facepath(3) = 1
 
                 ELSEIF (0 < pdx) THEN
 
-                    sface_arr(3) = 2
+                    particle%facepath(3) = 2
 
                 END IF
 
@@ -508,61 +508,61 @@ CONTAINS
 
         ELSEIF (pdz < 0 .AND. rx <= rz .AND. ry <= rz) THEN
 
-            sface_arr(1) = 5
+            particle%facepath(1) = 5
 
             IF (pdx < 0 .AND. ry <= rx) THEN
 
-                sface_arr(2) = 1
+                particle%facepath(2) = 1
 
                 IF (pdy < 0) THEN
 
-                    sface_arr(3) = 3
+                    particle%facepath(3) = 3
 
                 ELSEIF (0 < pdy) THEN
 
-                    sface_arr(3) = 4
+                    particle%facepath(3) = 4
 
                 END IF
 
             ELSEIF (0 < pdx .AND. ry <= rx) THEN
 
-                sface_arr(2) = 2
+                particle%facepath(2) = 2
 
                 IF (pdy < 0) THEN
 
-                    sface_arr(3) = 3
+                    particle%facepath(3) = 3
 
                 ELSEIF (0 < pdy) THEN
 
-                    sface_arr(3) = 4
+                    particle%facepath(3) = 4
 
                 END IF
 
             ELSEIF (pdy < 0) THEN
 
-                sface_arr(2) = 3
+                particle%facepath(2) = 3
 
                 IF (pdx < 0) THEN
 
-                    sface_arr(3) = 1
+                    particle%facepath(3) = 1
 
                 ELSEIF (0 < pdx) THEN
 
-                    sface_arr(3) = 2
+                    particle%facepath(3) = 2
 
                 END IF
 
             ELSEIF (0 < pdy) THEN
 
-                sface_arr(2) = 4
+                particle%facepath(2) = 4
 
                 IF (pdx < 0) THEN
 
-                    sface_arr(3) = 1
+                    particle%facepath(3) = 1
 
                 ELSEIF (0 < pdx) THEN
 
-                    sface_arr(3) = 2
+                    particle%facepath(3) = 2
 
                 END IF
 
@@ -570,61 +570,61 @@ CONTAINS
 
         ELSEIF (0 < pdz .AND. rx <= rz .AND. ry <= rz) THEN
 
-            sface_arr(1) = 6
+            particle%facepath(1) = 6
 
             IF (pdx < 0 .AND. ry <= rx) THEN
 
-                sface_arr(2) = 1
+                particle%facepath(2) = 1
 
                 IF (pdy < 0) THEN
 
-                    sface_arr(3) = 3
+                    particle%facepath(3) = 3
 
                 ELSEIF (0 < pdy) THEN
 
-                    sface_arr(3) = 4
+                    particle%facepath(3) = 4
 
                 END IF
 
             ELSEIF (0 < pdx .AND. ry <= rx) THEN
 
-                sface_arr(2) = 2
+                particle%facepath(2) = 2
 
                 IF (pdy < 0) THEN
 
-                    sface_arr(3) = 3
+                    particle%facepath(3) = 3
 
                 ELSEIF (0 < pdy) THEN
 
-                    sface_arr(3) = 4
+                    particle%facepath(3) = 4
 
                 END IF
 
             ELSEIF (pdy < 0) THEN
 
-                sface_arr(2) = 3
+                particle%facepath(2) = 3
 
                 IF (pdx < 0) THEN
 
-                    sface_arr(3) = 1
+                    particle%facepath(3) = 1
 
                 ELSEIF (0 < pdx) THEN
 
-                    sface_arr(3) = 2
+                    particle%facepath(3) = 2
 
                 END IF
 
             ELSEIF (0 < pdy) THEN
 
-                sface_arr(2) = 4
+                particle%facepath(2) = 4
 
                 IF (pdx < 0) THEN
 
-                    sface_arr(3) = 1
+                    particle%facepath(3) = 1
 
                 ELSEIF (0 < pdx) THEN
 
-                    sface_arr(3) = 2
+                    particle%facepath(3) = 2
 
                 END IF
 
