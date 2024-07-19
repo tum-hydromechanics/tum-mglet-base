@@ -256,7 +256,7 @@ CONTAINS
 
             RETURN
 
-        END
+        END IF
 
         IF (pdx < 0 .AND. ry <= rx .AND. rz <= rx) THEN
 
@@ -270,7 +270,7 @@ CONTAINS
 
                     sface_arr(3) = 5
 
-                ELSE (0 < pdz) THEN
+                ELSEIF (0 < pdz) THEN
 
                     sface_arr(3) = 6
 
@@ -332,7 +332,7 @@ CONTAINS
 
                     sface_arr(3) = 5
 
-                ELSE (0 < pdz) THEN
+                ELSEIF (0 < pdz) THEN
 
                     sface_arr(3) = 6
 
@@ -394,7 +394,7 @@ CONTAINS
 
                     sface_arr(3) = 5
 
-                ELSE (0 < pdz) THEN
+                ELSEIF (0 < pdz) THEN
 
                     sface_arr(3) = 6
 
