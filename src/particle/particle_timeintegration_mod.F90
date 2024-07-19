@@ -147,19 +147,19 @@ CONTAINS
 
                 IF (0 < pdx .AND. maxx /= nbrminx) THEN
                     my_particle_list%particles(i)%x = my_particle_list%particles(i)%x + nbrminx - maxx
-                ELSEIF (pdx < 0 .AND. minx /= nbrmaxx)
+                ELSEIF (pdx < 0 .AND. minx /= nbrmaxx) THEN
                     my_particle_list%particles(i)%x = my_particle_list%particles(i)%x + nbrmaxx - minx
                 END IF
 
                 IF (0 < pdy .AND. maxy /= nbrminy) THEN
                     my_particle_list%particles(i)%y = my_particle_list%particles(i)%y + nbrminy - maxy
-                ELSEIF (pdy < 0 .AND. miny /= nbrmaxy)
+                ELSEIF (pdy < 0 .AND. miny /= nbrmaxy) THEN
                     my_particle_list%particles(i)%y = my_particle_list%particles(i)%y + nbrmaxy - miny
                 END IF
 
                 IF (0 < pdz .AND. maxz /= nbrminz) THEN
                     my_particle_list%particles(i)%z = my_particle_list%particles(i)%z + nbrminz - maxz
-                ELSEIF (pdz < 0 .AND. minz /= nbrmaxz)
+                ELSEIF (pdz < 0 .AND. minz /= nbrmaxz) THEN
                     my_particle_list%particles(i)%z = my_particle_list%particles(i)%z + nbrmaxz - minz
                 END IF
 
