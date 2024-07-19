@@ -250,14 +250,13 @@ CONTAINS
 
         END IF
 
-        IF (rx <= 1.0_real .AND. ry <= 1.0_real .AND. rz <= 1.0_realk) THEN
+        IF (rx <= 1.0_realk .AND. ry <= 1.0_realk .AND. rz <= 1.0_realk) THEN
 
             sface_arr = 0
 
             RETURN
 
         END
-
 
         IF (pdx < 0 .AND. ry <= rx .AND. rz <= rx) THEN
 
@@ -632,8 +631,6 @@ CONTAINS
             END IF
 
         END IF
-
-        DO
 
     END SUBROUTINE get_exit_face
 
