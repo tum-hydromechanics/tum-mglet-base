@@ -145,21 +145,21 @@ CONTAINS
                 ! coordinate adaption if particle passes periodic boundary
                 CALL get_bbox(nbrminx, nbrmaxx, nbrminy, nbrmaxy, nbrminz, nbrmaxz, nbrgrid)
 
-                IF (pdx > 0) THEN
+                IF (0 < pdx .AND. maxx /= nbrminx) THEN
                     my_particle_list%particles(i)%x = my_particle_list%particles(i)%x + nbrminx - maxx
-                ELSE
+                ELSEIF (pdx < 0 .AND. minx /= nbrmaxx)
                     my_particle_list%particles(i)%x = my_particle_list%particles(i)%x + nbrmaxx - minx
                 END IF
 
-                IF (pdy > 0) THEN
+                IF (0 < pdy .AND. maxy /= nbrminy) THEN
                     my_particle_list%particles(i)%y = my_particle_list%particles(i)%y + nbrminy - maxy
-                ELSE
+                ELSEIF (pdy < 0 .AND. miny /= nbrmaxy)
                     my_particle_list%particles(i)%y = my_particle_list%particles(i)%y + nbrmaxy - miny
                 END IF
 
-                IF (pdz > 0) THEN
+                IF (0 < pdz .AND. maxz /= nbrminz) THEN
                     my_particle_list%particles(i)%z = my_particle_list%particles(i)%z + nbrminz - maxz
-                ELSE
+                ELSEIF (pdz < 0 .AND. minz /= nbrmaxz)
                     my_particle_list%particles(i)%z = my_particle_list%particles(i)%z + nbrmaxz - minz
                 END IF
 
@@ -175,14 +175,12 @@ CONTAINS
                         WRITE(*,'("New Grid: ", I0)') my_particle_list%particles(i)%igrid
                 END SELECT
 
-                CALL get_bbox(minx, maxx, miny, maxy, minz, maxz, nbrgrid)
-
-                IF (my_particle_list%particles(i)%x < minx .OR. &
-                    my_particle_list%particles(i)%x > maxx .OR. &
-                    my_particle_list%particles(i)%y < miny .OR. &
-                    my_particle_list%particles(i)%y > maxy .OR. &
-                    my_particle_list%particles(i)%z < minz .OR. &
-                    my_particle_list%particles(i)%z > maxz) THEN
+                IF (my_particle_list%particles(i)%x < nbrminx .OR. &
+                    my_particle_list%particles(i)%x > nbrmaxx .OR. &
+                    my_particle_list%particles(i)%y < nbrminy .OR. &
+                    my_particle_list%particles(i)%y > nbrmaxy .OR. &
+                    my_particle_list%particles(i)%z < nbrminz .OR. &
+                    my_particle_list%particles(i)%z > nbrmaxz) THEN
 
                     SELECT CASE (TRIM(particle_terminal))
                         CASE ("none")
