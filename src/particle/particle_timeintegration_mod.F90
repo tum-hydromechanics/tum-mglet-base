@@ -145,24 +145,6 @@ CONTAINS
                 ! coordinate adaption if particle passes periodic boundary
                 CALL get_bbox(nbrminx, nbrmaxx, nbrminy, nbrmaxy, nbrminz, nbrmaxz, nbrgrid)
 
-                IF (0 < pdx .AND. maxx /= nbrminx) THEN
-                    my_particle_list%particles(i)%x = my_particle_list%particles(i)%x + nbrminx - maxx
-                ELSEIF (pdx < 0 .AND. minx /= nbrmaxx) THEN
-                    my_particle_list%particles(i)%x = my_particle_list%particles(i)%x + nbrmaxx - minx
-                END IF
-
-                IF (0 < pdy .AND. maxy /= nbrminy) THEN
-                    my_particle_list%particles(i)%y = my_particle_list%particles(i)%y + nbrminy - maxy
-                ELSEIF (pdy < 0 .AND. miny /= nbrmaxy) THEN
-                    my_particle_list%particles(i)%y = my_particle_list%particles(i)%y + nbrmaxy - miny
-                END IF
-
-                IF (0 < pdz .AND. maxz /= nbrminz) THEN
-                    my_particle_list%particles(i)%z = my_particle_list%particles(i)%z + nbrminz - maxz
-                ELSEIF (pdz < 0 .AND. minz /= nbrmaxz) THEN
-                    my_particle_list%particles(i)%z = my_particle_list%particles(i)%z + nbrmaxz - minz
-                END IF
-
                 ! new grid for particle
                 my_particle_list%particles(i)%igrid = nbrgrid
 
@@ -175,27 +157,54 @@ CONTAINS
                         WRITE(*,'("New Grid: ", I0)') my_particle_list%particles(i)%igrid
                 END SELECT
 
-                IF (my_particle_list%particles(i)%x < nbrminx .OR. &
-                    my_particle_list%particles(i)%x > nbrmaxx .OR. &
-                    my_particle_list%particles(i)%y < nbrminy .OR. &
-                    my_particle_list%particles(i)%y > nbrmaxy .OR. &
-                    my_particle_list%particles(i)%z < nbrminz .OR. &
-                    my_particle_list%particles(i)%z > nbrmaxz) THEN
+                ! PERIODIC BOUNDARY
 
-                    SELECT CASE (TRIM(particle_terminal))
-                        CASE ("none")
-                            CONTINUE
-                        CASE ("normal")
-                            CONTINUE
-                        CASE ("verbose")
-                            WRITE(*,'("Particle ", I0, " crossed Periodic Boundary and was deactivated.")') my_particle_list%particles(i)%ipart
-                    END SELECT
-
-                    my_particle_list%particles(i)%is_active = .FALSE.
-
-                    my_particle_list%active_np = my_particle_list%active_np - 1_intk
-
+                IF (my_particle_list%particles(i)%x < nbrminx) THEN
+                    my_particle_list%particles(i)%x = nbrmaxx - ABS(my_particle_list%particles(i)%x - minx)
                 END IF
+
+                IF (nbrmaxx < my_particle_list%particles(i)%x) THEN
+                    my_particle_list%particles(i)%x = nbrminx + ABS(my_particle_list%particles(i)%x - maxx)
+                END IF
+
+                IF (my_particle_list%particles(i)%y < nbrminy) THEN
+                    my_particle_list%particles(i)%y = nbrmaxy - ABS(my_particle_list%particles(i)%y - miny)
+                END IF
+
+                IF (nbrmaxy < my_particle_list%particles(i)%y) THEN
+                    my_particle_list%particles(i)%y = nbrminy + ABS(my_particle_list%particles(i)%y - maxy)
+                END IF
+
+                IF (my_particle_list%particles(i)%z < nbrminz) THEN
+                    my_particle_list%particles(i)%z = nbrmaxz - ABS(my_particle_list%particles(i)%z - minz)
+                END IF
+
+                IF (nbrmaxz < my_particle_list%particles(i)%z) THEN
+                    my_particle_list%particles(i)%z = nbrminz + ABS(my_particle_list%particles(i)%z - maxz)
+                END IF
+
+                ! NON PERIODIC BOUNDARY
+                !IF (my_particle_list%particles(i)%x < nbrminx .OR. &
+                !    my_particle_list%particles(i)%x > nbrmaxx .OR. &
+                !    my_particle_list%particles(i)%y < nbrminy .OR. &
+                !    my_particle_list%particles(i)%y > nbrmaxy .OR. &
+                !    my_particle_list%particles(i)%z < nbrminz .OR. &
+                !    my_particle_list%particles(i)%z > nbrmaxz) THEN
+
+                    !SELECT CASE (TRIM(particle_terminal))
+                    !    CASE ("none")
+                    !        CONTINUE
+                    !    CASE ("normal")
+                    !        CONTINUE
+                    !    CASE ("verbose")
+                    !        WRITE(*,'("Particle ", I0, " crossed Periodic Boundary and was deactivated.")') my_particle_list%particles(i)%ipart
+                    !END SELECT
+
+                    !my_particle_list%particles(i)%is_active = .FALSE.
+
+                    !my_particle_list%active_np = my_particle_list%active_np - 1_intk
+
+                !END IF
 
                 CALL my_particle_list%particles(i)%get_p_ijkcell()
 
