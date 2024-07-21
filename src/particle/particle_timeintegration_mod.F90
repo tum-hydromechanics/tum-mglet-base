@@ -264,12 +264,12 @@ CONTAINS
             REAL(realk) :: p_x, p_y, p_z
             REAL(realk), DIMENSION(6) :: p_bbox_u, p_bbox_v, p_bbox_w
 
-            !just for readability of the coming expressions
+            !just for readability of the following expressions
             p_i = particle%ijkcell(1)
             p_j = particle%ijkcell(2)
             p_k = particle%ijkcell(3)
 
-            !just for readability
+            !just for readability of the following expressions
             p_x = particle%x
             p_y = particle%y
             p_z = particle%z
@@ -349,8 +349,8 @@ CONTAINS
         yd = (y - bbox(3)) / (bbox(4) - bbox(3))
         zd = (z - bbox(5)) / (bbox(6) - bbox(5))
 
-        f = (f19 * (1 - xd) + f23 * xd)  * (1 - yd) + (f21 * (1 - xd) + f25 * xd) * yd * (1 - zd) + &
-            (f20 * (1 - xd) + f24 * xd) * (1 - yd) + (f22 * (1 - xd) + f26 * xd) * yd * zd
+        f = ((f19 * (1 - xd) + f23 * xd)  * (1 - yd) + (f21 * (1 - xd) + f25 * xd) * yd) * (1 - zd) + &
+            ((f20 * (1 - xd) + f24 * xd) * (1 - yd) + (f22 * (1 - xd) + f26 * xd) * yd) * zd
 
     END SUBROUTINE interp_trilinear
 
