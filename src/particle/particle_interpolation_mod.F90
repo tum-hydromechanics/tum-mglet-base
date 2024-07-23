@@ -1,0 +1,208 @@
+MODULE particle_interpolation_mod
+
+USE particlecore_mod
+
+IMPLICIT NONE
+
+CONTAINS
+
+    SUBROUTINE get_particle_uvw(kk, jj, ii, particle, &
+                 p_u, p_v, p_w, xstag, ystag, zstag, u, v, w, x, y, z)
+
+        INTEGER(intk), INTENT(in) :: kk, jj, ii
+        CLASS(baseparticle_t), INTENT(in) :: particle
+        REAL(realk), INTENT(out) :: p_u, p_v, p_w
+        REAL(realk), INTENT(in) :: xstag(ii), ystag(jj), zstag(kk)
+        REAL(realk), INTENT(in) :: u(kk, jj, ii), v(kk, jj, ii), w(kk, jj, ii)
+        REAL(realk), INTENT(in) :: x(ii), y(jj), z(kk)
+
+        IF (dinterp_particles) THEN
+
+            CALL trilinear_particle_uvw(kk, jj, ii, particle, &
+             p_u, p_v, p_w, xstag, ystag, zstag, u, v, w, x, y, z)
+
+        ELSE
+
+            CALL nearest_particle_uvw(kk, jj, ii, particle, &
+             p_u, p_v, p_w, u, v, w, x, y, z)
+
+        END IF
+    END SUBROUTINE get_particle_uvw
+
+    !------------------------------
+
+    ! no interpolation of velocity, just the velocity components of the nearest staggered cells respectively
+    SUBROUTINE nearest_particle_uvw(kk, jj, ii, particle, p_u, p_v, p_w, &
+         u, v, w, x, y, z)
+
+        !subroutine_arguments
+        INTEGER(intk), INTENT(in) :: kk, jj, ii
+        CLASS(baseparticle_t), INTENT(in) :: particle
+        REAL(realk), INTENT(out) :: p_u, p_v, p_w
+        REAL(realk), INTENT(in) :: u(kk, jj, ii), v(kk, jj, ii), w(kk, jj, ii)
+        REAL(realk), INTENT(in) :: x(ii), y(jj), z(kk)
+
+        !local variables
+        INTEGER(intk) :: p_istag, p_jstag, p_kstag
+
+        p_istag = MAX( 0_intk, NINT( SIGN( 1.0_realk, particle%x - x(particle%ijkcell(1)) ), intk ))
+        p_jstag = MAX( 0_intk, NINT( SIGN( 1.0_realk, particle%y - x(particle%ijkcell(2)) ), intk ))
+        p_kstag = MAX( 0_intk, NINT( SIGN( 1.0_realk, particle%z - x(particle%ijkcell(3)) ), intk ))
+
+        p_u = u(particle%ijkcell(3), particle%ijkcell(2), particle%ijkcell(1) + p_istag - 1)
+        p_v = v(particle%ijkcell(3), particle%ijkcell(2) + p_jstag - 1, particle%ijkcell(1))
+        p_w = w(particle%ijkcell(3) + p_kstag - 1, particle%ijkcell(2), particle%ijkcell(1))
+
+    END SUBROUTINE nearest_particle_uvw
+
+    !------------------------------
+
+    ! from Gobert et. at 2006: LAGRANGIAN SCALAR TRACKING FOR LAMINAR MICROMIXING AT HIGH SCHMIDT NUMBERS
+    SUBROUTINE gobert_particle_uvw(kk, jj, ii, particle, p_u, p_v, p_w, &
+         xstag, ystag, zstag, u, v, w, x, y, z)
+
+        ! subroutine arguments
+        INTEGER(intk), INTENT(in) :: kk, jj, ii
+        CLASS(baseparticle_t), INTENT(in) :: particle
+        REAL(realk), INTENT(out) :: p_u, p_v, p_w
+        REAL(realk), INTENT(in) :: xstag(ii), ystag(jj), zstag(kk)
+        REAL(realk), INTENT(in) :: u(kk, jj, ii), v(kk, jj, ii), w(kk, jj, ii)
+        REAL(realk), INTENT(in) :: x(ii), y(jj), z(kk)
+
+        ! local variables
+        INTEGER(intk) :: p_i, p_j, p_k, p_istag, p_jstag, p_kstag
+        REAL(realk) :: p_x, p_y, p_z, alpha, beta, gamma, delta
+        REAL(realk), DIMENSION(6) :: p_bbox_u, p_bbox_v, p_bbox_w
+
+        !just for readability of the following expressions
+        p_i = particle%ijkcell(1)
+        p_j = particle%ijkcell(2)
+        p_k = particle%ijkcell(3)
+
+        !just for readability of the following expressions
+        p_x = particle%x
+        p_y = particle%y
+        p_z = particle%z
+
+        p_istag = MAX( 0_intk, NINT( SIGN(1.0_realk, p_x - x(p_i)), intk ) )
+        p_jstag = MAX( 0_intk, NINT( SIGN(1.0_realk, p_y - y(p_j)), intk ) )
+        p_kstag = MAX( 0_intk, NINT( SIGN(1.0_realk, p_z - z(p_k)), intk ) )
+
+        ! u component
+        alpha = (xstag(p_i) - xstag(p_i - 1)) / ddx(p_i)
+        beta = 0.25 * () / ddy
+
+
+
+    END SUBROUTINE gobert_particle_uvw
+
+    !------------------------------
+
+    ! THIS ROUTINE IS NOT SUITABLE AS IT IS NOT MASS CONSERVATIVE (divergence of the interpolated velocity is not zero)
+    SUBROUTINE trilinear_particle_uvw(kk, jj, ii, particle, p_u, p_v, p_w, &
+         xstag, ystag, zstag, u, v, w, x, y, z)
+
+        ! subroutine arguments
+        INTEGER(intk), INTENT(in) :: kk, jj, ii
+        CLASS(baseparticle_t), INTENT(in) :: particle
+        REAL(realk), INTENT(out) :: p_u, p_v, p_w
+        REAL(realk), INTENT(in) :: xstag(ii), ystag(jj), zstag(kk)
+        REAL(realk), INTENT(in) :: u(kk, jj, ii), v(kk, jj, ii), w(kk, jj, ii)
+        REAL(realk), INTENT(in) :: x(ii), y(jj), z(kk)
+
+        ! local variables
+        INTEGER(intk) :: p_i, p_j, p_k, p_istag, p_jstag, p_kstag
+        REAL(realk) :: p_x, p_y, p_z
+        REAL(realk), DIMENSION(6) :: p_bbox_u, p_bbox_v, p_bbox_w
+
+        !just for readability of the following expressions
+        p_i = particle%ijkcell(1)
+        p_j = particle%ijkcell(2)
+        p_k = particle%ijkcell(3)
+
+        !just for readability of the following expressions
+        p_x = particle%x
+        p_y = particle%y
+        p_z = particle%z
+
+        p_istag = MAX( 0_intk, NINT( SIGN(1.0_realk, p_x - x(p_i)), intk ) )
+        p_jstag = MAX( 0_intk, NINT( SIGN(1.0_realk, p_y - y(p_j)), intk ) )
+        p_kstag = MAX( 0_intk, NINT( SIGN(1.0_realk, p_z - z(p_k)), intk ) )
+
+        p_bbox_u(1) = xstag(p_i - 1)
+        p_bbox_u(2) = xstag(p_i)
+        p_bbox_u(3) = y(p_j + p_jstag - 1)
+        p_bbox_u(4) = y(p_j + p_jstag)
+        p_bbox_u(5) = z(p_k + p_kstag - 1)
+        p_bbox_u(6) = z(p_k + p_kstag)
+
+        p_bbox_v(1) = x(p_i + p_istag - 1)
+        p_bbox_v(2) = x(p_i + p_istag)
+        p_bbox_v(3) = ystag(p_j - 1)
+        p_bbox_v(4) = ystag(p_j)
+        p_bbox_v(5) = z(p_k + p_kstag - 1)
+        p_bbox_v(6) = z(p_k + p_kstag)
+
+        p_bbox_w(1) = x(p_i + p_istag - 1)
+        p_bbox_w(2) = x(p_i + p_istag)
+        p_bbox_w(3) = y(p_j + p_jstag - 1)
+        p_bbox_w(4) = y(p_j + p_jstag)
+        p_bbox_w(5) = zstag(p_k - 1)
+        p_bbox_w(6) = zstag(p_k)
+
+        CALL interp_trilinear(p_x, p_y, p_z, p_bbox_u, p_u, &
+                        u(p_k + p_kstag - 1, p_j + p_jstag -1, p_i - 1),&
+                        u(p_k + p_kstag    , p_j + p_jstag -1, p_i - 1),&
+                        u(p_k + p_kstag - 1, p_j + p_jstag   , p_i - 1),&
+                        u(p_k + p_kstag    , p_j + p_jstag   , p_i - 1),&
+                        u(p_k + p_kstag - 1, p_j + p_jstag -1, p_i    ),&
+                        u(p_k + p_kstag    , p_j + p_jstag -1, p_i    ),&
+                        u(p_k + p_kstag - 1, p_j + p_jstag   , p_i    ),&
+                        u(p_k + p_kstag    , p_j + p_jstag   , p_i    ))
+
+        CALL interp_trilinear(p_x, p_y, p_z, p_bbox_v, p_v,&
+                        v(p_k + p_kstag - 1, p_j -1, p_i + p_istag - 1),&
+                        v(p_k + p_kstag    , p_j -1, p_i + p_istag - 1),&
+                        v(p_k + p_kstag - 1, p_j   , p_i + p_istag - 1),&
+                        v(p_k + p_kstag    , p_j   , p_i + p_istag - 1),&
+                        v(p_k + p_kstag - 1, p_j -1, p_i + p_istag    ),&
+                        v(p_k + p_kstag    , p_j -1, p_i + p_istag    ),&
+                        v(p_k + p_kstag - 1, p_j   , p_i + p_istag    ),&
+                        v(p_k + p_kstag    , p_j   , p_i + p_istag    ))
+
+        CALL interp_trilinear(p_x, p_y, p_z, p_bbox_w, p_w,&
+                        w(p_k - 1, p_j + p_jstag -1, p_i + p_istag - 1),&
+                        w(p_k    , p_j + p_jstag -1, p_i + p_istag - 1),&
+                        w(p_k - 1, p_j + p_jstag   , p_i + p_istag - 1),&
+                        w(p_k    , p_j + p_jstag   , p_i + p_istag - 1),&
+                        w(p_k - 1, p_j + p_jstag -1, p_i + p_istag    ),&
+                        w(p_k    , p_j + p_jstag -1, p_i + p_istag    ),&
+                        w(p_k - 1, p_j + p_jstag   , p_i + p_istag    ),&
+                        w(p_k    , p_j + p_jstag   , p_i + p_istag    ))
+
+    END SUBROUTINE interp_particle_uvw
+
+    !------------------------------
+
+    SUBROUTINE interp_trilinear(x, y, z, bbox, &
+        f, f19, f20, f21, f22, f23, f24, f25, f26) ! Trilinear interpolation for a rectilinear grid !
+
+        ! subroutine arguments
+        REAL(realk), INTENT(in) :: x, y, z
+        REAL(realk), DIMENSION(6), INTENT(in) :: bbox
+        REAL(realk), INTENT(in) :: f19, f20, f21, f22, f23, f24, f25, f26 ! numbers indicate the corners (see convention on the numbering of faces/edges/corners)
+        REAL(realk), INTENT(out) :: f
+
+        ! local variables
+        REAL(realk) :: xd, yd, zd
+
+        xd = (x - bbox(1)) / (bbox(2) - bbox(1))
+        yd = (y - bbox(3)) / (bbox(4) - bbox(3))
+        zd = (z - bbox(5)) / (bbox(6) - bbox(5))
+
+        f = ((f19 * (1 - xd) + f23 * xd)  * (1 - yd) + (f21 * (1 - xd) + f25 * xd) * yd) * (1 - zd) + &
+            ((f20 * (1 - xd) + f24 * xd) * (1 - yd) + (f22 * (1 - xd) + f26 * xd) * yd) * zd
+
+    END SUBROUTINE interp_trilinear
+
+END MODULE
