@@ -57,9 +57,9 @@ CONTAINS
 
     !------------------------------
 
-    ! from Gobert et. at 2006: LAGRANGIAN SCALAR TRACKING FOR LAMINAR MICROMIXING AT HIGH SCHMIDT NUMBERS
+    ! from Gobert et. al, LAGRANGIAN SCALAR TRACKING FOR LAMINAR MICROMIXING AT HIGH SCHMIDT NUMBERS, 2006
     SUBROUTINE gobert_particle_uvw(kk, jj, ii, particle, p_u, p_v, p_w, &
-         xstag, ystag, zstag, u, v, w, x, y, z)
+         xstag, ystag, zstag, u, v, w, x, y, z, dx, dy, dz, ddx, ddy, ddz)
 
         ! subroutine arguments
         INTEGER(intk), INTENT(in) :: kk, jj, ii
@@ -67,7 +67,7 @@ CONTAINS
         REAL(realk), INTENT(out) :: p_u, p_v, p_w
         REAL(realk), INTENT(in) :: xstag(ii), ystag(jj), zstag(kk)
         REAL(realk), INTENT(in) :: u(kk, jj, ii), v(kk, jj, ii), w(kk, jj, ii)
-        REAL(realk), INTENT(in) :: x(ii), y(jj), z(kk)
+        REAL(realk), INTENT(in) :: x(ii), y(jj), z(kk), dx(ii), dy(jj), dz(kk), ddx(ii), ddy(jj), ddz(kk)
 
         ! local variables
         INTEGER(intk) :: p_i, p_j, p_k, p_istag, p_jstag, p_kstag
@@ -89,10 +89,16 @@ CONTAINS
         p_kstag = MAX( 0_intk, NINT( SIGN(1.0_realk, p_z - z(p_k)), intk ) )
 
         ! u component
-        alpha = (xstag(p_i) - xstag(p_i - 1)) / ddx(p_i)
-        beta = 0.25 * () / ddy
+        alpha = (u(p_k, p_j, p_i) - u(p_k, p_j, p_i - 1)) / ddx(p_i)
 
+        beta = 0.25 * ((u(p_k, p_j + 1, p_i) + u(p_k, p_j + 1, p_i - 1) - u(p_k, p_j, p_i) - u(p_k, p_j, p_i - 1)) / dy(p_j) &
+         + (u(p_k, p_j, p_i) + u(p_k, p_j, p_i - 1) - u(p_k, p_j-1, p_i) - u(p_k, p_j - 1, p_i - 1)) / dy(p_j -1))
 
+        gamma = 0.25 * ((u(p_k + 1, p_j, p_i) + u(p_k + 1, p_j, p_i - 1) - u(p_k, p_j, p_i) - u(p_k, p_j, p_i - 1)) / dz(p_k) &
+         + (u(p_k, p_j, p_i) + u(p_k, p_j, p_i - 1) - u(p_k - 1, p_j, p_i) - u(p_k - 1, p_j, p_i - 1)) / dz(p_k - 1))
+
+        delta = 0.5 * (u(p_k, p_j, p_i) + u(p_k, p_j, p_i - 1) &
+         - alpha * (ddx(p_i) - dx(p_i - 1)) - beta * (ddy(p_j) - dy(p_j - 1)) - gamma * (ddz(p_k) - dz(p_k - 1)))
 
     END SUBROUTINE gobert_particle_uvw
 
