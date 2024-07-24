@@ -65,14 +65,12 @@ CONTAINS
         INTEGER(intk), INTENT(in) :: kk, jj, ii
         CLASS(baseparticle_t), INTENT(in) :: particle
         REAL(realk), INTENT(out) :: p_u, p_v, p_w
-        REAL(realk), INTENT(in) :: xstag(ii), ystag(jj), zstag(kk)
         REAL(realk), INTENT(in) :: u(kk, jj, ii), v(kk, jj, ii), w(kk, jj, ii)
         REAL(realk), INTENT(in) :: x(ii), y(jj), z(kk), dx(ii), dy(jj), dz(kk), ddx(ii), ddy(jj), ddz(kk)
 
         ! local variables
-        INTEGER(intk) :: p_i, p_j, p_k, p_istag, p_jstag, p_kstag
+        INTEGER(intk) :: p_i, p_j, p_k
         REAL(realk) :: p_x, p_y, p_z, alpha, beta, gamma, delta
-        REAL(realk), DIMENSION(6) :: p_bbox_u, p_bbox_v, p_bbox_w
 
         !just for readability of the following expressions
         p_i = particle%ijkcell(1)
@@ -84,11 +82,7 @@ CONTAINS
         p_y = particle%y
         p_z = particle%z
 
-        p_istag = MAX( 0_intk, NINT( SIGN(1.0_realk, p_x - x(p_i)), intk ) )
-        p_jstag = MAX( 0_intk, NINT( SIGN(1.0_realk, p_y - y(p_j)), intk ) )
-        p_kstag = MAX( 0_intk, NINT( SIGN(1.0_realk, p_z - z(p_k)), intk ) )
-
-        ! u component
+        ! u interpolation
         alpha = (u(p_k, p_j, p_i) - u(p_k, p_j, p_i - 1)) / ddx(p_i)
 
         beta = 0.25 * ((u(p_k, p_j + 1, p_i) + u(p_k, p_j + 1, p_i - 1) - u(p_k, p_j, p_i) - u(p_k, p_j, p_i - 1)) / dy(p_j) &
@@ -99,6 +93,36 @@ CONTAINS
 
         delta = 0.5 * (u(p_k, p_j, p_i) + u(p_k, p_j, p_i - 1) &
          - alpha * (ddx(p_i) - dx(p_i - 1)) - beta * (ddy(p_j) - dy(p_j - 1)) - gamma * (ddz(p_k) - dz(p_k - 1)))
+
+        p_u = alpha * (p_x - x(p_i)) + beta * (p_y - y(p_j)) + gamma * (z_part - z(p_k)) + delta
+
+        ! v interpolation
+        alpha = (v(p_k, p_j, p_i) - v(p_k, p_j - 1, p_i)) / ddy(p_j)
+
+        beta = 0.25 * ((v(p_k, p_j, p_i + 1) + v(p_k, p_j - 1, p_i + 1) - v(p_k, p_j, p_i) - v(p_k, p_j - 1, p_i)) / dx(p_i) &
+         + (v(p_k, p_j, p_i) + v(p_k, p_j - 1, p_i) - v(p_k, p_j, p_i - 1) - v(p_k, p_j - 1, p_i - 1)) /dx(p_i - 1))
+
+        gamma = 0.25 * ((v(p_k + 1, p_j, p_i) + v(p_k + 1, p_j - 1, p_i) - v(p_k, p_j, p_i) - v(p_k, p_j - 1, p_i)) / dz(p_k) &
+         + (v(p_k, p_j, p_i) + v(p_k, p_j - 1, p_i) - v(p_k-1, p_j, p_i) - v(p_k - 1, p_j - 1, p_i)) / dz(p_k - 1))
+
+        delta = 0.5 * (v(p_k, p_j, p_i) + v(p_k, p_j - 1, p_i) &
+         - alpha * (ddy(p_j) - dy(p_j - 1)) - beta * (ddx(p_i) - dx(p_i - 1)) - gamma * (ddz(p_k) - dz(p_k - 1)))
+
+        p_v = alpha * (p_y - y(p_j)) + beta * (p_x - x(p_i)) + gamma * (p_z - z(p_k)) + delta
+
+        ! v interpolation
+        alpha = (w(p_k, p_j, p_i) - w(p_k - 1 ,p_j ,p_i)) / ddz(p_k)
+
+        beta = 0.25 * ((w(p_k, p_j, p_i + 1) + w(p_k - 1, p_j, p_i + 1) - w(p_k, p_j, p_i) - w(p_k - 1, p_j, p_i)) / dx(p_i) &
+         + (w(p_k, p_j, p_i) + w(p_k - 1, p_j, p_i) - w(p_k, p_j, p_i - 1)- w(p_k - 1, p_j, p_i - 1)) / dx(p_i - 1))
+
+        gamma = 0.25 * ((w(p_k, p_j + 1, p_i) + w(p_k - 1, p_j + 1, p_i) - w(p_k, p_j, p_i) - w(p_k - 1, p_j, p_i)) / dy(p_j) &
+         + (w(p_k, p_j, p_i) + w(p_k - 1, p_j, p_i) - w(p_k, p_j - 1, p_i) - w(p_k-1, p_j - 1, p_i)) / dy(p_j - 1))
+
+        delta = 0.5 * (w(p_k, p_j, p_i) + w(p_k - 1, p_j, p_i) &
+         - alpha * (ddz(p_k) - dz(p_k - 1)) - beta * (ddx(p_i) - dx(p_i - 1)) - gamma * (ddy(p_j) - dy(p_j - 1)))
+
+        p_w = alpha * (p_z - z(p_k)) + beta * (p_x - x(p_i)) + gamma * (p_y - y(p_j)) + delta
 
     END SUBROUTINE gobert_particle_uvw
 
