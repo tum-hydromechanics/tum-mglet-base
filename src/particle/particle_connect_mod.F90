@@ -16,7 +16,7 @@ CONTAINS
         CLASS(baseparticle_t) :: particle
         INTEGER :: nbrgrid, nbrproc
 
-        CALL get_target_grid(my_particle_list%particles(i), nbrgrid)
+        CALL get_target_grid(particle, nbrgrid)
 
         nbrproc = idprocofgrd(nbrgrid)
 
