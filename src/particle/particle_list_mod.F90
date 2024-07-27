@@ -16,7 +16,7 @@ MODULE particle_list_mod
         INTEGER(intk) :: iproc           ! REMOVE (obsolete) ?
 
         INTEGER(intk) :: max_np        ! max number of particles of this process/list
-        INTEGER(intk) :: active_np           ! number of active particles of this process/list
+        INTEGER(intk) :: active_np = 0           ! number of active particles of this process/list
         INTEGER(intk) :: ifinal          ! index of last entry of the list which holds an active particle
 
         TYPE(baseparticle_t), ALLOCATABLE :: particles(:)
@@ -41,7 +41,7 @@ CONTAINS
     SUBROUTINE init_particle_list()
 
         ! local variables
-        INTEGER(intk) :: i
+        INTEGER(intk) :: i, j, global_np
         INTEGER(intk), ALLOCATABLE :: ipart_arr(:), p_igrid_arr(:)
         REAL(realk), ALLOCATABLE :: x(:), y(:), z(:)
 
@@ -52,7 +52,39 @@ CONTAINS
 
         IF (dread_particles) THEN
 
-            CALL read_particles(dread_particles, my_particle_list%max_np, my_particle_list%active_np, ipart_arr, p_igrid_arr, x, y, z)
+            CALL read_particles(dread_particles, my_particle_list%max_np, global_np, ipart_arr, p_igrid_arr, x, y, z)
+
+            IF (myid == 0) THEN
+                SELECT CASE (TRIM(particle_terminal))
+                    CASE ("none")
+                        CONTINUE
+                    CASE ("normal")
+                        WRITE(*,*) ' '
+                        WRITE(*, '("Initializing ", I0, " Particle(s):")') global_np
+                    CASE ("verbose")
+                        WRITE(*,*) ' '
+                        WRITE(*, '("Initializing ", I0, " Particle(s):")') global_np
+                END SELECT
+            END IF
+
+            DO i = 1, global_np
+
+                DO j = 1, nmygrids
+
+                    IF (mygrids(j) == p_igrid_arr(i)) THEN
+
+                        my_particle_list%active_np = my_particle_list%active_np + 1_intk
+
+                        CALL my_particle_list%particles(my_particle_list%active_np)%init(ipart = ipart_arr(i), &
+                         x = x(i), y = y(i), z = z(i), igrid = p_igrid_arr(i))
+
+                        CALL my_particle_list%particles(i)%print_status()
+
+                END DO
+
+            END DO
+
+            my_particle_list%ifinal = my_particle_list%active_np
 
         END IF
 
@@ -70,39 +102,43 @@ CONTAINS
 
             CALL dist_part(my_particle_list%active_np, p_igrid_arr, x, y, z)
 
+            IF (myid == 0) THEN
+                SELECT CASE (TRIM(particle_terminal))
+                    CASE ("none")
+                        CONTINUE
+                    CASE ("normal")
+                        WRITE(*,*) ' '
+                        WRITE(*, '("Initializing ", I0, " Particle(s):")') my_particle_list%active_np
+                    CASE ("verbose")
+                        WRITE(*,*) ' '
+                        WRITE(*, '("Initializing ", I0, " Particle(s):")') my_particle_list%active_np
+                END SELECT
+            END IF
+
+            my_particle_list%ifinal = my_particle_list%active_np
+
+            DO i = 1, my_particle_list%active_np
+
+                CALL my_particle_list%particles(i)%init(ipart = ipart_arr(i), x = x(i), y = y(i), z = z(i), igrid = p_igrid_arr(i))
+
+                CALL my_particle_list%particles(i)%print_status()
+
+            END DO
+
         END IF
 
-        SELECT CASE (TRIM(particle_terminal))
-            CASE ("none")
-                CONTINUE
-            CASE ("normal")
-                WRITE(*,*) ' '
-                WRITE(*, '("Initializing ", I0, " Particle(s):")') my_particle_list%active_np
-            CASE ("verbose")
-                WRITE(*,*) ' '
-                WRITE(*, '("Initializing ", I0, " Particle(s):")') my_particle_list%active_np
-        END SELECT
-
-        my_particle_list%ifinal = my_particle_list%active_np
-
-         DO i = 1, my_particle_list%active_np
-
-            CALL my_particle_list%particles(i)%init(ipart = ipart_arr(i), x = x(i), y = y(i), z = z(i), igrid = p_igrid_arr(i))
-
-            CALL my_particle_list%particles(i)%print_status()
-
-         END DO
-
-        SELECT CASE (TRIM(particle_terminal))
-            CASE ("none")
-                CONTINUE
-            CASE ("normal")
-                WRITE(*, '("Initialization of Particle(s) finished successfully.")')
-                WRITE(*,*) ' '
-            CASE ("verbose")
-                WRITE(*, '("Initialization of Particle(s) finished successfully.")')
-                WRITE(*,*) ' '
-        END SELECT
+        IF (myid == 0) THEN
+            SELECT CASE (TRIM(particle_terminal))
+                CASE ("none")
+                    CONTINUE
+                CASE ("normal")
+                    WRITE(*, '("Initialization of Particle(s) finished successfully.")')
+                    WRITE(*,*) ' '
+                CASE ("verbose")
+                    WRITE(*, '("Initialization of Particle(s) finished successfully.")')
+                    WRITE(*,*) ' '
+            END SELECT
+        END IF
 
     END SUBROUTINE init_particle_list
 

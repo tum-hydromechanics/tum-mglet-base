@@ -7,6 +7,18 @@ IMPLICIT NONE
 
 CONTAINS
 
+    SUBROUTINE init_pconnect()
+
+    END SUBROUTINE init_pconnect()
+
+    SUBROUTINE pconnect(particle, nbrgrid, nbrproc)
+
+        CALL get_target_grid(my_particle_list%particles(i), nbrgrid)
+
+        nbrproc = idprocofgrd(nbrgrid)
+
+    END SUBROUTINE pconnect()
+
     SUBROUTINE get_target_grid(particle, nbrgrid)
 
         !subroutine arguments
@@ -633,5 +645,11 @@ CONTAINS
         END IF
 
     END SUBROUTINE get_exit_face
+
+    SUBROUTINE is_true_neigbour()
+
+
+
+    END SUBROUTINE is_true_neigbour
 
 END MODULE particle_connect_mod
