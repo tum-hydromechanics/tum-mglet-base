@@ -13,7 +13,7 @@ CONTAINS
 
     SUBROUTINE pconnect(particle, nbrgrid, nbrproc)
 
-        CLASS()baseparticle_t :: particle
+        CLASS(baseparticle_t) :: particle
         INTEGER :: nbrgrid, nbrproc
 
         CALL get_target_grid(my_particle_list%particles(i), nbrgrid)
