@@ -210,7 +210,7 @@ CONTAINS
                         w(p_k - 1, p_j + p_jstag   , p_i + p_istag    ),&
                         w(p_k    , p_j + p_jstag   , p_i + p_istag    ))
 
-    END SUBROUTINE interp_particle_uvw
+    END SUBROUTINE trilinear_particle_uvw
 
     !------------------------------
 
