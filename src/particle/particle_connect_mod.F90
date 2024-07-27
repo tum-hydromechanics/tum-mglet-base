@@ -9,15 +9,18 @@ CONTAINS
 
     SUBROUTINE init_pconnect()
 
-    END SUBROUTINE init_pconnect()
+    END SUBROUTINE init_pconnect
 
     SUBROUTINE pconnect(particle, nbrgrid, nbrproc)
+
+        CLASS()baseparticle_t :: particle
+        INTEGER :: nbrgrid, nbrproc
 
         CALL get_target_grid(my_particle_list%particles(i), nbrgrid)
 
         nbrproc = idprocofgrd(nbrgrid)
 
-    END SUBROUTINE pconnect()
+    END SUBROUTINE pconnect
 
     SUBROUTINE get_target_grid(particle, nbrgrid)
 

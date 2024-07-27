@@ -80,6 +80,8 @@ CONTAINS
 
                         CALL my_particle_list%particles(i)%print_status()
 
+                    END IF
+
                 END DO
 
             END DO
