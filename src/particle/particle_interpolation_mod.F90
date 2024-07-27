@@ -59,7 +59,7 @@ CONTAINS
 
     ! from Gobert et. al, LAGRANGIAN SCALAR TRACKING FOR LAMINAR MICROMIXING AT HIGH SCHMIDT NUMBERS, 2006
     SUBROUTINE gobert_particle_uvw(kk, jj, ii, particle, p_u, p_v, p_w, &
-         xstag, ystag, zstag, u, v, w, x, y, z, dx, dy, dz, ddx, ddy, ddz)
+         u, v, w, x, y, z, dx, dy, dz, ddx, ddy, ddz)
 
         ! subroutine arguments
         INTEGER(intk), INTENT(in) :: kk, jj, ii
@@ -94,7 +94,7 @@ CONTAINS
         delta = 0.5 * (u(p_k, p_j, p_i) + u(p_k, p_j, p_i - 1) &
          - alpha * (ddx(p_i) - dx(p_i - 1)) - beta * (ddy(p_j) - dy(p_j - 1)) - gamma * (ddz(p_k) - dz(p_k - 1)))
 
-        p_u = alpha * (p_x - x(p_i)) + beta * (p_y - y(p_j)) + gamma * (z_part - z(p_k)) + delta
+        p_u = alpha * (p_x - x(p_i)) + beta * (p_y - y(p_j)) + gamma * (p_z - z(p_k)) + delta
 
         ! v interpolation
         alpha = (v(p_k, p_j, p_i) - v(p_k, p_j - 1, p_i)) / ddy(p_j)
