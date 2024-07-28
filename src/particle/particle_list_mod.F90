@@ -87,9 +87,11 @@ CONTAINS
 
          DO i = 1, my_particle_list%active_np
 
-            CALL my_particle_list%particles(i)%init(ipart = ipart_arr(i), x = x(i), y = y(i), z = z(i), igrid = p_igrid_arr(i))
+            CALL set_particle( my_particle_list%particles(i), &
+                ipart = ipart_arr(i), x = x(i), y = y(i), z = z(i), &
+                igrid = p_igrid_arr(i))
 
-            CALL my_particle_list%particles(i)%print_status()
+            CALL print_particle_status( my_particle_list%particles(i) )
 
          END DO
 

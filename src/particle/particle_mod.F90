@@ -4,6 +4,7 @@ MODULE particle_mod
     ! (this module had no 'PRIVATE' default)
     USE particle_timeintegration_mod
     USE particle_snapshot_mod
+    USE particle_connect_mod
 
     IMPLICIT NONE(type, external)
 
@@ -23,6 +24,9 @@ CONTAINS
             WRITE(*,*) "PARTICLE SIMULATION IS INITIALIZED ..."
 
             CALL init_particle_list()
+
+            ! initializing intra-level communication
+            CALL init_particle_connect()
 
         ELSE
 

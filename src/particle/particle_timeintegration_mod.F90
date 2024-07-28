@@ -17,7 +17,7 @@ CONTAINS
         REAL(realk), INTENT(in) :: dt
 
         ! local variables
-        INTEGER(intk) :: igrid, nbrgrid, i, ii, jj, kk
+        INTEGER(intk) :: igrid, nbrgrid, nbrproc, i, ii, jj, kk
         REAL(realk) :: p_u, p_v, p_w
         REAL(realk) :: minx, maxx, miny, maxy, minz, maxz, nbrminx, nbrmaxx, nbrminy, nbrmaxy, nbrminz, nbrmaxz
 
@@ -46,7 +46,7 @@ CONTAINS
 
         DO i = 1, my_particle_list%ifinal
 
-            IF (.NOT. my_particle_list%particles(i)%is_active) THEN
+            IF ( my_particle_list%particles(i)%is_active /= 1 ) THEN
 
                 CYCLE
 
@@ -122,7 +122,7 @@ CONTAINS
                 my_particle_list%particles(i)%z < minz .OR. &
                 my_particle_list%particles(i)%z > maxz) THEN
 
-                CALL get_target_grid(my_particle_list%particles(i), nbrgrid)
+                CALL get_target_grid(my_particle_list%particles(i), nbrgrid, nbrproc)
 
                 SELECT CASE (TRIM(particle_terminal))
                     CASE ("none")
@@ -193,21 +193,21 @@ CONTAINS
                     !        WRITE(*,'("Particle ", I0, " crossed Periodic Boundary and was deactivated.")') my_particle_list%particles(i)%ipart
                     !END SELECT
 
-                    !my_particle_list%particles(i)%is_active = .FALSE.
+                    !my_particle_list%particles(i)%is_active = 0
 
                     !my_particle_list%active_np = my_particle_list%active_np - 1_intk
 
                 !END IF
 
-                CALL my_particle_list%particles(i)%get_p_ijkcell()
+                CALL set_particle_cell( my_particle_list%particles(i) )
 
             ELSE
 
-                CALL my_particle_list%particles(i)%update_p_ijkcell(pdx, pdy, pdz)
+                CALL update_particle_cell( my_particle_list%particles(i), pdx, pdy, pdz )
 
             END IF
 
-            CALL my_particle_list%particles(i)%print_status()
+            CALL print_particle_status( my_particle_list%particles(i) )
 
         END DO
 
