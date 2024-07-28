@@ -10,7 +10,7 @@ CONTAINS
                  p_u, p_v, p_w, xstag, ystag, zstag, u, v, w, x, y, z)
 
         INTEGER(intk), INTENT(in) :: kk, jj, ii
-        CLASS(baseparticle_t), INTENT(in) :: particle
+        TYPE(baseparticle_t), INTENT(in) :: particle
         REAL(realk), INTENT(out) :: p_u, p_v, p_w
         REAL(realk), INTENT(in) :: xstag(ii), ystag(jj), zstag(kk)
         REAL(realk), INTENT(in) :: u(kk, jj, ii), v(kk, jj, ii), w(kk, jj, ii)
@@ -37,7 +37,7 @@ CONTAINS
 
         !subroutine_arguments
         INTEGER(intk), INTENT(in) :: kk, jj, ii
-        CLASS(baseparticle_t), INTENT(in) :: particle
+        TYPE(baseparticle_t), INTENT(in) :: particle
         REAL(realk), INTENT(out) :: p_u, p_v, p_w
         REAL(realk), INTENT(in) :: u(kk, jj, ii), v(kk, jj, ii), w(kk, jj, ii)
         REAL(realk), INTENT(in) :: x(ii), y(jj), z(kk)
@@ -63,7 +63,7 @@ CONTAINS
 
         ! subroutine arguments
         INTEGER(intk), INTENT(in) :: kk, jj, ii
-        CLASS(baseparticle_t), INTENT(in) :: particle
+        TYPE(baseparticle_t), INTENT(in) :: particle
         REAL(realk), INTENT(out) :: p_u, p_v, p_w
         REAL(realk), INTENT(in) :: u(kk, jj, ii), v(kk, jj, ii), w(kk, jj, ii)
         REAL(realk), INTENT(in) :: x(ii), y(jj), z(kk), dx(ii), dy(jj), dz(kk), ddx(ii), ddy(jj), ddz(kk)
@@ -134,7 +134,7 @@ CONTAINS
 
         ! subroutine arguments
         INTEGER(intk), INTENT(in) :: kk, jj, ii
-        CLASS(baseparticle_t), INTENT(in) :: particle
+        TYPE(baseparticle_t), INTENT(in) :: particle
         REAL(realk), INTENT(out) :: p_u, p_v, p_w
         REAL(realk), INTENT(in) :: xstag(ii), ystag(jj), zstag(kk)
         REAL(realk), INTENT(in) :: u(kk, jj, ii), v(kk, jj, ii), w(kk, jj, ii)

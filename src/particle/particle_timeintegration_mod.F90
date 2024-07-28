@@ -5,7 +5,7 @@ MODULE particle_timeintegration_mod
     USE particle_list_mod
     USE particle_interpolation_mod
     USE particle_connect_mod
-    !USE flow_mod (NOT NEEDED)
+    USE core_mod
 
     IMPLICIT NONE
 
@@ -47,9 +47,12 @@ CONTAINS
         DO i = 1, my_particle_list%ifinal
 
             IF ( my_particle_list%particles(i)%is_active /= 1 ) THEN
-
                 CYCLE
+            END IF
 
+            IF ( my_particle_list%particles(i)%iproc /= myid ) THEN
+                WRITE(*,*) 'Particle on wrong proc at start of timestep'
+                CALL errr(__FILE__, __LINE__)
             END IF
 
             igrid = my_particle_list%particles(i)%igrid !just for clarity of the follwing expressions
@@ -115,6 +118,7 @@ CONTAINS
             ! Connect
             CALL get_bbox(minx, maxx, miny, maxy, minz, maxz, igrid)
 
+            ! Check if the particle has moved between grids
             IF (my_particle_list%particles(i)%x < minx .OR. &
                 my_particle_list%particles(i)%x > maxx .OR. &
                 my_particle_list%particles(i)%y < miny .OR. &
@@ -133,7 +137,6 @@ CONTAINS
                         WRITE(*,'("Particle ", I0, " left grid ", I0, " at ", 3F12.6)') my_particle_list%particles(i)%ipart, my_particle_list%particles(i)%igrid, my_particle_list%particles(i)%x, &
                         my_particle_list%particles(i)%y, my_particle_list%particles(i)%z
                 END SELECT
-
 
                 ! coordinate adaption if particle passes periodic boundary
                 CALL get_bbox(nbrminx, nbrmaxx, nbrminy, nbrmaxy, nbrminz, nbrmaxz, nbrgrid)
@@ -207,9 +210,16 @@ CONTAINS
 
             END IF
 
+            IF ( my_particle_list%particles(i)%iproc /= myid ) THEN
+                WRITE(*,*) 'Particle on wrong proc at end of timestep'
+            END IF
+
             CALL print_particle_status( my_particle_list%particles(i) )
 
         END DO
+
+        ! communication between MPI ranks (processes)
+        CALL particle_connect( my_particle_list )
 
     END SUBROUTINE timeintegrate_particles
 

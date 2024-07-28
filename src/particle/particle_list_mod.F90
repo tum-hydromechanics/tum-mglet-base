@@ -75,10 +75,17 @@ CONTAINS
 
                         my_particle_list%active_np = my_particle_list%active_np + 1_intk
 
-                        CALL my_particle_list%particles(my_particle_list%active_np)%init(ipart = ipart_arr(i), &
-                         x = x(i), y = y(i), z = z(i), igrid = p_igrid_arr(i))
+                        ! CALL my_particle_list%particles(my_particle_list%active_np)%init(ipart = ipart_arr(i), &
+                        !  x = x(i), y = y(i), z = z(i), igrid = p_igrid_arr(i))
 
-                        CALL my_particle_list%particles(i)%print_status()
+                        ! CALL my_particle_list%particles(i)%print_status()
+
+                        CALL set_particle( my_particle_list%particles(my_particle_list%active_np), &
+                        ipart = ipart_arr(i), x = x(i), y = y(i), z = z(i), &
+                        igrid = p_igrid_arr(i))
+       
+                        CALL print_particle_status( my_particle_list%particles(i) )
+
 
                     END IF
 

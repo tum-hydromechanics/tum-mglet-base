@@ -219,8 +219,15 @@ CONTAINS
             END IF
             ! setting the destination of particle (quo vadis, particle?)
             CALL get_target_grid(particle_list%particles(i), destgrid, destproc)
+            IF ( destproc > numprocs .OR. destproc < 0 ) THEN
+                WRITE(*,*) 'Obviously ill-addressed particle to proc', destproc
+                CALL errr(__FILE__, __LINE__)
+            END IF
             particle_list%particles(i)%igrid = destgrid
             particle_list%particles(i)%iproc = destproc
+            IF ( particle_list%particles(i)%iproc /= myid ) THEN
+                WRITE(*,*) 'Particle', i, ' should be sent!'
+            END IF
         END DO
 
         ! --- step 1: The marking is done (grid and proc indicate destination). Done.
@@ -332,6 +339,8 @@ CONTAINS
         CALL MPI_Waitall(iSend, sendreqs, MPI_STATUSES_IGNORE)
         CALL MPI_Waitall(iRecv, recvreqs, MPI_STATUSES_IGNORE)
 
+        ! WRITE(*,*) iRecv, nprecv
+
         ! --- step 5: Finishing the communication of particle numbers. Done.
 
 
@@ -385,6 +394,18 @@ CONTAINS
         ! checking if communication done (one call should suffice...)
         CALL MPI_Waitall(iSend, sendreqs, MPI_STATUSES_IGNORE)
         CALL MPI_Waitall(iRecv, recvreqs, MPI_STATUSES_IGNORE)
+
+        ! assigning the new cell indices
+        IF ( sizeRecvBuf > 0 ) THEN
+            DO i = 1, sizeRecvBuf
+                ! check if correctly delivered
+                IF ( recvBufParticle(i)%iproc /= myid ) THEN
+                    WRITE(*,*) "Particle delivered to wrong proc", recvBufParticle(i)%iproc, myid
+                    CALL errr(__FILE__, __LINE__)
+                END IF
+                CALL set_particle_cell( recvBufParticle(i) )
+            END DO
+        END IF
 
         ! --- step 8: Finishing the communication of actual particles. Done.
 
@@ -759,6 +780,10 @@ CONTAINS
                 WRITE(*,*) 'Redundant listing of neighbor process ', list(2,i)
                 CALL errr(__FILE__, __LINE__)
             END IF
+            IF ( list(2,i) == myid ) THEN
+                WRITE(*,*) 'Self connection listed at ', list(2,i)
+                CALL errr(__FILE__, __LINE__)
+            END IF
         END DO
 
     END SUBROUTINE sort_conns_unique
@@ -863,12 +888,7 @@ CONTAINS
             END IF
         END IF !-------------------------------------------------------------
 
-        IF ( iface > 0 ) THEN
-            ! particle moves across boundary
-            CALL get_neighbours(neighbours, particle%igrid)
-            destgrid = neighbours(iface)
-            destproc = idprocofgrd(destgrid)
-        ELSE
+        IF ( iface == 0 ) THEN
             ! particle stays on the same grid
             destgrid = particle%igrid
             destproc = particle%iproc
@@ -876,6 +896,18 @@ CONTAINS
                 WRITE(*,*) 'Inconsistent particle parameters'
                 CALL errr(__FILE__, __LINE__)
             END IF
+        ELSE IF ( iface > 0 ) THEN
+            ! particle moves across grid boundary
+            CALL get_neighbours(neighbours, particle%igrid)
+            destgrid = neighbours(iface)
+            destproc = idprocofgrd(destgrid)
+            IF ( destproc == myid ) THEN
+                destgrid = particle%igrid
+                destproc = particle%iproc
+            END IF
+        ELSE
+            WRITE(*,*) 'Undefined behaviour'
+            CALL errr(__FILE__, __LINE__)
         END IF
 
     END SUBROUTINE get_target_grid

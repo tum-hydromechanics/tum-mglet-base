@@ -35,7 +35,6 @@ PROGRAM main
         ! Initialize builtin physical models
         CALL init_flow()
         CALL init_scalar()
-
         CALL init_particles() ! <------------------------------------partilces
 
         ! This initialize the time loop. Reads the RUNINFO table in case of
