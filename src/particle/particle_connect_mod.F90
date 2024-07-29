@@ -6,7 +6,7 @@ MODULE particle_connect_mod
     USE comms_mod, ONLY: myid
     USE particle_list_mod
     USE particlecore_mod
-    
+
     IMPLICIT NONE (type, external)
 
     PRIVATE
@@ -196,12 +196,15 @@ CONTAINS
 
     SUBROUTINE particle_connect( particle_list )
 
+        IMPLICIT NONE
+
         TYPE(particle_list_t), INTENT(inout) :: particle_list
 
         INTEGER(intk) :: i, iproc, pos, num
         INTEGER(intk) :: destgrid, destproc
-        INTEGER(intk) :: iprocnbr
+        INTEGER(intk) :: iprocnbr, cSend, cRecv
 
+        ! we use "intk" instead of "ifk" (limits numbers)
         INTEGER(intk), ALLOCATABLE :: npsend(:)
         INTEGER(intk), ALLOCATABLE :: nprecv(:)
         INTEGER(intk), ALLOCATABLE :: ndispsend(:)
@@ -213,20 +216,37 @@ CONTAINS
         END IF
 
         DO i = 1, particle_list%ifinal
+
             ! jumping inactive particles
             IF ( particle_list%particles(i)%is_active /= 1 ) THEN
                 CYCLE
             END IF
+
             ! setting the destination of particle (quo vadis, particle?)
             CALL get_target_grid(particle_list%particles(i), destgrid, destproc)
             IF ( destproc > numprocs .OR. destproc < 0 ) THEN
                 WRITE(*,*) 'Obviously ill-addressed particle to proc', destproc
                 CALL errr(__FILE__, __LINE__)
             END IF
-            particle_list%particles(i)%igrid = destgrid
-            particle_list%particles(i)%iproc = destproc
-            IF ( particle_list%particles(i)%iproc /= myid ) THEN
-                WRITE(*,*) 'Particle', i, ' should be sent!'
+
+            ! triage of particles
+            IF ( particle_list%particles(i)%igrid == destgrid ) THEN
+                ! particle stays on grid
+                CALL update_particle_cell( particle_list%particles(i) )
+            ELSE
+                ! particle changes the grid
+                IF ( destproc == myid ) THEN
+                    ! particle remains on process
+                    particle_list%particles(i)%igrid = destgrid
+                    CALL set_particle_cell( particle_list%particles(i) )
+                ELSE
+                    ! particle is marked for MPI transfer
+                    particle_list%particles(i)%iproc = destproc
+                    particle_list%particles(i)%igrid = destgrid
+                END IF
+
+                ! TO DO: periodicity (see branch of Julius)
+
             END IF
         END DO
 
@@ -265,7 +285,7 @@ CONTAINS
         !     int tag, MPI_Comm comm, MPI_Request *request)
         DO i = 1, iRecv
             iprocnbr = recvConns(2, i)
-            CALL MPI_Irecv( nprecv(i), 1, mglet_mpi_ifk, &
+            CALL MPI_Irecv( nprecv(i), 1, mglet_mpi_int, &
             iprocnbr, 123, MPI_COMM_WORLD, recvreqs(i) )
         END DO
 
@@ -275,7 +295,7 @@ CONTAINS
         !     MPI_Comm comm, MPI_Request *request)
         DO i = 1, iSend
             iprocnbr = sendConns(1, i)
-            CALL MPI_Isend( npsend(i), 1, mglet_mpi_ifk, &
+            CALL MPI_Isend( npsend(i), 1, mglet_mpi_int, &
             iprocnbr, 123, MPI_COMM_WORLD, sendreqs(i) )
         END DO
 
@@ -286,6 +306,10 @@ CONTAINS
         ALLOCATE( ndispsend(iSend) )
         ndispsend = -1; ndispsend(1) = 1
         DO i = 2, iSend
+            IF ( npsend(i-1) < 0 ) THEN
+                WRITE(*,*) 'Negative npsend value'
+                CALL errr(__FILE__, __LINE__)
+            END IF
             ndispsend(i) = ndispsend(i-1) + npsend(i-1)
         END DO
 
@@ -304,24 +328,28 @@ CONTAINS
             END IF
 
             ! buffer is filled
-            iproc = particle_list%particles(i)%iproc
-            pos = ndispsend(iproc)
-            IF ( pos > sizeSendBuf ) THEN
-                WRITE(*,*) 'Send buffer size exceeded'
-                CALL errr(__FILE__, __LINE__)
-            ELSE IF ( pos < 1 ) THEN
-                WRITE(*,*) 'Invalid buffer index'
-                CALL errr(__FILE__, __LINE__)
-            ELSE
-                ! copy particle into buffer
-                sendBufParticle(pos) = particle_list%particles(i)
-            END IF
-            ! increment the position wherer future particle for 
-            ! this destination process will be stored in the buffer
-            ndispsend(iproc) = ndispsend(iproc) + 1
-            ! setting the local particle as inactive (active in buffer)
-            particle_list%particles(i)%is_active = 0
+            DO iproc = 1, iSend
+                IF ( sendConns(1,iproc) == particle_list%particles(i)%iproc ) THEN
+                    pos = ndispsend(iproc)
+                    IF ( pos > sizeSendBuf ) THEN
+                        WRITE(*,*) 'Send buffer size exceeded'
+                        CALL errr(__FILE__, __LINE__)
+                    ELSE IF ( pos < 1 ) THEN
+                        WRITE(*,*) 'Invalid buffer index', pos
+                        CALL errr(__FILE__, __LINE__)
+                    ELSE
+                        ! copy particle into buffer
+                        sendBufParticle(pos) = particle_list%particles(i)
+                    END IF
+                    ! increment the position wherer future particle for
+                    ! this destination process will be stored in the buffer
+                    ndispsend(iproc) = ndispsend(iproc) + 1
 
+                    ! setting the local particle as inactive (active in buffer)
+                    particle_list%particles(i)%is_active = 0
+                    particle_list%active_np = particle_list%active_np - 1
+                END IF
+            END DO
         END DO
 
         ! resetting after incrementation
@@ -347,7 +375,7 @@ CONTAINS
         CALL MPI_Waitall(iSend, sendreqs, MPI_STATUSES_IGNORE)
         CALL MPI_Waitall(iRecv, recvreqs, MPI_STATUSES_IGNORE)
 
-        ! WRITE(*,*) iRecv, nprecv
+        ! WRITE(*,*) myid, 'npsend:', npsend, 'to', sendConns(1, 1:iSend), 'nprecv:', nprecv, 'from', recvConns(2, 1:iRecv)
 
         ! --- step 5: Finishing the communication of particle numbers. Done.
 
@@ -376,16 +404,16 @@ CONTAINS
         ! int MPI_Irecv(void *buf, int count,
         !     MPI_Datatype datatype, int source,
         !     int tag, MPI_Comm comm, MPI_Request *request)
-        nRecv = 0
+        cRecv = 0
+        ! WRITE(*,*) myid, 'cons:', recvConns(2, 1:iRecv), ndisprecv, nprecv
         DO i = 1, iRecv
             iprocnbr = recvConns(2, i)
             pos = ndisprecv(i)
             num = nprecv(i)
             IF ( num > 0 ) THEN
-                WRITE(*,*) iprocnbr, pos, num
+                cRecv = cRecv + 1
                 CALL MPI_Irecv( recvBufParticle(pos), num, particle_mpitype, &
-                iprocnbr, 321, MPI_COMM_WORLD, recvreqs(i) )
-                nRecv = nRecv + 1
+                iprocnbr, 321, MPI_COMM_WORLD, recvreqs(cRecv) )
             END IF
         END DO
 
@@ -393,16 +421,15 @@ CONTAINS
         ! int MPI_Isend(const void *buf, int count,
         !     MPI_Datatype datatype, int dest, int tag,
         !     MPI_Comm comm, MPI_Request *request)
-        nSend = 0
+        cSend = 0
         DO i = 1, iSend
             iprocnbr = sendConns(1, i)
             pos = ndispsend(i)
             num = npsend(i)
             IF ( num > 0 ) THEN
-                WRITE(*,*) iprocnbr, pos, num
+                cSend = cSend + 1
                 CALL MPI_Isend( sendBufParticle(pos), num, particle_mpitype, &
-                iprocnbr, 321, MPI_COMM_WORLD, sendreqs(i) )
-                nSend = nSend + 1
+                iprocnbr, 321, MPI_COMM_WORLD, sendreqs(cSend) )
             END IF
         END DO
 
@@ -410,8 +437,8 @@ CONTAINS
 
 
         ! checking if communication done (one call should suffice...)
-        CALL MPI_Waitall(nSend, sendreqs, MPI_STATUSES_IGNORE)
-        CALL MPI_Waitall(nRecv, recvreqs, MPI_STATUSES_IGNORE)
+        CALL MPI_Waitall(cSend, sendreqs, MPI_STATUSES_IGNORE)
+        CALL MPI_Waitall(cRecv, recvreqs, MPI_STATUSES_IGNORE)
 
         ! WRITE(*,*) recvBufParticle
 
@@ -419,8 +446,13 @@ CONTAINS
         IF ( sizeRecvBuf > 0 ) THEN
             DO i = 1, sizeRecvBuf
                 ! check if correctly delivered
+                IF ( recvBufParticle(i)%is_active /= 1 ) THEN
+                    WRITE(*,*) "Inactive particle delivered"
+                    CALL errr(__FILE__, __LINE__)
+                END IF
+                ! check if correctly delivered
                 IF ( recvBufParticle(i)%iproc /= myid ) THEN
-                    WRITE(*,*) "Particle delivered to wrong proc", recvBufParticle(i)%iproc, myid
+                    WRITE(*,*) "Particle delivered to wrong proc", i, recvBufParticle(i)%iproc, myid
                     CALL errr(__FILE__, __LINE__)
                 END IF
                 CALL set_particle_cell( recvBufParticle(i) )
@@ -430,15 +462,13 @@ CONTAINS
         ! --- step 8: Finishing the communication of actual particles. Done.
 
 
-        ! TO DO: Enorm dumme und primitive Implementierung... 
+        ! TO DO: Enorm dumme und primitive Implementierung...
         ! (einfach hinten rankleben, keine Sicherheitschecks, einfach dreckig...)
-        pos = particle_list%ifinal
         DO i = 1, sizeRecvBuf
-            pos = pos + 1
-            particle_list%particles(pos) = recvBufParticle(i)
+            particle_list%ifinal = particle_list%ifinal + 1
+            particle_list%active_np = particle_list%active_np + 1
+            particle_list%particles(particle_list%ifinal) = recvBufParticle(i)
         END DO
-
-        
 
         ! --- step 9: Received particles have been copied into list. Done.
 
@@ -449,7 +479,7 @@ CONTAINS
         DEALLOCATE( sendBufParticle )
         DEALLOCATE( ndisprecv )
         DEALLOCATE( recvBufParticle )
-        
+
         ! --- step 10: Clearing the buffers. Done.
 
 
@@ -668,7 +698,7 @@ CONTAINS
             sendConns(1, 1), recvcounts, rdispls, MPI_INTEGER, &
             MPI_COMM_WORLD)
 
-        IF ( myid == 1 ) THEN
+        IF ( myid == 2 ) THEN
             WRITE(*,*) 'I am proc:', myid
             WRITE(*,*) ' - I receive from the following ', iRecv, 'processes:'
             DO i = 1, iRecv
@@ -918,6 +948,7 @@ CONTAINS
                 WRITE(*,*) 'Inconsistent particle parameters'
                 CALL errr(__FILE__, __LINE__)
             END IF
+
         ELSE IF ( iface > 0 ) THEN
             ! particle moves across grid boundary
             CALL get_neighbours(neighbours, particle%igrid)
@@ -926,6 +957,7 @@ CONTAINS
             IF ( destproc == myid ) THEN
                 destproc = particle%iproc
             END IF
+
         ELSE
             WRITE(*,*) 'Undefined behaviour'
             CALL errr(__FILE__, __LINE__)
@@ -977,7 +1009,7 @@ CONTAINS
 
         ! creating and submitting type
         blocklen = 1
-        CALL MPI_Type_create_struct(particle_mpi_elems, & 
+        CALL MPI_Type_create_struct(particle_mpi_elems, &
             blocklen, disp, types, dtype)
         CALL MPI_Type_commit(dtype)
 

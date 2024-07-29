@@ -234,11 +234,10 @@ CONTAINS
 
 
 
-    SUBROUTINE update_particle_cell(particle, pdx, pdy, pdz)
+    SUBROUTINE update_particle_cell( particle )
 
         ! subroutine arguments
         TYPE(baseparticle_t), INTENT(inout) :: particle
-        REAL(realk), INTENT(in) :: pdx, pdy, pdz
 
         ! local variables
         TYPE(field_t), POINTER :: x_f, y_f, z_f, dx_f, dy_f, dz_f

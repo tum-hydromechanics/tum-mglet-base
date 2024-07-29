@@ -45,28 +45,27 @@ CONTAINS
         CALL get_field(w_f, "W")
 
         DO i = 1, my_particle_list%ifinal
+
             ! checking activity
             IF ( my_particle_list%particles(i)%is_active /= 1 ) THEN
                 CYCLE
             END IF
-            ! checking locality
+
+            ! checking locality (Debug)
             IF ( my_particle_list%particles(i)%iproc /= myid ) THEN
                 WRITE(*,*) 'Particle on wrong proc at start of timestep'
                 CALL errr(__FILE__, __LINE__)
             END IF
-            ! checking consistency
+
+            ! getting the grid
             igrid = my_particle_list%particles(i)%igrid !just for clarity of the follwing expressions
+
+            ! checking consistency (Debug)
             gfound = 0
             DO ig = 1, nMyGrids
-                IF ( my_particle_list%particles(i)%igrid /= mygrids(ig) ) THEN
-                    gfound = 1
-                    EXIT
-                END IF
+                IF ( my_particle_list%particles(i)%igrid == mygrids(ig) ) gfound = 1; EXIT
             END DO
-            IF ( gfound == 0 ) THEN
-                WRITE(*,*) 'grid not on this proc', i
-                CALL errr(__FILE__, __LINE__)
-            END IF
+            IF ( gfound == 0 ) CALL errr(__FILE__, __LINE__)
 
             ! Grid and Field Info
             CALL x_f%get_ptr(x, igrid)
@@ -126,10 +125,10 @@ CONTAINS
                     WRITE(*, *) ' '
             END SELECT
 
-
         END DO
 
-        ! communication between MPI ranks (processes)
+        ! migration of particles between grids
+        ! and also across MPI ranks (processes)
         CALL particle_connect( my_particle_list )
 
     END SUBROUTINE timeintegrate_particles
