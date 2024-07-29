@@ -324,6 +324,12 @@ CONTAINS
 
         END DO
 
+        ! resetting after incrementation
+        ndispsend = -1; ndispsend(1) = 1
+        DO i = 2, iSend
+            ndispsend(i) = ndispsend(i-1) + npsend(i-1)
+        END DO
+
         ! buffer must be full with valid particles without gaps
         DO i = 1, sizeSendBuf
             IF ( sendBufParticle(pos)%is_active < 1 ) THEN
@@ -331,6 +337,8 @@ CONTAINS
                 CALL errr(__FILE__, __LINE__)
             END IF
         END DO
+
+        ! WRITE(*,*) sendBufParticle
 
         ! --- step 4: Displacements determined and send buffer filled. Done.
 
@@ -368,32 +376,44 @@ CONTAINS
         ! int MPI_Irecv(void *buf, int count,
         !     MPI_Datatype datatype, int source,
         !     int tag, MPI_Comm comm, MPI_Request *request)
+        nRecv = 0
         DO i = 1, iRecv
             iprocnbr = recvConns(2, i)
             pos = ndisprecv(i)
             num = nprecv(i)
-            CALL MPI_Irecv( recvBufParticle(pos), num, particle_mpitype, &
-            iprocnbr, 321, MPI_COMM_WORLD, recvreqs(i) )
+            IF ( num > 0 ) THEN
+                WRITE(*,*) iprocnbr, pos, num
+                CALL MPI_Irecv( recvBufParticle(pos), num, particle_mpitype, &
+                iprocnbr, 321, MPI_COMM_WORLD, recvreqs(i) )
+                nRecv = nRecv + 1
+            END IF
         END DO
 
         ! posting non-blocking (!) sends
         ! int MPI_Isend(const void *buf, int count,
         !     MPI_Datatype datatype, int dest, int tag,
         !     MPI_Comm comm, MPI_Request *request)
+        nSend = 0
         DO i = 1, iSend
             iprocnbr = sendConns(1, i)
             pos = ndispsend(i)
             num = npsend(i)
-            CALL MPI_Isend( sendBufParticle(pos), num, particle_mpitype, &
-            iprocnbr, 321, MPI_COMM_WORLD, sendreqs(i) )
+            IF ( num > 0 ) THEN
+                WRITE(*,*) iprocnbr, pos, num
+                CALL MPI_Isend( sendBufParticle(pos), num, particle_mpitype, &
+                iprocnbr, 321, MPI_COMM_WORLD, sendreqs(i) )
+                nSend = nSend + 1
+            END IF
         END DO
 
         ! --- step 7: The communication has been launched (not finished!). Open.
 
 
         ! checking if communication done (one call should suffice...)
-        CALL MPI_Waitall(iSend, sendreqs, MPI_STATUSES_IGNORE)
-        CALL MPI_Waitall(iRecv, recvreqs, MPI_STATUSES_IGNORE)
+        CALL MPI_Waitall(nSend, sendreqs, MPI_STATUSES_IGNORE)
+        CALL MPI_Waitall(nRecv, recvreqs, MPI_STATUSES_IGNORE)
+
+        ! WRITE(*,*) recvBufParticle
 
         ! assigning the new cell indices
         IF ( sizeRecvBuf > 0 ) THEN
@@ -417,6 +437,8 @@ CONTAINS
             pos = pos + 1
             particle_list%particles(pos) = recvBufParticle(i)
         END DO
+
+        
 
         ! --- step 9: Received particles have been copied into list. Done.
 
@@ -902,7 +924,6 @@ CONTAINS
             destgrid = neighbours(iface)
             destproc = idprocofgrd(destgrid)
             IF ( destproc == myid ) THEN
-                destgrid = particle%igrid
                 destproc = particle%iproc
             END IF
         ELSE
@@ -916,7 +937,7 @@ CONTAINS
 
     SUBROUTINE create_particle_mpitype(dtype)
         ! Subrouitine arguments
-        TYPE(MPI_Datatype), INTENT(out) :: dtype
+        TYPE(MPI_Datatype), INTENT(inout) :: dtype
 
         ! Local variables
         INTEGER(intk) :: i

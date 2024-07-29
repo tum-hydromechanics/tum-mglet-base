@@ -17,7 +17,7 @@ CONTAINS
         REAL(realk), INTENT(in) :: dt
 
         ! local variables
-        INTEGER(intk) :: igrid, nbrgrid, nbrproc, i, ii, jj, kk
+        INTEGER(intk) :: igrid, nbrgrid, nbrproc, i, ii, jj, kk, gfound, ig
         REAL(realk) :: p_u, p_v, p_w
         REAL(realk) :: minx, maxx, miny, maxy, minz, maxz, nbrminx, nbrmaxx, nbrminy, nbrmaxy, nbrminz, nbrmaxz
 
@@ -45,17 +45,28 @@ CONTAINS
         CALL get_field(w_f, "W")
 
         DO i = 1, my_particle_list%ifinal
-
+            ! checking activity
             IF ( my_particle_list%particles(i)%is_active /= 1 ) THEN
                 CYCLE
             END IF
-
+            ! checking locality
             IF ( my_particle_list%particles(i)%iproc /= myid ) THEN
                 WRITE(*,*) 'Particle on wrong proc at start of timestep'
                 CALL errr(__FILE__, __LINE__)
             END IF
-
+            ! checking consistency
             igrid = my_particle_list%particles(i)%igrid !just for clarity of the follwing expressions
+            gfound = 0
+            DO ig = 1, nMyGrids
+                IF ( my_particle_list%particles(i)%igrid /= mygrids(ig) ) THEN
+                    gfound = 1
+                    EXIT
+                END IF
+            END DO
+            IF ( gfound == 0 ) THEN
+                WRITE(*,*) 'grid not on this proc', i
+                CALL errr(__FILE__, __LINE__)
+            END IF
 
             ! Grid and Field Info
             CALL x_f%get_ptr(x, igrid)
@@ -115,106 +126,6 @@ CONTAINS
                     WRITE(*, *) ' '
             END SELECT
 
-            ! Connect
-            CALL get_bbox(minx, maxx, miny, maxy, minz, maxz, igrid)
-
-            ! Check if the particle has moved between grids
-            IF (my_particle_list%particles(i)%x < minx .OR. &
-                my_particle_list%particles(i)%x > maxx .OR. &
-                my_particle_list%particles(i)%y < miny .OR. &
-                my_particle_list%particles(i)%y > maxy .OR. &
-                my_particle_list%particles(i)%z < minz .OR. &
-                my_particle_list%particles(i)%z > maxz) THEN
-
-                CALL get_target_grid(my_particle_list%particles(i), nbrgrid, nbrproc)
-
-                SELECT CASE (TRIM(particle_terminal))
-                    CASE ("none")
-                        CONTINUE
-                    CASE ("normal")
-                        CONTINUE
-                    CASE ("verbose")
-                        WRITE(*,'("Particle ", I0, " left grid ", I0, " at ", 3F12.6)') my_particle_list%particles(i)%ipart, my_particle_list%particles(i)%igrid, my_particle_list%particles(i)%x, &
-                        my_particle_list%particles(i)%y, my_particle_list%particles(i)%z
-                END SELECT
-
-                ! coordinate adaption if particle passes periodic boundary
-                CALL get_bbox(nbrminx, nbrmaxx, nbrminy, nbrmaxy, nbrminz, nbrmaxz, nbrgrid)
-
-                ! new grid for particle
-                my_particle_list%particles(i)%igrid = nbrgrid
-
-                SELECT CASE (TRIM(particle_terminal))
-                    CASE ("none")
-                        CONTINUE
-                    CASE ("normal")
-                        CONTINUE
-                    CASE ("verbose")
-                        WRITE(*,'("New Grid: ", I0)') my_particle_list%particles(i)%igrid
-                END SELECT
-
-                ! PERIODIC BOUNDARY
-
-                IF (my_particle_list%particles(i)%x < nbrminx) THEN
-                    my_particle_list%particles(i)%x = nbrmaxx - ABS(my_particle_list%particles(i)%x - minx)
-                END IF
-
-                IF (nbrmaxx < my_particle_list%particles(i)%x) THEN
-                    my_particle_list%particles(i)%x = nbrminx + ABS(my_particle_list%particles(i)%x - maxx)
-                END IF
-
-                IF (my_particle_list%particles(i)%y < nbrminy) THEN
-                    my_particle_list%particles(i)%y = nbrmaxy - ABS(my_particle_list%particles(i)%y - miny)
-                END IF
-
-                IF (nbrmaxy < my_particle_list%particles(i)%y) THEN
-                    my_particle_list%particles(i)%y = nbrminy + ABS(my_particle_list%particles(i)%y - maxy)
-                END IF
-
-                IF (my_particle_list%particles(i)%z < nbrminz) THEN
-                    my_particle_list%particles(i)%z = nbrmaxz - ABS(my_particle_list%particles(i)%z - minz)
-                END IF
-
-                IF (nbrmaxz < my_particle_list%particles(i)%z) THEN
-                    my_particle_list%particles(i)%z = nbrminz + ABS(my_particle_list%particles(i)%z - maxz)
-                END IF
-
-                ! NON PERIODIC BOUNDARY
-                !IF (my_particle_list%particles(i)%x < nbrminx .OR. &
-                !    my_particle_list%particles(i)%x > nbrmaxx .OR. &
-                !    my_particle_list%particles(i)%y < nbrminy .OR. &
-                !    my_particle_list%particles(i)%y > nbrmaxy .OR. &
-                !    my_particle_list%particles(i)%z < nbrminz .OR. &
-                !    my_particle_list%particles(i)%z > nbrmaxz) THEN
-
-                    !SELECT CASE (TRIM(particle_terminal))
-                    !    CASE ("none")
-                    !        CONTINUE
-                    !    CASE ("normal")
-                    !        CONTINUE
-                    !    CASE ("verbose")
-                    !        WRITE(*,'("Particle ", I0, " crossed Periodic Boundary and was deactivated.")') my_particle_list%particles(i)%ipart
-                    !END SELECT
-
-                    !my_particle_list%particles(i)%is_active = 0
-
-                    !my_particle_list%active_np = my_particle_list%active_np - 1_intk
-
-                !END IF
-
-                CALL set_particle_cell( my_particle_list%particles(i) )
-
-            ELSE
-
-                CALL update_particle_cell( my_particle_list%particles(i), pdx, pdy, pdz )
-
-            END IF
-
-            IF ( my_particle_list%particles(i)%iproc /= myid ) THEN
-                WRITE(*,*) 'Particle on wrong proc at end of timestep'
-            END IF
-
-            CALL print_particle_status( my_particle_list%particles(i) )
 
         END DO
 
