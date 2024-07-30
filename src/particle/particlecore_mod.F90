@@ -113,7 +113,7 @@ CONTAINS
                     CONTINUE
                 CASE ("verbose")
                     WRITE(*,*) ' '
-                    WRITE(*, *) "WARNING: In get_p_ijkcell: Tried to locate particle that is not active!"
+                    WRITE(*, '("Proc ", I0, ": WARNING: In get_p_ijkcell: Tried to locate particle that is not active!")') myid
             END SELECT
 
             RETURN
@@ -165,7 +165,7 @@ CONTAINS
                 CONTINUE
             CASE ("verbose")
                 WRITE(*,*) ' '
-                WRITE(*, '("WARNING: In get_p_igrid: Particle ", I0, " could not be found on any grid, process ", I0, " owns!")') this%ipart, this%iproc
+                WRITE(*, '("Proc ", I0, ": WARNING: In get_p_igrid: Particle ", I0, " could not be found on any grid, process ", I0, " owns!")') myid, this%ipart, this%iproc
         END SELECT
 
     END SUBROUTINE get_p_igrid
@@ -196,7 +196,7 @@ CONTAINS
                     CONTINUE
                 CASE ("verbose")
                     WRITE(*,*) ' '
-                    WRITE(*, *) "WARNING: In get_p_ijkcell: Tried to locate particle that is not active!"
+                    WRITE(*, '("Proc ", I0, ": WARNING: In get_p_ijkcell: Tried to locate particle that is not active!")') myid
             END SELECT
 
             RETURN
@@ -346,7 +346,7 @@ CONTAINS
                     CONTINUE
                 CASE ("verbose")
                     WRITE(*,*) ' '
-                    WRITE(*, *) "WARNING: In update_p_ijkcell: Tried to locate particle that is not active!"
+                    WRITE(*, '("Proc ", I0, ": WARNING: In update_p_ijkcell: Tried to locate particle that is not active!")') myid
             END SELECT
 
             RETURN

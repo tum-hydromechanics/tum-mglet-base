@@ -48,14 +48,16 @@ CONTAINS
 
         ELSE
 
-            SELECT CASE (TRIM(particle_terminal))
-                CASE ("none")
-                    CONTINUE
-                CASE ("normal")
-                    WRITE(*, *) "WARNING: Unknown Terminal Output Specifier for Particle Modules. Using normal instead"
-                CASE ("verbose")
-                    WRITE(*, *) "WARNING: Unknown Terminal Output Specifier for Particle Modules. Using normal instead"
-            END SELECT
+            IF (myid == 0) THEN
+                SELECT CASE (TRIM(particle_terminal))
+                    CASE ("none")
+                        CONTINUE
+                    CASE ("normal")
+                        WRITE(*, *) "WARNING: Unknown Terminal Output Specifier for Particle Modules. Using normal instead"
+                    CASE ("verbose")
+                        WRITE(*, *) "WARNING: Unknown Terminal Output Specifier for Particle Modules. Using normal instead"
+                END SELECT
+            END IF
 
         END IF
 
@@ -77,14 +79,16 @@ CONTAINS
 
         IF (plist_len <= 0_intk) THEN
 
-            SELECT CASE (TRIM(particle_terminal))
-                CASE ("none")
-                    CONTINUE
-                CASE ("normal")
-                    WRITE(*, *) "WARNING: Particle List Length must be positve. Using default Number ", plist_len, "instead."
-                CASE ("verbose")
-                    WRITE(*, *) "WARNING: Particle List Length must be positve. Using default Number ", plist_len, "instead."
-            END SELECT
+            IF (myid == 0) THEN
+                SELECT CASE (TRIM(particle_terminal))
+                    CASE ("none")
+                        CONTINUE
+                    CASE ("normal")
+                        WRITE(*, *) "WARNING: Particle List Length must be positve. Using default Number ", plist_len, "instead."
+                    CASE ("verbose")
+                        WRITE(*, *) "WARNING: Particle List Length must be positve. Using default Number ", plist_len, "instead."
+                END SELECT
+            END IF
 
             plist_len = 1000_intk
 
@@ -96,27 +100,33 @@ CONTAINS
 
         IF (init_npart <= 0_intk) THEN
 
-            SELECT CASE (TRIM(particle_terminal))
-                CASE ("none")
-                    CONTINUE
-                CASE ("normal")
-                    WRITE(*, *) "WARNING: Initial Number of Particles must be positve. Using default Number ", init_npart, "instead."
-                CASE ("verbose")
-                    WRITE(*, *) "WARNING: Initial Number of Particles must be positve. Using default Number ", init_npart, "instead."
-            END SELECT
+            IF (myid == 0) THEN
+                SELECT CASE (TRIM(particle_terminal))
+                    CASE ("none")
+                        CONTINUE
+                    CASE ("normal")
+                        WRITE(*, *) "WARNING: Initial Number of Particles must be positve. Using default Number ", init_npart, "instead."
+                    CASE ("verbose")
+                        WRITE(*, *) "WARNING: Initial Number of Particles must be positve. Using default Number ", init_npart, "instead."
+                END SELECT
+            END IF
 
             init_npart = 100_intk
 
         ELSEIF (init_npart > plist_len) THEN
 
-            SELECT CASE (TRIM(particle_terminal))
-                CASE ("none")
-                    CONTINUE
-                CASE ("normal")
-                    WRITE(*, *) "WARNING: Initial Number of Particles must be smaller than the maximum List Length. Using default Number ", init_npart, "instead."
-                CASE ("verbose")
-                    WRITE(*, *) "WARNING: Initial Number of Particles must be smaller than the maximum List Length. Using default Number ", init_npart, "instead."
-            END SELECT
+            IF (myid == 0) THEN
+                SELECT CASE (TRIM(particle_terminal))
+                    CASE ("none")
+                        CONTINUE
+                    CASE ("normal")
+                        WRITE(*, *) "WARNING: Initial Number of Particles must be smaller than the maximum List Length. Using default Number ", &
+                        init_npart, "instead."
+                    CASE ("verbose")
+                        WRITE(*, *) "WARNING: Initial Number of Particles must be smaller than the maximum List Length. Using default Number ", &
+                        init_npart, "instead."
+                END SELECT
+            END IF
 
             init_npart = 100_intk
 
@@ -128,14 +138,16 @@ CONTAINS
 
         IF (D(1) < 0.0_realk) THEN
 
-            SELECT CASE (TRIM(particle_terminal))
-                CASE ("none")
-                    CONTINUE
-                CASE ("normal")
-                    WRITE(*, *) "WARNING: Diffusion Constant Dx must be positve. Using Dx = 0 instead."
-                CASE ("verbose")
-                    WRITE(*, *) "WARNING: Diffusion Constant Dx must be positve. Using Dx = 0 instead."
-            END SELECT
+            IF (myid == 0) THEN
+                SELECT CASE (TRIM(particle_terminal))
+                    CASE ("none")
+                        CONTINUE
+                    CASE ("normal")
+                        WRITE(*, *) "WARNING: Diffusion Constant Dx must be positve. Using Dx = 0 instead."
+                    CASE ("verbose")
+                        WRITE(*, *) "WARNING: Diffusion Constant Dx must be positve. Using Dx = 0 instead."
+                END SELECT
+            END IF
 
             D(1) = 0.0_realk
 
@@ -143,14 +155,16 @@ CONTAINS
 
         IF (D(2) < 0.0_realk) THEN
 
-            SELECT CASE (TRIM(particle_terminal))
-                CASE ("none")
-                    CONTINUE
-                CASE ("normal")
-                    WRITE(*, *) "WARNING: Diffusion Constant Dy must be positve. Using Dy = 0 instead."
-                CASE ("verbose")
-                    WRITE(*, *) "WARNING: Diffusion Constant Dy must be positve. Using Dy = 0 instead."
-            END SELECT
+            IF (myid == 0) THEN
+                SELECT CASE (TRIM(particle_terminal))
+                    CASE ("none")
+                        CONTINUE
+                    CASE ("normal")
+                        WRITE(*, *) "WARNING: Diffusion Constant Dy must be positve. Using Dy = 0 instead."
+                    CASE ("verbose")
+                        WRITE(*, *) "WARNING: Diffusion Constant Dy must be positve. Using Dy = 0 instead."
+                END SELECT
+            END IF
 
             D(2) = 0.0_realk
 
@@ -158,14 +172,16 @@ CONTAINS
 
         IF (D(3) < 0.0_realk) THEN
 
-            SELECT CASE (TRIM(particle_terminal))
-                CASE ("none")
-                    CONTINUE
-                CASE ("normal")
-                    WRITE(*, *) "WARNING: Diffusion Constant Dz must be positve. Using Dz = 0 instead."
-                CASE ("verbose")
-                    WRITE(*, *) "WARNING: Diffusion Constant Dz must be positve. Using Dz = 0 instead."
-            END SELECT
+            IF (myid == 0) THEN
+                SELECT CASE (TRIM(particle_terminal))
+                    CASE ("none")
+                        CONTINUE
+                    CASE ("normal")
+                        WRITE(*, *) "WARNING: Diffusion Constant Dz must be positve. Using Dz = 0 instead."
+                    CASE ("verbose")
+                        WRITE(*, *) "WARNING: Diffusion Constant Dz must be positve. Using Dz = 0 instead."
+                END SELECT
+            END IF
 
             D(3) = 0.0_realk
 
@@ -176,14 +192,17 @@ CONTAINS
         CALL pconf%get_value("/snapshot_step", psnapshot_step, 10_intk)
 
         IF (psnapshot_step < 1_intk) THEN
-            SELECT CASE (TRIM(particle_terminal))
-                CASE ("none")
-                    CONTINUE
-                CASE ("normal")
-                    WRITE(*, *) "Invalid snapshot step. Should be integer greater or equal to 1. Using snapshot_step = 10 instead."
-                CASE ("verbose")
-                    WRITE(*, *) "Invalid snapshot step. Should be integer greater or equal to 1. Using snapshot_step = 10 instead."
-            END SELECT
+
+            IF (myid == 0) THEN
+                SELECT CASE (TRIM(particle_terminal))
+                    CASE ("none")
+                        CONTINUE
+                    CASE ("normal")
+                        WRITE(*, *) "Invalid snapshot step. Should be integer greater or equal to 1. Using snapshot_step = 10 instead."
+                    CASE ("verbose")
+                        WRITE(*, *) "Invalid snapshot step. Should be integer greater or equal to 1. Using snapshot_step = 10 instead."
+                END SELECT
+            END IF
 
             psnapshot_step = 10_intk
 
@@ -191,22 +210,24 @@ CONTAINS
 
         !-----------------------------------
 
-        SELECT CASE (TRIM(particle_terminal))
-                CASE ("none")
-                    CONTINUE
-                CASE ("normal")
-                    CONTINUE
-                CASE ("verbose")
-                    WRITE(*, '("PARTICLE CONFIGURATION:")')
-                    WRITE(*, '("Terminal Output:              ", A11)') particle_terminal
-                    WRITE(*, '("Reading ParticlesDict:        ", L11)') dread_particles
-                    WRITE(*, '("Field Interpolation:          ", L11)') dinterp_particles
-                    WRITE(*, '("Writing Particle Snapshots:   ", L11)') dwrite_particles
-                    WRITE(*, '("Particle Snapshot Step:       ", I11)') psnapshot_step
-                    WRITE(*, '("Max Particle List Length:     ", I11)') plist_len
-                    WRITE(*, '("Initial number of Particles:  ", I11)') init_npart
-                    WRITE(*, '("Diffusion Vector:             ", F11.9, " ", F11.9, " ", F11.9)') D(1), D(2), D(3)
-        END SELECT
+        IF (myid == 0) THEN
+            SELECT CASE (TRIM(particle_terminal))
+                    CASE ("none")
+                        CONTINUE
+                    CASE ("normal")
+                        CONTINUE
+                    CASE ("verbose")
+                        WRITE(*, '("PARTICLE CONFIGURATION:")')
+                        WRITE(*, '("Terminal Output:              ", A11)') particle_terminal
+                        WRITE(*, '("Reading ParticlesDict:        ", L11)') dread_particles
+                        WRITE(*, '("Field Interpolation:          ", L11)') dinterp_particles
+                        WRITE(*, '("Writing Particle Snapshots:   ", L11)') dwrite_particles
+                        WRITE(*, '("Particle Snapshot Step:       ", I11)') psnapshot_step
+                        WRITE(*, '("Max Particle List Length:     ", I11)') plist_len
+                        WRITE(*, '("Initial number of Particles:  ", I11)') init_npart
+                        WRITE(*, '("Diffusion Vector:             ", F11.9, " ", F11.9, " ", F11.9)') D(1), D(2), D(3)
+            END SELECT
+        END IF
 
     END SUBROUTINE init_particle_config
 

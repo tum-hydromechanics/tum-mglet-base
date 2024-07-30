@@ -80,25 +80,27 @@ CONTAINS
 
         END DO
 
-        WRITE(*,*) 'Writing Particle Snapshots for timesteps: '
-        WRITE(*,*) ' '
+        IF (myid == 0) THEN
+            WRITE(*,*) 'Writing Particle Snapshots for timesteps: '
+            WRITE(*,*) ' '
 
-        DO i = 2, psnapshot_info%nsnapshots
+            DO i = 2, psnapshot_info%nsnapshots
 
-            IF (MOD(i - 1_intk, 10) == 0) THEN
+                IF (MOD(i - 1_intk, 10) == 0) THEN
 
-                WRITE(*, '(I0)', advance="yes") psnapshot_info%timesteps(i)
+                    WRITE(*, '(I0)', advance="yes") psnapshot_info%timesteps(i)
 
-            ELSE
+                ELSE
 
-                WRITE(*, '(I0)', advance="no") psnapshot_info%timesteps(i)
-                WRITE(*, '(A)', advance="no") ' '
+                    WRITE(*, '(I0)', advance="no") psnapshot_info%timesteps(i)
+                    WRITE(*, '(A)', advance="no") ' '
 
-            END IF
+                END IF
 
-        END DO
+            END DO
 
-        WRITE(*,*) ' '
+            WRITE(*,*) ' '
+        END IF
 
     END SUBROUTINE init_psnapshots
 

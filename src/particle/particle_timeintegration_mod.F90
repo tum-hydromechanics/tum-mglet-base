@@ -106,7 +106,8 @@ CONTAINS
                 CASE ("normal")
                     CONTINUE
                 CASE ("verbose")
-                    WRITE(*,'("Timeintegrating Particle ", I0, "(dt = ", F12.8,"):")') my_particle_list%particles(i)%ipart, dt
+                    WRITE(*,'("Proc ", I0, ": Timeintegrating Particle ", I0, "(dt = ", F12.8,"):")') &
+                     myid, my_particle_list%particles(i)%ipart, dt
                     WRITE(*,'("Particle ADVECTION [m] = ", 3F12.8)') advection_dx, advection_dy, advection_dz
                     WRITE(*,'("Particle DIFFUSION [m] = ", 3F12.8)') diffusion_dx, diffusion_dy, diffusion_dz
                     WRITE(*, *) ' '
@@ -130,8 +131,9 @@ CONTAINS
                     CASE ("normal")
                         CONTINUE
                     CASE ("verbose")
-                        WRITE(*,'("Particle ", I0, " left grid ", I0, " at ", 3F12.6)') my_particle_list%particles(i)%ipart, my_particle_list%particles(i)%igrid, my_particle_list%particles(i)%x, &
-                        my_particle_list%particles(i)%y, my_particle_list%particles(i)%z
+                        WRITE(*,'("Proc ", I0, ": Particle ", I0, " left grid ", I0, " at ", 3F12.6)') &
+                         myid, my_particle_list%particles(i)%ipart, my_particle_list%particles(i)%igrid, my_particle_list%particles(i)%x, &
+                         my_particle_list%particles(i)%y, my_particle_list%particles(i)%z
                 END SELECT
 
 

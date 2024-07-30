@@ -20,20 +20,24 @@ CONTAINS
 
         IF (dsim_particles) THEN
 
-            WRITE(*,*) "PARTICLE SIMULATION IS INITIALIZED ..."
+            IF (myid == 0) THEN
+                WRITE(*,*) "PARTICLE SIMULATION GETTING INITIALIZED ..."
+            END IF
 
             CALL init_particle_list()
 
         ELSE
 
-            WRITE(*,*) "NO PARTICLE SIMULATION"
+            IF (myid == 0) THEN
+                WRITE(*,*) "NO PARTICLE SIMULATION"
+            END IF
 
         END IF
 
     END SUBROUTINE init_particles
 
 
-    SUBROUTINE finish_particles
+    SUBROUTINE finish_particles()
 
         WRITE(*,*) "TO BE DONE---"
 
