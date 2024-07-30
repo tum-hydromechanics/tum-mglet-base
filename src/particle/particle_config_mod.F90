@@ -22,8 +22,7 @@ CONTAINS
 
     SUBROUTINE init_particle_config()
 
-        !-----------------------------------
-
+        !-----------------------------------TEST
         TYPE(config_t) :: pconf
 
         IF (.NOT. fort7%exists("/particles")) THEN
