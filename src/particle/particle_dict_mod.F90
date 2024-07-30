@@ -62,10 +62,10 @@ CONTAINS
                 CONTINUE
             CASE ("normal")
                 WRITE(*,*) ' '
-                WRITE(*, '("Reading ", I0, " Particle(s) on", I0, "processes: ")') npart, numprocs
+                WRITE(*, '("Reading ", I0, " Particle(s) on ", I0, " processes: ")') npart, numprocs
             CASE ("verbose")
                 WRITE(*, *) ' '
-                WRITE(*, '("Reading ", I0, " Particle(s) on", I0, "processes: ")') npart, numprocs
+                WRITE(*, '("Reading ", I0, " Particle(s) on ", I0, " processes: ")') npart, numprocs
         END SELECT
     END IF
 
@@ -115,7 +115,7 @@ CONTAINS
                     CASE ("normal")
                         CONTINUE
                     CASE ("verbose")
-                        WRITE(*,'("Particle read (on all processes): ipart = ", I0, " | x/y/z = ", 3F12.6)') ipart, xtemp, ytemp, ztemp
+                        WRITE(*,'("Particle read on ", I0, " processes: ipart = ", I0, " | x/y/z = ", 3F12.6)') numprocs, ipart, xtemp, ytemp, ztemp
                 END SELECT
             END IF
 
