@@ -25,7 +25,7 @@ CONTAINS
 
     IF (.NOT. dread_particles) THEN
 
-        IF (myid == 0)
+        IF (myid == 0) THEN
             SELECT CASE (TRIM(particle_terminal))
                 CASE ("none")
                     CONTINUE
