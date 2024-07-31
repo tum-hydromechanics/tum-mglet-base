@@ -50,16 +50,12 @@ MODULE particle_connect_mod
     TYPE(MPI_Request), ALLOCATABLE :: sendReqs(:), recvReqs(:)
 
     ! Lists that hold the messages that are ACTUALLY sendt and received
-    INTEGER(intk) :: nSend, nRecv, nRecvFaces
+    INTEGER(intk) :: nRecv
     INTEGER(int32), ALLOCATABLE :: sendList(:), recvList(:)
     INTEGER(intk), ALLOCATABLE :: recvIdxList(:,:)
 
     ! Number of send and receive connections
     INTEGER(intk) :: iSend = 0, iRecv = 0
-
-    ! Counters for send- and receive operations (for locations in
-    ! send and receive buffers)
-    INTEGER(intk) :: sendCounter, recvCounter
 
     ! Variable to indicate if the connection information has
     ! been created.
@@ -93,33 +89,6 @@ MODULE particle_connect_mod
         3, 2, 4, 5, &
         3, 2, 4, 6 /), SHAPE(facelist))
 
-    INTEGER(intk), PARAMETER :: facenbr(26) = (/ &
-        2, &
-        1, &
-        4, &
-        3, &
-        6, &
-        5, &
-        12, &
-        11, &
-        14, &
-        13, &
-        8, &
-        7, &
-        10, &
-        9, &
-        18, &
-        17, &
-        16, &
-        15, &
-        26, &
-        25, &
-        24, &
-        23, &
-        22, &
-        21, &
-        20, &
-        19 /)
 
     ! These patterns come from a Python program, however, it was discovered,
     ! that the GC fcorr-stencils need in inner corners a special rescue
@@ -189,7 +158,7 @@ MODULE particle_connect_mod
         19, 20, 21, 23, 22, 24, 25 /), SHAPE(rescue_nbr))
 
         ! Publicly callable functions of module
-        PUBLIC :: init_particle_connect, particle_connect, finish_particle_connect, get_target_grid
+        PUBLIC :: init_particle_connect, particle_connect, finish_particle_connect
 
 CONTAINS
 
@@ -215,6 +184,9 @@ CONTAINS
             CALL errr(__FILE__, __LINE__)
         END IF
 
+        ALLOCATE( npsend(iSend) )
+        npsend = 0
+
         DO i = 1, particle_list%ifinal
 
             ! jumping inactive particles
@@ -231,9 +203,12 @@ CONTAINS
 
             ! triage of particles
             IF ( particle_list%particles(i)%igrid == destgrid ) THEN
+
                 ! particle stays on grid
                 CALL update_particle_cell( particle_list%particles(i) )
+
             ELSE
+
                 ! particle changes the grid
                 IF ( destproc == myid ) THEN
                     ! particle remains on process
@@ -247,32 +222,18 @@ CONTAINS
 
                 ! TO DO: periodicity (see branch of Julius)
 
+                ! search for the process to send to (only checks few "neighbor processes")
+                DO iproc = 1, iSend
+                    IF ( sendConns(1,iproc) == particle_list%particles(i)%iproc ) THEN
+                        npsend(iproc) = npsend(iproc) + 1
+                    END IF
+                END DO
+
             END IF
+
         END DO
 
         ! --- step 1: The marking is done (grid and proc indicate destination). Done.
-
-
-        ALLOCATE( npsend(iSend) )
-        npsend = 0
-
-        DO i = 1, particle_list%ifinal
-            ! jumping inactive particles
-            IF ( particle_list%particles(i)%is_active /= 1 ) THEN
-                CYCLE
-            END IF
-            ! jumping local particles
-            IF ( particle_list%particles(i)%iproc == myid ) THEN
-                CYCLE
-            END IF
-            ! search for the process to send to (only checks few "neighbor processes")
-            DO iproc = 1, iSend
-                IF ( sendConns(1,iproc) == particle_list%particles(i)%iproc ) THEN
-                    npsend(iproc) = npsend(iproc) + 1
-                END IF
-            END DO
-        END DO
-
         ! --- step 2: The counting is done. Done.
 
 
@@ -366,16 +327,12 @@ CONTAINS
             END IF
         END DO
 
-        ! WRITE(*,*) sendBufParticle
-
         ! --- step 4: Displacements determined and send buffer filled. Done.
 
 
         ! checking if communication done (one call should suffice...)
         CALL MPI_Waitall(iSend, sendreqs, MPI_STATUSES_IGNORE)
         CALL MPI_Waitall(iRecv, recvreqs, MPI_STATUSES_IGNORE)
-
-        ! WRITE(*,*) myid, 'npsend:', npsend, 'to', sendConns(1, 1:iSend), 'nprecv:', nprecv, 'from', recvConns(2, 1:iRecv)
 
         ! --- step 5: Finishing the communication of particle numbers. Done.
 
@@ -394,9 +351,6 @@ CONTAINS
         sizeRecvBuf = SUM(nprecv)
         ALLOCATE( recvBufParticle(sizeRecvBuf) )
 
-        ! TO DO: Ab jetzt kann gestestet werden, ob all ankommenden Partikel in die Liste passen!
-        ! Entsprechend kann die List erweitert oder sogar gekürzt werden, während MPI für Partciel läuft.
-
         ! --- step 6: Allocating the recieve buffer and displacements. Done.
 
 
@@ -405,7 +359,6 @@ CONTAINS
         !     MPI_Datatype datatype, int source,
         !     int tag, MPI_Comm comm, MPI_Request *request)
         cRecv = 0
-        ! WRITE(*,*) myid, 'cons:', recvConns(2, 1:iRecv), ndisprecv, nprecv
         DO i = 1, iRecv
             iprocnbr = recvConns(2, i)
             pos = ndisprecv(i)
@@ -436,11 +389,16 @@ CONTAINS
         ! --- step 7: The communication has been launched (not finished!). Open.
 
 
+        ! TIME FOR PREPARATION OF THE RECEIVING LIST !!!
+
+        ! TO DO: Ab jetzt kann gestestet werden, ob all ankommenden Partikel in die Liste passen!
+        ! Entsprechend kann die List erweitert oder sogar gekürzt werden, während MPI für Particle läuft.
+
+
+
         ! checking if communication done (one call should suffice...)
         CALL MPI_Waitall(cSend, sendreqs, MPI_STATUSES_IGNORE)
         CALL MPI_Waitall(cRecv, recvreqs, MPI_STATUSES_IGNORE)
-
-        ! WRITE(*,*) recvBufParticle
 
         ! assigning the new cell indices
         IF ( sizeRecvBuf > 0 ) THEN
@@ -472,12 +430,14 @@ CONTAINS
 
         ! --- step 9: Received particles have been copied into list. Done.
 
-
+        ! the following could remain
         DEALLOCATE( npsend )
         DEALLOCATE( nprecv )
         DEALLOCATE( ndispsend )
-        DEALLOCATE( sendBufParticle )
         DEALLOCATE( ndisprecv )
+
+        ! changing sizes
+        DEALLOCATE( sendBufParticle )
         DEALLOCATE( recvBufParticle )
 
         ! --- step 10: Clearing the buffers. Done.
@@ -575,7 +535,7 @@ CONTAINS
                 END IF
             END DO
 
-            ! Check lines fo grid
+            ! Check edges of grid
             DO iface = 7, 18
                 iface1 = facelist(2, iface)
                 iface2 = facelist(3, iface)
@@ -1016,12 +976,5 @@ CONTAINS
         ! cleaning up the auxiliary type
         CALL MPI_Type_free(triple_int_mpi_type)
     END SUBROUTINE create_particle_mpitype
-
-
-    SUBROUTINE is_true_neigbour()
-
-
-
-    END SUBROUTINE is_true_neigbour
 
 END MODULE particle_connect_mod

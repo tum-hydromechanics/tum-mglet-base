@@ -63,9 +63,14 @@ CONTAINS
             ! checking consistency (Debug)
             gfound = 0
             DO ig = 1, nMyGrids
-                IF ( my_particle_list%particles(i)%igrid == mygrids(ig) ) gfound = 1; EXIT
+                IF ( my_particle_list%particles(i)%igrid == mygrids(ig) ) THEN 
+                    gfound = 1
+                    EXIT
+                END IF
             END DO
-            IF ( gfound == 0 ) CALL errr(__FILE__, __LINE__)
+            IF ( gfound == 0 ) THEN 
+                CALL errr(__FILE__, __LINE__)
+            END IF
 
             ! Grid and Field Info
             CALL x_f%get_ptr(x, igrid)
