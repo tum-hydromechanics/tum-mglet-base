@@ -258,28 +258,28 @@ CONTAINS
                 END IF
 
                 ! coordinate manipulation of particles passing periodic boundaries (JULIUS: should this be sourced out into its own routine?)
-                IF (my_particle_list%particles(i)%x < new_minx) THEN
-                    my_particle_list%particles(i)%x = new_maxx - ABS(my_particle_list%particles(i)%x - old_minx)
+                IF (particle_list%particles(i)%x < new_minx) THEN
+                    particle_list%particles(i)%x = new_maxx - ABS(particle_list%particles(i)%x - old_minx)
                 END IF
 
-                IF (new_maxx < my_particle_list%particles(i)%x) THEN
-                    my_particle_list%particles(i)%x = new_minx + ABS(my_particle_list%particles(i)%x - old_maxx)
+                IF (new_maxx < particle_list%particles(i)%x) THEN
+                    particle_list%particles(i)%x = new_minx + ABS(particle_list%particles(i)%x - old_maxx)
                 END IF
 
-                IF (my_particle_list%particles(i)%y < new_miny) THEN
-                    my_particle_list%particles(i)%y = new_maxy - ABS(my_particle_list%particles(i)%y - old_miny)
+                IF (particle_list%particles(i)%y < new_miny) THEN
+                    particle_list%particles(i)%y = new_maxy - ABS(particle_list%particles(i)%y - old_miny)
                 END IF
 
-                IF (new_maxy < my_particle_list%particles(i)%y) THEN
-                    my_particle_list%particles(i)%y = new_miny + ABS(my_particle_list%particles(i)%y - old_maxy)
+                IF (new_maxy < particle_list%particles(i)%y) THEN
+                    particle_list%particles(i)%y = new_miny + ABS(particle_list%particles(i)%y - old_maxy)
                 END IF
 
-                IF (my_particle_list%particles(i)%z < new_minz) THEN
-                    my_particle_list%particles(i)%z = new_maxz - ABS(my_particle_list%particles(i)%z - old_minz)
+                IF (particle_list%particles(i)%z < new_minz) THEN
+                    particle_list%particles(i)%z = new_maxz - ABS(particle_list%particles(i)%z - old_minz)
                 END IF
 
-                IF (new_maxz < my_particle_list%particles(i)%z) THEN
-                    my_particle_list%particles(i)%z = new_minz + ABS(my_particle_list%particles(i)%z - old_maxz)
+                IF (new_maxz < particle_list%particles(i)%z) THEN
+                    particle_list%particles(i)%z = new_minz + ABS(particle_list%particles(i)%z - old_maxz)
                 END IF
 
             END IF
@@ -364,7 +364,7 @@ CONTAINS
 
             ! buffer is filled
             DO iproc = 1, iSend
-                IF ( sendConns(1,iproc) == particle_list%particles(i)%iproc ) THEN
+                IF ( sendConns(1, iproc) == particle_list%particles(i)%iproc ) THEN
                     pos = ndispsend(iproc)
                     IF ( pos > sizeSendBuf ) THEN
                         WRITE(*,*) 'Send buffer size exceeded'
@@ -714,7 +714,7 @@ CONTAINS
         END DO
 
         ! Check that number of connections fit in array
-        iSend = (rdispls(numprocs-1) + recvcounts(numprocs-1))/SIZE(sendConns, 1)
+        iSend = (rdispls(numprocs-1) + recvcounts(numprocs-1)) / SIZE(sendConns, 1)
         IF (iSend > maxConns) THEN
             WRITE(*,*) "Number of connections exceeded on process ", myid
             WRITE(*,*) "maxConns =", maxConns, "nMyGrids =", nMyGrids, &
