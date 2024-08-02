@@ -132,7 +132,7 @@ CONTAINS
                     CONTINUE
                 CASE ("verbose")
                     WRITE(*,'("New Status:")')
-                    CALL print_particle_status(my_particle_list%partilces(i))
+                    CALL print_particle_status(my_particle_list%particles(i))
             END SELECT
 
         END DO
