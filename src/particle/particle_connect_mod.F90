@@ -978,7 +978,9 @@ CONTAINS
         IF ( iface == 0 ) THEN
             ! particle stays on the same grid
             destgrid = particle%igrid
+            WRITE(*, '("Destination grid: ", I0)') destgrid
             destproc = particle%iproc
+            WRITE(*, '("Destination Proc: ", I0)') destproc
             IF ( destproc /= myid ) THEN
                 WRITE(*,*) 'Inconsistent particle parameters'
                 CALL errr(__FILE__, __LINE__)
@@ -988,7 +990,9 @@ CONTAINS
             ! particle moves across grid boundary
             CALL get_neighbours(neighbours, particle%igrid)
             destgrid = neighbours(iface)
+            WRITE(*, '("Destination grid: ", I0)') destgrid
             destproc = idprocofgrd(destgrid)
+            WRITE(*, '("Destination Proc: ", I0)') destproc
             IF ( destproc == myid ) THEN
                 destproc = particle%iproc
             END IF
