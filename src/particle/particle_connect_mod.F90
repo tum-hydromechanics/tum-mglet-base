@@ -194,12 +194,14 @@ MODULE particle_connect_mod
 CONTAINS
 
 
-    SUBROUTINE particle_connect( particle_list )
+    SUBROUTINE particle_connect(particle_list)
 
         IMPLICIT NONE
 
+        ! subroutine argument
         TYPE(particle_list_t), INTENT(inout) :: particle_list
 
+        !local variables
         INTEGER(intk) :: i, iproc, pos, num
         INTEGER(intk) :: destgrid, destproc
         INTEGER(intk) :: iprocnbr, cSend, cRecv
@@ -209,6 +211,9 @@ CONTAINS
         INTEGER(intk), ALLOCATABLE :: nprecv(:)
         INTEGER(intk), ALLOCATABLE :: ndispsend(:)
         INTEGER(intk), ALLOCATABLE :: ndisprecv(:)
+        ! for periodic boundaries
+        REAL(realk) :: old_minx, old_maxx, old_miny, old_maxy, old_minz, old_maxz, &
+         new_minx, new_maxx, new_miny, new_maxy, new_minz, new_maxz
 
         IF ( .NOT. isInit ) THEN
             WRITE(*,*) 'Particle connect not initialized'
@@ -225,6 +230,7 @@ CONTAINS
             ! setting the destination of particle (quo vadis, particle?)
             CALL get_target_grid(particle_list%particles(i), destgrid, destproc)
 
+
             IF ( destproc > numprocs .OR. destproc < 0 ) THEN
                 WRITE(*,*) 'Obviously ill-addressed particle to proc', destproc
                 CALL errr(__FILE__, __LINE__)
@@ -235,6 +241,11 @@ CONTAINS
                 ! particle stays on grid
                 CALL update_particle_cell( particle_list%particles(i) )
             ELSE
+                ! get old and new grid boundaries for periodic boundary handling
+                ! (at this point igrid is still NOT updated, meaning particle%igrid = old igrid)
+                CALL get_bbox(old_minx, old_maxx, old_miny, old_maxy, old_minz, old_maxz, particle_list%particles(i)%igrid)
+                CALL get_bbox(new_minx, new_maxx, new_miny, new_maxy, new_minz, new_maxz, destgrid)
+
                 ! particle changes the grid
                 IF ( destproc == myid ) THEN
                     ! particle remains on process
@@ -246,7 +257,30 @@ CONTAINS
                     particle_list%particles(i)%igrid = destgrid
                 END IF
 
-                ! TO DO: periodicity (see branch of Julius)
+                ! coordinate manipulation of particles passing periodic boundaries (JULIUS: should this be sourced out into its own routine?)
+                IF (my_particle_list%particles(i)%x < new_minx) THEN
+                    my_particle_list%particles(i)%x = new_maxx - ABS(my_particle_list%particles(i)%x - old_minx)
+                END IF
+
+                IF (new_maxx < my_particle_list%particles(i)%x) THEN
+                    my_particle_list%particles(i)%x = new_minx + ABS(my_particle_list%particles(i)%x - old_maxx)
+                END IF
+
+                IF (my_particle_list%particles(i)%y < new_miny) THEN
+                    my_particle_list%particles(i)%y = new_maxy - ABS(my_particle_list%particles(i)%y - old_miny)
+                END IF
+
+                IF (new_maxy < my_particle_list%particles(i)%y) THEN
+                    my_particle_list%particles(i)%y = new_miny + ABS(my_particle_list%particles(i)%y - old_maxy)
+                END IF
+
+                IF (my_particle_list%particles(i)%z < new_minz) THEN
+                    my_particle_list%particles(i)%z = new_maxz - ABS(my_particle_list%particles(i)%z - old_minz)
+                END IF
+
+                IF (new_maxz < my_particle_list%particles(i)%z) THEN
+                    my_particle_list%particles(i)%z = new_minz + ABS(my_particle_list%particles(i)%z - old_maxz)
+                END IF
 
             END IF
         END DO
