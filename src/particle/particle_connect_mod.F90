@@ -224,6 +224,7 @@ CONTAINS
 
             ! setting the destination of particle (quo vadis, particle?)
             CALL get_target_grid(particle_list%particles(i), destgrid, destproc)
+
             IF ( destproc > numprocs .OR. destproc < 0 ) THEN
                 WRITE(*,*) 'Obviously ill-addressed particle to proc', destproc
                 CALL errr(__FILE__, __LINE__)
@@ -842,7 +843,7 @@ CONTAINS
 
 
 
-    SUBROUTINE get_target_grid(particle, destgrid, destproc)
+    SUBROUTINE get_target_grid( particle, destgrid, destproc )
 
         ! subroutine arguments
         TYPE(baseparticle_t), INTENT(in) :: particle
