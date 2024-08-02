@@ -125,6 +125,16 @@ CONTAINS
                     WRITE(*, *) ' '
             END SELECT
 
+            SELECT CASE (TRIM(particle_terminal))
+                CASE ("none")
+                    CONTINUE
+                CASE ("normal")
+                    CONTINUE
+                CASE ("verbose")
+                    WRITE(*,'("New Status:")')
+                    CALL print_particle_status(my_particle_list%partilces(i))
+            END SELECT
+
         END DO
 
         ! migration of particles between grids
