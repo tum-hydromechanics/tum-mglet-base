@@ -44,7 +44,10 @@ CONTAINS
         CALL get_field(v_f, "V")
         CALL get_field(w_f, "W")
 
-        WRITE(*, *) 'New Timestep ...' ! REMOVE later
+        IF (myid == 0) THEN
+            WRITE(*, *) '' ! REMOVE later
+            WRITE(*, *) 'New Timestep ...' ! REMOVE later
+        END IF
 
         DO i = 1, my_particle_list%ifinal
 

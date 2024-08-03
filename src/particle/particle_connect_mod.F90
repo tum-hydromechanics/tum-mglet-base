@@ -297,9 +297,8 @@ CONTAINS
                 CASE ("normal")
                     CONTINUE
                 CASE ("verbose")
-                    WRITE(*,'("New Status:")')
                     CALL print_particle_status(my_particle_list%particles(i))
-            END SELECT
+                END SELECT
 
             END IF
         END DO
@@ -752,7 +751,7 @@ CONTAINS
             sendConns(1, 1), recvcounts, rdispls, MPI_INTEGER, &
             MPI_COMM_WORLD)
 
-        IF ( myid == 2 ) THEN
+        !IF ( myid == 0 ) THEN
             WRITE(*,*) 'I am proc:', myid
             WRITE(*,*) 'I own grids: '
             DO i = 1, nmygrids
@@ -766,7 +765,11 @@ CONTAINS
             DO i = 1, iSend
                 WRITE(*,*) '    - proc ', sendConns(1, i)
             END DO
-        END IF
+
+        !END IF
+
+        CALL MPI_Barrier(MPI_COMM_WORLD)
+
         nRecv = 0
 
         ! creating the MPI data type
