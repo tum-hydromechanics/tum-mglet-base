@@ -66,7 +66,7 @@ CONTAINS
             igrid = my_particle_list%particles(i)%igrid !just for clarity of the follwing expressions
 
             ! checking consistency (Debug)
-            gfound = 0
+            gfound = 1
             DO ig = 1, nMyGrids
                 IF ( my_particle_list%particles(i)%igrid == mygrids(ig) ) gfound = 1; EXIT
             END DO
