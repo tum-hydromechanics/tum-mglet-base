@@ -754,7 +754,7 @@ CONTAINS
 
         IF ( myid == 2 ) THEN
             WRITE(*,*) 'I am proc:', myid
-            WRITE(*,*) 'I own grids:',
+            WRITE(*,*) 'I own grids: '
             DO i = 1, nmygrids
                 WRITE(*,*) '    - grid ', mygrids(i)
             END DO
