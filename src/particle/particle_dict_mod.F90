@@ -25,16 +25,18 @@ CONTAINS
 
     IF (.NOT. dread_particles) THEN
 
-        SELECT CASE (TRIM(particle_terminal))
-            CASE ("none")
-                CONTINUE
-            CASE ("normal")
-                WRITE(*, *) ' '
-                WRITE(*, *) "WARNING: No file for reading particles detected! Using automated initial particle distribution instead."
-            CASE ("verbose")
-                WRITE(*, *) ' '
-                WRITE(*, *) "WARNING: No file for reading particles detected! Using automated initial particle distribution instead."
-        END SELECT
+        IF (myid == 0) THEN
+            SELECT CASE (TRIM(particle_terminal))
+                CASE ("none")
+                    CONTINUE
+                CASE ("normal")
+                    WRITE(*, *) ' '
+                    WRITE(*, *) "WARNING: No file for reading particles detected! Using automated initial particle distribution instead."
+                CASE ("verbose")
+                    WRITE(*, *) ' '
+                    WRITE(*, *) "WARNING: No file for reading particles detected! Using automated initial particle distribution instead."
+            END SELECT
+        END IF
 
         RETURN
 
@@ -54,16 +56,18 @@ CONTAINS
     ALLOCATE(y(npart))
     ALLOCATE(z(npart))
 
-    SELECT CASE (TRIM(particle_terminal))
-        CASE ("none")
-            CONTINUE
-        CASE ("normal")
-            WRITE(*,*) ' '
-            WRITE(*, '("Reading ", I0, " Particle(s):")') npart
-        CASE ("verbose")
-            WRITE(*, *) ' '
-            WRITE(*, '("Reading ", I0, " Particle(s):")') npart
-    END SELECT
+    IF (myid == 0) THEN
+        SELECT CASE (TRIM(particle_terminal))
+            CASE ("none")
+                CONTINUE
+            CASE ("normal")
+                WRITE(*,*) ' '
+                WRITE(*, '("Reading ", I0, " Particle(s):")') npart
+            CASE ("verbose")
+                WRITE(*, *) ' '
+                WRITE(*, '("Reading ", I0, " Particle(s):")') npart
+        END SELECT
+    END IF
 
     DO ipart = 1, npart
 
@@ -117,16 +121,18 @@ CONTAINS
 
     END DO
 
-    SELECT CASE (TRIM(particle_terminal))
-        CASE ("none")
-            CONTINUE
-        CASE ("normal")
-            WRITE(*, '("Reading ParticleDict finished successfully.")')
-            WRITE(*, *) ' '
-        CASE ("verbose")
-            WRITE(*, '("Reading ParticleDict finished successfully.")')
-            WRITE(*, *) ' '
-    END SELECT
+    IF (myid == 0) THEN
+        SELECT CASE (TRIM(particle_terminal))
+            CASE ("none")
+                CONTINUE
+            CASE ("normal")
+                WRITE(*, '("Reading ParticleDict finished successfully.")')
+                WRITE(*, *) ' '
+            CASE ("verbose")
+                WRITE(*, '("Reading ParticleDict finished successfully.")')
+                WRITE(*, *) ' '
+        END SELECT
+    END IF
 
     END SUBROUTINE read_particles
 

@@ -160,8 +160,19 @@ CONTAINS
             RETURN
         END IF
         CALL get_bbox(minx, maxx, miny, maxy, minz, maxz, particle%igrid)
+
         ! check if particle is located on igrid, KEEP particle check up?
         IF (particle%x < minx .OR. particle%x > maxx .OR. particle%y < miny .OR. particle%y > maxy .OR. particle%z < minz .OR. particle%z > maxz) THEN
+            SELECT CASE (TRIM(particle_terminal))
+                CASE ("none")
+                    CONTINUE
+                CASE ("normal")
+                    CONTINUE
+                CASE ("verbose")
+                    WRITE(*,*) ' '
+                    WRITE(*, '("WARNING: Coordinates of particle ", I0 ," do not lie within boundaries of particle grid ", I0)') particle%ipart, particle%igrid
+            END SELECT
+
             CALL set_particle_igrid( particle )
         END IF
 

@@ -257,6 +257,15 @@ CONTAINS
                     particle_list%particles(i)%igrid = destgrid
                 END IF
 
+                SELECT CASE (TRIM(particle_terminal))
+                    CASE ("none")
+                        CONTINUE
+                    CASE ("normal")
+                        CONTINUE
+                    CASE ("verbose")
+                        WRITE(*, *) "PERIODIC BOUNDARY MANIPULATION:"
+                END SELECT
+
                 ! coordinate manipulation of particles passing periodic boundaries (JULIUS: should this be sourced out into its own routine?)
                 IF (particle_list%particles(i)%x < new_minx) THEN
                     particle_list%particles(i)%x = new_maxx - ABS(particle_list%particles(i)%x - old_minx)
@@ -281,6 +290,16 @@ CONTAINS
                 IF (new_maxz < particle_list%particles(i)%z) THEN
                     particle_list%particles(i)%z = new_minz + ABS(particle_list%particles(i)%z - old_maxz)
                 END IF
+
+                SELECT CASE (TRIM(particle_terminal))
+                CASE ("none")
+                    CONTINUE
+                CASE ("normal")
+                    CONTINUE
+                CASE ("verbose")
+                    WRITE(*,'("New Status:")')
+                    CALL print_particle_status(my_particle_list%particles(i))
+            END SELECT
 
             END IF
         END DO
@@ -735,6 +754,10 @@ CONTAINS
 
         IF ( myid == 2 ) THEN
             WRITE(*,*) 'I am proc:', myid
+            WRITE(*,*) 'I own grids:',
+            DO i = 1, nmygrids
+                WRITE(*,*) '    - grid ', mygrids(i)
+            END DO
             WRITE(*,*) ' - I receive from the following ', iRecv, 'processes:'
             DO i = 1, iRecv
                 WRITE(*,*) '    - proc ', recvConns(2, i)

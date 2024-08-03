@@ -44,6 +44,8 @@ CONTAINS
         CALL get_field(v_f, "V")
         CALL get_field(w_f, "W")
 
+        WRITE(*, *) 'New Timestep ...' ! REMOVE later
+
         DO i = 1, my_particle_list%ifinal
 
             ! checking activity
@@ -65,7 +67,11 @@ CONTAINS
             DO ig = 1, nMyGrids
                 IF ( my_particle_list%particles(i)%igrid == mygrids(ig) ) gfound = 1; EXIT
             END DO
-            IF ( gfound == 0 ) CALL errr(__FILE__, __LINE__)
+
+            IF ( gfound == 0 ) THEN
+                WRITE(*, '("Particle grid ", I0, " is not on this process (", I0, ")")') my_particle_list%particles(i)%igrid, myid
+                CALL errr(__FILE__, __LINE__)
+            END IF
 
             ! Grid and Field Info
             CALL x_f%get_ptr(x, igrid)

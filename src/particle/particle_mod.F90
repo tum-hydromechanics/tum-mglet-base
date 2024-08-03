@@ -21,7 +21,9 @@ CONTAINS
 
         IF (dsim_particles) THEN
 
-            WRITE(*,*) "PARTICLE SIMULATION IS INITIALIZED ..."
+            IF (myid == 0) THEN
+                WRITE(*,*) "PARTICLE SIMULATION IS INITIALIZED ..."
+            END IF
 
             CALL init_particle_list()
 
@@ -30,7 +32,9 @@ CONTAINS
 
         ELSE
 
-            WRITE(*,*) "NO PARTICLE SIMULATION"
+            IF (myid == 0) THEN
+                WRITE(*,*) "NO PARTICLE SIMULATION"
+            END IF
 
         END IF
 
