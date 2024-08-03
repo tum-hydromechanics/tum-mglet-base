@@ -8,6 +8,7 @@ include(TestQsort.cmake)
 include(TestFortran2018Capability.cmake)
 include(TestAbstractInterface.cmake)
 include(TestElemental.cmake)
+include(TestMoveAlloc.cmake)
 
 # testing C inter-operability
 include(TestBindingC.cmake)
