@@ -202,7 +202,7 @@ CONTAINS
         TYPE(particle_list_t), INTENT(inout) :: particle_list
 
         !local variables
-        INTEGER(intk) :: i, iproc, pos, num
+        INTEGER(intk) :: i, j, iproc, pos, num
         INTEGER(intk) :: destgrid, destproc
         INTEGER(intk) :: iprocnbr, cSend, cRecv
 
@@ -211,6 +211,8 @@ CONTAINS
         INTEGER(intk), ALLOCATABLE :: nprecv(:)
         INTEGER(intk), ALLOCATABLE :: ndispsend(:)
         INTEGER(intk), ALLOCATABLE :: ndisprecv(:)
+        INTEGER(intk), ALLOCATABLE :: sendind(:)
+
         ! for periodic boundaries
         REAL(realk) :: old_minx, old_maxx, old_miny, old_maxy, old_minz, old_maxz, &
          new_minx, new_maxx, new_miny, new_maxy, new_minz, new_maxz
@@ -368,8 +370,10 @@ CONTAINS
 
         ! allocate send buffer and copy particles insections
         sizeSendBuf = SUM(npsend)
-        ALLOCATE( sendBufParticle(sizeSendBuf) )
+        ALLOCATE(sendind(sizeSendBuf))
+        ALLOCATE(sendBufParticle(sizeSendBuf))
 
+        j = 1
         DO i = 1, particle_list%ifinal
             ! jumping inactive particles
             IF ( particle_list%particles(i)%is_active /= 1 ) THEN
@@ -379,6 +383,10 @@ CONTAINS
             IF ( particle_list%particles(i)%iproc == myid ) THEN
                 CYCLE
             END IF
+
+            ! collect indices of particles list entries that will be empty after MPI send
+            sendind(j) = i
+            j = j + 1
 
             ! buffer is filled
             DO iproc = 1, iSend
@@ -514,14 +522,32 @@ CONTAINS
 
         ! --- step 8: Finishing the communication of actual particles. Done.
 
+        ! Check if List is long enough
+!        IF (sizeSendBuf + (my_particle_list%max_np - my_particle_list%ifinal) < sizeRecvBuf) THEN
+!
+!            CALL enlarge_particle_list(sizeRecvBuf + my_particle_list%ifinal - sizeSendBuf - my_particle_list%max_np)
+!
+!        END IF
 
-        ! TO DO: Enorm dumme und primitive Implementierung...
-        ! (einfach hinten rankleben, keine Sicherheitschecks, einfach dreckig...)
-        DO i = 1, sizeRecvBuf
-            particle_list%ifinal = particle_list%ifinal + 1
+        ! Copy recieved particles into the list
+        i = 1
+        DO WHILE (i <= sizeSendBuf .AND. i <= sizeRecvBuf)
+
             particle_list%active_np = particle_list%active_np + 1
-            particle_list%particles(particle_list%ifinal) = recvBufParticle(i)
+            particle_list%particles(sendind(i)) = recvBufParticle(i)
+            i = i +1
+
         END DO
+
+        IF (0 < sizeRecvBuf - sizeSendBuf) THEN
+            DO i = 1, sizeRecvBuf - sizeSendBuf
+
+                particle_list%ifinal = particle_list%ifinal + 1
+                particle_list%active_np = particle_list%active_np + 1
+                particle_list%particles(particle_list%ifinal) = recvBufParticle(i)
+
+            END DO
+        END IF
 
         ! --- step 9: Received particles have been copied into list. Done.
 
