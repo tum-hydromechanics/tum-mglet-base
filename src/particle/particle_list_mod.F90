@@ -15,14 +15,19 @@ MODULE particle_list_mod
 
         INTEGER(intk) :: iproc           ! REMOVE (obsolete) ?
 
-        INTEGER(intk) :: max_np        ! max number of particles of this process/list
-        INTEGER(intk) :: active_np = 0           ! number of active particles of this process/list
+        INTEGER(intk) :: max_np          ! max number of particles of this process/list
+        INTEGER(intk) :: active_np = 0   ! number of active particles of this process/list
         INTEGER(intk) :: ifinal          ! index of last entry of the list which holds an active particle
 
         TYPE(baseparticle_t), ALLOCATABLE :: particles(:)
-        !LOGICAL, ALLOCATABLE :: particle_stored(:)  ! each logical value reflects whether a particle is stored in the list
-                                                    ! at the respective index. Is this a feasable and good way to keep track
-                                                    ! of particle storage (especially as is_active in particle_t carries the same information?
+        !LOGICAL, ALLOCATABLE :: particle_stored(:)
+        ! each logical value reflects whether a particle is stored in the list
+        ! at the respective index. Is this a feasable and good way to keep track
+        ! of particle storage (especially as is_active in particle_t carries the same information?
+
+        CONTAINS
+
+        PROCEDURE :: defragment, resize
 
     END TYPE particle_list_t
 
@@ -37,6 +42,117 @@ MODULE particle_list_mod
     !===================================
 
 CONTAINS
+
+    SUBROUTINE defragment( this )
+
+        ! SIMON: Here just as an idea...
+
+        ! Subroutine arguments
+        CLASS(particle_list_t), INTENT(inout) :: this
+
+        ! Local variables
+        INTEGER(intk) :: i, j, ifin, n
+        LOGICAL :: cont
+
+        ! local copy
+        ifin = this%ifinal
+        cont = .TRUE.
+
+        IF ( this%active_np == ifin ) THEN
+            ! all slots are occupied
+            RETURN
+        END IF
+
+        DO i = 1, ifin
+
+            ! search for empty slot
+            IF ( this%particles(i)%is_active /= 1 ) THEN
+
+                ! search from the end of list and find particle to fill in
+                DO j = this%ifinal, 1, -1
+                    ! finished if positions before "i" are considered
+                    IF ( j < (i+1) ) THEN
+                        cont = .FALSE.
+                        EXIT
+                    END IF
+                    ! fill empty slot with last valid particle
+                    IF ( this%particles(j)%is_active == 1 ) THEN
+                        this%particles(i) = this%particles(j)
+                        this%particles(j)%is_active = 0
+                        this%ifinal = j - 1
+                        EXIT
+                    END IF
+                END DO
+
+                ! empty slot could not be filled
+                IF ( .NOT. cont ) THEN
+                    this%ifinal = i - 1
+                    EXIT
+                END IF
+
+            END IF
+
+        END DO
+
+        ! Debug check
+        DO i = 1, this%ifinal
+            IF ( this%particles(i)%is_active /= 1 ) THEN
+                WRITE(*,*) "defragmented list contains inactive particle at ", i
+                CALL errr(__FILE__, __LINE__)
+            END IF
+        END DO
+
+        ! Some output (to be silenced later)
+        IF ( ifin /= this%ifinal ) THEN
+            n = ifin - this%ifinal
+            WRITE(*,*) " - defragmentation: ", n, " slots cleared"
+        END IF
+
+    END SUBROUTINE defragment
+
+
+
+    SUBROUTINE resize( this, n )
+
+        ! SIMON: Here just as an idea...
+
+        ! Subroutine arguments
+        CLASS(particle_list_t), INTENT(inout) :: this
+        INTEGER(intk), INTENT(in) :: n
+
+        ! Local variables
+        TYPE(baseparticle_t), ALLOCATABLE :: new_particles(:)
+
+        IF ( n < this%ifinal ) THEN
+            WRITE(*,*) "new list size is too small"
+            CALL errr(__FILE__, __LINE__)
+        END IF
+
+        ALLOCATE( new_particles(n) )
+        new_particles(1:this%ifinal) = this%particles(1:this%ifinal)
+
+        CALL MOVE_ALLOC( new_particles, this%particles )
+
+        ! checking if temporary array is gone
+        IF ( ALLOCATED(new_particles) ) THEN
+            WRITE(*,*) "move_alloc failed to deallocate"
+            CALL errr(__FILE__, __LINE__)
+        END IF
+
+        ! checking if desired array is there
+        IF ( ALLOCATED(this%particles) ) THEN
+            IF ( SIZE(this%particles, dim=1, kind=intk) /= n ) THEN
+                WRITE(*,*) "move_alloc allocated wrong size"
+                CALL errr(__FILE__, __LINE__)
+            END IF
+        ELSE
+            WRITE(*,*) "move_alloc deallocated wrong array"
+            CALL errr(__FILE__, __LINE__)
+        END IF
+
+    END SUBROUTINE resize
+
+
 
     SUBROUTINE init_particle_list()
 
@@ -83,7 +199,7 @@ CONTAINS
                         CALL set_particle( my_particle_list%particles(my_particle_list%active_np), &
                         ipart = ipart_arr(i), x = x(i), y = y(i), z = z(i), &
                         igrid = p_igrid_arr(i))
-       
+
                         CALL print_particle_status( my_particle_list%particles(i) )
 
 
@@ -127,13 +243,13 @@ CONTAINS
             my_particle_list%ifinal = my_particle_list%active_np
 
             DO i = 1, my_particle_list%active_np
-   
+
                 CALL set_particle( my_particle_list%particles(i), &
                     ipart = ipart_arr(i), x = x(i), y = y(i), z = z(i), &
                     igrid = p_igrid_arr(i))
-   
+
                 CALL print_particle_status( my_particle_list%particles(i) )
-   
+
             END DO
 
         END IF
