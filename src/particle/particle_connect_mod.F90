@@ -205,7 +205,7 @@ CONTAINS
         INTEGER(intk) :: i, j, iproc, pos, num
         INTEGER(intk) :: destgrid, destproc
         INTEGER(intk) :: iprocnbr, cSend, cRecv
-        INTEGER(intk) :: np_active_old = particle_list%np_active ! for safety checks
+        INTEGER(intk) :: active_np_old  ! for safety checks
 
         ! we use "intk" instead of "ifk" (limits numbers)
         INTEGER(intk), ALLOCATABLE :: npsend(:)
@@ -222,6 +222,8 @@ CONTAINS
             WRITE(*,*) 'Particle connect not initialized'
             CALL errr(__FILE__, __LINE__)
         END IF
+
+        active_np_old = particle_list%active_np
 
         DO i = 1, particle_list%ifinal
 
@@ -533,11 +535,11 @@ CONTAINS
         ! Copy recieved particles into the list
         ! CAUTION: at this point, particle_list%particles(particle_list%ifinal)%is_active might be /= 1 ("empty")
 
-        CALL integrate_particles(particle_list, sendind)
+        CALL integrate_particles_concurrent(particle_list, sendind)
 
         ! some safety checks
 
-        IF (particle_list%np_active < np_active_old + sizeRecvBuf - sizeSendBuf) THEN
+        IF (particle_list%active_np < active_np_old + sizeRecvBuf - sizeSendBuf) THEN
             SELECT CASE (TRIM(particle_terminal))
                     CASE ("none")
                         CONTINUE
@@ -548,7 +550,7 @@ CONTAINS
             END SELECT
         END IF
 
-        IF (particle_list%np_active > np_active_old + sizeRecvBuf - sizeSendBuf) THEN
+        IF (particle_list%active_np > active_np_old + sizeRecvBuf - sizeSendBuf) THEN
             SELECT CASE (TRIM(particle_terminal))
                     CASE ("none")
                         CONTINUE
@@ -559,15 +561,15 @@ CONTAINS
             END SELECT
         END IF
 
-        IF (particle_list%ifinal /= particle_list%np_active) THEN
+        IF (particle_list%ifinal /= particle_list%active_np) THEN
             SELECT CASE (TRIM(particle_terminal))
                     CASE ("none")
                         CONTINUE
                     CASE ("normal")
                         CONTINUE
                     CASE ("verbose")
-                        WRITE(*, '("WARNING on proc ", I0, ": my_particle_list%np_active (", I0, ") does not coincide with my_particle_list%ifinal (", I0, ")" )') &
-                        myid, particle_list%np_active, particle_list%ifinal
+                        WRITE(*, '("WARNING on proc ", I0, ": my_particle_list%active_np (", I0, ") does not coincide with my_particle_list%ifinal (", I0, ")" )') &
+                        myid, particle_list%active_np, particle_list%ifinal
             END SELECT
         END IF
 
@@ -1059,8 +1061,8 @@ CONTAINS
                 CASE ("normal")
                     CONTINUE
                 CASE ("verbose")
-                    WRITE(*, '("Destination grid: ", I0)') destgrid
                     WRITE(*, '("Destination Proc: ", I0)') destproc
+                    WRITE(*, '("Destination grid: ", I0)') destgrid
             END SELECT
 
             IF ( destproc /= myid ) THEN
@@ -1080,8 +1082,8 @@ CONTAINS
                 CASE ("normal")
                     CONTINUE
                 CASE ("verbose")
-                    WRITE(*, '("Destination grid: ", I0)') destgrid
                     WRITE(*, '("Destination Proc: ", I0)') destproc
+                    WRITE(*, '("Destination grid: ", I0)') destgrid
             END SELECT
 
             IF ( destproc == myid ) THEN
@@ -1164,6 +1166,12 @@ CONTAINS
         !local variables
         INTEGER(intk) :: i, j
 
+        IF (sizeSendBuf == 0 .AND. sizeRecvBuf == 0) THEN
+
+            RETURN
+
+        END IF
+
         particle_list%active_np = particle_list%active_np + sizeRecvBuf
 
         IF (sizeSendBuf < sizeRecvBuf) THEN
@@ -1172,7 +1180,7 @@ CONTAINS
                 particle_list%particles(sendind(i)) = recvBufParticle(i)
             END DO
 
-            DO i = 1, sizeRecvBuf - sizeSendBuf
+            DO i = i, sizeRecvBuf ! i = sizeSendBuf
                 particle_list%ifinal = particle_list%ifinal + 1
                 particle_list%particles(particle_list%ifinal) = recvBufParticle(i)
             END DO
@@ -1183,22 +1191,24 @@ CONTAINS
                 particle_list%particles(sendind(i)) = recvBufParticle(i)
             END DO
 
-            DO i = i, sizeSendBuf
+            DO i = i, sizeSendBuf ! i = MAX(1, sizeRecvBuf)
 
-                IF (particle_list%ifinal <= sendind(i)) THEN
-                    EXIT
+                IF (particle_list%ifinal == sendind(i)) THEN
+                    particle_list%ifinal = particle_list%ifinal - 1
                 END IF
 
-                DO j = 0, particle_list%ifinal - sendind(i) - 1
-                    IF (particle_list%particles(particle_list%ifinal - j)%is_active == 1)
+                DO j = 1, particle_list%ifinal - sendind(i)
+                    IF (particle_list%particles(particle_list%ifinal)%is_active == 1) THEN
 
-                        particle_list%particles(sendind(i)) = particle_list%particles(particle_list%ifinal - j)
-                        particle_list%particles(particle_list%ifinal - j)%is_active = 0
+                        particle_list%particles(sendind(i)) = particle_list%particles(particle_list%ifinal)
+                        particle_list%particles(particle_list%ifinal)%is_active = 0
                         particle_list%ifinal = particle_list%ifinal - 1
                         EXIT
 
                     ELSE
-                        CONTINUE
+
+                        particle_list%ifinal = particle_list%ifinal - 1
+
                     END IF
                 END DO
 
@@ -1219,47 +1229,66 @@ CONTAINS
         !local variables
         INTEGER(intk) :: i, j
 
+        IF (sizeSendBuf == 0 .AND. sizeRecvBuf == 0) THEN
+
+            RETURN
+
+        END IF
+
         particle_list%active_np = particle_list%active_np + sizeRecvBuf
 
         IF (sizeSendBuf < sizeRecvBuf) THEN
+            
+            IF (1 <= MIN(sizeSendBuf, sizeRecvBuf - sizeSendBuf)) THEN
+                DO CONCURRENT (i = 1:MIN(sizeSendBuf, sizeRecvBuf - sizeSendBuf))
+                    particle_list%particles(sendind(i)) = recvBufParticle(i)
+                    particle_list%particles(particle_list%ifinal + i) = recvBufParticle(sizeRecvBuf + 1 - i)
+                END DO
+                i = MIN(sizeSendBuf, sizeRecvBuf - sizeSendBuf) + 1
+            ELSE
+                i = 1
+            END IF
 
-            DO CONCURRENT (i = 1:MIN(sizeSendBuf, sizeRecvBuf - sizeSendBuf))
-                particle_list%particles(sendind(i)) = recvBufParticle(i)
-                particle_list%particles(ifinal + i) = recvBufParticle(sizeRecvBuf + 1 - i)
-            END DO
+            IF (i <= sizeSendBuf) THEN
+                DO CONCURRENT (j = i:sizeSendBuf)
+                    particle_list%particles(sendind(j)) = recvBufParticle(j)
+                END DO
+            END IF
 
-            DO j = i, sizeSendBuf
-                particle_list%particles(sendind(j)) = recvBufParticle(j)
-            END DO
-
-            DO j = i, sizeRecvBuf - sizeSendBuf
-                particle_list%particles(ifinal + j) = recvBufParticle(sizeRecvBuf + 1 - j)
-            END DO
+            IF (i <= sizeRecvBuf - sizeSendBuf) THEN
+                DO CONCURRENT (j = i:sizeRecvBuf - sizeSendBuf)
+                    particle_list%particles(particle_list%ifinal + j) = recvBufParticle(sizeRecvBuf + 1 - j)
+                END DO
+            END IF
 
             particle_list%ifinal = particle_list%ifinal + sizeRecvBuf - sizeSendBuf
 
         ELSE
 
-            DO CONCURRENT (i = 1:sizeRecvBuf)
-                particle_list%particles(sendind(i)) = recvBufParticle(i)
-            END DO
+            IF (1 <= sizeRecvBuf) THEN
+                DO CONCURRENT (i = 1:sizeRecvBuf)
+                    particle_list%particles(sendind(i)) = recvBufParticle(i)
+                END DO
+            END IF
 
             DO i = i, sizeSendBuf
 
-                IF (particle_list%ifinal <= sendind(i)) THEN
-                    EXIT
+                IF (particle_list%ifinal == sendind(i)) THEN
+                    particle_list%ifinal = particle_list%ifinal - 1
                 END IF
 
-                DO j = 0, particle_list%ifinal - sendind(i) - 1
-                    IF (particle_list%particles(particle_list%ifinal - j)%is_active == 1)
+                DO j = 1, particle_list%ifinal - sendind(i)
+                    IF (particle_list%particles(particle_list%ifinal)%is_active == 1) THEN
 
-                        particle_list%particles(sendind(i)) = particle_list%particles(particle_list%ifinal - j)
-                        particle_list%particles(particle_list%ifinal - j)%is_active = 0
+                        particle_list%particles(sendind(i)) = particle_list%particles(particle_list%ifinal)
+                        particle_list%particles(particle_list%ifinal)%is_active = 0
                         particle_list%ifinal = particle_list%ifinal - 1
                         EXIT
 
                     ELSE
-                        CONTINUE
+
+                        particle_list%ifinal = particle_list%ifinal - 1
+
                     END IF
                 END DO
 
