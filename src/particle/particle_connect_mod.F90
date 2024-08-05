@@ -205,6 +205,7 @@ CONTAINS
         INTEGER(intk) :: i, j, iproc, pos, num
         INTEGER(intk) :: destgrid, destproc
         INTEGER(intk) :: iprocnbr, cSend, cRecv
+        INTEGER(intk) :: np_active_old = particle_list%np_active ! for safety checks
 
         ! we use "intk" instead of "ifk" (limits numbers)
         INTEGER(intk), ALLOCATABLE :: npsend(:)
@@ -530,27 +531,47 @@ CONTAINS
 !        END IF
 
         ! Copy recieved particles into the list
-        i = 1
-        DO WHILE (i <= sizeSendBuf .AND. i <= sizeRecvBuf)
+        ! CAUTION: at this point, particle_list%particles(particle_list%ifinal)%is_active might be /= 1 ("empty")
 
-            particle_list%active_np = particle_list%active_np + 1
-            particle_list%particles(sendind(i)) = recvBufParticle(i)
-            i = i +1
+        CALL integrate_particles(particle_list, sendind)
 
-        END DO
+        ! some safety checks
 
-        IF (0 < sizeRecvBuf - sizeSendBuf) THEN
-            DO i = 1, sizeRecvBuf - sizeSendBuf
+        IF (particle_list%np_active < np_active_old + sizeRecvBuf - sizeSendBuf) THEN
+            SELECT CASE (TRIM(particle_terminal))
+                    CASE ("none")
+                        CONTINUE
+                    CASE ("normal")
+                        CONTINUE
+                    CASE ("verbose")
+                        WRITE(*, '("WARNING on proc ", I0, ": Particle list holds FEWER particles than expected!")') myid
+            END SELECT
+        END IF
 
-                particle_list%ifinal = particle_list%ifinal + 1
-                particle_list%active_np = particle_list%active_np + 1
-                particle_list%particles(particle_list%ifinal) = recvBufParticle(i)
+        IF (particle_list%np_active > np_active_old + sizeRecvBuf - sizeSendBuf) THEN
+            SELECT CASE (TRIM(particle_terminal))
+                    CASE ("none")
+                        CONTINUE
+                    CASE ("normal")
+                        CONTINUE
+                    CASE ("verbose")
+                        WRITE(*, '("WARNING on proc ", I0, ": Particle list holds MORE particles than expected!")') myid
+            END SELECT
+        END IF
 
-            END DO
+        IF (particle_list%ifinal /= particle_list%np_active) THEN
+            SELECT CASE (TRIM(particle_terminal))
+                    CASE ("none")
+                        CONTINUE
+                    CASE ("normal")
+                        CONTINUE
+                    CASE ("verbose")
+                        WRITE(*, '("WARNING on proc ", I0, ": my_particle_list%np_active (", I0, ") does not coincide with my_particle_list%ifinal (", I0, ")" )') &
+                        myid, particle_list%np_active, particle_list%ifinal
+            END SELECT
         END IF
 
         ! --- step 9: Received particles have been copied into list. Done.
-
 
         DEALLOCATE( npsend )
         DEALLOCATE( nprecv )
@@ -1030,9 +1051,18 @@ CONTAINS
         IF ( iface == 0 ) THEN
             ! particle stays on the same grid
             destgrid = particle%igrid
-            WRITE(*, '("Destination grid: ", I0)') destgrid
             destproc = particle%iproc
-            WRITE(*, '("Destination Proc: ", I0)') destproc
+
+            SELECT CASE (TRIM(particle_terminal))
+                CASE ("none")
+                    CONTINUE
+                CASE ("normal")
+                    CONTINUE
+                CASE ("verbose")
+                    WRITE(*, '("Destination grid: ", I0)') destgrid
+                    WRITE(*, '("Destination Proc: ", I0)') destproc
+            END SELECT
+
             IF ( destproc /= myid ) THEN
                 WRITE(*,*) 'Inconsistent particle parameters'
                 CALL errr(__FILE__, __LINE__)
@@ -1042,9 +1072,18 @@ CONTAINS
             ! particle moves across grid boundary
             CALL get_neighbours(neighbours, particle%igrid)
             destgrid = neighbours(iface)
-            WRITE(*, '("Destination grid: ", I0)') destgrid
             destproc = idprocofgrd(destgrid)
-            WRITE(*, '("Destination Proc: ", I0)') destproc
+
+            SELECT CASE (TRIM(particle_terminal))
+                CASE ("none")
+                    CONTINUE
+                CASE ("normal")
+                    CONTINUE
+                CASE ("verbose")
+                    WRITE(*, '("Destination grid: ", I0)') destgrid
+                    WRITE(*, '("Destination Proc: ", I0)') destproc
+            END SELECT
+
             IF ( destproc == myid ) THEN
                 destproc = particle%iproc
             END IF
@@ -1114,5 +1153,120 @@ CONTAINS
 
 
     END SUBROUTINE is_true_neigbour
+
+    ! copy particles from recieve Buffer into passed particle list
+    SUBROUTINE integrate_particles(particle_list, sendind)
+
+        ! subroutine argument
+        TYPE(particle_list_t), INTENT(inout) :: particle_list
+        INTEGER(intk), INTENT(in) :: sendind(sizeSendBuf)
+
+        !local variables
+        INTEGER(intk) :: i, j
+
+        particle_list%active_np = particle_list%active_np + sizeRecvBuf
+
+        IF (sizeSendBuf < sizeRecvBuf) THEN
+
+            DO i = 1, sizeSendBuf
+                particle_list%particles(sendind(i)) = recvBufParticle(i)
+            END DO
+
+            DO i = 1, sizeRecvBuf - sizeSendBuf
+                particle_list%ifinal = particle_list%ifinal + 1
+                particle_list%particles(particle_list%ifinal) = recvBufParticle(i)
+            END DO
+
+        ELSE
+
+            DO i = 1, sizeRecvBuf
+                particle_list%particles(sendind(i)) = recvBufParticle(i)
+            END DO
+
+            DO i = i, sizeSendBuf
+
+                IF (particle_list%ifinal <= sendind(i)) THEN
+                    EXIT
+                END IF
+
+                DO j = 0, particle_list%ifinal - sendind(i) - 1
+                    IF (particle_list%particles(particle_list%ifinal - j)%is_active == 1)
+
+                        particle_list%particles(sendind(i)) = particle_list%particles(particle_list%ifinal - j)
+                        particle_list%particles(particle_list%ifinal - j)%is_active = 0
+                        particle_list%ifinal = particle_list%ifinal - 1
+                        EXIT
+
+                    ELSE
+                        CONTINUE
+                    END IF
+                END DO
+
+            END DO
+
+        END IF
+
+    END SUBROUTINE integrate_particles
+
+    ! alternative way of copying recieved particles into passed particle list
+    ! (dont know if this works properly due to the do concurrent ...)
+    SUBROUTINE integrate_particles_concurrent(particle_list, sendind)
+
+        ! subroutine argument
+        TYPE(particle_list_t), INTENT(inout) :: particle_list
+        INTEGER(intk), INTENT(in) :: sendind(sizeSendBuf)
+
+        !local variables
+        INTEGER(intk) :: i, j
+
+        particle_list%active_np = particle_list%active_np + sizeRecvBuf
+
+        IF (sizeSendBuf < sizeRecvBuf) THEN
+
+            DO CONCURRENT (i = 1:MIN(sizeSendBuf, sizeRecvBuf - sizeSendBuf))
+                particle_list%particles(sendind(i)) = recvBufParticle(i)
+                particle_list%particles(ifinal + i) = recvBufParticle(sizeRecvBuf + 1 - i)
+            END DO
+
+            DO j = i, sizeSendBuf
+                particle_list%particles(sendind(j)) = recvBufParticle(j)
+            END DO
+
+            DO j = i, sizeRecvBuf - sizeSendBuf
+                particle_list%particles(ifinal + j) = recvBufParticle(sizeRecvBuf + 1 - j)
+            END DO
+
+            particle_list%ifinal = particle_list%ifinal + sizeRecvBuf - sizeSendBuf
+
+        ELSE
+
+            DO CONCURRENT (i = 1:sizeRecvBuf)
+                particle_list%particles(sendind(i)) = recvBufParticle(i)
+            END DO
+
+            DO i = i, sizeSendBuf
+
+                IF (particle_list%ifinal <= sendind(i)) THEN
+                    EXIT
+                END IF
+
+                DO j = 0, particle_list%ifinal - sendind(i) - 1
+                    IF (particle_list%particles(particle_list%ifinal - j)%is_active == 1)
+
+                        particle_list%particles(sendind(i)) = particle_list%particles(particle_list%ifinal - j)
+                        particle_list%particles(particle_list%ifinal - j)%is_active = 0
+                        particle_list%ifinal = particle_list%ifinal - 1
+                        EXIT
+
+                    ELSE
+                        CONTINUE
+                    END IF
+                END DO
+
+            END DO
+
+        END IF
+
+    END SUBROUTINE integrate_particles_concurrent
 
 END MODULE particle_connect_mod
