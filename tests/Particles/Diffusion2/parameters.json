@@ -19,7 +19,7 @@
     	"solve": false,
         "gmol": 0.01,
         "rho": 1.0,
-        "uinf": [1.0, 1.0, 1.0],
+        "uinf": [0.0, 0.0, 0.0],
         "gradp": [0.0, 0.0, 0.0],
         "pressuresolver": {
             "type": "sip",
@@ -48,13 +48,13 @@
         ]
     },
     "particles": {
-        "terminal": "verbose",
+        "terminal": "normal",
         "read": true,
         "interp": false,
         "write": true,
         "snapshot_step": 1,
-        "init_np": 10,
+        "init_np": 100,
         "list_len": 100,
-        "D":[0.0, 0.0, 0.0]
+        "D":[0.005, 0.005, 0.005]
     }
 }

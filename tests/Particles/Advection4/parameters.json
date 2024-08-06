@@ -19,7 +19,7 @@
     	"solve": false,
         "gmol": 0.01,
         "rho": 1.0,
-        "uinf": [5.0, 2.5, 2.5],
+        "uinf": [5.0, 5.0, 2.5],
         "gradp": [0.0, 0.0, 0.0],
         "pressuresolver": {
             "type": "sip",
@@ -53,8 +53,8 @@
         "interp": false,
         "write": true,
         "snapshot_step": 1,
-        "init_np": 100,
-        "list_len": 1000,
+        "init_np": 10,
+        "list_len": 100,
         "D":[0.0, 0.0, 0.0]
     }
 }

@@ -53,8 +53,8 @@
         "interp": true,
         "write": true,
         "snapshot_step": 1,
-        "init_np": 100,
-        "list_len": 1000,
+        "init_np": 10,
+        "list_len": 100,
         "D":[0.0, 0.0, 0.0]
     }
 }

@@ -12,10 +12,22 @@ cd ~/tum-mglet-base/tests/Particles/Advection3
 cd ~/tum-mglet-base/tests/Particles/Advection4
 ./run.sh newtest ../../../build/src/mglet
 
+cd ~/tum-mglet-base/tests/Particles/Advection5
+./run.sh newtest ../../../build/src/mglet
+
+cd ~/tum-mglet-base/tests/Particles/Advection6
+./run.sh newtest ../../../build/src/mglet
+
 cd ~/tum-mglet-base/tests/Particles/AdvectionDiffusion1
 ./run.sh newtest ../../../build/src/mglet
 
 cd ~/tum-mglet-base/tests/Particles/Diffusion1
+./run.sh newtest ../../../build/src/mglet
+
+cd ~/tum-mglet-base/tests/Particles/Diffusion2
+./run.sh newtest ../../../build/src/mglet
+
+cd ~/tum-mglet-base/tests/Particles/TaylorGreenVortex
 ./run.sh newtest ../../../build/src/mglet
 
 cd $cwd
