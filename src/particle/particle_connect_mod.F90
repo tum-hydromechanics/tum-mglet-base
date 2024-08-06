@@ -525,12 +525,12 @@ CONTAINS
 
         ! --- step 8: Finishing the communication of actual particles. Done.
 
-        ! Check if List is long enough
-!        IF (sizeSendBuf + (my_particle_list%max_np - my_particle_list%ifinal) < sizeRecvBuf) THEN
-!
-!            CALL enlarge_particle_list(sizeRecvBuf + my_particle_list%ifinal - sizeSendBuf - my_particle_list%max_np)
-!
-!        END IF
+        ! Check if List is long enough and add additional space if not
+        IF ( my_particle_list%max_np - my_particle_list%ifinal + sizeSendBuf < sizeRecvBuf) THEN
+
+            CALL enlarge_particle_list(paticle_list, INT(1.1 * (sizeRecvBuf - my_particle_list%max_np - my_particle_list%ifinal + sizeSendBuf)))
+
+        END IF
 
         ! Copy recieved particles into the list
         ! CAUTION: at this point, particle_list%particles(particle_list%ifinal)%is_active might be /= 1 ("empty")
@@ -1238,7 +1238,7 @@ CONTAINS
         particle_list%active_np = particle_list%active_np + sizeRecvBuf
 
         IF (sizeSendBuf < sizeRecvBuf) THEN
-            
+
             IF (1 <= MIN(sizeSendBuf, sizeRecvBuf - sizeSendBuf)) THEN
                 DO CONCURRENT (i = 1:MIN(sizeSendBuf, sizeRecvBuf - sizeSendBuf))
                     particle_list%particles(sendind(i)) = recvBufParticle(i)

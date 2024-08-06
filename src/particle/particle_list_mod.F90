@@ -83,7 +83,7 @@ CONTAINS
                         CALL set_particle( my_particle_list%particles(my_particle_list%active_np), &
                         ipart = ipart_arr(i), x = x(i), y = y(i), z = z(i), &
                         igrid = p_igrid_arr(i))
-       
+
                         CALL print_particle_status( my_particle_list%particles(i) )
 
 
@@ -127,31 +127,64 @@ CONTAINS
             my_particle_list%ifinal = my_particle_list%active_np
 
             DO i = 1, my_particle_list%active_np
-   
+
                 CALL set_particle( my_particle_list%particles(i), &
                     ipart = ipart_arr(i), x = x(i), y = y(i), z = z(i), &
                     igrid = p_igrid_arr(i))
-   
+
                 CALL print_particle_status( my_particle_list%particles(i) )
-   
+
             END DO
 
         END IF
+
+        SELECT CASE (TRIM(particle_terminal))
+                CASE ("none")
+                    CONTINUE
+                CASE ("normal")
+                    WRITE(*, *) ' '
+                    WRITE(*, *) "Particle list of length ", my_particle_list%max_np, " initialized on process ", myid "."
+                CASE ("verbose")
+                    WRITE(*, *) ' '
+                    WRITE(*, *) "Particle list of length ", my_particle_list%max_np, " initialized on process ", myid "."
+        END SELECT
+
+        CALL MPI_Barrier(MPI_COMM_WORLD)
 
         IF (myid == 0) THEN
             SELECT CASE (TRIM(particle_terminal))
                 CASE ("none")
                     CONTINUE
                 CASE ("normal")
+                    WRITE(*,*) ' '
                     WRITE(*, '("Initialization of Particle(s) finished successfully.")')
                     WRITE(*,*) ' '
                 CASE ("verbose")
+                    WRITE(*,*) ' '
                     WRITE(*, '("Initialization of Particle(s) finished successfully.")')
                     WRITE(*,*) ' '
             END SELECT
         END IF
 
     END SUBROUTINE init_particle_list
+
+    !-----------------------------------
+
+    ! maybe this way of adding length to the particle list should be replaced by a smart pointer approach for the particle list type?
+    SUBROUTINE enlarge_particle_list(particle_list, add_len)
+
+        ! subroutine arguments
+        TYPE(particle_list), INTENT(inout) :: particle_list
+        INTEGER, INTENT(in) :: add_len
+
+        ! local variable / this is a new list of particles (not the particle_list_t) with additional length compared to the particle list length
+        TYPE(baseparticle_t) :: particles_tmp(particle_list%max_np + add_len)
+
+        particles_tmp(1:particle_list%ifinal) = particle_list%particles(1:particle_list%ifinal) !copy particles into temporary list
+
+        CALL MOVE_ALLOC(particles_tmp, particle_list%particles) ! "rename" / make my
+
+    END SUBROUTINE
 
     !-----------------------------------
 
