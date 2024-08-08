@@ -251,17 +251,6 @@ CONTAINS
                 CALL get_bbox(old_minx, old_maxx, old_miny, old_maxy, old_minz, old_maxz, particle_list%particles(i)%igrid)
                 CALL get_bbox(new_minx, new_maxx, new_miny, new_maxy, new_minz, new_maxz, destgrid)
 
-                ! particle changes the grid
-                IF ( destproc == myid ) THEN
-                    ! particle remains on process
-                    particle_list%particles(i)%igrid = destgrid
-                    CALL set_particle_cell( particle_list%particles(i) )
-                ELSE
-                    ! particle is marked for MPI transfer
-                    particle_list%particles(i)%iproc = destproc
-                    particle_list%particles(i)%igrid = destgrid
-                END IF
-
                 ! coordinate manipulation of particles passing periodic boundaries (JULIUS: should this be sourced out into its own routine?)
                 IF (particle_list%particles(i)%x < new_minx) THEN
                     particle_list%particles(i)%x = new_maxx - ABS(particle_list%particles(i)%x - old_minx)
@@ -285,6 +274,17 @@ CONTAINS
 
                 IF (new_maxz < particle_list%particles(i)%z) THEN
                     particle_list%particles(i)%z = new_minz + ABS(particle_list%particles(i)%z - old_maxz)
+                END IF
+
+                ! particle changes the grid
+                IF ( destproc == myid ) THEN
+                    ! particle remains on process
+                    particle_list%particles(i)%igrid = destgrid
+                    CALL set_particle_cell( particle_list%particles(i) )
+                ELSE
+                    ! particle is marked for MPI transfer
+                    particle_list%particles(i)%iproc = destproc
+                    particle_list%particles(i)%igrid = destgrid
                 END IF
 
             END IF
@@ -439,6 +439,13 @@ CONTAINS
         ! TO DO: Ab jetzt kann gestestet werden, ob all ankommenden Partikel in die Liste passen!
         ! Entsprechend kann die List erweitert oder sogar gekürzt werden, während MPI für Partciel läuft.
 
+        ! Check if list is long enough and add additional space if not
+        IF ( particle_list%max_np - particle_list%active_np < sizeRecvBuf) THEN
+
+            CALL enlarge_particle_list(particle_list, INT(1.0 * (sizeRecvBuf - (particle_list%max_np - particle_list%active_np))))
+
+        END IF
+
         ! --- step 6: Allocating the recieve buffer and displacements. Done.
 
 
@@ -502,13 +509,6 @@ CONTAINS
         END IF
 
         ! --- step 8: Finishing the communication of actual particles. Done.
-
-        ! Check if List is long enough and add additional space if not
-        IF ( particle_list%max_np - particle_list%active_np < sizeRecvBuf) THEN
-
-            CALL enlarge_particle_list(particle_list, INT(1.1 * (sizeRecvBuf - (particle_list%max_np - particle_list%active_np))))
-
-        END IF
 
         ! Copy recieved particles into the list
         ! CAUTION: at this point, particle_list%particles(particle_list%ifinal)%is_active might be /= 1 ("empty")
