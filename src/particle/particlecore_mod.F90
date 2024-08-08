@@ -259,7 +259,7 @@ CONTAINS
         INTEGER(intk) :: k, j, i, kk, jj, ii
         INTEGER(intk) :: istart, iend, istep, jstart, jend, jstep, kstart, kend, kstep
 
-        IF ( particle%is_active == 0 ) THEN
+        IF ( particle%is_active /= 1 ) THEN
             SELECT CASE (TRIM(particle_terminal))
                 CASE ("none")
                     CONTINUE
