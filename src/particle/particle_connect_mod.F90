@@ -262,15 +262,6 @@ CONTAINS
                     particle_list%particles(i)%igrid = destgrid
                 END IF
 
-                SELECT CASE (TRIM(particle_terminal))
-                    CASE ("none")
-                        CONTINUE
-                    CASE ("normal")
-                        CONTINUE
-                    CASE ("verbose")
-                        WRITE(*, *) "PERIODIC BOUNDARY MANIPULATION:"
-                END SELECT
-
                 ! coordinate manipulation of particles passing periodic boundaries (JULIUS: should this be sourced out into its own routine?)
                 IF (particle_list%particles(i)%x < new_minx) THEN
                     particle_list%particles(i)%x = new_maxx - ABS(particle_list%particles(i)%x - old_minx)
@@ -296,20 +287,10 @@ CONTAINS
                     particle_list%particles(i)%z = new_minz + ABS(particle_list%particles(i)%z - old_maxz)
                 END IF
 
-                SELECT CASE (TRIM(particle_terminal))
-                CASE ("none")
-                    CONTINUE
-                CASE ("normal")
-                    CONTINUE
-                CASE ("verbose")
-                    CALL print_particle_status(my_particle_list%particles(i))
-                END SELECT
-
             END IF
         END DO
 
         ! --- step 1: The marking is done (grid and proc indicate destination). Done.
-
 
         ALLOCATE( npsend(iSend) )
         npsend = 0
@@ -332,7 +313,6 @@ CONTAINS
         END DO
 
         ! --- step 2: The counting is done. Done.
-
 
         ALLOCATE( nprecv(iRecv) )
         nprecv = -1
@@ -358,7 +338,6 @@ CONTAINS
         END DO
 
         ! --- step 3: The communication has been launched (not finished!). Open.
-
 
         ! displacements for start of section for one destination
         ALLOCATE( ndispsend(iSend) )
@@ -433,7 +412,6 @@ CONTAINS
         ! WRITE(*,*) sendBufParticle
 
         ! --- step 4: Displacements determined and send buffer filled. Done.
-
 
         ! checking if communication done (one call should suffice...)
         CALL MPI_Waitall(iSend, sendreqs, MPI_STATUSES_IGNORE)
@@ -526,25 +504,30 @@ CONTAINS
         ! --- step 8: Finishing the communication of actual particles. Done.
 
         ! Check if List is long enough and add additional space if not
-        IF ( my_particle_list%max_np - my_particle_list%ifinal + sizeSendBuf < sizeRecvBuf) THEN
+        IF ( particle_list%max_np - particle_list%active_np < sizeRecvBuf) THEN
 
-            CALL enlarge_particle_list(particle_list, INT(1.1 * (sizeRecvBuf - my_particle_list%max_np - my_particle_list%ifinal + sizeSendBuf)))
+            CALL enlarge_particle_list(particle_list, INT(1.1 * (sizeRecvBuf - (particle_list%max_np - particle_list%active_np))))
 
         END IF
 
         ! Copy recieved particles into the list
         ! CAUTION: at this point, particle_list%particles(particle_list%ifinal)%is_active might be /= 1 ("empty")
 
-        CALL integrate_particles_concurrent(particle_list, sendind)
+        CALL integrate_particles(particle_list, sendind)
 
-        ! some safety checks
+        ! Some safety checks
+
+        ! BARRIER ONLY FOR DEGUGGING -- TEMPORARY <----------------------------------------------- TODO : remove
+        CALL MPI_Barrier(MPI_COMM_WORLD)
+
+        CALL print_list_status(particle_list)
 
         IF (particle_list%active_np < active_np_old + sizeRecvBuf - sizeSendBuf) THEN
             SELECT CASE (TRIM(particle_terminal))
                     CASE ("none")
                         CONTINUE
                     CASE ("normal")
-                        CONTINUE
+                        WRITE(*, '("WARNING on proc ", I0, ": Particle list holds FEWER particles than expected!")') myid
                     CASE ("verbose")
                         WRITE(*, '("WARNING on proc ", I0, ": Particle list holds FEWER particles than expected!")') myid
             END SELECT
@@ -555,7 +538,7 @@ CONTAINS
                     CASE ("none")
                         CONTINUE
                     CASE ("normal")
-                        CONTINUE
+                        WRITE(*, '("WARNING on proc ", I0, ": Particle list holds MORE particles than expected!")') myid
                     CASE ("verbose")
                         WRITE(*, '("WARNING on proc ", I0, ": Particle list holds MORE particles than expected!")') myid
             END SELECT
@@ -566,7 +549,8 @@ CONTAINS
                     CASE ("none")
                         CONTINUE
                     CASE ("normal")
-                        CONTINUE
+                        WRITE(*, '("WARNING on proc ", I0, ": my_particle_list%active_np (", I0, ") does not coincide with my_particle_list%ifinal (", I0, ")" )') &
+                        myid, particle_list%active_np, particle_list%ifinal
                     CASE ("verbose")
                         WRITE(*, '("WARNING on proc ", I0, ": my_particle_list%active_np (", I0, ") does not coincide with my_particle_list%ifinal (", I0, ")" )') &
                         myid, particle_list%active_np, particle_list%ifinal
@@ -583,7 +567,6 @@ CONTAINS
         DEALLOCATE( recvBufParticle )
 
         ! --- step 10: Clearing the buffers. Done.
-
 
     END SUBROUTINE particle_connect
 
@@ -1063,6 +1046,9 @@ CONTAINS
                 CASE ("verbose")
                     WRITE(*, '("Destination Proc: ", I0)') destproc
                     WRITE(*, '("Destination grid: ", I0)') destgrid
+                    IF (myid == 0) THEN
+                        WRITE(*, *) " "
+                    END IF
             END SELECT
 
             IF ( destproc /= myid ) THEN
@@ -1084,6 +1070,9 @@ CONTAINS
                 CASE ("verbose")
                     WRITE(*, '("Destination Proc: ", I0)') destproc
                     WRITE(*, '("Destination grid: ", I0)') destgrid
+                    IF (myid == 0) THEN
+                        WRITE(*, *) " "
+                    END IF
             END SELECT
 
             IF ( destproc == myid ) THEN
@@ -1174,7 +1163,7 @@ CONTAINS
 
         particle_list%active_np = particle_list%active_np + sizeRecvBuf
 
-        IF (sizeSendBuf < sizeRecvBuf) THEN
+        IF (sizeSendBuf <= sizeRecvBuf) THEN
 
             DO i = 1, sizeSendBuf
                 particle_list%particles(sendind(i)) = recvBufParticle(i)
@@ -1191,10 +1180,16 @@ CONTAINS
                 particle_list%particles(sendind(i)) = recvBufParticle(i)
             END DO
 
-            DO i = i, sizeSendBuf ! i = MAX(1, sizeRecvBuf)
+            ! i = MAX(1, sizeRecvBuf + 1)
+            DO i = i, sizeSendBuf
 
                 IF (particle_list%ifinal == sendind(i)) THEN
                     particle_list%ifinal = particle_list%ifinal - 1
+                    EXIT
+                END IF
+
+                IF (particle_list%ifinal < sendind(i)) THEN
+                    EXIT
                 END IF
 
                 DO j = 1, particle_list%ifinal - sendind(i)
@@ -1211,6 +1206,10 @@ CONTAINS
 
                     END IF
                 END DO
+
+                IF (particle_list%particles(sendind(i))%is_active /= 1) THEN
+                    particle_list%ifinal = particle_list%ifinal - 1
+                END IF
 
             END DO
 
@@ -1237,7 +1236,7 @@ CONTAINS
 
         particle_list%active_np = particle_list%active_np + sizeRecvBuf
 
-        IF (sizeSendBuf < sizeRecvBuf) THEN
+        IF (sizeSendBuf <= sizeRecvBuf) THEN
 
             IF (1 <= MIN(sizeSendBuf, sizeRecvBuf - sizeSendBuf)) THEN
                 DO CONCURRENT (i = 1:MIN(sizeSendBuf, sizeRecvBuf - sizeSendBuf))
@@ -1275,6 +1274,11 @@ CONTAINS
 
                 IF (particle_list%ifinal == sendind(i)) THEN
                     particle_list%ifinal = particle_list%ifinal - 1
+                    EXIT
+                END IF
+
+                IF (particle_list%ifinal < sendind(i)) THEN
+                    EXIT
                 END IF
 
                 DO j = 1, particle_list%ifinal - sendind(i)
@@ -1291,6 +1295,11 @@ CONTAINS
 
                     END IF
                 END DO
+
+                IF (particle_list%particles(sendind(i))%is_active /= 1) THEN
+                    particle_list%ifinal = particle_list%ifinal - 1
+                    EXIT
+                END IF
 
             END DO
 

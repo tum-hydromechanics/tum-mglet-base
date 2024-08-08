@@ -6,15 +6,15 @@ MODULE particle_dict_mod
 
 CONTAINS
 
-    SUBROUTINE read_particles(dread_particles, max_npart, npart, ipart_arr, p_igrid_arr, x, y, z)
+    SUBROUTINE read_particles(dread_particles, list_len, dict_len, ipart_arr, p_igrid_arr, x, y, z, read_np)
 
     !subroutine arguments
     LOGICAL, INTENT(inout) :: dread_particles
-    INTEGER(intk), INTENT(in) :: max_npart
-    INTEGER(intk), INTENT(out) :: npart
-    INTEGER(intk), ALLOCATABLE, INTENT(out) :: ipart_arr(:)
-    INTEGER(intk), ALLOCATABLE, INTENT(out) :: p_igrid_arr(:)
-    REAL(realk), ALLOCATABLE, INTENT(out) :: x(:), y(:), z(:)
+    INTEGER(intk), INTENT(in) :: list_len
+    INTEGER(intk), INTENT(out) :: dict_len, read_np
+    INTEGER(intk), INTENT(out) :: ipart_arr(list_len)
+    INTEGER(intk), INTENT(out) :: p_igrid_arr(list_len)
+    REAL(realk), INTENT(out) :: x(list_len), y(list_len), z(list_len)
 
     !local variables
     INTEGER(intk) :: i, ipart, igrid, unit = 161
@@ -46,15 +46,7 @@ CONTAINS
 
     OPEN(unit, file = 'ParticleDict.txt', status = 'OLD', action = 'READ') ! can file be opened by more than 1 process at the same time?
 
-    READ(unit, fmt = *) npart
-
-    npart = MIN(npart, max_npart)
-
-    ALLOCATE(ipart_arr(npart))
-    ALLOCATE(p_igrid_arr(npart))
-    ALLOCATE(x(npart))
-    ALLOCATE(y(npart))
-    ALLOCATE(z(npart))
+    READ(unit, fmt = *) dict_len
 
     IF (myid == 0) THEN
         SELECT CASE (TRIM(particle_terminal))
@@ -62,14 +54,19 @@ CONTAINS
                 CONTINUE
             CASE ("normal")
                 WRITE(*,*) ' '
-                WRITE(*, '("Reading ", I0, " Particle(s):")') npart
+                WRITE(*, '("Reading ", I0, " Particle(s) on ", I0, " processes.")') dict_len, numprocs
             CASE ("verbose")
                 WRITE(*, *) ' '
-                WRITE(*, '("Reading ", I0, " Particle(s):")') npart
+                WRITE(*, '("Reading ", I0, " Particle(s) on ", I0, " processes.")') dict_len, numprocs
         END SELECT
     END IF
 
-    DO ipart = 1, npart
+    ! particle dict is screened from top to bottom
+    ! if a particle is found to lie on a grid of this process, the particle is stored on this process
+    ! once the particle list length has been reached, no more particles are read on this process
+    ! -> depending on the parameterization of the particle list and the dict length, some particles might not be registered
+    read_np = 0
+    DO ipart = 1, dict_len
 
         READ(unit, fmt = *) xtemp, ytemp, ztemp
 
@@ -102,11 +99,13 @@ CONTAINS
                 CYCLE
             END IF
 
-            ipart_arr(ipart) = ipart
-            p_igrid_arr(ipart) = igrid
-            x(ipart) = xtemp
-            y(ipart) = ytemp
-            z(ipart) = ztemp
+            read_np = read_np + 1
+
+            ipart_arr(read_np) = ipart
+            p_igrid_arr(read_np) = igrid
+            x(read_np) = xtemp
+            y(read_np) = ytemp
+            z(read_np) = ztemp
 
             SELECT CASE (TRIM(particle_terminal))
                 CASE ("none")
@@ -114,10 +113,16 @@ CONTAINS
                 CASE ("normal")
                     CONTINUE
                 CASE ("verbose")
-                    WRITE(*,'("Particle read: ID = ", I0, " | x/y/z = ", 3F12.6)') ipart, xtemp, ytemp, ztemp
+                    WRITE(*,'("Particle read on proc ", I0, ": ID = ", I0, " | x/y/z = ", 3F12.6)') myid, ipart, xtemp, ytemp, ztemp
             END SELECT
 
+            EXIT
+
         END DO
+
+        IF (list_len == read_np) THEN
+                EXIT
+        END IF
 
     END DO
 

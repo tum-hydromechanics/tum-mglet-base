@@ -42,7 +42,7 @@ CONTAINS
     SUBROUTINE init_particle_list()
 
         ! local variables
-        INTEGER(intk) :: i, j, global_np
+        INTEGER(intk) :: i, j, global_np, read_np
         INTEGER(intk), ALLOCATABLE :: ipart_arr(:), p_igrid_arr(:)
         REAL(realk), ALLOCATABLE :: x(:), y(:), z(:)
 
@@ -53,48 +53,50 @@ CONTAINS
 
         IF (dread_particles) THEN
 
-            CALL read_particles(dread_particles, my_particle_list%max_np, global_np, ipart_arr, p_igrid_arr, x, y, z)
+            ALLOCATE(ipart_arr(my_particle_list%max_np))
+            ALLOCATE(p_igrid_arr(my_particle_list%max_np))
+            ALLOCATE(x(my_particle_list%max_np))
+            ALLOCATE(y(my_particle_list%max_np))
+            ALLOCATE(z(my_particle_list%max_np))
 
-            IF (myid == 0) THEN
-                SELECT CASE (TRIM(particle_terminal))
-                    CASE ("none")
-                        CONTINUE
-                    CASE ("normal")
-                        WRITE(*,*) ' '
-                        WRITE(*, '("Initializing ", I0, " Particle(s):")') global_np
-                    CASE ("verbose")
-                        WRITE(*,*) ' '
-                        WRITE(*, '("Initializing ", I0, " Particle(s):")') global_np
-                END SELECT
-            END IF
+            ! all arguments directly taken from the particle lsit are input only
+            CALL read_particles(dread_particles, my_particle_list%max_np, global_np, ipart_arr, p_igrid_arr, x, y, z, read_np)
 
-            DO i = 1, global_np
+            IF (dread_particles) THEN
 
-                DO j = 1, nmygrids
+                IF (myid == 0) THEN
+                    SELECT CASE (TRIM(particle_terminal))
+                        CASE ("none")
+                            CONTINUE
+                        CASE ("normal")
+                            WRITE(*,*) ' '
+                            WRITE(*, '("Initializing ", I0, " Particle(s):")') global_np
+                        CASE ("verbose")
+                            WRITE(*,*) ' '
+                            WRITE(*, '("Initializing ", I0, " Particle(s):")') global_np
+                    END SELECT
+                END IF
 
-                    IF (mygrids(j) == p_igrid_arr(i)) THEN
+                DO i = 1, read_np
 
-                        my_particle_list%active_np = my_particle_list%active_np + 1_intk
+                    my_particle_list%active_np = my_particle_list%active_np + 1_intk
 
-                        ! CALL my_particle_list%particles(my_particle_list%active_np)%init(ipart = ipart_arr(i), &
-                        !  x = x(i), y = y(i), z = z(i), igrid = p_igrid_arr(i))
+                    CALL set_particle(my_particle_list%particles(i), &
+                    ipart = ipart_arr(i), x = x(i), y = y(i), z = z(i), igrid = p_igrid_arr(i))
 
-                        ! CALL my_particle_list%particles(i)%print_status()
-
-                        CALL set_particle( my_particle_list%particles(my_particle_list%active_np), &
-                        ipart = ipart_arr(i), x = x(i), y = y(i), z = z(i), &
-                        igrid = p_igrid_arr(i))
-
-                        CALL print_particle_status( my_particle_list%particles(i) )
-
-
-                    END IF
+                    CALL print_particle_status(my_particle_list%particles(i))
 
                 END DO
 
-            END DO
+                my_particle_list%ifinal = my_particle_list%active_np
 
-            my_particle_list%ifinal = my_particle_list%active_np
+            END IF
+
+            DEALLOCATE(ipart_arr)
+            DEALLOCATE(p_igrid_arr)
+            DEALLOCATE(x)
+            DEALLOCATE(y)
+            DEALLOCATE(z)
 
         END IF
 
@@ -125,6 +127,9 @@ CONTAINS
                 END SELECT
             END IF
 
+            ! BARRIER ONLY FOR DEGUGGING -- TEMPORARY <----------------------------------------------- TODO : remove
+            CALL MPI_Barrier(MPI_COMM_WORLD)
+
             my_particle_list%ifinal = my_particle_list%active_np
 
             DO i = 1, my_particle_list%active_np
@@ -150,6 +155,7 @@ CONTAINS
                     WRITE(*, *) "Particle list of length ", my_particle_list%max_np, " initialized on process ", myid, "."
         END SELECT
 
+        ! BARRIER ONLY FOR DEGUGGING -- TEMPORARY <----------------------------------------------- TODO : remove
         CALL MPI_Barrier(MPI_COMM_WORLD)
 
         IF (myid == 0) THEN
@@ -178,13 +184,37 @@ CONTAINS
         TYPE(particle_list_t), INTENT(inout) :: particle_list
         INTEGER, INTENT(in) :: add_len
 
+        !local variables
+        INTEGER(intk) :: i
+
         ! local variable / this is a new list of particles (not the particle_list_t) with additional length compared to the particle list length
         TYPE(baseparticle_t), ALLOCATABLE :: particles_tmp(:)
 
         ALLOCATE(particles_tmp(particle_list%max_np + add_len))
-        particles_tmp(1:particle_list%ifinal) = particle_list%particles(1:particle_list%ifinal) !copy particles into temporary list
+
+        DO i = 1, particle_list%ifinal
+            particles_tmp(i) = particle_list%particles(i) !copy particles into temporary list
+        END DO
+
+        ! might be unnessecary, but ensures that all new particle slots are inactive
+        DO i = particle_list%ifinal + 1, particle_list%max_np + add_len
+            particles_tmp(i)%is_active = 0
+        END DO
+
+        particle_list%max_np = particle_list%max_np + add_len
 
         CALL MOVE_ALLOC(particles_tmp, particle_list%particles) ! "rename" / make my
+
+        SELECT CASE (TRIM(particle_terminal))
+            CASE ("none")
+                CONTINUE
+            CASE ("normal")
+                WRITE(*, *) ' '
+                WRITE(*, *) "Particle list enlarged by ", add_len, " on process ", myid, "."
+            CASE ("verbose")
+                WRITE(*, *) ' '
+                WRITE(*, *) "Particle list enlarged by ", add_len, " on process ", myid, "."
+        END SELECT
 
     END SUBROUTINE
 
@@ -293,5 +323,30 @@ CONTAINS
     END SUBROUTINE dist_part
 
     !===================================
+
+    SUBROUTINE print_list_status(particle_list)
+
+        ! subroutine arguments
+        TYPE(particle_list_t), INTENT(in) :: particle_list
+
+
+        SELECT CASE (TRIM(particle_terminal))
+            CASE ("none")
+                CONTINUE
+            CASE ("normal")
+                WRITE(*, *) "Particle list status on process ", myid, ": max_np = ", &
+                 particle_list%max_np, ", active_np = ", particle_list%active_np, ", ifinal = ", particle_list%ifinal
+                IF (myid == 0) THEN
+                    WRITE(*, *) " "
+                END IF
+            CASE ("verbose")
+                WRITE(*, *) "Particle list status on process ", myid, ": max_np = ", &
+                 particle_list%max_np, ", active_np = ", particle_list%active_np, ", ifinal = ", particle_list%ifinal
+                IF (myid == 0) THEN
+                    WRITE(*, *) " "
+                END IF
+        END SELECT
+
+    END SUBROUTINE print_list_status
 
 END MODULE

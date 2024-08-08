@@ -140,7 +140,7 @@ CONTAINS
                 CASE ("normal")
                     CONTINUE
                 CASE ("verbose")
-                    WRITE(*,'("New Status:")')
+                    WRITE(*,'("Pre Migration:")')
                     CALL print_particle_status(my_particle_list%particles(i))
             END SELECT
 
