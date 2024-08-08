@@ -528,7 +528,7 @@ CONTAINS
         ! Check if List is long enough and add additional space if not
         IF ( my_particle_list%max_np - my_particle_list%ifinal + sizeSendBuf < sizeRecvBuf) THEN
 
-            CALL enlarge_particle_list(paticle_list, INT(1.1 * (sizeRecvBuf - my_particle_list%max_np - my_particle_list%ifinal + sizeSendBuf)))
+            CALL enlarge_particle_list(particle_list, INT(1.1 * (sizeRecvBuf - my_particle_list%max_np - my_particle_list%ifinal + sizeSendBuf)))
 
         END IF
 
