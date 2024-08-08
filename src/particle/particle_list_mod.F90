@@ -4,6 +4,7 @@ MODULE particle_list_mod
 
     !===================================
 
+    USE MPI_f08
     USE particlecore_mod
     USE particle_dict_mod
 
@@ -143,10 +144,10 @@ CONTAINS
                     CONTINUE
                 CASE ("normal")
                     WRITE(*, *) ' '
-                    WRITE(*, *) "Particle list of length ", my_particle_list%max_np, " initialized on process ", myid "."
+                    WRITE(*, *) "Particle list of length ", my_particle_list%max_np, " initialized on process ", myid, "."
                 CASE ("verbose")
                     WRITE(*, *) ' '
-                    WRITE(*, *) "Particle list of length ", my_particle_list%max_np, " initialized on process ", myid "."
+                    WRITE(*, *) "Particle list of length ", my_particle_list%max_np, " initialized on process ", myid, "."
         END SELECT
 
         CALL MPI_Barrier(MPI_COMM_WORLD)
@@ -174,7 +175,7 @@ CONTAINS
     SUBROUTINE enlarge_particle_list(particle_list, add_len)
 
         ! subroutine arguments
-        TYPE(particle_list), INTENT(inout) :: particle_list
+        TYPE(particle_list_t), INTENT(inout) :: particle_list
         INTEGER, INTENT(in) :: add_len
 
         ! local variable / this is a new list of particles (not the particle_list_t) with additional length compared to the particle list length
