@@ -179,8 +179,9 @@ CONTAINS
         INTEGER, INTENT(in) :: add_len
 
         ! local variable / this is a new list of particles (not the particle_list_t) with additional length compared to the particle list length
-        TYPE(baseparticle_t) :: particles_tmp(particle_list%max_np + add_len)
+        TYPE(baseparticle_t), ALLOCATABLE :: particles_tmp(:)
 
+        ALLOCATE(particles_tmp(particle_list%max_np + add_len))
         particles_tmp(1:particle_list%ifinal) = particle_list%particles(1:particle_list%ifinal) !copy particles into temporary list
 
         CALL MOVE_ALLOC(particles_tmp, particle_list%particles) ! "rename" / make my
