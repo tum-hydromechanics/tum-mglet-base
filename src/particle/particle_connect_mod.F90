@@ -244,7 +244,34 @@ CONTAINS
             ! triage of particles
             IF ( particle_list%particles(i)%igrid == destgrid ) THEN
                 ! particle stays on grid
+
+                ! coordinate manipulation of particles passing periodic boundaries (JULIUS: should this be sourced out into its own routine?)
+                IF (particle_list%particles(i)%x < new_minx) THEN
+                    particle_list%particles(i)%x = new_maxx - ABS(particle_list%particles(i)%x - old_minx)
+                END IF
+
+                IF (new_maxx < particle_list%particles(i)%x) THEN
+                    particle_list%particles(i)%x = new_minx + ABS(particle_list%particles(i)%x - old_maxx)
+                END IF
+
+                IF (particle_list%particles(i)%y < new_miny) THEN
+                    particle_list%particles(i)%y = new_maxy - ABS(particle_list%particles(i)%y - old_miny)
+                END IF
+
+                IF (new_maxy < particle_list%particles(i)%y) THEN
+                    particle_list%particles(i)%y = new_miny + ABS(particle_list%particles(i)%y - old_maxy)
+                END IF
+
+                IF (particle_list%particles(i)%z < new_minz) THEN
+                    particle_list%particles(i)%z = new_maxz - ABS(particle_list%particles(i)%z - old_minz)
+                END IF
+
+                IF (new_maxz < particle_list%particles(i)%z) THEN
+                    particle_list%particles(i)%z = new_minz + ABS(particle_list%particles(i)%z - old_maxz)
+                END IF
+
                 CALL update_particle_cell( particle_list%particles(i) )
+
             ELSE
                 ! get old and new grid boundaries for periodic boundary handling
                 ! (at this point igrid is still NOT updated, meaning particle%igrid = old igrid)
