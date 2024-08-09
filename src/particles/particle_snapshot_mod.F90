@@ -48,7 +48,7 @@ CONTAINS
 
         INQUIRE(file = 'Particle_Snapshots/snapshot0.pvtp', exist = dwrite_particles)
 
-        IF (dwriteparticles) THEN
+        IF (dwrite_particles) THEN
 
             IF (myid == 0) THEN
                 SELECT CASE (TRIM(particle_terminal))

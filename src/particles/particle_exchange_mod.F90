@@ -1121,7 +1121,7 @@ CONTAINS
 
         ! subroutine arguments
         TYPE(baseparticle_t), INTENT(inout) :: particle
-        INTEGER(intk), INTENT(in) :: destgrid
+        INTEGER(intk), INTENT(in) :: destgrid, iface
 
         ! local variables
         REAL(realk) :: old_minx, old_maxx, old_miny, old_maxy, old_minz, old_maxz, &
