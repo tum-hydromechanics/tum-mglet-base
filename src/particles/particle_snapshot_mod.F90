@@ -45,10 +45,11 @@ CONTAINS
 
         ! local variables ...
         INTEGER(intk) :: i
+        LOGICAL :: snapshots_exist
 
-        INQUIRE(file = 'Particle_Snapshots/snapshot0.pvtp', exist = dwrite_particles)
+        INQUIRE(file = 'Particle_Snapshots/snapshot0.pvtp', exist = snapshots_exist)
 
-        IF (dwrite_particles) THEN
+        IF (snapshots_exist) THEN
 
             IF (myid == 0) THEN
                 SELECT CASE (TRIM(particle_terminal))

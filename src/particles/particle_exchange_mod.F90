@@ -1126,45 +1126,54 @@ CONTAINS
         ! local variables
         REAL(realk) :: old_minx, old_maxx, old_miny, old_maxy, old_minz, old_maxz, &
          new_minx, new_maxx, new_miny, new_maxy, new_minz, new_maxz
+        LOGICAL :: passed_pb = .FALSE.
 
         CALL get_bbox(old_minx, old_maxx, old_miny, old_maxy, old_minz, old_maxz, particle%igrid)
         CALL get_bbox(new_minx, new_maxx, new_miny, new_maxy, new_minz, new_maxz, destgrid)
 
         IF (particle%x < new_minx) THEN
             particle%x = new_maxx - ABS(particle%x - old_minx)
+            passed_pb = .TRUE.
         END IF
 
         IF (new_maxx < particle%x) THEN
             particle%x = new_minx + ABS(particle%x - old_maxx)
+            passed_pb = .TRUE.
         END IF
 
         IF (particle%y < new_miny) THEN
             particle%y = new_maxy - ABS(particle%y - old_miny)
+            passed_pb = .TRUE.
         END IF
 
         IF (new_maxy < particle%y) THEN
             particle%y = new_miny + ABS(particle%y - old_maxy)
+            passed_pb = .TRUE.
         END IF
 
         IF (particle%z < new_minz) THEN
             particle%z = new_maxz - ABS(particle%z - old_minz)
+            passed_pb = .TRUE.
         END IF
 
         IF (new_maxz < particle%z) THEN
             particle%z = new_minz + ABS(particle%z - old_maxz)
+            passed_pb = .TRUE.
         END IF
 
         ! for debugging
-        SELECT CASE (TRIM(particle_terminal))
-            CASE ("none")
-                CONTINUE
-            CASE ("normal")
-                CONTINUE
-            CASE ("verbose")
-                WRITE(*, *) ' '
-                WRITE(*, *) "Particle ", particle%ipart, " passed periodic boundary (grid ", &
-                 particle%igrid, " to grid ", destgrid, " via face: ", iface, ")!"
-        END SELECT
+        IF (passed_pb) THEN
+            SELECT CASE (TRIM(particle_terminal))
+                CASE ("none")
+                    CONTINUE
+                CASE ("normal")
+                    CONTINUE
+                CASE ("verbose")
+                    WRITE(*, *) ' '
+                    WRITE(*, *) "Particle ", particle%ipart, " passed periodic boundary (grid ", &
+                    particle%igrid, " to grid ", destgrid, " via face: ", iface, ")!"
+            END SELECT
+        END IF
 
     END SUBROUTINE update_coordinates
 
