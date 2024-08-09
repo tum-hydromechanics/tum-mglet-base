@@ -1,4 +1,4 @@
-add_library(particle STATIC
+add_library(particles STATIC
     particle_config_mod.F90
     particle_core_mod.F90
     particle_list_mod.F90
@@ -11,12 +11,12 @@ add_library(particle STATIC
     particle_interpolation_mod.F90
 )
 
-target_include_directories(particle
+target_include_directories(particles
     PRIVATE ${MPI_Fortran_INCLUDE_PATH}
     PRIVATE ${HDF5_Fortran_INCLUDE_DIRS}
 )
 
-target_link_libraries(particle
+target_link_libraries(particles
     PRIVATE core
     PRIVATE flow
     PRIVATE ${MPI_Fortran_LIBRARIES}
