@@ -4,7 +4,7 @@ MODULE particle_mod
     ! (this module had no 'PRIVATE' default)
     USE particle_timeintegration_mod
     USE particle_snapshot_mod
-    USE particle_connect_mod
+    USE particle_exchange_mod
 
     IMPLICIT NONE(type, external)
 
@@ -28,7 +28,7 @@ CONTAINS
             CALL init_particle_list()
 
             ! initializing intra-level communication
-            CALL init_particle_connect()
+            CALL init_particle_exchange()
 
         ELSE
 

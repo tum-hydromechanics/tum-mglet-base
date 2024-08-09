@@ -4,7 +4,7 @@ MODULE particle_timeintegration_mod
 
     USE particle_list_mod
     USE particle_interpolation_mod
-    USE particle_connect_mod
+    USE particle_exchange_mod
     USE core_mod
 
     IMPLICIT NONE
@@ -122,6 +122,7 @@ CONTAINS
             my_particle_list%particles(i)%y = my_particle_list%particles(i)%y + pdy
             my_particle_list%particles(i)%z = my_particle_list%particles(i)%z + pdz
 
+            ! for debugging
             SELECT CASE (TRIM(particle_terminal))
                 CASE ("none")
                     CONTINUE
@@ -148,7 +149,7 @@ CONTAINS
 
         ! migration of particles between grids
         ! and also across MPI ranks (processes)
-        CALL particle_connect( my_particle_list )
+        CALL exchange_particles(my_particle_list)
 
     END SUBROUTINE timeintegrate_particles
 

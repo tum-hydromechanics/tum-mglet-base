@@ -5,7 +5,7 @@ MODULE particle_list_mod
     !===================================
 
     USE MPI_f08
-    USE particlecore_mod
+    USE particle_core_mod
     USE particle_dict_mod
 
     IMPLICIT NONE

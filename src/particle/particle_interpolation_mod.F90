@@ -1,6 +1,6 @@
 MODULE particle_interpolation_mod
 
-USE particlecore_mod
+USE particle_core_mod
 
 IMPLICIT NONE
 

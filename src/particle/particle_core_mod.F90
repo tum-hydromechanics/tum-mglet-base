@@ -1,13 +1,14 @@
 ! particle file is for TYPE definitions and general handling of particles
 
-MODULE particlecore_mod
+MODULE particle_core_mod
 
     USE core_mod
     USE particle_config_mod
 
     IMPLICIT NONE
 
-    INTEGER(c_intk), PARAMETER :: particle_mpi_elems = 9
+    INTEGER(c_intk), PARAMETER :: particle_mpi_elems = 8
+
     TYPE, BIND(C) :: baseparticle_t
 
         INTEGER(c_intk) :: is_active = -1   ! avoid logical (!)
@@ -16,7 +17,6 @@ MODULE particlecore_mod
         INTEGER(c_intk) :: igrid = -1
 
         INTEGER(c_intk) :: ijkcell(3)
-        INTEGER(c_intk) :: facepath(3)
 
         REAL(c_realk) :: x = 0.0
         REAL(c_realk) :: y = 0.0
@@ -56,20 +56,20 @@ CONTAINS
         IF (PRESENT(igrid)) THEN
             particle%igrid = igrid
         ELSE
-            CALL set_particle_igrid( particle )
+            CALL set_particle_igrid(particle)
         END IF
 
         IF (PRESENT(ijkcell)) THEN
             particle%ijkcell = ijkcell
         ELSEIF (particle%is_active == 1 ) THEN
-            CALL set_particle_cell( particle )
+            CALL set_particle_cell(particle)
         END IF
 
     END SUBROUTINE set_particle
 
 
 
-    SUBROUTINE set_particle_igrid( particle )
+    SUBROUTINE set_particle_igrid(particle)
 
         ! Subroutine arguments
         TYPE(baseparticle_t), INTENT(inout) :: particle
@@ -79,7 +79,7 @@ CONTAINS
         INTEGER(intk) :: i, igrid
         REAL(realk) :: minx, maxx, miny, maxy, minz, maxz
 
-        IF ( particle%is_active == 0 ) THEN
+        IF (particle%is_active == 0) THEN
             SELECT CASE (TRIM(particle_terminal))
                 CASE ("none")
                     CONTINUE
@@ -134,7 +134,7 @@ CONTAINS
 
 
 
-    SUBROUTINE set_particle_cell( particle )
+    SUBROUTINE set_particle_cell(particle)
 
         ! subroutine arguments
         TYPE(baseparticle_t), INTENT(inout) :: particle
@@ -147,7 +147,7 @@ CONTAINS
         REAL(realk) :: diff_old, diff_new
         REAL(realk) :: minx, maxx, miny, maxy, minz, maxz
 
-        IF ( particle%is_active == 0 ) THEN
+        IF (particle%is_active == 0) THEN
             SELECT CASE (TRIM(particle_terminal))
                 CASE ("none")
                     CONTINUE
@@ -245,7 +245,7 @@ CONTAINS
 
 
 
-    SUBROUTINE update_particle_cell( particle )
+    SUBROUTINE update_particle_cell(particle)
 
         ! subroutine arguments
         TYPE(baseparticle_t), INTENT(inout) :: particle
@@ -363,12 +363,12 @@ CONTAINS
 
 
 
-    SUBROUTINE print_particle_status( particle )
+    SUBROUTINE print_particle_status(particle)
 
         ! subroutine arguments
         TYPE(baseparticle_t), INTENT(in) :: particle
 
-        IF ( particle%is_active == 1 ) THEN
+        IF (particle%is_active == 1) THEN
             SELECT CASE (TRIM(particle_terminal))
                 CASE ("none")
                     CONTINUE
@@ -389,4 +389,4 @@ CONTAINS
 
     END SUBROUTINE print_particle_status
 
-END MODULE particlecore_mod
+END MODULE particle_core_mod

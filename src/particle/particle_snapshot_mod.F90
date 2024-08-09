@@ -46,6 +46,27 @@ CONTAINS
         ! local variables ...
         INTEGER(intk) :: i
 
+        INQUIRE(file = 'Particle_Snapshots/snapshot0.pvtp', exist = dwrite_particles)
+
+        IF (dwriteparticles) THEN
+
+            IF (myid == 0) THEN
+                SELECT CASE (TRIM(particle_terminal))
+                    CASE ("none")
+                        CONTINUE
+                    CASE ("normal")
+                        WRITE(*, *) ' '
+                        WRITE(*, *) "ERROR. Directory Particle_Snaphots already exists. Terminating Process!"
+                    CASE ("verbose")
+                        WRITE(*, *) ' '
+                        WRITE(*, *) "ERROR. Directory Particle_Snaphots already exists. Terminating Process!"
+                END SELECT
+            END IF
+
+            CALL errr(__FILE__, __LINE__) ! or RETURN
+
+        END IF
+
         IF (myid == 0) THEN
             CALL create_directory("Particle_Snapshots") ! ! ! realtive to working directory ! ! !
         END IF

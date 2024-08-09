@@ -1,11 +1,11 @@
-MODULE particle_connect_mod
+MODULE particle_exchange_mod
 
     USE, INTRINSIC :: ISO_C_BINDING
     USE MPI_f08
     USE core_mod
     USE comms_mod, ONLY: myid
     USE particle_list_mod
-    USE particlecore_mod
+    USE particle_core_mod
 
     IMPLICIT NONE (type, external)
 
@@ -189,12 +189,12 @@ MODULE particle_connect_mod
         19, 20, 21, 23, 22, 24, 25 /), SHAPE(rescue_nbr))
 
         ! Publicly callable functions of module
-        PUBLIC :: init_particle_connect, particle_connect, finish_particle_connect, get_target_grid
+        PUBLIC :: init_particle_exchange, exchange_particles, finish_particle_exchange, get_target_grid
 
 CONTAINS
 
 
-    SUBROUTINE particle_connect(particle_list)
+    SUBROUTINE exchange_particles(particle_list)
 
         IMPLICIT NONE
 
@@ -203,7 +203,7 @@ CONTAINS
 
         !local variables
         INTEGER(intk) :: i, j, iproc, pos, num
-        INTEGER(intk) :: destgrid, destproc
+        INTEGER(intk) :: destgrid, destproc, iface
         INTEGER(intk) :: iprocnbr, cSend, cRecv
         INTEGER(intk) :: active_np_old  ! for safety checks
 
@@ -213,10 +213,6 @@ CONTAINS
         INTEGER(intk), ALLOCATABLE :: ndispsend(:)
         INTEGER(intk), ALLOCATABLE :: ndisprecv(:)
         INTEGER(intk), ALLOCATABLE :: sendind(:)
-
-        ! for periodic boundaries
-        REAL(realk) :: old_minx, old_maxx, old_miny, old_maxy, old_minz, old_maxz, &
-         new_minx, new_maxx, new_miny, new_maxy, new_minz, new_maxz
 
         IF ( .NOT. isInit ) THEN
             WRITE(*,*) 'Particle connect not initialized'
@@ -233,7 +229,7 @@ CONTAINS
             END IF
 
             ! setting the destination of particle (quo vadis, particle?)
-            CALL get_target_grid(particle_list%particles(i), destgrid, destproc)
+            CALL get_target_grid(particle_list%particles(i), destgrid, destproc, iface)
 
 
             IF ( destproc > numprocs .OR. destproc < 0 ) THEN
@@ -241,73 +237,23 @@ CONTAINS
                 CALL errr(__FILE__, __LINE__)
             END IF
 
+            ! coordinate manipulation of particles passing periodic boundaries
+            ! (at this point igrid is still NOT updated, meaning particle%igrid is still the "old" grid)
+            CALL update_coordinates(particle_list%particles(i), destgrid, iface)
+
             ! triage of particles
-            IF ( particle_list%particles(i)%igrid == destgrid ) THEN
+            IF (particle_list%particles(i)%igrid == destgrid) THEN
+
                 ! particle stays on grid
-
-                ! coordinate manipulation of particles passing periodic boundaries (JULIUS: should this be sourced out into its own routine?)
-                IF (particle_list%particles(i)%x < new_minx) THEN
-                    particle_list%particles(i)%x = new_maxx - ABS(particle_list%particles(i)%x - old_minx)
-                END IF
-
-                IF (new_maxx < particle_list%particles(i)%x) THEN
-                    particle_list%particles(i)%x = new_minx + ABS(particle_list%particles(i)%x - old_maxx)
-                END IF
-
-                IF (particle_list%particles(i)%y < new_miny) THEN
-                    particle_list%particles(i)%y = new_maxy - ABS(particle_list%particles(i)%y - old_miny)
-                END IF
-
-                IF (new_maxy < particle_list%particles(i)%y) THEN
-                    particle_list%particles(i)%y = new_miny + ABS(particle_list%particles(i)%y - old_maxy)
-                END IF
-
-                IF (particle_list%particles(i)%z < new_minz) THEN
-                    particle_list%particles(i)%z = new_maxz - ABS(particle_list%particles(i)%z - old_minz)
-                END IF
-
-                IF (new_maxz < particle_list%particles(i)%z) THEN
-                    particle_list%particles(i)%z = new_minz + ABS(particle_list%particles(i)%z - old_maxz)
-                END IF
-
-                CALL update_particle_cell( particle_list%particles(i) )
+                CALL update_particle_cell(particle_list%particles(i))
 
             ELSE
-                ! get old and new grid boundaries for periodic boundary handling
-                ! (at this point igrid is still NOT updated, meaning particle%igrid = old igrid)
-                CALL get_bbox(old_minx, old_maxx, old_miny, old_maxy, old_minz, old_maxz, particle_list%particles(i)%igrid)
-                CALL get_bbox(new_minx, new_maxx, new_miny, new_maxy, new_minz, new_maxz, destgrid)
-
-                ! coordinate manipulation of particles passing periodic boundaries (JULIUS: should this be sourced out into its own routine?)
-                IF (particle_list%particles(i)%x < new_minx) THEN
-                    particle_list%particles(i)%x = new_maxx - ABS(particle_list%particles(i)%x - old_minx)
-                END IF
-
-                IF (new_maxx < particle_list%particles(i)%x) THEN
-                    particle_list%particles(i)%x = new_minx + ABS(particle_list%particles(i)%x - old_maxx)
-                END IF
-
-                IF (particle_list%particles(i)%y < new_miny) THEN
-                    particle_list%particles(i)%y = new_maxy - ABS(particle_list%particles(i)%y - old_miny)
-                END IF
-
-                IF (new_maxy < particle_list%particles(i)%y) THEN
-                    particle_list%particles(i)%y = new_miny + ABS(particle_list%particles(i)%y - old_maxy)
-                END IF
-
-                IF (particle_list%particles(i)%z < new_minz) THEN
-                    particle_list%particles(i)%z = new_maxz - ABS(particle_list%particles(i)%z - old_minz)
-                END IF
-
-                IF (new_maxz < particle_list%particles(i)%z) THEN
-                    particle_list%particles(i)%z = new_minz + ABS(particle_list%particles(i)%z - old_maxz)
-                END IF
 
                 ! particle changes the grid
                 IF ( destproc == myid ) THEN
                     ! particle remains on process
                     particle_list%particles(i)%igrid = destgrid
-                    CALL set_particle_cell( particle_list%particles(i) )
+                    CALL set_particle_cell(particle_list%particles(i))
                 ELSE
                     ! particle is marked for MPI transfer
                     particle_list%particles(i)%iproc = destproc
@@ -595,10 +541,10 @@ CONTAINS
 
         ! --- step 10: Clearing the buffers. Done.
 
-    END SUBROUTINE particle_connect
+    END SUBROUTINE exchange_particles
 
 
-    SUBROUTINE init_particle_connect()
+    SUBROUTINE init_particle_exchange()
         INTEGER(intk) :: i, iface, igrid
         INTEGER(intk) :: iface1, iface2, iface3
         INTEGER(intk) :: itypbc1, itypbc2, itypbc3
@@ -832,10 +778,10 @@ CONTAINS
         nRecv = 0
 
         ! creating the MPI data type
-        CALL create_particle_mpitype( particle_mpitype )
+        CALL create_particle_mpitype(particle_mpitype)
         isInit = .TRUE.
 
-    END SUBROUTINE init_particle_connect
+    END SUBROUTINE init_particle_exchange
 
 
     SUBROUTINE get_nbrs(iface, neighbours, nbrgrid, nbrface)
@@ -902,7 +848,7 @@ CONTAINS
 
 
 
-    SUBROUTINE finish_particle_connect()
+    SUBROUTINE finish_particle_exchange()
         isInit = .FALSE.
 
         DEALLOCATE(sendConns)
@@ -914,7 +860,7 @@ CONTAINS
         DEALLOCATE(sendReqs)
         DEALLOCATE(recvReqs)
 
-    END SUBROUTINE finish_particle_connect
+    END SUBROUTINE finish_particle_exchange
 
 
 
@@ -962,15 +908,16 @@ CONTAINS
 
 
 
-    SUBROUTINE get_target_grid( particle, destgrid, destproc )
+    SUBROUTINE get_target_grid(particle, destgrid, destproc, iface)
 
         ! subroutine arguments
         TYPE(baseparticle_t), INTENT(in) :: particle
         INTEGER(intk), INTENT(out) :: destgrid
         INTEGER(intk), INTENT(out) :: destproc
+        INTEGER(intk), INTENT(out) :: iface
 
         ! local variables
-        INTEGER(intk) :: iface, neighbours(26)
+        INTEGER(intk) :: neighbours(26)
         REAL(realk) :: minx, maxx, miny, maxy, minz, maxz
 
         ! getting the box of last grid the particla
@@ -1130,24 +1077,23 @@ CONTAINS
         CALL MPI_Type_contiguous(3, mglet_mpi_int, triple_int_mpi_type)
 
         CALL MPI_Get_address(foo%is_active, disp(1))
+        ! JULIUS: isnt the following disp declaration unnessecary?
         CALL MPI_Get_address(foo%ipart, disp(2))
         CALL MPI_Get_address(foo%iproc, disp(3))
         CALL MPI_Get_address(foo%igrid, disp(4))
         CALL MPI_Get_address(foo%ijkcell, disp(5))
-        CALL MPI_Get_address(foo%facepath, disp(6))
-        CALL MPI_Get_address(foo%x, disp(7))
-        CALL MPI_Get_address(foo%y, disp(8))
-        CALL MPI_Get_address(foo%z, disp(9))
+        CALL MPI_Get_address(foo%x, disp(6))
+        CALL MPI_Get_address(foo%y, disp(7))
+        CALL MPI_Get_address(foo%z, disp(8))
 
         types(1) = mglet_mpi_int    ! is_active
         types(2) = mglet_mpi_int    ! ipart
         types(3) = mglet_mpi_int    ! iproc
         types(4) = mglet_mpi_int    ! igrid
         types(5) = triple_int_mpi_type  ! ijkcell(3)
-        types(6) = triple_int_mpi_type  ! facepath(3)
-        types(7) = mglet_mpi_real    ! x
-        types(8) = mglet_mpi_real    ! y
-        types(9) = mglet_mpi_real    ! z
+        types(6) = mglet_mpi_real    ! x
+        types(7) = mglet_mpi_real    ! y
+        types(8) = mglet_mpi_real    ! z
 
         ! computing the displacements in byte
         base = disp(1)
@@ -1165,12 +1111,62 @@ CONTAINS
         CALL MPI_Type_free(triple_int_mpi_type)
     END SUBROUTINE create_particle_mpitype
 
-
     SUBROUTINE is_true_neigbour()
 
 
 
     END SUBROUTINE is_true_neigbour
+
+    SUBROUTINE update_coordinates(particle, destgrid)
+
+        ! subroutine arguments
+        TYPE(baseparticle_t), INTENT(inout) :: particle
+        INTEGER(intk), INTENT(in) :: destgrid
+
+        ! local variables
+        REAL(realk) :: old_minx, old_maxx, old_miny, old_maxy, old_minz, old_maxz, &
+         new_minx, new_maxx, new_miny, new_maxy, new_minz, new_maxz
+
+        CALL get_bbox(old_minx, old_maxx, old_miny, old_maxy, old_minz, old_maxz, particle%igrid)
+        CALL get_bbox(new_minx, new_maxx, new_miny, new_maxy, new_minz, new_maxz, destgrid)
+
+        IF (particle%x < new_minx) THEN
+            particle%x = new_maxx - ABS(particle%x - old_minx)
+        END IF
+
+        IF (new_maxx < particle%x) THEN
+            particle%x = new_minx + ABS(particle%x - old_maxx)
+        END IF
+
+        IF (particle%y < new_miny) THEN
+            particle%y = new_maxy - ABS(particle%y - old_miny)
+        END IF
+
+        IF (new_maxy < particle%y) THEN
+            particle%y = new_miny + ABS(particle%y - old_maxy)
+        END IF
+
+        IF (particle%z < new_minz) THEN
+            particle%z = new_maxz - ABS(particle%z - old_minz)
+        END IF
+
+        IF (new_maxz < particle%z) THEN
+            particle%z = new_minz + ABS(particle%z - old_maxz)
+        END IF
+
+        ! for debugging
+        SELECT CASE (TRIM(particle_terminal))
+            CASE ("none")
+                CONTINUE
+            CASE ("normal")
+                CONTINUE
+            CASE ("verbose")
+                WRITE(*, *) ' '
+                WRITE(*, *) "Particle ", particle%ipart, " passed periodic boundary (grid ", &
+                 particle%igrid, " to grid ", destgrid, " via face: ", iface, ")!"
+        END SELECT
+
+    END SUBROUTINE update_coordinates
 
     ! copy particles from recieve Buffer into passed particle list
     SUBROUTINE integrate_particles(particle_list, sendind)
@@ -1334,4 +1330,4 @@ CONTAINS
 
     END SUBROUTINE integrate_particles_concurrent
 
-END MODULE particle_connect_mod
+END MODULE particle_exchange_mod
