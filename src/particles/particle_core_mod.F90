@@ -380,7 +380,7 @@ CONTAINS
                     WRITE(*, '("igrid       = ", I12)') particle%igrid
                     WRITE(*, '("x/y/z       = ", 3F12.6)') particle%x, particle%y, particle%z
                     WRITE(*, '("i/j/k cell  = ", 3I12)') particle%ijkcell(1), particle%ijkcell(2), particle%ijkcell(3)
-                    WRITE(*, '("facepath    = ", 3I12)') particle%facepath(1), particle%facepath(2), particle%facepath(3)
+                    !WRITE(*, '("facepath    = ", 3I12)') particle%facepath(1), particle%facepath(2), particle%facepath(3)
                     WRITE(*, *) ' '
             END SELECT
         ELSE
