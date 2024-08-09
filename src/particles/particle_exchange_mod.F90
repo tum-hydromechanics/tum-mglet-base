@@ -1117,7 +1117,7 @@ CONTAINS
 
     END SUBROUTINE is_true_neigbour
 
-    SUBROUTINE update_coordinates(particle, destgrid)
+    SUBROUTINE update_coordinates(particle, destgrid, iface)
 
         ! subroutine arguments
         TYPE(baseparticle_t), INTENT(inout) :: particle
