@@ -38,12 +38,8 @@ MODULE particle_exchange_mod
     ! The information in the first dimension is sorted as follows:
     !   Field 1: Rank of receiving process
     !   Field 2: Rank of sending process
-    !   Field 3: ID of receiving grid
-    !   Field 4: ID of sending grid
-    !   Field 5: Which face (1..26) to receive
-    !   Field 6: Which face (1..26) to send
-    !   Field 7: Message tag (for MPI)
-    !   Field 8: Geometry exchange flag
+    !   Field 3: Message tag (for MPI)
+    !   Field 4: Geometry exchange flag
     INTEGER(intk), ALLOCATABLE :: sendConns(:,:), recvConns(:,:)
 
     ! Lists that hold the send and receive request arrays
@@ -65,6 +61,8 @@ MODULE particle_exchange_mod
     ! been created.
     LOGICAL :: isInit = .FALSE.
 
+    ! The first column just contains the number 2D faces the face (id = line)
+    ! is uniquily defined by. Column 2-4 hold those 2D faces.
     INTEGER(intk), PARAMETER :: facelist(4,26) = RESHAPE((/ &
         1, 1, 0, 0, &
         1, 2, 0, 0, &
@@ -279,7 +277,7 @@ CONTAINS
             END IF
             ! search for the process to send to (only checks few "neighbor processes")
             DO iproc = 1, iSend
-                IF ( sendConns(1,iproc) == particle_list%particles(i)%iproc ) THEN
+                IF (sendConns(1, iproc) == particle_list%particles(i)%iproc) THEN
                     npsend(iproc) = npsend(iproc) + 1
                 END IF
             END DO
@@ -541,6 +539,9 @@ CONTAINS
 
         ! --- step 10: Clearing the buffers. Done.
 
+        ! BARRIER ONLY FOR DEGUGGING -- TEMPORARY <----------------------------------------------- TODO : remove
+        CALL MPI_Barrier(MPI_COMM_WORLD)
+
     END SUBROUTINE exchange_particles
 
 
@@ -561,8 +562,8 @@ CONTAINS
         ! of grids*26. However, due to the possible prescence of
         ! precursors etc, we add a few more.
         maxConns = INT((nMyGrids+1)*26.0*1.2, intk)
-        ALLOCATE(sendConns(8, maxConns))
-        ALLOCATE(recvConns(8, maxConns))
+        ALLOCATE(sendConns(4, maxConns))
+        ALLOCATE(recvConns(4, maxConns))
         sendConns = 0
         recvConns = 0
 
@@ -592,6 +593,8 @@ CONTAINS
         ! SIMON: Hier sammeln wir zunächst zu viel Information, die für die
         ! Partikel nicht benötigt wird. Style to be improved...
 
+        ! <--------------------------
+
         DO i = 1, nMyGrids
 
             ! getting the grid parameters
@@ -600,35 +603,35 @@ CONTAINS
 
             ! Check surfaces of grid
             DO iface = 1, 6
+
                 itypbc = itypboconds(1, iface, igrid)
 
                 IF (itypbc == 7 .OR. itypbc == 19) THEN
 
-                    CALL get_nbrs(iface, neighbours, inbrgrid, inbrface)
                     IF (inbrgrid == 0) THEN
                         CYCLE
                     END IF
-                    iprocnbr = idprocofgrd(inbrgrid)
+
+                    iprocnbr = idprocofgrd(neighbours(iface))
+
                     IF (iprocnbr == myid) THEN
                         CYCLE
                     END IF
 
                     ! only if neighbor not already listed
                     IF ( sendcounts(iprocnbr) == 0 ) THEN
+
                         iexchange = 1
                         nRecv = nRecv + 1
                         maxTag(iprocnbr) = maxTag(iprocnbr) + 1
 
-                        recvConns(1, nRecv) = myid      ! Receiving process (this process)
-                        recvConns(2, nRecv) = iprocnbr  ! Sending process (neighbour process)
-                        recvConns(3, nRecv) = igrid     ! Receiving grid (on current process)
-                        recvConns(4, nRecv) = inbrgrid  ! Sending grid (on neighbour process)
-                        recvConns(5, nRecv) = iface     ! Which face receive (1..26)
-                        recvConns(6, nRecv) = inbrface  ! Which face receive from (sending face) (1..26)
-                        recvConns(7, nRecv) = maxTag(iprocnbr)  ! Message tag
-                        recvConns(8, nRecv) = iexchange  ! Geometry exchange flag
+                        recvConns(1, nRecv) = myid              ! Receiving process (this process)
+                        recvConns(2, nRecv) = iprocnbr          ! Sending process (neighbour process)
+                        recvConns(3, nRecv) = maxTag(iprocnbr)  ! Message tag
+                        recvConns(4, nRecv) = iexchange         ! Geometry exchange flag
 
                         sendcounts(iprocnbr) = SIZE(recvConns, 1)   ! not an increment
+
                     END IF
                 END IF
             END DO
@@ -644,37 +647,37 @@ CONTAINS
                 IF (itypbc1 == 7 .OR. itypbc2 == 7 .OR. &
                     itypbc1 == 19 .OR. itypbc2 == 19) THEN
 
-                    CALL get_nbrs(iface, neighbours, inbrgrid, inbrface)
                     IF (inbrgrid == 0) THEN
                         CYCLE
                     END IF
+
                     iprocnbr = idprocofgrd(inbrgrid)
+
                     IF (iprocnbr == myid) THEN
                         CYCLE
                     END IF
 
                     ! only if neighbor not already listed
                     IF ( sendcounts(iprocnbr) == 0 ) THEN
+
                         iexchange = 1
                         nRecv = nRecv + 1
                         maxTag(iprocnbr) = maxTag(iprocnbr) + 1
 
-                        recvConns(1, nRecv) = myid      ! Receiving process (this process)
-                        recvConns(2, nRecv) = iprocnbr  ! Sending process (neighbour process)
-                        recvConns(3, nRecv) = igrid     ! Receiving grid (on current process)
-                        recvConns(4, nRecv) = inbrgrid  ! Sending grid (on neighbour process)
-                        recvConns(5, nRecv) = iface     ! Which face receive (1..26)
-                        recvConns(6, nRecv) = inbrface  ! Which face receive from (sending face) (1..26)
-                        recvConns(7, nRecv) = maxTag(iprocnbr)  ! Message tag
-                        recvConns(8, nRecv) = iexchange  ! Geometry exchange flag
+                        recvConns(1, nRecv) = myid              ! Receiving process (this process)
+                        recvConns(2, nRecv) = iprocnbr          ! Sending process (neighbour process)
+                        recvConns(3, nRecv) = maxTag(iprocnbr)  ! Message tag
+                        recvConns(4, nRecv) = iexchange         ! Geometry exchange flag
 
                         sendcounts(iprocnbr) = SIZE(recvConns, 1)   ! not an increment
+
                     END IF
                 END IF
             END DO
 
             ! Check corners of grid
             DO iface = 19, 26
+
                 iface1 = facelist(2, iface)
                 iface2 = facelist(3, iface)
                 iface3 = facelist(4, iface)
@@ -685,43 +688,44 @@ CONTAINS
                 IF (itypbc1 == 7 .OR. itypbc2 == 7 .OR. itypbc3 == 7 .OR. &
                     itypbc1 == 19 .OR. itypbc2 == 19 .OR. itypbc3 == 19) THEN
 
-                    CALL get_nbrs(iface, neighbours, inbrgrid, inbrface)
                     IF (inbrgrid == 0) THEN
                         CYCLE
                     END IF
+
                     iprocnbr = idprocofgrd(inbrgrid)
+
                     IF (iprocnbr == myid) THEN
                         CYCLE
                     END IF
 
                     ! only if neighbor not already listed
-                    IF ( sendcounts(iprocnbr) == 0 ) THEN
+                    IF (sendcounts(iprocnbr) == 0) THEN
+
                         iexchange = 1
                         nRecv = nRecv + 1
                         maxTag(iprocnbr) = maxTag(iprocnbr) + 1
 
-                        recvConns(1, nRecv) = myid      ! Receiving process (this process)
-                        recvConns(2, nRecv) = iprocnbr  ! Sending process (neighbour process)
-                        recvConns(3, nRecv) = igrid     ! Receiving grid (on current process)
-                        recvConns(4, nRecv) = inbrgrid  ! Sending grid (on neighbour process)
-                        recvConns(5, nRecv) = iface     ! Which face receive (1..26)
-                        recvConns(6, nRecv) = inbrface  ! Which face receive from (sending face) (1..26)
-                        recvConns(7, nRecv) = maxTag(iprocnbr)  ! Message tag
-                        recvConns(8, nRecv) = iexchange  ! Geometry exchange flag
+                        recvConns(1, nRecv) = myid              ! Receiving process (this process)
+                        recvConns(2, nRecv) = iprocnbr          ! Sending process (neighbour process)
+                        recvConns(3, nRecv) = maxTag(iprocnbr)  ! Message tag
+                        recvConns(4, nRecv) = iexchange         ! Geometry exchange flag
 
                         sendcounts(iprocnbr) = SIZE(recvConns, 1)   ! not an increment
+
                     END IF
                 END IF
             END DO
         END DO
 
+        ! <--------------------------
+
         ! Sort recvConns by process ID
-        CALL sort_conns_unique( recvConns(:,1:nRecv) )
+        CALL sort_conns_unique(recvConns(:,1:nRecv))
         iRecv = nRecv
 
         ! Calculate sdispl offset (send)
         DO i=1,numprocs-1
-            ! = value is either 0 (not a neighbor) or 8 (a neighbor)
+            ! = value is either 0 (not a neighbor) or 4 (a neighbor)
             sdispls(i) = sdispls(i-1) + sendcounts(i-1)
         END DO
 
@@ -732,7 +736,7 @@ CONTAINS
 
         ! Calculate rdispl offset (receive)
         DO i=1,numprocs-1
-            ! = value is either 0 (not a neighbor) or 8 (a neighbor)
+            ! = value is either 0 (not a neighbor) or 4 (a neighbor)
             rdispls(i) = rdispls(i-1) + recvcounts(i-1)
         END DO
 
@@ -783,7 +787,7 @@ CONTAINS
 
     END SUBROUTINE init_particle_exchange
 
-
+    ! JULIUS: from my understanding this is obsolete here, not sure though...
     SUBROUTINE get_nbrs(iface, neighbours, nbrgrid, nbrface)
         INTEGER(intk), INTENT(IN) :: iface
         INTEGER(intk), INTENT(IN) :: neighbours(26)
@@ -817,6 +821,8 @@ CONTAINS
                 ! Check if this is suited for a connect (symmetry req.)
                 ! This require knowledge of the global grid structure -
                 ! currently this is OK.
+                ! JULIUS: Is this ever relevant for the init connect method? See condition regarding boundaries
+                ! that is checked for each face, e.g. line 690
                 IF (nbrface > 18) THEN
                     ! Get adjacent primary faces
                     iface1 = facelist(2, nbrface)
@@ -868,10 +874,10 @@ CONTAINS
         ! Input array to be sorted
         INTEGER(int32), INTENT(inout) :: list(:,:)
 
-        INTEGER(intk) :: i,j
+        INTEGER(intk) :: i, j
 
         ! Temporary storage
-        INTEGER(int32) :: temp(8)
+        INTEGER(int32) :: temp(4)
 
         IF (SIZE(list, 1) /= SIZE(temp)) THEN
             CALL errr(__FILE__, __LINE__)
