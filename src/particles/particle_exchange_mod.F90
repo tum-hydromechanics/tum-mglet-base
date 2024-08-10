@@ -605,6 +605,7 @@ CONTAINS
             DO iface = 1, 6
 
                 itypbc = itypboconds(1, iface, igrid)
+                inbrgrid = neighbours(iface)
 
                 IF (itypbc == 7 .OR. itypbc == 19) THEN
 
@@ -638,11 +639,14 @@ CONTAINS
 
             ! Check lines fo grid
             DO iface = 7, 18
+
                 iface1 = facelist(2, iface)
                 iface2 = facelist(3, iface)
 
                 itypbc1 = itypboconds(1, iface1, igrid)
                 itypbc2 = itypboconds(1, iface2, igrid)
+
+                inbrgrid = neighbours(iface)
 
                 IF (itypbc1 == 7 .OR. itypbc2 == 7 .OR. &
                     itypbc1 == 19 .OR. itypbc2 == 19) THEN
@@ -684,6 +688,8 @@ CONTAINS
                 itypbc1 = itypboconds(1, iface1, igrid)
                 itypbc2 = itypboconds(1, iface2, igrid)
                 itypbc3 = itypboconds(1, iface3, igrid)
+
+                inbrgrid = neighbours(iface)
 
                 IF (itypbc1 == 7 .OR. itypbc2 == 7 .OR. itypbc3 == 7 .OR. &
                     itypbc1 == 19 .OR. itypbc2 == 19 .OR. itypbc3 == 19) THEN
