@@ -212,6 +212,9 @@ CONTAINS
         INTEGER(intk), ALLOCATABLE :: ndisprecv(:)
         INTEGER(intk), ALLOCATABLE :: sendind(:)
 
+        ALLOCATE(npsend(iSend))
+        npsend = 0
+
         IF ( .NOT. isInit ) THEN
             WRITE(*,*) 'Particle connect not initialized'
             CALL errr(__FILE__, __LINE__)
@@ -249,40 +252,30 @@ CONTAINS
 
                 ! particle changes the grid
                 IF ( destproc == myid ) THEN
+
                     ! particle remains on process
                     particle_list%particles(i)%igrid = destgrid
                     CALL set_particle_cell(particle_list%particles(i))
+
                 ELSE
+
                     ! particle is marked for MPI transfer
                     particle_list%particles(i)%iproc = destproc
                     particle_list%particles(i)%igrid = destgrid
+
+                    ! search for the process to send to (only checks few "neighbor processes")
+                    DO iproc = 1, iSend
+                        IF (sendConns(1, iproc) == particle_list%particles(i)%iproc) THEN
+                            npsend(iproc) = npsend(iproc) + 1
+                        END IF
+                    END DO
+
                 END IF
 
             END IF
         END DO
 
         ! --- step 1: The marking is done (grid and proc indicate destination). Done.
-
-        ALLOCATE( npsend(iSend) )
-        npsend = 0
-
-        DO i = 1, particle_list%ifinal
-            ! jumping inactive particles
-            IF ( particle_list%particles(i)%is_active /= 1 ) THEN
-                CYCLE
-            END IF
-            ! jumping local particles
-            IF ( particle_list%particles(i)%iproc == myid ) THEN
-                CYCLE
-            END IF
-            ! search for the process to send to (only checks few "neighbor processes")
-            DO iproc = 1, iSend
-                IF (sendConns(1, iproc) == particle_list%particles(i)%iproc) THEN
-                    npsend(iproc) = npsend(iproc) + 1
-                END IF
-            END DO
-        END DO
-
         ! --- step 2: The counting is done. Done.
 
         ALLOCATE( nprecv(iRecv) )
@@ -326,14 +319,16 @@ CONTAINS
         ALLOCATE(sendind(sizeSendBuf))
         ALLOCATE(sendBufParticle(sizeSendBuf))
 
+        ! JULIUS: would be nice to not iterate over the whole particle list twice. Maybe there is a way to allocate sendind before the first iteration?
+        ! Maybe use sending from previous exchnage ?
         j = 1
         DO i = 1, particle_list%ifinal
             ! jumping inactive particles
-            IF ( particle_list%particles(i)%is_active /= 1 ) THEN
+            IF (particle_list%particles(i)%is_active /= 1) THEN
                 CYCLE
             END IF
             ! jumping local particles
-            IF ( particle_list%particles(i)%iproc == myid ) THEN
+            IF (particle_list%particles(i)%iproc == myid) THEN
                 CYCLE
             END IF
 
@@ -344,7 +339,9 @@ CONTAINS
             ! buffer is filled
             DO iproc = 1, iSend
                 IF ( sendConns(1, iproc) == particle_list%particles(i)%iproc ) THEN
+
                     pos = ndispsend(iproc)
+
                     IF ( pos > sizeSendBuf ) THEN
                         WRITE(*,*) 'Send buffer size exceeded'
                         CALL errr(__FILE__, __LINE__)
@@ -355,6 +352,7 @@ CONTAINS
                         ! copy particle into buffer
                         sendBufParticle(pos) = particle_list%particles(i)
                     END IF
+
                     ! increment the position wherer future particle for
                     ! this destination process will be stored in the buffer
                     ndispsend(iproc) = ndispsend(iproc) + 1
@@ -362,6 +360,7 @@ CONTAINS
                     ! setting the local particle as inactive (active in buffer)
                     particle_list%particles(i)%is_active = 0
                     particle_list%active_np = particle_list%active_np - 1
+
                 END IF
             END DO
         END DO
