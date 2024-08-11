@@ -545,7 +545,7 @@ CONTAINS
 
 
     SUBROUTINE init_particle_exchange()
-        INTEGER(intk) :: i, iface, igrid
+        INTEGER(intk) :: i, iface, igrid, j
         INTEGER(intk) :: iface1, iface2, iface3
         INTEGER(intk) :: itypbc1, itypbc2, itypbc3
         INTEGER(intk) :: iprocnbr, itypbc, inbrface, inbrgrid
@@ -591,6 +591,7 @@ CONTAINS
 
         ! SIMON: Hier sammeln wir zunächst zu viel Information, die für die
         ! Partikel nicht benötigt wird. Style to be improved...
+        ! JULIUS: partly cleaned, but possibly more to improve
 
         ! <--------------------------
 
@@ -715,6 +716,7 @@ CONTAINS
                         recvConns(3, nRecv) = maxTag(iprocnbr)  ! Message tag
                         recvConns(4, nRecv) = iexchange         ! Geometry exchange flag
 
+                        ! JULIUS: why not assign to recvcounts here? Naming seems confusing to me.
                         sendcounts(iprocnbr) = SIZE(recvConns, 1)   ! not an increment
 
                     END IF
@@ -727,6 +729,9 @@ CONTAINS
         ! Sort recvConns by process ID
         CALL sort_conns_unique(recvConns(:,1:nRecv))
         iRecv = nRecv
+
+        ! JULIUS: whats the point the following (up to  CALL create_particle_mpitype)?
+        ! Would sendConn(1,i) = recvCon(2,i) / sendConn(2,i) = recvCon(1,i) not suffice? And why is sendConn needed anyways if symmetric to recvConn?
 
         ! Calculate sdispl offset (send)
         DO i=1,numprocs-1
@@ -765,24 +770,27 @@ CONTAINS
             sendConns(1, 1), recvcounts, rdispls, MPI_INTEGER, &
             MPI_COMM_WORLD)
 
-        !IF ( myid == 0 ) THEN
-            WRITE(*,*) 'I am proc:', myid
-            WRITE(*,*) 'I own grids: '
-            DO i = 1, nmygrids
-                WRITE(*,*) '    - grid ', mygrids(i)
-            END DO
-            WRITE(*,*) ' - I receive from the following ', iRecv, 'processes:'
-            DO i = 1, iRecv
-                WRITE(*,*) '    - proc ', recvConns(2, i)
-            END DO
-            WRITE(*,*) ' - I send to the following ', iSend, 'processes:'
-            DO i = 1, iSend
-                WRITE(*,*) '    - proc ', sendConns(1, i)
-            END DO
+        ! only for debugging, doesnt even work reliable (?)
+        DO i = 0, numprocs - 1
 
-        !END IF
+            IF (myid == i) THEN
 
-        CALL MPI_Barrier(MPI_COMM_WORLD)
+                WRITE(*,*) 'I am proc:', myid
+                WRITE(*,*) 'I own grids: '
+
+                WRITE(*,*) mygrids(:)
+
+                WRITE(*,*) ' - I receive from the following ', iRecv, 'processes (recvConns):'
+                WRITE(*,*) recvConns(2, 1:iRecv)
+
+                WRITE(*,*) ' - I send to the following ', iSend, 'processes (sendConns):'
+                WRITE(*,*) sendConns(1, 1:iSend)
+
+            END IF
+
+            CALL MPI_Barrier(MPI_COMM_WORLD)
+
+        END DO
 
         nRecv = 0
 
@@ -937,86 +945,94 @@ CONTAINS
         ! intialization (will be overwritten is particle left grid)
         iface = -1
 
-        ! checking the geometrical relation
-        IF (particle%x < minx) THEN !-------------------------------------------------------- low x
-            IF (particle%y < miny) THEN !--------------------------------------------- low y, low x
-                IF (particle%z < minz) THEN !---------------------------------- low z, low y, low x
-                    iface = 19
-                ELSEIF (minz <= particle%z .AND. particle%z <= maxz) THEN !---- mid z, low y, low x
-                    iface = 7
-                ELSEIF (maxz < particle%z) THEN !----------------------------- high z, low y, low x
-                    iface = 20
-                END IF
-            ELSEIF (miny <= particle%y .AND. particle%y <= maxy) THEN !--------------- mid y, low x
-                IF (particle%z < minz) THEN !---------------------------------- low z, mid y, low x
-                    iface = 9
-                ELSEIF (minz <= particle%z .AND. particle%z <= maxz) THEN !---- mid z, mid y, low x
-                    iface = 1
-                ELSEIF (maxz < particle%z) THEN !----------------------------- high z, mid y, low x
-                    iface = 10
-                END IF
-            ELSEIF (maxy < particle%y) THEN !---------------------------------------- high y, low x
-                IF (particle%z < minz) THEN !--------------------------------- low z, high y, low x
-                    iface = 21
-                ELSEIF (minz <= particle%z .AND. particle%z <= maxz) THEN !--- mid z, high y, low x
-                    iface = 8
-                ELSEIF (maxz < particle%z) THEN !---------------------------- high z, high y, low x
-                    iface = 22
-                END IF
-            END IF
-        ELSEIF (minx <= particle%x .AND. particle%x <= maxx) THEN !-------------------------- mid x
-            IF (particle%y < miny) THEN !--------------------------------------------- low y, mid x
-                IF (particle%z < minz) THEN !---------------------------------- low z, low y, mid x
-                    iface = 15
-                ELSEIF (minz <= particle%z .AND. particle%z <= maxz) THEN !---- mid z, low y, mid x
-                    iface = 3
-                ELSEIF (maxz < particle%z) THEN !----------------------------- high z, low y, mid x
-                    iface = 16
-                END IF
-            ELSEIF (miny <= particle%y .AND. particle%y <= maxy) THEN !--------------- mid y, mid x
-                IF (particle%z < minz) THEN !---------------------------------- low z, mid y, mid x
-                    iface = 5
-                ELSEIF (minz <= particle%z .AND. particle%z <= maxz) THEN !---- mid z, mid y, mid x
+        ! chack if particle is still on grid first as this will be the case for most particles (assuming a reasonable grid size)
+        ! to reduce operations
+        IF (minx <= particle%x .AND. particle%x <= maxx .AND. &
+            miny <= particle%y .AND. particle%y <= maxy .AND. &
+            minz <= particle%z .AND. particle%z <= maxz) THEN
                     iface = 0
-                ELSEIF (maxz < particle%z) THEN !----------------------------- high z, mid y, mid x
-                    iface = 6
+        ELSE
+            ! checking the geometrical relation
+            IF (particle%x < minx) THEN !-------------------------------------------------------- low x
+                IF (particle%y < miny) THEN !--------------------------------------------- low y, low x
+                    IF (particle%z < minz) THEN !---------------------------------- low z, low y, low x
+                        iface = 19
+                    ELSEIF (minz <= particle%z .AND. particle%z <= maxz) THEN !---- mid z, low y, low x
+                        iface = 7
+                    ELSEIF (maxz < particle%z) THEN !----------------------------- high z, low y, low x
+                        iface = 20
+                    END IF
+                ELSEIF (miny <= particle%y .AND. particle%y <= maxy) THEN !--------------- mid y, low x
+                    IF (particle%z < minz) THEN !---------------------------------- low z, mid y, low x
+                        iface = 9
+                    ELSEIF (minz <= particle%z .AND. particle%z <= maxz) THEN !---- mid z, mid y, low x
+                        iface = 1
+                    ELSEIF (maxz < particle%z) THEN !----------------------------- high z, mid y, low x
+                        iface = 10
+                    END IF
+                ELSEIF (maxy < particle%y) THEN !---------------------------------------- high y, low x
+                    IF (particle%z < minz) THEN !--------------------------------- low z, high y, low x
+                        iface = 21
+                    ELSEIF (minz <= particle%z .AND. particle%z <= maxz) THEN !--- mid z, high y, low x
+                        iface = 8
+                    ELSEIF (maxz < particle%z) THEN !---------------------------- high z, high y, low x
+                        iface = 22
+                    END IF
                 END IF
-            ELSEIF (maxy < particle%y) THEN !---------------------------------------- high y, mid x
-                IF (particle%z < minz) THEN !--------------------------------- low z, high y, mid x
-                    iface = 17
-                ELSEIF (minz <= particle%z .AND. particle%z <= maxz) THEN !--- mid z, high y, mid x
-                    iface = 4
-                ELSEIF (maxz < particle%z) THEN !---------------------------- high z, high y, mid x
-                    iface = 18
+            ELSEIF (minx <= particle%x .AND. particle%x <= maxx) THEN !-------------------------- mid x
+                IF (particle%y < miny) THEN !--------------------------------------------- low y, mid x
+                    IF (particle%z < minz) THEN !---------------------------------- low z, low y, mid x
+                        iface = 15
+                    ELSEIF (minz <= particle%z .AND. particle%z <= maxz) THEN !---- mid z, low y, mid x
+                        iface = 3
+                    ELSEIF (maxz < particle%z) THEN !----------------------------- high z, low y, mid x
+                        iface = 16
+                    END IF
+                ELSEIF (miny <= particle%y .AND. particle%y <= maxy) THEN !--------------- mid y, mid x
+                    IF (particle%z < minz) THEN !---------------------------------- low z, mid y, mid x
+                        iface = 5
+                    ELSEIF (minz <= particle%z .AND. particle%z <= maxz) THEN !---- mid z, mid y, mid x
+                        iface = 0
+                    ELSEIF (maxz < particle%z) THEN !----------------------------- high z, mid y, mid x
+                        iface = 6
+                    END IF
+                ELSEIF (maxy < particle%y) THEN !---------------------------------------- high y, mid x
+                    IF (particle%z < minz) THEN !--------------------------------- low z, high y, mid x
+                        iface = 17
+                    ELSEIF (minz <= particle%z .AND. particle%z <= maxz) THEN !--- mid z, high y, mid x
+                        iface = 4
+                    ELSEIF (maxz < particle%z) THEN !---------------------------- high z, high y, mid x
+                        iface = 18
+                    END IF
                 END IF
-            END IF
-        ELSEIF (maxx < particle%x) THEN !--------------------------------------------------- high x
-            IF (particle%y < miny) THEN !-------------------------------------------- low y, high x
-                IF (particle%z < minz) THEN !--------------------------------- low z, low y, high x
-                    iface = 23
-                ELSEIF (minz <= particle%z .AND. particle%z <= maxz) THEN !--- mid z, low y, high x
-                    iface = 11
-                ELSEIF (maxz < particle%z) THEN !---------------------------- high z, low y, high x
-                    iface = 24
+            ELSEIF (maxx < particle%x) THEN !--------------------------------------------------- high x
+                IF (particle%y < miny) THEN !-------------------------------------------- low y, high x
+                    IF (particle%z < minz) THEN !--------------------------------- low z, low y, high x
+                        iface = 23
+                    ELSEIF (minz <= particle%z .AND. particle%z <= maxz) THEN !--- mid z, low y, high x
+                        iface = 11
+                    ELSEIF (maxz < particle%z) THEN !---------------------------- high z, low y, high x
+                        iface = 24
+                    END IF
+                ELSEIF (miny <= particle%y .AND. particle%y <= maxy) THEN !-------------- mid y, high x
+                    IF (particle%z < minz) THEN !--------------------------------- low z, mid y, high x
+                        iface = 13
+                    ELSEIF (minz <= particle%z .AND. particle%z <= maxz) THEN !--- mid z, mid y, high x
+                        iface = 2
+                    ELSEIF (maxz < particle%z) THEN !---------------------------- high z, mid y, high x
+                        iface = 14
+                    END IF
+                ELSEIF (maxy < particle%y) THEN !--------------------------------------- high y, high x
+                    IF (particle%z < minz) THEN !-------------------------------- low z, high y, high x
+                        iface = 25
+                    ELSEIF (minz <= particle%z .AND. particle%z <= maxz) THEN !-- mid z, high y, high x
+                        iface = 12
+                    ELSEIF (maxz < particle%z) THEN !--------------------------- high z, high y, high x
+                        iface = 26
+                    END IF
                 END IF
-            ELSEIF (miny <= particle%y .AND. particle%y <= maxy) THEN !-------------- mid y, high x
-                IF (particle%z < minz) THEN !--------------------------------- low z, mid y, high x
-                    iface = 13
-                ELSEIF (minz <= particle%z .AND. particle%z <= maxz) THEN !--- mid z, mid y, high x
-                    iface = 2
-                ELSEIF (maxz < particle%z) THEN !---------------------------- high z, mid y, high x
-                    iface = 14
-                END IF
-            ELSEIF (maxy < particle%y) THEN !--------------------------------------- high y, high x
-                IF (particle%z < minz) THEN !-------------------------------- low z, high y, high x
-                    iface = 25
-                ELSEIF (minz <= particle%z .AND. particle%z <= maxz) THEN !-- mid z, high y, high x
-                    iface = 12
-                ELSEIF (maxz < particle%z) THEN !--------------------------- high z, high y, high x
-                    iface = 26
-                END IF
-            END IF
-        END IF !-------------------------------------------------------------
+            END IF !-------------------------------------------------------------
+        END IF
 
         IF ( iface == 0 ) THEN
             ! particle stays on the same grid
