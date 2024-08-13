@@ -16,7 +16,7 @@
     },
     "flow": {
     	"tu_level": 0.0,
-    	"solve": false,
+    	"solve": true,
         "gmol": 0.01,
         "rho": 1.0,
         "uinf": [2.0, 0.0, 0.0],
