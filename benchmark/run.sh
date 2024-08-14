@@ -9,11 +9,11 @@ CASE=$2
 DEFAULT_NUM_PROCESSES=1
 DEFAULT_MGLET_BIN_PATH="../../build/src/mglet"
 
-USAGE_EXAMPLE="./run.sh <bench|clean> <case 8|64> [processes=$DEFAULT_NUM_PROCESSES] [mglet-binary-path=$DEFAULT_MGLET_BIN_PATH]"
+USAGE_EXAMPLE="./run.sh <bench|clean> <case 8|64|256|512> [processes=$DEFAULT_NUM_PROCESSES] [mglet-binary-path=$DEFAULT_MGLET_BIN_PATH]"
 
 # Determine case (8 or 64 grids)
-if [[ $CASE != 8 ]] && [[ $CASE != 64 ]]; then
-    echo "Invalid argument: No benchmark for $CASE grids. [use 8 or 64]"
+if [[ $CASE != 8 ]] && [[ $CASE != 64 ]] && [[ $CASE != 256 ]] && [[ $CASE != 512 ]]; then
+    echo "Invalid argument: No benchmark for $CASE grids. [available: 8|64|256|512]"
     echo "Usage example:"
     echo $USAGE_EXAMPLE
     exit 1
