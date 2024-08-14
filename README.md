@@ -162,6 +162,20 @@ desired one)
 
 5. Run tests: `ctest --output-on-failure --test-dir tests`
 
+### Build instructions with GPU support
+
+Compiling MGLET with GPU support is supported by using the following modified instructions:
+
+1. Check out the source code
+
+2. Create a separate `build` directory in the source code root and enter that
+directory: `mkdir build && cd build`
+
+3. Run CMake: `CXXFLAGS="-g -fopenmp -foffload=nvptx-none" FFLAGS="-g -fopenmp -foffload=nvptx-none" cmake .. --preset=gnu-release ..` (replace the preset with your
+desired one)
+
+4. Compile: `make`
+
 
 License and trademarks
 ----------------------
