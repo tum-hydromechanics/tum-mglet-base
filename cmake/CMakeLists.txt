@@ -15,3 +15,6 @@ include(TestDataPtrC.cmake)
 include(TestFunctionPtrC.cmake)
 
 include(TestSelectRank.cmake)
+
+#testing OpenMP GPU offloading support
+include(TestOffloading.cmake)

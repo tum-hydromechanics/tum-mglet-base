@@ -20,4 +20,5 @@ target_link_libraries(scalar
     PRIVATE ib
     PRIVATE flow
     PRIVATE ${MPI_Fortran_LIBRARIES}
+    PRIVATE OpenMP::OpenMP_Fortran
 )

@@ -37,8 +37,8 @@ target_link_libraries(mglet
     PUBLIC mgletlib
     PRIVATE ${HDF5_Fortran_LIBRARIES}
     PRIVATE ${MPI_Fortran_LIBRARIES}
+    PRIVATE OpenMP::OpenMP_Fortran
 )
-
 
 # Intel must use the Fortran compiler to link properly
 if (CMAKE_Fortran_COMPILER_ID STREQUAL "IntelLLVM"
