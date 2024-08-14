@@ -164,7 +164,7 @@ desired one)
 
 ### Build instructions with GPU support
 
-Compiling MGLET with GPU support is supported by using the following modified instructions:
+Compiling MGLET with GPU support is possible by using the following instructions:
 
 1. Check out the source code
 
