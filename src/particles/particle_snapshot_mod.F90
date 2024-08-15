@@ -314,13 +314,13 @@ CONTAINS
 
             OPEN(unit, file = TRIM(filename), status = 'NEW', action = 'WRITE')
 
-            WRITE(unit, '("Number of times: ", I0)') psnapshot_info%nsnapshots
+            WRITE(unit, '("Number of timesteps: ", I0)') psnapshot_info%nsnapshots
 
             WRITE(unit, '("-------- snapshot times: ---------")')
 
             DO i = 1, psnapshot_info%nsnapshots
 
-                WRITE(unit, '("timestep ", I0, ": time = ")', advance = "no") i
+                WRITE(unit, '("timestep ", I0, ": time = ")', advance = "no") i - 1
                 WRITE(unit, psnapshot_info%coordinate_format) psnapshot_info%times(i)
 
             END DO

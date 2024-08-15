@@ -53,7 +53,9 @@ CONTAINS
 
         ! TODO: DEALLOCATIONS ETC. ...
 
-        WRITE(*,*) "PARTICLE SIMULATION FINISHED"
+        IF (myid == 0) THEN
+            WRITE(*,*) "PARTICLE SIMULATION FINISHED"
+        END IF
 
     END SUBROUTINE finish_particles
 

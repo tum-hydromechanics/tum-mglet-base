@@ -7,7 +7,7 @@ PROGRAM main
     USE ib_mod, ONLY: init_ib, finish_ib, ib
     USE timeloop_mod, ONLY: init_timeloop, finish_timeloop, timeloop
     USE scalar_mod, ONLY: init_scalar, finish_scalar
-    USE particle_mod, ONLY: init_particles   ! <------------------------------------partilces
+    USE particle_mod, ONLY: init_particles, finish_particles   ! <------------------------------------partilces
 
 
     IMPLICIT NONE (type, external)
