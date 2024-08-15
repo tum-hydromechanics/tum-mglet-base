@@ -188,10 +188,12 @@ CONTAINS
         CALL init_statistics()
 
         ! Initialize particle snapshots
+        CALL start_timer(900)
         IF (dsim_particles .AND. dwrite_particles) THEN
             CALL init_psnapshots(mtstep, dt) ! <------------------------------------particles
             CALL write_psnapshot(0_intk, 0.0_realk)
         END IF
+        CALL stop_timer(900)
 
     END SUBROUTINE init_timeloop
 
@@ -206,6 +208,8 @@ CONTAINS
         deltawt = wtime - wtime0
         CALL write_runinfo(itstep, ittot, timeph, dt, targetcflmax, deltawt, &
             ncellstot)
+
+        CALL write_psnapshot_timeinfo()
 
         CALL finish_statistics()
     END SUBROUTINE finish_timeloop
@@ -238,9 +242,11 @@ CONTAINS
         timeintegration: DO itstep = 1, mtstep
 
             ! Timeintegrate particles
+            CALL start_timer(900)
             IF (dsim_particles) THEN
                 CALL timeintegrate_particles(dt) ! <------------------------------------particles
             END IF
+            CALL stop_timer(900)
 
             ! Global RK loop for tightly coupled quantities like flow and
             ! scalar transport
@@ -260,9 +266,11 @@ CONTAINS
             CALL timekeeper%get_time(timeph)
 
             ! Particle Snapshots
+            CALL start_timer(900)
             IF (dsim_particles .AND. dwrite_particles) THEN
                 CALL write_psnapshot(itstep, timeph) ! <------------------------------------particles
             END IF
+            CALL stop_timer(900)
 
             ! Print to terminal (itinfo frequency)
             !

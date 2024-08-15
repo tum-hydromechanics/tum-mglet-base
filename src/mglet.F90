@@ -54,6 +54,7 @@ PROGRAM main
 
         ! Finish plugins
         CALL finish_plugins()
+        CALL finish_particles() ! <------------------------------------partilces
 
         ! Finish physical models
         CALL finish_scalar()

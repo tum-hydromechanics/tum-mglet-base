@@ -31,6 +31,8 @@ CONTAINS
 
         REAL(realk) :: rand(3), diffusion_dx, diffusion_dy, diffusion_dz, advection_dx, advection_dy, advection_dz, pdx, pdy, pdz
 
+        CALL start_timer(910)
+
         !is calling the geometric fields obsolete when using core_mode -> corefields_mod ?
         CALL get_field(x_f, "X")
         CALL get_field(y_f, "Y")
@@ -150,6 +152,8 @@ CONTAINS
         ! migration of particles between grids
         ! and also across MPI ranks (processes)
         CALL exchange_particles(my_particle_list)
+
+        CALL stop_timer(910)
 
     END SUBROUTINE timeintegrate_particles
 

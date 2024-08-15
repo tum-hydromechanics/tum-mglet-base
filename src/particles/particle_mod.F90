@@ -22,13 +22,21 @@ CONTAINS
         IF (dsim_particles) THEN
 
             IF (myid == 0) THEN
-                WRITE(*,*) "PARTICLE SIMULATION IS INITIALIZED ..."
+                WRITE(*,*) "PARTICLE SIMULATION STARTED"
             END IF
+
+            CALL set_timer(900, 'PARTICLES')
+            CALL set_timer(910, 'PARTICLE_TIMEINTEGRATION')
+            CALL set_timer(920, 'PARTICLE_SNAPSHOTS')
+
+            CALL start_timer(900)
 
             CALL init_particle_list()
 
             ! initializing intra-level communication
             CALL init_particle_exchange()
+
+            CALL stop_timer(900)
 
         ELSE
 
@@ -41,9 +49,11 @@ CONTAINS
     END SUBROUTINE init_particles
 
 
-    SUBROUTINE finish_particles
+    SUBROUTINE finish_particles()
 
-        WRITE(*,*) "TO BE DONE---"
+        ! TODO: DEALLOCATIONS ETC. ...
+
+        WRITE(*,*) "PARTICLE SIMULATION FINISHED"
 
     END SUBROUTINE finish_particles
 

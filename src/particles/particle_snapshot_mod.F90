@@ -47,6 +47,8 @@ CONTAINS
         INTEGER(intk) :: i
         LOGICAL :: snapshots_exist
 
+        CALL start_timer(920)
+
         INQUIRE(file = 'Particle_Snapshots/snapshot0.pvtp', exist = snapshots_exist)
 
         IF (snapshots_exist) THEN
@@ -123,14 +125,22 @@ CONTAINS
             WRITE(*,*) ' '
         END IF
 
+        CALL stop_timer(920)
+
     END SUBROUTINE init_psnapshots
 
     !------------------------------
 
     SUBROUTINE write_psnapshot(itstep, timeph)
 
+        ! subroutine arguments
         INTEGER(intk), INTENT(in) :: itstep
         REAL(realk), INTENT(in) :: timeph
+
+        ! local variables
+        INTEGER(intk) :: i, dcontinue
+
+        CALL start_timer(920)
 
         IF (psnapshot_info%timesteps(psnapshot_info%counter + 1) == itstep) THEN
 
@@ -144,22 +154,36 @@ CONTAINS
 
         END IF
 
+        CALL stop_timer(920)
+
     END SUBROUTINE write_psnapshot
 
     !------------------------------
 
     SUBROUTINE create_psnapshot_subfolder()
 
+        ! local variables
+        INTEGER(intk) :: i, dummy
         CHARACTER(len = mglet_filename_max) :: subfolder
+        TYPE(MPI_Request) :: request
 
         IF (myid == 0) THEN
 
             WRITE(subfolder, '("Particle_Snapshots/snapshot", I0)') psnapshot_info%counter - 1_intk
             CALL create_directory(TRIM(subfolder)) ! ! ! realtive to working directory ! ! !
 
+            DO i = 1, numprocs - 1
+                CALL MPI_ISend(dummy, 1, mglet_mpi_int, &
+                i, 0, MPI_COMM_WORLD, request)
+            END DO
+
+        ELSE
+
+            CALL MPI_Recv(dummy, 1, mglet_mpi_int, 0, 0, MPI_COMM_WORLD, MPI_STATUS_IGNORE)
+
         END IF
 
-        CALL MPI_Barrier(MPI_COMM_WORLD)
+        ! CALL MPI_Barrier(MPI_COMM_WORLD)
 
     END SUBROUTINE create_psnapshot_subfolder
 
@@ -282,6 +306,8 @@ CONTAINS
         INTEGER(intk) :: i, unit = 164
         CHARACTER(len = mglet_filename_max) :: filename
 
+        CALL start_timer(920)
+
         IF (myid == 0) THEN
 
             WRITE(filename,'("Particle_Snapshots/timeinfo.txt")')
@@ -300,6 +326,8 @@ CONTAINS
             END DO
 
         END IF
+
+        CALL stop_timer(920)
 
     END SUBROUTINE write_psnapshot_timeinfo
 
