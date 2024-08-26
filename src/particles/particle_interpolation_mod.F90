@@ -7,12 +7,11 @@ IMPLICIT NONE
 CONTAINS
 
     SUBROUTINE get_particle_uvw(kk, jj, ii, particle, &
-                 p_u, p_v, p_w, xstag, ystag, zstag, u, v, w, x, y, z, dx, dy, dz, ddx, ddy, ddz)
+                 p_u, p_v, p_w, u, v, w, x, y, z, dx, dy, dz, ddx, ddy, ddz)
 
         INTEGER(intk), INTENT(in) :: kk, jj, ii
         TYPE(baseparticle_t), INTENT(in) :: particle
         REAL(realk), INTENT(out) :: p_u, p_v, p_w
-        REAL(realk), INTENT(in) :: xstag(ii), ystag(jj), zstag(kk)
         REAL(realk), INTENT(in) :: u(kk, jj, ii), v(kk, jj, ii), w(kk, jj, ii)
         REAL(realk), INTENT(in) :: x(ii), y(jj), z(kk)
         REAL(realk), INTENT(in), OPTIONAL :: dx(ii), dy(jj), dz(kk), ddx(ii), ddy(jj), ddz(kk)
@@ -21,7 +20,7 @@ CONTAINS
          .AND. PRESENT(ddx) .AND. PRESENT(ddy) .AND. PRESENT(ddz)) THEN
 
             CALL gobert_particle_uvw(kk, jj, ii, particle, &
-             p_u, p_v, p_w, xstag, ystag, zstag, u, v, w, x, y, z, dx, dy, dz, ddx, ddy, ddz)
+             p_u, p_v, p_w, u, v, w, x, y, z, dx, dy, dz, ddx, ddy, ddz)
 
         ELSE
 

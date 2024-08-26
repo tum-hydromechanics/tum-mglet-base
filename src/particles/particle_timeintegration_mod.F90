@@ -4,6 +4,7 @@ MODULE particle_timeintegration_mod
 
     USE particle_interpolation_mod
     USE particle_exchange_mod
+    USE particle_list_mod
     USE core_mod
 
     IMPLICIT NONE
@@ -27,7 +28,7 @@ CONTAINS
 
         REAL(realk), POINTER, CONTIGUOUS, DIMENSION(:) :: x, y, z
         REAL(realk), POINTER, CONTIGUOUS, DIMENSION(:) :: xstag, ystag, zstag
-        REAL(realk), POINTER, CONTIGUOUS, DIMENSION(:) :: dx_f, dy_f, dz_f, ddx_f, ddy_f, ddz_f
+        REAL(realk), POINTER, CONTIGUOUS, DIMENSION(:) :: dx, dy, dz, ddx, ddy, ddz
         REAL(realk), POINTER, CONTIGUOUS, DIMENSION(:, :, :) :: u, v, w
 
         REAL(realk) :: rand(3), diffusion_dx, diffusion_dy, diffusion_dz, advection_dx, advection_dy, advection_dz, pdx, pdy, pdz
@@ -125,13 +126,13 @@ CONTAINS
 
                 ! gobert
                 CALL get_particle_uvw(kk, jj, ii, my_particle_list%particles(i), &
-                 p_u, p_v, p_w, xstag, ystag, zstag, u, v, w, x, y, z, dx, dy, dz, ddx, ddy, ddz)
+                 p_u, p_v, p_w, u, v, w, x, y, z, dx, dy, dz, ddx, ddy, ddz)
 
             ELSE
 
                 ! nearest cell
                 CALL get_particle_uvw(kk, jj, ii, my_particle_list%particles(i), &
-                 p_u, p_v, p_w, xstag, ystag, zstag, u, v, w, x, y, z)
+                 p_u, p_v, p_w, u, v, w, x, y, z)
 
             END IF
 
