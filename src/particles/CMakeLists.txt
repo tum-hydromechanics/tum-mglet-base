@@ -8,7 +8,6 @@ add_library(particles STATIC
     particle_interpolation_mod.F90
     particle_timeintegration_mod.F90
     particle_mod.F90
-    particle_interpolation_mod.F90
 )
 
 target_include_directories(particles

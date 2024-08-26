@@ -7,7 +7,7 @@ IMPLICIT NONE
 CONTAINS
 
     SUBROUTINE get_particle_uvw(kk, jj, ii, particle, &
-                 p_u, p_v, p_w, xstag, ystag, zstag, u, v, w, x, y, z)
+                 p_u, p_v, p_w, xstag, ystag, zstag, u, v, w, x, y, z, dx, dy, dz, ddx, ddy, ddz)
 
         INTEGER(intk), INTENT(in) :: kk, jj, ii
         TYPE(baseparticle_t), INTENT(in) :: particle
@@ -15,11 +15,13 @@ CONTAINS
         REAL(realk), INTENT(in) :: xstag(ii), ystag(jj), zstag(kk)
         REAL(realk), INTENT(in) :: u(kk, jj, ii), v(kk, jj, ii), w(kk, jj, ii)
         REAL(realk), INTENT(in) :: x(ii), y(jj), z(kk)
+        REAL(realk), INTENT(in), OPTIONAL :: dx(ii), dy(jj), dz(kk), ddx(ii), ddy(jj), ddz(kk)
 
-        IF (dinterp_particles) THEN
+        IF (dinterp_particles .AND. PRESENT(dx) .AND. PRESENT(dy) .AND. PRESENT(dz) &
+         .AND. PRESENT(ddx) .AND. PRESENT(ddy) .AND. PRESENT(ddz)) THEN
 
-            CALL trilinear_particle_uvw(kk, jj, ii, particle, &
-             p_u, p_v, p_w, xstag, ystag, zstag, u, v, w, x, y, z)
+            CALL gobert_particle_uvw(kk, jj, ii, particle, &
+             p_u, p_v, p_w, xstag, ystag, zstag, u, v, w, x, y, z, dx, dy, dz, ddx, ddy, ddz)
 
         ELSE
 
@@ -86,7 +88,7 @@ CONTAINS
         alpha = (u(p_k, p_j, p_i) - u(p_k, p_j, p_i - 1)) / ddx(p_i)
 
         beta = 0.25 * ((u(p_k, p_j + 1, p_i) + u(p_k, p_j + 1, p_i - 1) - u(p_k, p_j, p_i) - u(p_k, p_j, p_i - 1)) / dy(p_j) &
-         + (u(p_k, p_j, p_i) + u(p_k, p_j, p_i - 1) - u(p_k, p_j-1, p_i) - u(p_k, p_j - 1, p_i - 1)) / dy(p_j -1))
+         + (u(p_k, p_j, p_i) + u(p_k, p_j, p_i - 1) - u(p_k, p_j - 1, p_i) - u(p_k, p_j - 1, p_i - 1)) / dy(p_j -1))
 
         gamma = 0.25 * ((u(p_k + 1, p_j, p_i) + u(p_k + 1, p_j, p_i - 1) - u(p_k, p_j, p_i) - u(p_k, p_j, p_i - 1)) / dz(p_k) &
          + (u(p_k, p_j, p_i) + u(p_k, p_j, p_i - 1) - u(p_k - 1, p_j, p_i) - u(p_k - 1, p_j, p_i - 1)) / dz(p_k - 1))
@@ -103,21 +105,21 @@ CONTAINS
          + (v(p_k, p_j, p_i) + v(p_k, p_j - 1, p_i) - v(p_k, p_j, p_i - 1) - v(p_k, p_j - 1, p_i - 1)) /dx(p_i - 1))
 
         gamma = 0.25 * ((v(p_k + 1, p_j, p_i) + v(p_k + 1, p_j - 1, p_i) - v(p_k, p_j, p_i) - v(p_k, p_j - 1, p_i)) / dz(p_k) &
-         + (v(p_k, p_j, p_i) + v(p_k, p_j - 1, p_i) - v(p_k-1, p_j, p_i) - v(p_k - 1, p_j - 1, p_i)) / dz(p_k - 1))
+         + (v(p_k, p_j, p_i) + v(p_k, p_j - 1, p_i) - v(p_k - 1, p_j, p_i) - v(p_k - 1, p_j - 1, p_i)) / dz(p_k - 1))
 
         delta = 0.5 * (v(p_k, p_j, p_i) + v(p_k, p_j - 1, p_i) &
          - alpha * (ddy(p_j) - dy(p_j - 1)) - beta * (ddx(p_i) - dx(p_i - 1)) - gamma * (ddz(p_k) - dz(p_k - 1)))
 
         p_v = alpha * (p_y - y(p_j)) + beta * (p_x - x(p_i)) + gamma * (p_z - z(p_k)) + delta
 
-        ! v interpolation
+        ! w interpolation
         alpha = (w(p_k, p_j, p_i) - w(p_k - 1 ,p_j ,p_i)) / ddz(p_k)
 
         beta = 0.25 * ((w(p_k, p_j, p_i + 1) + w(p_k - 1, p_j, p_i + 1) - w(p_k, p_j, p_i) - w(p_k - 1, p_j, p_i)) / dx(p_i) &
-         + (w(p_k, p_j, p_i) + w(p_k - 1, p_j, p_i) - w(p_k, p_j, p_i - 1)- w(p_k - 1, p_j, p_i - 1)) / dx(p_i - 1))
+         + (w(p_k, p_j, p_i) + w(p_k - 1, p_j, p_i) - w(p_k, p_j, p_i - 1) - w(p_k - 1, p_j, p_i - 1)) / dx(p_i - 1))
 
         gamma = 0.25 * ((w(p_k, p_j + 1, p_i) + w(p_k - 1, p_j + 1, p_i) - w(p_k, p_j, p_i) - w(p_k - 1, p_j, p_i)) / dy(p_j) &
-         + (w(p_k, p_j, p_i) + w(p_k - 1, p_j, p_i) - w(p_k, p_j - 1, p_i) - w(p_k-1, p_j - 1, p_i)) / dy(p_j - 1))
+         + (w(p_k, p_j, p_i) + w(p_k - 1, p_j, p_i) - w(p_k, p_j - 1, p_i) - w(p_k - 1, p_j - 1, p_i)) / dy(p_j - 1))
 
         delta = 0.5 * (w(p_k, p_j, p_i) + w(p_k - 1, p_j, p_i) &
          - alpha * (ddz(p_k) - dz(p_k - 1)) - beta * (ddx(p_i) - dx(p_i - 1)) - gamma * (ddy(p_j) - dy(p_j - 1)))
@@ -235,4 +237,4 @@ CONTAINS
 
     END SUBROUTINE interp_trilinear
 
-END MODULE
+END MODULE particle_interpolation_mod

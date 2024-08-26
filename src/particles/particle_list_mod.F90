@@ -112,7 +112,7 @@ CONTAINS
 
             CALL dist_ipart(my_particle_list%active_np, ipart_arr)
 
-            CALL dist_part(my_particle_list%active_np, p_igrid_arr, x, y, z)
+            CALL dist_particles(my_particle_list%active_np, p_igrid_arr, x, y, z)
 
             IF (myid == 0) THEN
                 SELECT CASE (TRIM(particle_terminal))
@@ -241,7 +241,7 @@ CONTAINS
 
     !-----------------------------------
 
-    SUBROUTINE dist_part(npart, p_igrid_arr, x, y, z)
+    SUBROUTINE dist_particles(npart, p_igrid_arr, x, y, z)
 
         ! subroutine arguments...
         INTEGER(intk), INTENT(in) :: npart
@@ -320,7 +320,7 @@ CONTAINS
 
         END DO
 
-    END SUBROUTINE dist_part
+    END SUBROUTINE dist_particles
 
     !===================================
 

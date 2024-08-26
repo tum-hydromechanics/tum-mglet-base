@@ -2,7 +2,6 @@
 
 MODULE particle_timeintegration_mod
 
-    USE particle_list_mod
     USE particle_interpolation_mod
     USE particle_exchange_mod
     USE core_mod
@@ -23,10 +22,12 @@ CONTAINS
 
         TYPE(field_t), POINTER :: x_f, y_f, z_f
         TYPE(field_t), POINTER :: xstag_f, ystag_f, zstag_f
+        TYPE(field_t), POINTER :: dx_f, dy_f, dz_f, ddx_f, ddy_f, ddz_f
         TYPE(field_t), POINTER :: u_f, v_f, w_f
 
         REAL(realk), POINTER, CONTIGUOUS, DIMENSION(:) :: x, y, z
         REAL(realk), POINTER, CONTIGUOUS, DIMENSION(:) :: xstag, ystag, zstag
+        REAL(realk), POINTER, CONTIGUOUS, DIMENSION(:) :: dx_f, dy_f, dz_f, ddx_f, ddy_f, ddz_f
         REAL(realk), POINTER, CONTIGUOUS, DIMENSION(:, :, :) :: u, v, w
 
         REAL(realk) :: rand(3), diffusion_dx, diffusion_dy, diffusion_dz, advection_dx, advection_dy, advection_dz, pdx, pdy, pdz
@@ -45,6 +46,18 @@ CONTAINS
         CALL get_field(u_f, "U")
         CALL get_field(v_f, "V")
         CALL get_field(w_f, "W")
+
+        IF (dinterp_particles) THEN
+
+            CALL get_field(dx_f, "DX")
+            CALL get_field(dy_f, "DY")
+            CALL get_field(dz_f, "DZ")
+
+            CALL get_field(ddx_f, "DDX")
+            CALL get_field(ddy_f, "DDY")
+            CALL get_field(ddz_f, "DDZ")
+
+        END IF
 
         IF (myid == 0) THEN
             WRITE(*, *) '' ! REMOVE later
@@ -91,13 +104,36 @@ CONTAINS
             CALL v_f%get_ptr(v, igrid)
             CALL w_f%get_ptr(w, igrid)
 
+            IF (dinterp_particles) THEN
+
+                CALL dx_f%get_ptr(dx, igrid)
+                CALL dy_f%get_ptr(dy, igrid)
+                CALL dz_f%get_ptr(dz, igrid)
+
+                CALL ddx_f%get_ptr(ddx, igrid)
+                CALL ddy_f%get_ptr(ddy, igrid)
+                CALL ddz_f%get_ptr(ddz, igrid)
+
+            END IF
+
             CALL get_mgdims(kk, jj, ii, igrid)
 
             ! EXPLICIT EULER FOR NOW
 
             ! Advection
-            CALL get_particle_uvw(kk, jj, ii, my_particle_list%particles(i), &
+            IF (dinterp_particles) THEN
+
+                ! gobert
+                CALL get_particle_uvw(kk, jj, ii, my_particle_list%particles(i), &
+                 p_u, p_v, p_w, xstag, ystag, zstag, u, v, w, x, y, z, dx, dy, dz, ddx, ddy, ddz)
+
+            ELSE
+
+                ! nearest cell
+                CALL get_particle_uvw(kk, jj, ii, my_particle_list%particles(i), &
                  p_u, p_v, p_w, xstag, ystag, zstag, u, v, w, x, y, z)
+
+            END IF
 
             advection_dx = p_u * dt
             advection_dy = p_v * dt
