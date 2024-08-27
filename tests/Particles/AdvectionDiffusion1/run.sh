@@ -11,7 +11,7 @@ if [[ "$ACTION" == "test" ]]; then
 elif [[ "$ACTION" == "newtest" ]]; then
     rm -rf LOGS fields.h5 ib_stencils.h5 mglet-perf-report.txt *.OUT Particle_Snapshots
     MGLET_BIN=$2
-    mpirun -n 1 $MGLET_BIN 2>&1 | tee mglet.OUT
+    mpirun -n 2 $MGLET_BIN 2>&1 | tee mglet.OUT
 elif [[ "$ACTION" == "clean" ]]; then
     rm -rf LOGS fields.h5 ib_stencils.h5 mglet-perf-report.txt *.OUT Particle_Snapshots
 else

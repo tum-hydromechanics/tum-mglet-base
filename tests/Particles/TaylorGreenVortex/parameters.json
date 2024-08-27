@@ -52,7 +52,7 @@
     "particles": {
         "terminal": "normal",
         "read": false,
-        "interp": false,
+        "interp": true,
         "write": true,
         "snapshot_step": 1,
         "init_np": 10000,

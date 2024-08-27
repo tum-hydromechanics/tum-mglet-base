@@ -50,7 +50,7 @@
     "particles": {
         "terminal": "verbose",
         "read": true,
-        "interp": false,
+        "interp": true,
         "write": true,
         "snapshot_step": 1,
         "init_np": 10,
