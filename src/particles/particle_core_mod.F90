@@ -3,7 +3,9 @@
 MODULE particle_core_mod
 
     USE grids_mod
+    USE field_mod
     USE fields_mod
+
 
     USE particle_config_mod
 

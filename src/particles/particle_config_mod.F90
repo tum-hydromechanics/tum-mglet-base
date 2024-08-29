@@ -1,13 +1,13 @@
 MODULE particle_config_mod
 
 !USE core_mod
-USE comms_mod, ONLY: myid
+USE comms_mod, ONLY: myid, numprocs
 USE config_mod
 USE err_mod
 USE fort7_mod
 USE precision_mod
+USE runinfo_mod
 USE timer_mod
-
 
 IMPLICIT NONE
 
