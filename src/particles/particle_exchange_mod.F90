@@ -410,7 +410,7 @@ CONTAINS
         ! Check if list is long enough and add additional space if not
         IF ( particle_list%max_np - particle_list%active_np < sizeRecvBuf) THEN
 
-            CALL enlarge_particle_list(particle_list, INT(1.0 * (sizeRecvBuf - (particle_list%max_np - particle_list%active_np))))
+            CALL reallocate_particle_list(particle_list, INT(1.0 * (sizeRecvBuf - (particle_list%max_np - particle_list%active_np))))
 
         END IF
 

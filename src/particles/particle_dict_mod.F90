@@ -81,7 +81,7 @@ CONTAINS
                 CYCLE
             END IF
 
-            IF (xtemp => maxx) THEN
+            IF (xtemp >= maxx) THEN
                 CYCLE
             END IF
 
@@ -89,7 +89,7 @@ CONTAINS
                 CYCLE
             END IF
 
-            IF (ytemp => maxy) THEN
+            IF (ytemp >= maxy) THEN
                 CYCLE
             END IF
 
@@ -97,7 +97,7 @@ CONTAINS
                 CYCLE
             END IF
 
-            IF (ztemp => maxz) THEN
+            IF (ztemp >= maxz) THEN
                 CYCLE
             END IF
 

@@ -145,6 +145,12 @@ CONTAINS
 
             END DO
 
+            DEALLOCATE(ipart_arr)
+            DEALLOCATE(p_igrid_arr)
+            DEALLOCATE(x)
+            DEALLOCATE(y)
+            DEALLOCATE(z)
+
         END IF
 
         SELECT CASE (TRIM(particle_terminal))
@@ -181,11 +187,11 @@ CONTAINS
     !-----------------------------------
 
     ! maybe this way of adding length to the particle list should be replaced by a smart pointer approach for the particle list type?
-    SUBROUTINE enlarge_particle_list(particle_list, add_len)
+    SUBROUTINE reallocate_particle_list(particle_list, add_len)
 
         ! subroutine arguments
         TYPE(particle_list_t), INTENT(inout) :: particle_list
-        INTEGER, INTENT(in) :: add_len
+        INTEGER, INTENT(in) :: add_len ! can also be negative to shorten the particle list
 
         !local variables
         INTEGER(intk) :: i
@@ -205,6 +211,7 @@ CONTAINS
         END DO
 
         particle_list%max_np = particle_list%max_np + add_len
+        particle_list%ifinal = MIN(particle_list%ifinal, particle_list%max_np)
 
         CALL MOVE_ALLOC(particles_tmp, particle_list%particles) ! "rename" / make my
 
@@ -219,7 +226,7 @@ CONTAINS
                 WRITE(*, *) "Particle list enlarged by ", add_len, " on process ", myid, "."
         END SELECT
 
-    END SUBROUTINE
+    END SUBROUTINE reallocate_particle_list
 
     !-----------------------------------
 
