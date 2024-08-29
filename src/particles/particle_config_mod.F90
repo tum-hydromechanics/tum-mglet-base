@@ -2,7 +2,7 @@ MODULE particle_config_mod
 
 !USE core_mod
 USE comms_mod, ONLY: myid
-USE config_mod, ONLY: config_t
+USE config_mod
 USE err_mod
 USE fort7_mod
 USE precision_mod
