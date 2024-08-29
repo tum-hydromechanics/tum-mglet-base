@@ -2,7 +2,6 @@
 
 MODULE particle_core_mod
 
-    !USE core_mod
     USE grids_mod
     USE fields_mod
 

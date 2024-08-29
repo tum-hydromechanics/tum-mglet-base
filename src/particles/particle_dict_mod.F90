@@ -1,6 +1,5 @@
 MODULE particle_dict_mod
 
-    !USE core_mod
     USE grids_mod
 
     USE particle_config_mod
