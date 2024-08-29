@@ -66,7 +66,7 @@ CONTAINS
 
         !-----------------------------------
 
-        CALL pconf%get_value("/interp", dinterp_particles, .FALSE.)
+        CALL pconf%get_value("/interp", dinterp_particles, .TRUE.)
 
         !-----------------------------------
 
@@ -213,7 +213,15 @@ CONTAINS
                     CASE ("none")
                         CONTINUE
                     CASE ("normal")
-                        CONTINUE
+                        WRITE(*, '("PARTICLE CONFIGURATION:")')
+                        WRITE(*, '("Terminal Output:              ", A11)') particle_terminal
+                        WRITE(*, '("Reading ParticlesDict:        ", L11)') dread_particles
+                        WRITE(*, '("Field Interpolation:          ", L11)') dinterp_particles
+                        WRITE(*, '("Writing Particle Snapshots:   ", L11)') dwrite_particles
+                        WRITE(*, '("Particle Snapshot Step:       ", I11)') psnapshot_step
+                        WRITE(*, '("Max Particle List Length:     ", I11)') plist_len
+                        WRITE(*, '("Initial number of Particles:  ", I11)') init_npart
+                        WRITE(*, '("Diffusion Vector:             ", F11.9, " ", F11.9, " ", F11.9)') D(1), D(2), D(3)
                     CASE ("verbose")
                         WRITE(*, '("PARTICLE CONFIGURATION:")')
                         WRITE(*, '("Terminal Output:              ", A11)') particle_terminal

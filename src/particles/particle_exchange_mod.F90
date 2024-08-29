@@ -535,6 +535,7 @@ CONTAINS
         DEALLOCATE( sendBufParticle )
         DEALLOCATE( ndisprecv )
         DEALLOCATE( recvBufParticle )
+        DEALLOCATE( sendind )
 
         ! --- step 10: Clearing the buffers. Done.
 
@@ -1228,7 +1229,7 @@ CONTAINS
                 particle_list%particles(sendind(i)) = recvBufParticle(i)
             END DO
 
-            DO i = i, sizeRecvBuf ! i = sizeSendBuf
+            DO i = i, sizeRecvBuf ! i = sizeSendBuf + 1
                 particle_list%ifinal = particle_list%ifinal + 1
                 particle_list%particles(particle_list%ifinal) = recvBufParticle(i)
             END DO
@@ -1275,95 +1276,5 @@ CONTAINS
         END IF
 
     END SUBROUTINE integrate_particles
-
-    ! alternative way of copying recieved particles into passed particle list
-    ! (dont know if this works properly due to the do concurrent ...)
-    SUBROUTINE integrate_particles_concurrent(particle_list, sendind)
-
-        ! subroutine argument
-        TYPE(particle_list_t), INTENT(inout) :: particle_list
-        INTEGER(intk), INTENT(in) :: sendind(sizeSendBuf)
-
-        !local variables
-        INTEGER(intk) :: i, j
-
-        IF (sizeSendBuf == 0 .AND. sizeRecvBuf == 0) THEN
-
-            RETURN
-
-        END IF
-
-        particle_list%active_np = particle_list%active_np + sizeRecvBuf
-
-        IF (sizeSendBuf <= sizeRecvBuf) THEN
-
-            IF (1 <= MIN(sizeSendBuf, sizeRecvBuf - sizeSendBuf)) THEN
-                DO CONCURRENT (i = 1:MIN(sizeSendBuf, sizeRecvBuf - sizeSendBuf))
-                    particle_list%particles(sendind(i)) = recvBufParticle(i)
-                    particle_list%particles(particle_list%ifinal + i) = recvBufParticle(sizeRecvBuf + 1 - i)
-                END DO
-                i = MIN(sizeSendBuf, sizeRecvBuf - sizeSendBuf) + 1
-            ELSE
-                i = 1
-            END IF
-
-            IF (i <= sizeSendBuf) THEN
-                DO CONCURRENT (j = i:sizeSendBuf)
-                    particle_list%particles(sendind(j)) = recvBufParticle(j)
-                END DO
-            END IF
-
-            IF (i <= sizeRecvBuf - sizeSendBuf) THEN
-                DO CONCURRENT (j = i:sizeRecvBuf - sizeSendBuf)
-                    particle_list%particles(particle_list%ifinal + j) = recvBufParticle(sizeRecvBuf + 1 - j)
-                END DO
-            END IF
-
-            particle_list%ifinal = particle_list%ifinal + sizeRecvBuf - sizeSendBuf
-
-        ELSE
-
-            IF (1 <= sizeRecvBuf) THEN
-                DO CONCURRENT (i = 1:sizeRecvBuf)
-                    particle_list%particles(sendind(i)) = recvBufParticle(i)
-                END DO
-            END IF
-
-            DO i = i, sizeSendBuf
-
-                IF (particle_list%ifinal == sendind(i)) THEN
-                    particle_list%ifinal = particle_list%ifinal - 1
-                    EXIT
-                END IF
-
-                IF (particle_list%ifinal < sendind(i)) THEN
-                    EXIT
-                END IF
-
-                DO j = 1, particle_list%ifinal - sendind(i)
-                    IF (particle_list%particles(particle_list%ifinal)%is_active == 1) THEN
-
-                        particle_list%particles(sendind(i)) = particle_list%particles(particle_list%ifinal)
-                        particle_list%particles(particle_list%ifinal)%is_active = 0
-                        particle_list%ifinal = particle_list%ifinal - 1
-                        EXIT
-
-                    ELSE
-
-                        particle_list%ifinal = particle_list%ifinal - 1
-
-                    END IF
-                END DO
-
-                IF (particle_list%particles(sendind(i))%is_active /= 1) THEN
-                    particle_list%ifinal = particle_list%ifinal - 1
-                    EXIT
-                END IF
-
-            END DO
-
-        END IF
-
-    END SUBROUTINE integrate_particles_concurrent
 
 END MODULE particle_exchange_mod

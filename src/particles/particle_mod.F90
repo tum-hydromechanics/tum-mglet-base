@@ -14,6 +14,7 @@ CONTAINS
 
     SUBROUTINE init_particles()
 
+        ! WHy call here agian?
         USE particle_timeintegration_mod
         USE particle_snapshot_mod
 
