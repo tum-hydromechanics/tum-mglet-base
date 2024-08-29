@@ -1,7 +1,10 @@
 MODULE particle_dict_mod
 
-    USE core_mod
-    USE particle_config_mod, ONLY: particle_terminal
+    !USE core_mod
+    USE grids_mod
+
+    USE particle_config_mod
+
     IMPLICIT NONE
 
 CONTAINS

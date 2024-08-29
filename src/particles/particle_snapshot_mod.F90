@@ -7,9 +7,9 @@ MODULE particle_snapshot_mod
     ! TODO: psnapshot_info_t to store number of serial files per time, times and accuracy/format of point coordinates
     ! (sort of as a log file)
 
-    USE particle_list_mod
-    USE MPI_f08
+    USE utils_mod
 
+    USE particle_list_mod
 
     IMPLICIT NONE
 

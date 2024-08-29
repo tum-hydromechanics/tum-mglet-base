@@ -1,9 +1,7 @@
 MODULE particle_exchange_mod
 
     USE, INTRINSIC :: ISO_C_BINDING
-    USE MPI_f08
-    USE core_mod
-    USE comms_mod, ONLY: myid
+
     USE particle_list_mod
     USE particle_core_mod
 

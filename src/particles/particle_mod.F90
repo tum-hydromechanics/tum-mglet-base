@@ -2,9 +2,9 @@ MODULE particle_mod
 
     ! Do not 'USE' core_mod or ib_mod here, because they will get exported
     ! (this module had no 'PRIVATE' default)
-    USE particle_timeintegration_mod
-    USE particle_snapshot_mod
-    USE particle_exchange_mod
+    !USE particle_timeintegration_mod
+    !USE particle_snapshot_mod
+    !USE particle_exchange_mod
 
     IMPLICIT NONE(type, external)
 
@@ -14,9 +14,10 @@ CONTAINS
 
     SUBROUTINE init_particles()
 
-        ! WHy call here agian?
+        ! WHy call here?
         USE particle_timeintegration_mod
         USE particle_snapshot_mod
+        USE particle_exchange_mod
 
         CALL init_particle_config()
 

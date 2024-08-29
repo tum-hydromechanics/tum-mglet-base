@@ -1,6 +1,12 @@
 MODULE particle_config_mod
 
-USE core_mod
+!USE core_mod
+USE comms_mod, ONLY: myid
+USE err_mod
+USE fort7_mod
+USE precison_mod
+USE timer_mod
+
 
 IMPLICIT NONE
 

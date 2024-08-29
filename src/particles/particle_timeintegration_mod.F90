@@ -5,7 +5,6 @@ MODULE particle_timeintegration_mod
     USE particle_interpolation_mod
     USE particle_exchange_mod
     USE particle_list_mod
-    USE core_mod
 
     IMPLICIT NONE
 
