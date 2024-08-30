@@ -16,9 +16,8 @@ CONTAINS
         REAL(realk), INTENT(in) :: dt
 
         ! local variables
-        INTEGER(intk) :: igrid, nbrgrid, nbrproc, i, ii, jj, kk, gfound, ig
+        INTEGER(intk) :: igrid, i, ii, jj, kk, gfound, ig
         REAL(realk) :: p_u, p_v, p_w
-        REAL(realk) :: minx, maxx, miny, maxy, minz, maxz, nbrminx, nbrmaxx, nbrminy, nbrmaxy, nbrminz, nbrmaxz
 
         TYPE(field_t), POINTER :: x_f, y_f, z_f
         TYPE(field_t), POINTER :: xstag_f, ystag_f, zstag_f
