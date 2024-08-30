@@ -209,7 +209,9 @@ CONTAINS
         CALL write_runinfo(itstep, ittot, timeph, dt, targetcflmax, deltawt, &
             ncellstot)
 
-        CALL write_psnapshot_timeinfo()
+        IF (dsim_particles .AND. dwrite_particles) THEN
+            CALL write_psnapshot_timeinfo()
+        END IF
 
         CALL finish_statistics()
     END SUBROUTINE finish_timeloop

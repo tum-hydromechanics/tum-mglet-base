@@ -10,7 +10,7 @@ USE timer_mod
 
 IMPLICIT NONE
 
-LOGICAL :: dsim_particles
+LOGICAL :: dsim_particles = .FALSE.
 
 CHARACTER(len = 7) :: particle_terminal
 
