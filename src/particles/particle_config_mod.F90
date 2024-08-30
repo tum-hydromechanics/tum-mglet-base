@@ -6,7 +6,6 @@ USE config_mod
 USE err_mod
 USE fort7_mod
 USE precision_mod
-USE runinfo_mod
 USE timer_mod
 
 IMPLICIT NONE
