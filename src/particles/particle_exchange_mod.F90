@@ -44,16 +44,12 @@ MODULE particle_exchange_mod
     TYPE(MPI_Request), ALLOCATABLE :: sendReqs(:), recvReqs(:)
 
     ! Lists that hold the messages that are ACTUALLY sendt and received
-    INTEGER(intk) :: nSend, nRecv, nRecvFaces
+    INTEGER(intk) :: nRecv
     INTEGER(int32), ALLOCATABLE :: sendList(:), recvList(:)
     INTEGER(intk), ALLOCATABLE :: recvIdxList(:,:)
 
     ! Number of send and receive connections
     INTEGER(intk) :: iSend = 0, iRecv = 0
-
-    ! Counters for send- and receive operations (for locations in
-    ! send and receive buffers)
-    INTEGER(intk) :: sendCounter, recvCounter
 
     ! Variable to indicate if the connection information has
     ! been created.
@@ -88,34 +84,6 @@ MODULE particle_exchange_mod
         3, 2, 3, 6, &
         3, 2, 4, 5, &
         3, 2, 4, 6 /), SHAPE(facelist))
-
-    INTEGER(intk), PARAMETER :: facenbr(26) = (/ &
-        2, &
-        1, &
-        4, &
-        3, &
-        6, &
-        5, &
-        12, &
-        11, &
-        14, &
-        13, &
-        8, &
-        7, &
-        10, &
-        9, &
-        18, &
-        17, &
-        16, &
-        15, &
-        26, &
-        25, &
-        24, &
-        23, &
-        22, &
-        21, &
-        20, &
-        19 /)
 
     ! These patterns come from a Python program, however, it was discovered,
     ! that the GC fcorr-stencils need in inner corners a special rescue
@@ -544,10 +512,10 @@ CONTAINS
 
 
     SUBROUTINE init_particle_exchange()
-        INTEGER(intk) :: i, iface, igrid, j
+        INTEGER(intk) :: i, iface, igrid
         INTEGER(intk) :: iface1, iface2, iface3
         INTEGER(intk) :: itypbc1, itypbc2, itypbc3
-        INTEGER(intk) :: iprocnbr, itypbc, inbrface, inbrgrid
+        INTEGER(intk) :: iprocnbr, itypbc, inbrgrid
 
         INTEGER(int32), ALLOCATABLE :: maxTag(:)
         INTEGER(int32), ALLOCATABLE :: sendcounts(:), sdispls(:)
@@ -799,70 +767,70 @@ CONTAINS
 
     END SUBROUTINE init_particle_exchange
 
-    ! JULIUS: from my understanding this is obsolete here, not sure though...
-    SUBROUTINE get_nbrs(iface, neighbours, nbrgrid, nbrface)
-        INTEGER(intk), INTENT(IN) :: iface
-        INTEGER(intk), INTENT(IN) :: neighbours(26)
-        INTEGER(intk), INTENT(OUT) :: nbrgrid
-        INTEGER(intk), INTENT(OUT) :: nbrface
-
-        INTEGER(intk) :: n_rescue, i, dir
-        INTEGER(intk) :: iface1, iface2, iface3
-        INTEGER(intk) :: itypbc1, itypbc2, itypbc3
-
-        ! Should be 7...
-        n_rescue = SIZE(rescue_nbr, 1)
-
-        ! 0 means no connect
-        nbrgrid = 0
-        nbrface = 0
-        DO i = 1, n_rescue
-            dir = rescue_dir(i, iface)
-
-            ! rescue_dir is ordered and when a 0 is encountered there is
-            ! nothing more to do...
-            IF (dir == 0) THEN
-                EXIT
-            END IF
-
-            ! If there is a neighbour in this position, use this
-            IF (neighbours(dir) > 0) THEN
-                nbrgrid = neighbours(dir)
-                nbrface = rescue_nbr(i, iface)
-
-                ! Check if this is suited for a connect (symmetry req.)
-                ! This require knowledge of the global grid structure -
-                ! currently this is OK.
-                ! JULIUS: Is this ever relevant for the init connect method? See condition regarding boundaries
-                ! that is checked for each face, e.g. line 690
-                IF (nbrface > 18) THEN
-                    ! Get adjacent primary faces
-                    iface1 = facelist(2, nbrface)
-                    iface2 = facelist(3, nbrface)
-                    iface3 = facelist(4, nbrface)
-
-                    ! Get type of BC on these
-                    itypbc1 = itypboconds(1, iface1, nbrgrid)
-                    itypbc2 = itypboconds(1, iface2, nbrgrid)
-                    itypbc3 = itypboconds(1, iface3, nbrgrid)
-
-                    ! If none of the neighboring faces are CON or CO1, the connect
-                    ! should not be carried out - check next neighbour
-                    IF ((.NOT. (itypbc1 == 7 .OR. itypbc1 == 19)) .AND. &
-                            (.NOT. (itypbc2 == 7 .OR. itypbc2 == 19)) .AND. &
-                            (.NOT. (itypbc3 == 7 .OR. itypbc3 == 19))) THEN
-                        ! Reset neighbour information and cycle loop
-                        nbrgrid = 0
-                        nbrface = 0
-                        CYCLE
-                    END IF
-                END IF
-
-                ! If sofar, all is good!
-                EXIT
-            END IF
-        END DO
-    END SUBROUTINE get_nbrs
+!    ! JULIUS: from my understanding this is obsolete here, not sure though...
+!    SUBROUTINE get_nbrs(iface, neighbours, nbrgrid, nbrface)
+!        INTEGER(intk), INTENT(IN) :: iface
+!        INTEGER(intk), INTENT(IN) :: neighbours(26)
+!        INTEGER(intk), INTENT(OUT) :: nbrgrid
+!        INTEGER(intk), INTENT(OUT) :: nbrface
+!
+!        INTEGER(intk) :: n_rescue, i, dir
+!        INTEGER(intk) :: iface1, iface2, iface3
+!        INTEGER(intk) :: itypbc1, itypbc2, itypbc3
+!
+!        ! Should be 7...
+!        n_rescue = SIZE(rescue_nbr, 1)
+!
+!        ! 0 means no connect
+!        nbrgrid = 0
+!        nbrface = 0
+!        DO i = 1, n_rescue
+!            dir = rescue_dir(i, iface)
+!
+!            ! rescue_dir is ordered and when a 0 is encountered there is
+!            ! nothing more to do...
+!            IF (dir == 0) THEN
+!                EXIT
+!            END IF
+!
+!            ! If there is a neighbour in this position, use this
+!            IF (neighbours(dir) > 0) THEN
+!                nbrgrid = neighbours(dir)
+!                nbrface = rescue_nbr(i, iface)
+!
+!                ! Check if this is suited for a connect (symmetry req.)
+!                ! This require knowledge of the global grid structure -
+!                ! currently this is OK.
+!                ! JULIUS: Is this ever relevant for the init connect method? See condition regarding boundaries
+!                ! that is checked for each face, e.g. line 690
+!                IF (nbrface > 18) THEN
+!                    ! Get adjacent primary faces
+!                    iface1 = facelist(2, nbrface)
+!                    iface2 = facelist(3, nbrface)
+!                    iface3 = facelist(4, nbrface)
+!
+!                    ! Get type of BC on these
+!                    itypbc1 = itypboconds(1, iface1, nbrgrid)
+!                    itypbc2 = itypboconds(1, iface2, nbrgrid)
+!                    itypbc3 = itypboconds(1, iface3, nbrgrid)
+!
+!                    ! If none of the neighboring faces are CON or CO1, the connect
+!                    ! should not be carried out - check next neighbour
+!                    IF ((.NOT. (itypbc1 == 7 .OR. itypbc1 == 19)) .AND. &
+!                            (.NOT. (itypbc2 == 7 .OR. itypbc2 == 19)) .AND. &
+!                            (.NOT. (itypbc3 == 7 .OR. itypbc3 == 19))) THEN
+!                        ! Reset neighbour information and cycle loop
+!                        nbrgrid = 0
+!                        nbrface = 0
+!                        CYCLE
+!                    END IF
+!                END IF
+!
+!                ! If sofar, all is good!
+!                EXIT
+!            END IF
+!        END DO
+!    END SUBROUTINE get_nbrs
 
 
 
@@ -1136,12 +1104,6 @@ CONTAINS
         ! cleaning up the auxiliary type
         CALL MPI_Type_free(triple_int_mpi_type)
     END SUBROUTINE create_particle_mpitype
-
-    SUBROUTINE is_true_neigbour()
-
-
-
-    END SUBROUTINE is_true_neigbour
 
     SUBROUTINE update_coordinates(particle, destgrid, iface)
 
