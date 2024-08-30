@@ -31,14 +31,12 @@ CONTAINS
         !-----------------------------------
         TYPE(config_t) :: pconf
 
-        IF (myid == 0) THEN
-            IF (.NOT. fort7%exists("/particles")) THEN
-                IF (myid == 0) THEN
-                    WRITE(*, '("NO PARTICLE CONFIGURATION DATA. NO PARTICLE SIMULATION.")')
-                    WRITE(*, '()')
-                END IF
-                RETURN
+        IF (.NOT. fort7%exists("/particles")) THEN
+            IF (myid == 0) THEN
+                WRITE(*, '("NO PARTICLE CONFIGURATION DATA. NO PARTICLE SIMULATION.")')
+                WRITE(*, '()')
             END IF
+            RETURN
         END IF
 
         dsim_particles = .TRUE.
