@@ -137,9 +137,6 @@ CONTAINS
         INTEGER(intk), INTENT(in) :: itstep
         REAL(realk), INTENT(in) :: timeph
 
-        ! local variables
-        INTEGER(intk) :: i, dcontinue
-
         CALL start_timer(920)
 
         IF (psnapshot_info%timesteps(psnapshot_info%counter + 1) == itstep) THEN
