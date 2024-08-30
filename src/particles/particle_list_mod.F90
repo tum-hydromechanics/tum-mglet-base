@@ -45,7 +45,7 @@ CONTAINS
     SUBROUTINE init_particle_list()
 
         ! local variables
-        INTEGER(intk) :: i, j, global_np, read_np
+        INTEGER(intk) :: i, global_np, read_np
         INTEGER(intk), ALLOCATABLE :: ipart_arr(:), p_igrid_arr(:)
         REAL(realk), ALLOCATABLE :: x(:), y(:), z(:)
 
