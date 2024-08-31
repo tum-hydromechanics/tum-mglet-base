@@ -36,8 +36,12 @@ echo ------------ ADVECTION DIFFUSION 1 ----------
 cd ~/tum-mglet-base/tests/Particles/AdvectionDiffusion1
 ./run.sh newtest ../../../build/src/mglet
 
-echo ------------ TAYLOR GREEN VORTEX ----------
-cd ~/tum-mglet-base/tests/Particles/TaylorGreenVortex
+echo ------------ ADVECTION DIFFUSION 2 ----------
+cd ~/tum-mglet-base/tests/Particles/AdvectionDiffusion2
 ./run.sh newtest ../../../build/src/mglet
+
+#echo ------------ TAYLOR GREEN VORTEX ----------
+#cd ~/tum-mglet-base/tests/Particles/TaylorGreenVortex
+#./run.sh newtest ../../../build/src/mglet
 
 cd $cwd

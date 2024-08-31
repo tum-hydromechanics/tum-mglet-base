@@ -2,9 +2,7 @@ MODULE particle_config_mod
 
 !USE core_mod
 USE comms_mod, ONLY: myid, numprocs
-USE config_mod
 USE err_mod
-USE fort7_mod
 USE precision_mod
 USE timer_mod
 
@@ -27,6 +25,9 @@ REAL(realk) :: D(3) = 0.0_realk
 CONTAINS
 
     SUBROUTINE init_particle_config()
+
+        USE config_mod
+        USE fort7_mod
 
         !-----------------------------------
         TYPE(config_t) :: pconf
