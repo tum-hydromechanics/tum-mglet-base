@@ -3,9 +3,10 @@ MODULE statistics_mod
     USE field_mod
     USE fields_mod
     USE fort7_mod
+    USE grids_mod
     USE precision_mod
     USE timer_mod
-
+      
     IMPLICIT NONE(type, external)
     PRIVATE
 
@@ -36,7 +37,7 @@ MODULE statistics_mod
     INTEGER(intk), ALLOCATABLE :: active_fields(:)
 
     PUBLIC :: init_statistics, finish_statistics, register_statfield, &
-        sample_statistics, comp_avg, comp_sqr_avg, comp_cube_avg
+        sample_statistics, comp_avg, comp_sqr_avg, comp_cube_avg, differentiate
 
 CONTAINS
     SUBROUTINE init_statistics()
@@ -270,5 +271,133 @@ CONTAINS
         field%arr = field%arr(:)**3
     END SUBROUTINE comp_cube_avg
 
+    SUBROUTINE differentiate(field, a, ivar)
+        !Subroutine arguments
+        CLASS(field_t), INTENT(inout) :: field
+        CLASS(field_t), INTENT(in) :: a
+        CHARACTER(len=3), INTENT(in) :: ivar
+           
+           !Local Variables
+        INTEGER(intk) :: igr, igrid
+        INTEGER(intk) :: k, j, i
+        INTEGER(intk) :: kk, jj, ii
+        TYPE(field_t), POINTER :: rdx_f, rdy_f, rdz_f
+        TYPE(field_t), POINTER :: rddx_f, rddy_f, rddz_f
+        REAL(realk), POINTER, CONTIGUOUS :: rdx(:), rdy(:), rdz(:)
+        REAL(realk), POINTER, CONTIGUOUS :: rddx(:), rddy(:), rddz(:)
+        REAL(realk), POINTER, CONTIGUOUS :: out(:, :, :), phi(:, :, :)
+    
+        !IF (ivar == "DXS") THEN
+        CALL get_field(rdx_f, "RDX")
+        CALL get_field(rdy_f, "RDY")
+        CALL get_field(rdz_f, "RDZ")
+
+        !ELSEIF (ivar == "DDX") THEN
+        CALL get_field(rddx_f, "RDDX")
+        CALL get_field(rddy_f, "RDDY")
+        CALL get_field(rddz_f, "RDDZ")
+
+        DO igr = 1, nmygrids
+            igrid = mygrids(igr)
+
+            CALL get_mgdims(kk, jj, ii, igrid)
+
+            CALL field%get_ptr(out, igrid)
+            CALL a%get_ptr(phi, igrid)
+
+            CALL rdx_f%get_ptr(rdx, igrid)
+            CALL rdy_f%get_ptr(rdy, igrid)
+            CALL rdz_f%get_ptr(rdz, igrid)
+
+            CALL rddx_f%get_ptr(rddx, igrid)
+            CALL rddy_f%get_ptr(rddy, igrid)
+            CALL rddz_f%get_ptr(rddz, igrid)
+
+            IF (ivar == 'DXS') THEN
+                DO i=2, ii-1
+                    DO j=2, jj-1
+                        DO k=2, kk-1
+                            out(k,j,i) = (phi(k,j,i+1) - phi(k,j,i))*rdx(i)
+                        END DO
+                    END DO
+                END DO
+
+            ELSEIF (ivar == 'DXT') THEN
+                DO i=3, ii-2
+                    DO j=3, jj-2
+                        DO k=3, kk-2
+                            out(k,j,i) = (phi(k,j,i+1) - phi(k,j,i-1))/ &
+                            (1/rdx(i) + 1/rdx(i-1))
+                        END DO
+                    END DO
+                END DO
+
+            ELSEIF (ivar == 'DDX') THEN
+                DO i=2, ii-1
+                    DO j=2, jj-1
+                        DO k=2, kk-1
+                            out(k,j,i) = (phi(k,j,i) - phi(k,j,i-1))*rddx(i)
+                        END DO
+                    END DO
+                END DO
+
+            ELSEIF (ivar == 'DYS') THEN
+                DO i=2, ii-1
+                    DO j=2, jj-1
+                        DO k=2, kk-1
+                            out(k,j,i) = (phi(k,j+1,i) - phi(k,j,i))*rdy(j)
+                        END DO
+                    END DO
+                END DO
+
+            ELSEIF (ivar == 'DYT') THEN
+                DO i=3, ii-2
+                    DO j=3, jj-2
+                        DO k=3, kk-2
+                            out(k,j,i) = (phi(k,j+1,i) - phi(k,j-1,i))/ &
+                            (1/rdy(j) + 1/rdy(j-1))
+                        END DO
+                    END DO
+                END DO 
+
+            ELSEIF (ivar == 'DDY') THEN
+                DO i=2, ii-1
+                    DO j=2, jj-1
+                        DO k=2, kk-1
+                            out(k,j,i) = (phi(k,j,i) - phi(k,j-1,i))*rddy(j)
+                        END DO
+                    END DO
+                END DO
+
+            ELSEIF (ivar == 'DZS') THEN
+                DO i=2, ii-1
+                    DO j=2, jj-1
+                        DO k=2, kk-1
+                            out(k,j,i) = (phi(k+1,j,i) - phi(k,j,i))*rdz(k)
+                        END DO
+                    END DO
+                END DO
+
+            ELSEIF (ivar == 'DZT') THEN
+                DO i=3, ii-2
+                    DO j=3, jj-2
+                        DO k=3, kk-2
+                            out(k,j,i) = (phi(k+1,j,i) - phi(k-1,j,i))/ &
+                            (1/rdz(j) + 1/rdz(j-1))
+                        END DO
+                    END DO
+                END DO 
+
+            ELSEIF (ivar == 'DDZ') THEN
+                DO i=2, ii-1
+                    DO j=2, jj-1
+                        DO k=2, kk-1
+                            out(k,j,i) = (phi(k,j,i) - phi(k-1,j,i))*rddz(k)
+                        END DO
+                    END DO
+                END DO
+            ENDIF
+        END DO
+    END SUBROUTINE
 
 END MODULE statistics_mod
