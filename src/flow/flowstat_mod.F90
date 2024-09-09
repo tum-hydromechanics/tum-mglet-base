@@ -362,7 +362,7 @@ CONTAINS
         END DO
     END SUBROUTINE calclpp_grid
 
-    SUBROUTINE comp_dissip_avg (field, name, dt)
+    SUBROUTINE comp_dissip_avg(field, name, dt)
         ! Subroutine arguments
         TYPE(field_t), INTENT(inout) :: field
         CHARACTER(len=*), INTENT(in) :: name
@@ -448,7 +448,7 @@ CONTAINS
         END DO
     END SUBROUTINE comp_dissip_avg
 
-    SUBROUTINE calc_dissip (kk, jj, ii, dfg, u, v, w, bp, gmol, &
+    SUBROUTINE calc_dissip(kk, jj, ii, dfg, u, v, w, bp, gmol, &
         dx, dy, dz, ddx, ddy, ddz, rddx, rddy, rddz) ! nfro, nbac, nrgt &
         ! nlft, nbot, ntop)
 
@@ -458,7 +458,6 @@ CONTAINS
         REAL(realk), INTENT(in) :: u(kk, jj, ii), v(kk, jj, ii), w(kk, jj, ii)
         REAL(realk), INTENT(in) :: bp(kk, jj, ii)
         REAL(realk), INTENT(in) :: gmol
-        ! REAL(realk), INTENT(in) :: x(ii), y(jj), z(kk)
         REAL(realk), INTENT(in) :: dx(ii), dy(jj), dz(kk)
         REAL(realk), INTENT(in) :: ddx(ii), ddy(jj), ddz(kk)
         REAL(realk), INTENT(in) :: rddx(ii), rddy(jj), rddz(kk)
@@ -492,8 +491,8 @@ CONTAINS
                     dzf = 0.5*dz(k-1)*rddz(k)
 
                     ! The following values should be checked since they used the
-                    ! function bp, which was assumed that it behaves same as in 
-                    ! the old mglet
+                    ! function bp, which was assumed that it behaves the same as  
+                    ! in the old mglet
 
                     rddxpl = 1.0/(ddx(i) &
                         + dx(i+1)*(sign(0.25_realk, bp(k, j, i+1)) + 0.25) &
@@ -563,7 +562,7 @@ CONTAINS
         SELECT CASE (TRIM(name))
         CASE ("UP_AVG")
             CALL get_field(in1, "U")
-            CALL get_field(in2, "P")      !This may be located outside the cases.
+            CALL get_field(in2, "P")
             istag = 0
             jstag = 0
             kstag = 0
@@ -589,9 +588,6 @@ CONTAINS
         ! the multiplication consider the staggeredness
         CALL field%multiply(in1,in2)
 
-        !CALL in1%finish()
-        !CALL in2%finish()
-
     END SUBROUTINE comp_up_avg
 
     !This subroutine computes the term du_i/dx_i * P
@@ -606,18 +602,9 @@ CONTAINS
         INTEGER(intk), PARAMETER :: units(*) = [1, -1, -3, 0, 0, 0, 0]
         INTEGER(intk), PARAMETER :: units_ux(*) = [0, 0, -1, 0, 0, 0, 0]
         TYPE(field_t), POINTER :: u_f, p_f
-        TYPE(field_t), POINTER :: rdx_f, rdy_f, rdz_f
-        TYPE(field_t), POINTER :: rddx_f, rddy_f, rddz_f
         INTEGER(intk) :: istag, jstag, kstag
         CHARACTER(len=3) :: ivar
         CHARACTER(len=2) :: name_ux
-        Real(realk), POINTER, CONTIGUOUS :: u(:, :, :)
-        REAL(realk), POINTER, CONTIGUOUS :: ux(:, :, :)
-        REAL(realk), POINTER, CONTIGUOUS :: rdx(:), rdy(:), rdz(:)
-        REAL(realk), POINTER, CONTIGUOUS :: rddx(:), rddy(:), rddz(:)
-
-        INTEGER(intk) :: i, igrid
-        INTEGER(intk) :: kk, jj, ii
 
         SELECT CASE (TRIM(name))
         CASE ("UxP_AVG")
@@ -648,117 +635,20 @@ CONTAINS
             CALL errr(__FILE__, __LINE__)
         END SELECT
 
-        CALL get_field(rdx_f, "RDX")
-        CALL get_field(rdy_f, "RDY")
-        CALL get_field(rdz_f, "RDZ")
-
-        CALL get_field(rddx_f, "RDDX")
-        CALL get_field(rddy_f, "RDDY")
-        CALL get_field(rddz_f, "RDDZ")
-
         CALL field%init(name, istag=istag, jstag=jstag, kstag=kstag, &
             units=units)
         CALL ux_f%init(name_ux, istag=istag, jstag=jstag, kstag=kstag, &
             units=units_ux)
 
-        DO i=1, nmygrids
-            igrid = mygrids(i)
-
-            CALL u_f%get_ptr(u, igrid)
-            CALL ux_f%get_ptr(ux, igrid)
-
-
-            CALL rdx_f%get_ptr(rdx, igrid)
-            CALL rdy_f%get_ptr(rdy, igrid)
-            CALL rdz_f%get_ptr(rdz, igrid)
-
-            CALL rddx_f%get_ptr(rddx, igrid)
-            CALL rddy_f%get_ptr(rddy, igrid)
-            CALL rddz_f%get_ptr(rddz, igrid)
-
-            CALL get_mgdims(kk, jj, ii, igrid)
-
-            ! Compute derivate of the velocity field
-            CALL dfdx(kk, jj, ii, rdx, rdy, rdz, rddx, rddy, rddz, ivar, u, ux)
-
-        END DO
+        CALL differentiate(ux_f, u_f, ivar)
 
         CALL field%multiply(ux_f, p_f)
 
         CALL ux_f%finish()
-        !CALL p_f%finish()
 
     END SUBROUTINE
 
-    SUBROUTINE dfdx (kk, jj, ii, rdx, rdy, rdz, rddx, rddy, rddz, ivar, phi, dphi)
-        !Subroutine arguments
-        INTEGER(intk), INTENT(in) :: kk, jj, ii
-        REAL(realk), INTENT(in) :: rdx(ii), rdy(jj), rdz(kk)
-        REAL(realk), INTENT(in) :: rddx(ii), rddy(jj), rddz(kk)
-        CHARACTER(len=3), INTENT(in) :: ivar
-        REAL(realk), INTENT(in) :: phi(kk, jj, ii)
-        REAL(realk), INTENT(inout) :: dphi(kk, jj, ii)
-
-        !Local variables
-        INTEGER(intk) :: k, j, i
-
-        IF (ivar == 'DXS') THEN
-            DO i=2, ii-1
-                DO j=2, jj-1
-                    DO k=2, kk-1
-                        dphi(k,j,i) = (phi(k,j,i+1) - phi(k,j,i))*rdx(i)
-                    END DO
-                END DO
-            END DO
-
-        ELSEIF (ivar == 'DDX') THEN
-            DO i=2, ii-1
-                DO j=2, jj-1
-                    DO k=2, kk-1
-                        dphi(k,j,i) = (phi(k,j,i) - phi(k,j,i-1))*rddx(i)
-                    END DO
-                END DO
-            END DO
-
-        ELSEIF (ivar == 'DYS') THEN
-            DO i=2, ii-1
-                DO j=2, jj-1
-                    DO k=2, kk-1
-                        dphi(k,j,i) = (phi(k,j+1,i) - phi(k,j,i))*rdy(j)
-                    END DO
-                END DO
-            END DO
-
-        ELSEIF (ivar == 'DDY') THEN
-            DO i=2, ii-1
-                DO j=2, jj-1
-                    DO k=2, kk-1
-                        dphi(k,j,i) = (phi(k,j,i) - phi(k,j-1,i))*rddy(j)
-                    END DO
-                END DO
-            END DO
-
-        ELSEIF (ivar == 'DZS') THEN
-            DO i=2, ii-1
-                DO j=2, jj-1
-                    DO k=2, kk-1
-                        dphi(k,j,i) = (phi(k+1,j,i) - phi(k,j,i))*rdz(k)
-                    END DO
-                END DO
-            END DO
-
-        ELSEIF (ivar == 'DDZ') THEN
-            DO i=2, ii-1
-                DO j=2, jj-1
-                    DO k=2, kk-1
-                        dphi(k,j,i) = (phi(k,j,i) - phi(k-1,j,i))*rddz(k)
-                    END DO
-                END DO
-            END DO
-        ENDIF
-    END SUBROUTINE
-
-    SUBROUTINE comp_uxux_avg (field, name, dt)
+    SUBROUTINE comp_uxux_avg(field, name, dt)
 
         ! Subroutine arguments
         TYPE(field_t), INTENT(inout) :: field
@@ -770,18 +660,9 @@ CONTAINS
         INTEGER(intk), PARAMETER :: units(*) = [0, 0, -2, 0, 0, 0, 0]
         INTEGER(intk), PARAMETER :: units_ux(*) = [0, 0, -1, 0, 0, 0, 0]
         TYPE(field_t), POINTER :: u_f
-        TYPE(field_t), POINTER :: rdx_f, rdy_f, rdz_f
-        TYPE(field_t), POINTER :: rddx_f, rddy_f, rddz_f
         INTEGER(intk) :: istag, jstag, kstag
         CHARACTER(len=3) :: ivar
         CHARACTER(len=2) :: name_ux
-        Real(realk), POINTER, CONTIGUOUS :: u(:, :, :)
-        REAL(realk), POINTER, CONTIGUOUS :: ux(:, :, :)
-        REAL(realk), POINTER, CONTIGUOUS :: rdx(:), rdy(:), rdz(:)
-        REAL(realk), POINTER, CONTIGUOUS :: rddx(:), rddy(:), rddz(:)
-
-        INTEGER(intk) :: i, igrid
-        INTEGER(intk) :: kk, jj, ii
 
         SELECT CASE (TRIM(name))
         CASE ("UxUx_AVG")
@@ -851,50 +732,20 @@ CONTAINS
             CALL errr(__FILE__, __LINE__)
         END SELECT
 
-        CALL get_field(rdx_f, "RDX")
-        CALL get_field(rdy_f, "RDY")
-        CALL get_field(rdz_f, "RDZ")
-
-        CALL get_field(rddx_f, "RDDX")
-        CALL get_field(rddy_f, "RDDY")
-        CALL get_field(rddz_f, "RDDZ")
-
         CALL field%init(name, istag=istag, jstag=jstag, kstag=kstag, &
             units=units)
         CALL ux_f%init(name_ux, istag=istag, jstag=jstag, kstag=kstag, &
             units=units_ux)
+        CALL differentiate(ux_f, u_f, ivar)
 
-        !Calculation of UX
-        DO i=1, nmygrids
-            igrid = mygrids(i)
-
-            CALL u_f%get_ptr(u, igrid)
-            CALL ux_f%get_ptr(ux, igrid)
-
-            CALL rdx_f%get_ptr(rdx, igrid)
-            CALL rdy_f%get_ptr(rdy, igrid)
-            CALL rdz_f%get_ptr(rdz, igrid)
-
-            CALL rddx_f%get_ptr(rddx, igrid)
-            CALL rddy_f%get_ptr(rddy, igrid)
-            CALL rddz_f%get_ptr(rddz, igrid)
-
-            CALL get_mgdims(kk, jj, ii, igrid)
-
-            ! Compute derivate of the velocity field
-            CALL dfdx (kk, jj, ii, rdx, rdy, rdz, &
-                rddx, rddy, rddz, ivar, u, ux)
-        
-        END DO
-
-        !! Staggeredness remains the same
+        !! (du_i/dx_j)^2 - Staggeredness remains the same
         field%arr = ux_f%arr(:)**2
 
         CALL ux_f%finish()
 
     END SUBROUTINE
 
-    SUBROUTINE comp_uxvx_avg (field, name, dt)
+    SUBROUTINE comp_uxvx_avg(field, name, dt)
 
         ! Subroutine arguments
         TYPE(field_t), INTENT(inout) :: field
@@ -905,22 +756,15 @@ CONTAINS
         TYPE(field_t) :: ux_f, vx_f
         INTEGER(intk), PARAMETER :: units(*) = [0, 0, -2, 0, 0, 0, 0]
         INTEGER(intk), PARAMETER :: units_ux(*) = [0, 0, -1, 0, 0, 0, 0]
-        TYPE(field_t), POINTER :: u_f, v_f  !! v_f can be any velocity component different than u_f
-        TYPE(field_t), POINTER :: rdx_f, rdy_f, rdz_f
-        TYPE(field_t), POINTER :: rddx_f, rddy_f, rddz_f
+        !! v_f can be any velocity component different than u_f
+        TYPE(field_t), POINTER :: u_f, v_f
         INTEGER(intk) :: istag, jstag, kstag
         CHARACTER(len=3) :: ivar1, ivar2
         CHARACTER(len=2) :: name_ux, name_vx
-        Real(realk), POINTER, CONTIGUOUS :: u(:, :, :), ux(:, :, :)
-        Real(realk), POINTER, CONTIGUOUS :: v(:, :, :), vx(:, :, :)
-        REAL(realk), POINTER, CONTIGUOUS :: rdx(:), rdy(:), rdz(:)
-        REAL(realk), POINTER, CONTIGUOUS :: rddx(:), rddy(:), rddz(:)
 
-        INTEGER(intk) :: i, igrid
-        INTEGER(intk) :: kk, jj, ii
-
-        !Temporarily staggeredness similar to Legacy version; in this way, it is not considered.
-        ! Bur it should be taken into account when creating when creating both du_i/dk_j, and du_i/dk_j*du_k/dx_j (UXVX).
+        !Temporarily staggeredness similar to Legacy version (0,0,0).
+        ! But it should be taken into account when creating 
+        ! both du_i/dk_j (Ux), and du_i/dk_j*du_k/dx_j (UxVx).
         SELECT CASE (TRIM(name)) 
         CASE ("UxVx_AVG")        
             CALL get_field(u_f, "U")
@@ -1016,14 +860,6 @@ CONTAINS
             CALL errr(__FILE__, __LINE__)
         END SELECT
 
-        CALL get_field(rdx_f, "RDX")
-        CALL get_field(rdy_f, "RDY")
-        CALL get_field(rdz_f, "RDZ")
-
-        CALL get_field(rddx_f, "RDDX")
-        CALL get_field(rddy_f, "RDDY")
-        CALL get_field(rddz_f, "RDDZ")
-
         CALL field%init(name, istag=istag, jstag=jstag, kstag=kstag, &
             units=units)
         CALL ux_f%init(name_ux, istag=istag, jstag=jstag, kstag=kstag, &
@@ -1031,47 +867,20 @@ CONTAINS
         CALL vx_f%init(name_vx, istag=istag, jstag=jstag, kstag=kstag, &
             units=units_ux)
 
-        ! Calculation of UX and VX
-
-        DO i=1, nmygrids
-            igrid = mygrids(i)
-            
-            CALL u_f%get_ptr(u, igrid)
-            CALL ux_f%get_ptr(ux, igrid)
-            
-            CALL v_f%get_ptr(v, igrid)
-            CALL vx_f%get_ptr(vx, igrid)
-
-            CALL rdx_f%get_ptr(rdx, igrid)
-            CALL rdy_f%get_ptr(rdy, igrid)
-            CALL rdz_f%get_ptr(rdz, igrid)
-
-            CALL rddx_f%get_ptr(rddx, igrid)
-            CALL rddy_f%get_ptr(rddy, igrid)
-            CALL rddz_f%get_ptr(rddz, igrid)
-
-            CALL get_mgdims(kk, jj, ii, igrid)
-        
-            ! Compute derivates of the velocity field
-            CALL dfdx (kk, jj, ii, rdx, rdy, rdz, &
-                rddx, rddy, rddz, ivar1, u, ux)
-            CALL dfdx (kk, jj, ii, rdx, rdy, rdz, &
-                rddx, rddy, rddz, ivar2, v, vx)
-
-        END DO
-
+        CALL differentiate(ux_f, u_f, ivar1)
+        CALL differentiate(vx_f, v_f, ivar2)
         !Since temporarily ux and vx are located at the same point multiply method
         ! won't be used. 
         !TO DO: if location is not the same multiply method should be used.
-        
+
         field%arr = ux_f%arr(:) * vx_f%arr(:)
-        
+
         CALL ux_f%finish()
         CALL vx_f%finish()
-           
+
     END SUBROUTINE
 
-    SUBROUTINE comp_uyvxp_avg (field, name, dt)
+    SUBROUTINE comp_uyvxp_avg(field, name, dt)
         ! Subroutine arguments
         TYPE(field_t), INTENT(inout) :: field
         CHARACTER(len=*), INTENT(in) :: name
@@ -1081,19 +890,10 @@ CONTAINS
         TYPE(field_t) :: uy_f, vx_f, temp_f
         INTEGER(intk), PARAMETER :: units(*) = [0, 0, -2, 0, 0, 0, 0]
         INTEGER(intk), PARAMETER :: units_ux(*) = [0, 0, -1, 0, 0, 0, 0]
-        TYPE(field_t), POINTER :: u_f, v_f, p_f  !! 
-        TYPE(field_t), POINTER :: rdx_f, rdy_f, rdz_f
-        TYPE(field_t), POINTER :: rddx_f, rddy_f, rddz_f
+        TYPE(field_t), POINTER :: u_f, v_f, p_f
         INTEGER(intk) :: istag, jstag, kstag
         CHARACTER(len=3) :: ivar1, ivar2
         CHARACTER(len=2) :: name_uy, name_vx
-        Real(realk), POINTER, CONTIGUOUS :: u(:, :, :), uy(:, :, :)
-        Real(realk), POINTER, CONTIGUOUS :: v(:, :, :), vx(:, :, :)
-        REAL(realk), POINTER, CONTIGUOUS :: rdx(:), rdy(:), rdz(:)
-        REAL(realk), POINTER, CONTIGUOUS :: rddx(:), rddy(:), rddz(:)
-
-        INTEGER(intk) :: i, igrid
-        INTEGER(intk) :: kk, jj, ii
 
         SELECT CASE (TRIM(name))
         CASE ("UyP+VxP")
@@ -1130,13 +930,6 @@ CONTAINS
             CALL errr(__FILE__, __LINE__)
         END SELECT
 
-        CALL get_field(rdx_f, "RDX")
-        CALL get_field(rdy_f, "RDY")
-        CALL get_field(rdz_f, "RDZ")
-
-        CALL get_field(rddx_f, "RDDX")
-        CALL get_field(rddy_f, "RDDY")
-        CALL get_field(rddz_f, "RDDZ")
 
         CALL field%init(name, istag=istag, jstag=jstag, kstag=kstag, &
             units=units)
@@ -1145,34 +938,8 @@ CONTAINS
         CALL vx_f%init(name_vx, istag=istag, jstag=jstag, kstag=kstag, &
             units=units_ux)
 
-        ! Calculation of UX and VX
-        
-        DO i=1, nmygrids
-            igrid = mygrids(i)
-                
-            CALL u_f%get_ptr(u, igrid)
-            CALL uy_f%get_ptr(uy, igrid)
-                
-            CALL v_f%get_ptr(v, igrid)
-            CALL vx_f%get_ptr(vx, igrid)
-
-            CALL rdx_f%get_ptr(rdx, igrid)
-            CALL rdy_f%get_ptr(rdy, igrid)
-            CALL rdz_f%get_ptr(rdz, igrid)
-
-            CALL rddx_f%get_ptr(rddx, igrid)
-            CALL rddy_f%get_ptr(rddy, igrid)
-            CALL rddz_f%get_ptr(rddz, igrid)
-
-            CALL get_mgdims(kk, jj, ii, igrid)
-
-            ! Compute derivates of the velocity field
-            CALL dfdx (kk, jj, ii, rdx, rdy, rdz, &
-                rddx, rddy, rddz, ivar1, u, uy)
-            CALL dfdx (kk, jj, ii, rdx, rdy, rdz, &
-                rddx, rddy, rddz, ivar2, v, vx)
-    
-        END DO
+        CALL differentiate(uy_f, u_f, ivar1)
+        CALL differentiate(vx_f, v_f, ivar2)
     
         temp_f%arr = uy_f%arr(:) + vx_f%arr(:)
 
@@ -1181,7 +948,7 @@ CONTAINS
         CALL uy_f%finish()
         CALL vx_f%finish()
         CALL temp_f%finish()
-        !CALL p_f%finish()
+
     END SUBROUTINE
         
 END MODULE flowstat_mod
