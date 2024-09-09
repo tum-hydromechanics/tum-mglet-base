@@ -127,7 +127,7 @@ CONTAINS
 
         ! Local variables
         INTEGER(intk), PARAMETER :: units(*) = [0, 1, -1, 1, 0, 0, 0]
-        TYPE(field_t), POINTER :: u_f, p_f, t_f
+        TYPE(field_t), POINTER :: u_f, t_f
         INTEGER(intk) :: istag, jstag, kstag
         INTEGER(intk) :: sca_name_length
         INTEGER(intk) :: nchar
