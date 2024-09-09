@@ -85,7 +85,7 @@ CONTAINS
         CHARACTER(len=nchar_name) :: sca_name
 
         nchar = LEN_TRIM(name)
-        sca_name_length = (nchar-6)*0.5 
+        sca_name_length = (nchar-6)/2 
         sca_name = name(1:sca_name_length)
         name_tx = name(1:sca_name_length+1)
 
@@ -182,7 +182,7 @@ CONTAINS
         INTEGER(intk) :: nchar
 
         nchar = LEN_TRIM(name)        
-        sca_name_length = (nchar-5)*0.5
+        sca_name_length = (nchar-5)/2
         sca_name = name(2:sca_name_length+1)
 
         SELECT CASE (name(1:1))
