@@ -66,7 +66,7 @@ CONTAINS
         DO i = 1, my_particle_list%ifinal
 
             ! checking activity
-            IF ( my_particle_list%particles(i)%is_active /= 1 ) THEN
+            IF ( my_particle_list%particles(i)%state < 1 ) THEN
                 CYCLE
             END IF
 
@@ -154,7 +154,9 @@ CONTAINS
             pdy = advection_dy + diffusion_dy
             pdz = advection_dz + diffusion_dz
 
-            ! Advection + DIffusion
+            ! Particle Boundary Interaction
+
+            ! Advection + Diffusion
             my_particle_list%particles(i)%x = my_particle_list%particles(i)%x + pdx
             my_particle_list%particles(i)%y = my_particle_list%particles(i)%y + pdy
             my_particle_list%particles(i)%z = my_particle_list%particles(i)%z + pdz

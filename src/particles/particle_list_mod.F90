@@ -24,9 +24,6 @@ MODULE particle_list_mod
         INTEGER(intk) :: ifinal          ! index of last entry of the list which holds an active particle
 
         TYPE(baseparticle_t), ALLOCATABLE :: particles(:)
-        !LOGICAL, ALLOCATABLE :: particle_stored(:)  ! each logical value reflects whether a particle is stored in the list
-                                                    ! at the respective index. Is this a feasable and good way to keep track
-                                                    ! of particle storage (especially as is_active in particle_t carries the same information?
 
     END TYPE particle_list_t
 
@@ -207,7 +204,7 @@ CONTAINS
 
         ! might be unnessecary, but ensures that all new particle slots are inactive
         DO i = particle_list%ifinal + 1, particle_list%max_np + add_len
-            particles_tmp(i)%is_active = 0
+            particles_tmp(i)%state = -1
         END DO
 
         particle_list%max_np = particle_list%max_np + add_len

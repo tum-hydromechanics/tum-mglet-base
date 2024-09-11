@@ -213,7 +213,7 @@ CONTAINS
 
         DO i = 1, my_particle_list%ifinal
 
-            IF ( my_particle_list%particles(i)%is_active /= 1 ) THEN
+            IF ( my_particle_list%particles(i)%state < 1 ) THEN
                 CYCLE
             END IF
 
@@ -229,7 +229,7 @@ CONTAINS
 
         DO i = 1, my_particle_list%ifinal
 
-            IF ( my_particle_list%particles(i)%is_active /= 1 ) THEN
+            IF ( my_particle_list%particles(i)%state < 1 ) THEN
                 CYCLE
             END IF
 

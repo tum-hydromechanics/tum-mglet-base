@@ -15,7 +15,14 @@ MODULE particle_core_mod
 
     TYPE, BIND(C) :: baseparticle_t
 
-        INTEGER(c_intk) :: is_active = -1   ! avoid logical (!)
+        ! state definitions:
+        !-1/0 : particle is inactive
+        !  1 : particle is active
+        !  2 : particle is active, cell info has to be updated after displacement
+        !  3 : particle is active, grid and cell info have to be updated after displacement
+        !  4 : particle is active, particle has to be passed to other process after displacement
+        INTEGER(c_intk) :: state = -1
+
         INTEGER(c_intk) :: ipart = -1
         INTEGER(c_intk) :: iproc = -1
         INTEGER(c_intk) :: igrid = -1
@@ -44,7 +51,7 @@ CONTAINS
         INTEGER(intk), INTENT(in), OPTIONAL :: igrid
         INTEGER(intk), INTENT(in), OPTIONAL :: ijkcell(3)
 
-        particle%is_active = 1
+        particle%state = 1
         particle%ipart = ipart
         particle%iproc = myid
         particle%x = x
@@ -65,7 +72,7 @@ CONTAINS
 
         IF (PRESENT(ijkcell)) THEN
             particle%ijkcell = ijkcell
-        ELSEIF (particle%is_active == 1 ) THEN
+        ELSEIF (particle%state >= 1) THEN
             CALL set_particle_cell(particle)
         END IF
 
@@ -79,11 +86,11 @@ CONTAINS
         TYPE(baseparticle_t), INTENT(inout) :: particle
 
         !local variables:
-        INTEGER(intk) :: found = 0
+        INTEGER(intk) :: found = -1
         INTEGER(intk) :: i, igrid
         REAL(realk) :: minx, maxx, miny, maxy, minz, maxz
 
-        IF (particle%is_active == 0) THEN
+        IF (particle%state < 1) THEN
             SELECT CASE (TRIM(particle_terminal))
                 CASE ("none")
                     CONTINUE
@@ -122,7 +129,7 @@ CONTAINS
             EXIT
         END DO
 
-        particle%is_active = found ! if particle is not found, deactivate particle
+        particle%state = found ! if particle is not found, deactivate particle
 
         SELECT CASE (TRIM(particle_terminal))
             CASE ("none")
@@ -151,7 +158,7 @@ CONTAINS
         REAL(realk) :: diff_old, diff_new
         REAL(realk) :: minx, maxx, miny, maxy, minz, maxz
 
-        IF (particle%is_active == 0) THEN
+        IF (particle%state < 1) THEN
             SELECT CASE (TRIM(particle_terminal))
                 CASE ("none")
                     CONTINUE
@@ -263,7 +270,7 @@ CONTAINS
         INTEGER(intk) :: k, j, i, kk, jj, ii
         INTEGER(intk) :: istart, iend, istep, jstart, jend, jstep, kstart, kend, kstep
 
-        IF ( particle%is_active /= 1 ) THEN
+        IF (particle%state < 1) THEN
             SELECT CASE (TRIM(particle_terminal))
                 CASE ("none")
                     CONTINUE
@@ -372,7 +379,7 @@ CONTAINS
         ! subroutine arguments
         TYPE(baseparticle_t), INTENT(in) :: particle
 
-        IF (particle%is_active == 1) THEN
+        IF (particle%state >= 1) THEN
             SELECT CASE (TRIM(particle_terminal))
                 CASE ("none")
                     CONTINUE

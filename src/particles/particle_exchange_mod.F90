@@ -191,7 +191,7 @@ CONTAINS
         DO i = 1, particle_list%ifinal
 
             ! jumping inactive particles
-            IF ( particle_list%particles(i)%is_active /= 1 ) THEN
+            IF ( particle_list%particles(i)%state < 1 ) THEN
                 CYCLE
             END IF
 
@@ -290,7 +290,7 @@ CONTAINS
         j = 1
         DO i = 1, particle_list%ifinal
             ! jumping inactive particles
-            IF (particle_list%particles(i)%is_active /= 1) THEN
+            IF (particle_list%particles(i)%state < 1) THEN
                 CYCLE
             END IF
             ! jumping local particles
@@ -324,7 +324,7 @@ CONTAINS
                     ndispsend(iproc) = ndispsend(iproc) + 1
 
                     ! setting the local particle as inactive (active in buffer)
-                    particle_list%particles(i)%is_active = 0
+                    particle_list%particles(i)%state = -1
                     particle_list%active_np = particle_list%active_np - 1
 
                 END IF
@@ -339,7 +339,7 @@ CONTAINS
 
         ! buffer must be full with valid particles without gaps
         DO i = 1, sizeSendBuf
-            IF ( sendBufParticle(pos)%is_active < 1 ) THEN
+            IF ( sendBufParticle(pos)%state < 1 ) THEN
                 WRITE(*,*) 'Invalid send buffer entry at ', i
                 CALL errr(__FILE__, __LINE__)
             END IF
@@ -431,7 +431,7 @@ CONTAINS
         IF ( sizeRecvBuf > 0 ) THEN
             DO i = 1, sizeRecvBuf
                 ! check if correctly delivered
-                IF ( recvBufParticle(i)%is_active /= 1 ) THEN
+                IF ( recvBufParticle(i)%state < 1 ) THEN
                     WRITE(*,*) "Inactive particle delivered"
                     CALL errr(__FILE__, __LINE__)
                 END IF
@@ -447,7 +447,7 @@ CONTAINS
         ! --- step 8: Finishing the communication of actual particles. Done.
 
         ! Copy recieved particles into the list
-        ! CAUTION: at this point, particle_list%particles(particle_list%ifinal)%is_active might be /= 1 ("empty")
+        ! CAUTION: at this point, particle_list%particles(particle_list%ifinal)%state might be < 1 ("empty")
 
         CALL integrate_particles(particle_list, sendind)
 
@@ -1070,7 +1070,7 @@ CONTAINS
 
         CALL MPI_Type_contiguous(3, mglet_mpi_int, triple_int_mpi_type)
 
-        CALL MPI_Get_address(foo%is_active, disp(1))
+        CALL MPI_Get_address(foo%state, disp(1))
         ! JULIUS: isnt the following disp declaration unnessecary?
         CALL MPI_Get_address(foo%ipart, disp(2))
         CALL MPI_Get_address(foo%iproc, disp(3))
@@ -1080,7 +1080,7 @@ CONTAINS
         CALL MPI_Get_address(foo%y, disp(7))
         CALL MPI_Get_address(foo%z, disp(8))
 
-        types(1) = mglet_mpi_int    ! is_active
+        types(1) = mglet_mpi_int    ! state
         types(2) = mglet_mpi_int    ! ipart
         types(3) = mglet_mpi_int    ! iproc
         types(4) = mglet_mpi_int    ! igrid
@@ -1213,10 +1213,10 @@ CONTAINS
                 END IF
 
                 DO j = 1, particle_list%ifinal - sendind(i)
-                    IF (particle_list%particles(particle_list%ifinal)%is_active == 1) THEN
+                    IF (particle_list%particles(particle_list%ifinal)%state >= 1) THEN
 
                         particle_list%particles(sendind(i)) = particle_list%particles(particle_list%ifinal)
-                        particle_list%particles(particle_list%ifinal)%is_active = 0
+                        particle_list%particles(particle_list%ifinal)%state = -1
                         particle_list%ifinal = particle_list%ifinal - 1
                         EXIT
 
@@ -1227,7 +1227,7 @@ CONTAINS
                     END IF
                 END DO
 
-                IF (particle_list%particles(sendind(i))%is_active /= 1) THEN
+                IF (particle_list%particles(sendind(i))%state < 1) THEN
                     particle_list%ifinal = particle_list%ifinal - 1
                 END IF
 
