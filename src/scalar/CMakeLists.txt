@@ -8,6 +8,7 @@ add_library(scalar STATIC
     scastat_mod.F90
     setboundarybuffers_scalar_mod.F90
     timeintegrate_scalar_mod.F90
+    offload_realfield_wrapper_mod.F90
 )
 
 target_include_directories(scalar

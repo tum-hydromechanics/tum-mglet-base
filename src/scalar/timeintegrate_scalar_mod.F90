@@ -6,6 +6,7 @@ MODULE timeintegrate_scalar_mod
     USE bound_scalar_mod
     USE itinfo_scalar_mod
     USE gc_scastencils_mod
+    USE offload_realfield_wrapper_mod
 
     IMPLICIT NONE(type, external)
     PRIVATE
@@ -474,19 +475,29 @@ CONTAINS
         END IF
     END SUBROUTINE tstsca4_grid
 
-
     SUBROUTINE fluxbalance(qtt_f, qtu_f, qtv_f, qtw_f)
         ! Subroutine arguments
         TYPE(field_t), INTENT(inout) :: qtt_f
         TYPE(field_t), INTENT(in) :: qtu_f, qtv_f, qtw_f
 
         ! Local variables
-        INTEGER(intk) :: i, igrid
+        INTEGER(intk) :: n, i, j, k
         INTEGER(intk) :: kk, jj, ii
         TYPE(field_t), POINTER :: rddx_f, rddy_f, rddz_f
-        REAL(realk), POINTER, CONTIGUOUS, DIMENSION(:, :, :) :: qtu, qtv, qtw, &
-            qtt
-        REAL(realk), POINTER, CONTIGUOUS:: rddx(:), rddy(:), rddz(:)
+        !REAL(realk), POINTER, CONTIGUOUS, DIMENSION(:, :, :) :: qtu, qtv, qtw, &
+        !    qtt
+        !REAL(realk), POINTER, CONTIGUOUS:: rddx(:), rddy(:), rddz(:)
+
+        ! all grids rddx, rddy and rddz
+        ! size: nmygrids * SIZE(rddx_f%arr)
+        REAL(realk), POINTER, CONTIGUOUS:: ag_rddy(:, :), ag_rddz(:, :)
+        REAL(realk), POINTER, CONTIGUOUS :: rddx(:)
+
+        ! all grids
+        REAL(realk), POINTER, CONTIGUOUS:: ag_qtt(:, :, :, :), ag_qtu(:, :, :, :), ag_qtv(:, :, :, :), ag_qtw(:, :, :, :)
+        REAL(realk) :: netflux
+
+        TYPE(offload_realfield), TARGET :: rddx_offload
 
         CALL start_timer(411)
 
@@ -494,60 +505,53 @@ CONTAINS
         CALL get_field(rddy_f, "RDDY")
         CALL get_field(rddz_f, "RDDZ")
 
-        DO i = 1, nmygrids
-            igrid = mygrids(i)
+        CALL rddx_offload%set_data_ptr(rddx_f)
 
-            CALL get_mgdims(kk, jj, ii, igrid)
+        CALL rddy_f%arr_grid_ptr(ag_rddy)
+        CALL rddz_f%arr_grid_ptr(ag_rddz)
 
-            CALL qtt_f%get_ptr(qtt, igrid)
-            CALL qtu_f%get_ptr(qtu, igrid)
-            CALL qtv_f%get_ptr(qtv, igrid)
-            CALL qtw_f%get_ptr(qtw, igrid)
 
-            CALL rddx_f%get_ptr(rddx, igrid)
-            CALL rddy_f%get_ptr(rddy, igrid)
-            CALL rddz_f%get_ptr(rddz, igrid)
+        CALL qtt_f%arr_grid_ptr3(ag_qtt)
+        CALL qtu_f%arr_grid_ptr3(ag_qtu)
+        CALL qtv_f%arr_grid_ptr3(ag_qtv)
+        CALL qtw_f%arr_grid_ptr3(ag_qtw)
 
-            CALL fluxbalance_grid(kk, jj, ii, qtt, qtu, qtv, qtw, &
-                rddx, rddy, rddz)
+        kk = 36
+        jj = 36
+        ii = 36
+
+        !$omp target data map(to: rddx(1:36), rddx_offload, ag_rddy, ag_rddz, ag_qtu, ag_qtv, ag_qtw) map(tofrom: ag_qtt)
+        
+        !$omp target teams distribute
+        DO n = 1, nmygrids
+            CALL rddx_offload%get_grid_data_1d(n, rddx)
+            !rddx => rddx_offload%data((n - 1) * 36 + 1 : 36 * n)
+
+
+            !$omp parallel do collapse(3)
+            DO i = 3, ii-2
+                DO j = 3, jj-2
+                    DO k = 3, kk-2
+                        ! Computing netflux resulting from exchange with neighbors
+                        !netflux = ag_qtu(n, k, j, i-1) - ag_qtu(n, k, j, i) + ag_qtv(n, k, j-1, i) &
+                        !    - ag_qtv(n, k, j, i) + ag_qtw(n, k-1, j, i) - ag_qtw(n, k, j, i)
+                        netflux = 0
+
+                        !ag_qtt(n, k, j, i) = ag_rddz(n, k) * ag_rddy(n, j) * netflux
+                        ag_qtt(n, k, j, i) = i + j + k * rddx(i)
+                    END DO
+                END DO
+            END DO
+            !$omp end parallel do
         END DO
+        !$omp end target teams distribute
+
+        !$omp end target data
+                
+        
 
         CALL stop_timer(411)
     END SUBROUTINE fluxbalance
-
-
-    SUBROUTINE fluxbalance_grid(kk, jj, ii, qtt, qtu, qtv, qtw, &
-            rddx, rddy, rddz)
-        ! Subroutine arguments
-        INTEGER(intk), INTENT(IN) :: kk, jj, ii
-        REAL(realk), INTENT(OUT), DIMENSION(kk, jj, ii) :: qtt
-        REAL(realk), INTENT(IN), DIMENSION(kk, jj, ii) :: qtu, qtv, qtw
-        REAL(realk), INTENT(IN) :: rddx(ii), rddy(jj), rddz(kk)
-
-        ! Local variables
-        INTEGER(intk) :: i, j, k
-        REAL(realk) :: netflux
-
-        ! Set INTENT(out) to zero
-        qtt = 0.0
-
-        !$omp target data map(to: qtu, qtv, qtw, rddx, rddy, rddz, netflux) map(tofrom: qtt)
-        !$omp target teams distribute parallel do collapse(3)
-        DO i = 3, ii-2
-            DO j = 3, jj-2
-                DO k = 3, kk-2
-                    ! Computing netflux resulting from exchange with neighbors
-                    netflux = qtu(k, j, i-1) - qtu(k, j, i) + qtv(k, j-1, i) &
-                        - qtv(k, j, i) + qtw(k-1, j, i) - qtw(k, j, i)
-
-                    qtt(k, j, i) = rddz(k)*rddy(j)*rddx(i)*netflux
-                END DO
-            END DO
-        END DO
-        !$omp end target teams distribute parallel do
-        !$omp end target data
-    END SUBROUTINE fluxbalance_grid
-
 
     SUBROUTINE comp_tmean(tmean, tmeansqr, kk, jj, ii, t, ddx, ddy, ddz)
         ! Subroutine arguments

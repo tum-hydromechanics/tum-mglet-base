@@ -37,6 +37,10 @@ MODULE realfield_mod
         GENERIC, PUBLIC :: get_ptr => get_grid1, get_grid3
         PROCEDURE, PRIVATE :: get_grid1, get_grid3
 
+        PROCEDURE :: get_arr_ptr
+        PROCEDURE :: arr_grid_ptr => arr_grid_ptr1
+        PROCEDURE :: arr_grid_ptr3
+        
         PROCEDURE :: copy_from
         PROCEDURE :: multiply
         PROCEDURE :: shift
@@ -142,6 +146,39 @@ CONTAINS
         ptr(1:kk, 1:jj, 1:ii) => this%arr(ip:ip+kk*jj*ii-1)
     END SUBROUTINE get_grid3
 
+    SUBROUTINE get_arr_ptr(this, arr_ptr)
+        ! Subroutine arguments
+        CLASS(field_t), INTENT(in), TARGET :: this
+        REAL(realk), POINTER, CONTIGUOUS, INTENT(out) :: arr_ptr(:)
+        arr_ptr => this%arr
+    END SUBROUTINE get_arr_ptr
+
+
+    SUBROUTINE arr_grid_ptr1(this, arr_ptr)
+        ! Subroutine arguments
+        CLASS(field_t), INTENT(in), TARGET :: this
+        REAL(realk), POINTER, CONTIGUOUS, INTENT(out) :: arr_ptr(:, :)
+
+        ! Local variables
+        ! ASSUMPTION: Grid 1 hast the same size as the other grids
+        INTEGER(intk) :: len
+        CALL this%get_len(len, 1)
+
+        arr_ptr(1:nmygrids, 1:len) => this%arr
+    END SUBROUTINE arr_grid_ptr1
+
+    SUBROUTINE arr_grid_ptr3(this, arr_ptr)
+        ! Subroutine arguments
+        CLASS(field_t), INTENT(in), TARGET :: this
+        REAL(realk), POINTER, CONTIGUOUS, INTENT(out) :: arr_ptr(:, :, :, :)
+
+        ! Local variables
+        ! ASSUMPTION: Grid 1 hast the same dims as the other grids
+        INTEGER(intk) :: kk, jj, ii
+        CALL get_mgdims(kk, jj, ii, 1)
+
+        arr_ptr(1:nmygrids, 1:kk, 1:jj, 1:ii) => this%arr
+    END SUBROUTINE arr_grid_ptr3
 
     ! Make a deep copy of another field
     SUBROUTINE copy_from(this, that)
