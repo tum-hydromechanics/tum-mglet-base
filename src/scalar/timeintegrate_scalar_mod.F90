@@ -490,14 +490,13 @@ CONTAINS
 
         ! all grids rddx, rddy and rddz
         ! size: nmygrids * SIZE(rddx_f%arr)
-        REAL(realk), POINTER, CONTIGUOUS:: ag_rddy(:, :), ag_rddz(:, :)
-        REAL(realk), POINTER, CONTIGUOUS :: rddx(:)
+        REAL(realk), POINTER, CONTIGUOUS:: ag_rddx(:, :), ag_rddy(:, :), ag_rddz(:, :)
 
         ! all grids
         REAL(realk), POINTER, CONTIGUOUS:: ag_qtt(:, :, :, :), ag_qtu(:, :, :, :), ag_qtv(:, :, :, :), ag_qtw(:, :, :, :)
         REAL(realk) :: netflux
 
-        TYPE(offload_realfield), TARGET :: rddx_offload
+        !TYPE(offload_realfield) :: rddx_offload
 
         CALL start_timer(411)
 
@@ -505,8 +504,9 @@ CONTAINS
         CALL get_field(rddy_f, "RDDY")
         CALL get_field(rddz_f, "RDDZ")
 
-        CALL rddx_offload%set_data_ptr(rddx_f)
+        !CALL rddx_offload%set_data_ptr(rddx_f)
 
+        CALL rddx_f%arr_grid_ptr(ag_rddx)
         CALL rddy_f%arr_grid_ptr(ag_rddy)
         CALL rddz_f%arr_grid_ptr(ag_rddz)
 
@@ -520,25 +520,20 @@ CONTAINS
         jj = 36
         ii = 36
 
-        !$omp target data map(to: rddx(1:36), rddx_offload, ag_rddy, ag_rddz, ag_qtu, ag_qtv, ag_qtw) map(tofrom: ag_qtt)
+        !$omp target data map(to: ag_rddx, ag_rddy, ag_rddz, ag_qtu, ag_qtv, ag_qtw) map(tofrom: ag_qtt)
         
         !$omp target teams distribute
-        DO n = 1, nmygrids
-            CALL rddx_offload%get_grid_data_1d(n, rddx)
-            !rddx => rddx_offload%data((n - 1) * 36 + 1 : 36 * n)
-
+        DO n = 1, nmygrids        
 
             !$omp parallel do collapse(3)
             DO i = 3, ii-2
                 DO j = 3, jj-2
                     DO k = 3, kk-2
                         ! Computing netflux resulting from exchange with neighbors
-                        !netflux = ag_qtu(n, k, j, i-1) - ag_qtu(n, k, j, i) + ag_qtv(n, k, j-1, i) &
-                        !    - ag_qtv(n, k, j, i) + ag_qtw(n, k-1, j, i) - ag_qtw(n, k, j, i)
-                        netflux = 0
+                        netflux = ag_qtu(n, k, j, i-1) - ag_qtu(n, k, j, i) + ag_qtv(n, k, j-1, i) &
+                            - ag_qtv(n, k, j, i) + ag_qtw(n, k-1, j, i) - ag_qtw(n, k, j, i)
 
-                        !ag_qtt(n, k, j, i) = ag_rddz(n, k) * ag_rddy(n, j) * netflux
-                        ag_qtt(n, k, j, i) = i + j + k * rddx(i)
+                        ag_qtt(n, k, j, i) = ag_rddz(n, k) * ag_rddy(n, j) * ag_rddx(n, k) * netflux
                     END DO
                 END DO
             END DO

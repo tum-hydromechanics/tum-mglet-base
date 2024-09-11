@@ -35,7 +35,7 @@ CONTAINS
     SUBROUTINE set_data_ptr_from_arr(this, data_ptr)
         ! Subroutine arguments
         CLASS(offload_realfield), TARGET, INTENT(inout) :: this
-        REAL(realk), POINTER, INTENT(in) :: data_ptr(:)
+        REAL(realk), POINTER, CONTIGUOUS, INTENT(in) :: data_ptr(:)
 
         this%data => data_ptr
     END SUBROUTINE set_data_ptr_from_arr
