@@ -478,7 +478,7 @@ CONTAINS
                         ((v(k  ,j  ,i+1)-v(k  ,j  ,i-1)) * dyf &
                         + (v(k  ,j-1,i+1)-v(k  ,j-1,i-1)) * (1.0-dyf))
 
-                    dvdy = rddy(i)*(v(k, j, i)-v(k, j-1, i))
+                    dvdy = rddy(j)*(v(k, j, i)-v(k, j-1, i))
 
                     dvdz = rddzpl * &
                         ((v(k+1,j  ,i  )-v(k-1,j  ,i  )) * dyf &
@@ -492,7 +492,7 @@ CONTAINS
                         ((w(k  ,j+1,i  )-w(k  ,j-1,i  )) * dzf &
                         + (w(k-1,j+1,i  )-w(k-1,j-1,i  )) * (1.0-dzf))
 
-                    dwdz = rddz(i)*(w(k, j, i)-w(k-1, j, i))
+                    dwdz = rddz(k)*(w(k, j, i)-w(k-1, j, i))
 
                     ! masking with "bp" removes IB-intersected cells
                     dfg(k, j, i) = g(k, j, i) * bp(k, j, i) * &
