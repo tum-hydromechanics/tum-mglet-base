@@ -889,11 +889,14 @@ CONTAINS
             units=units_ux)
         CALL vx_f%init(name_vx, istag=istag, jstag=jstag, kstag=kstag, &
             units=units_ux)
+        CALL temp_f%init('tmp', istag=istag, jstag=jstag, kstag=kstag, &
+            units=units_ux)
 
         CALL differentiate(uy_f, u_f, ivar1)
         CALL differentiate(vx_f, v_f, ivar2)
-        temp_f%arr = uy_f%arr(:) + vx_f%arr(:)
+        temp_f%arr(:) = uy_f%arr(:) + vx_f%arr(:)
 
+        CALL get_field(p_f, "P")
         CALL field%multiply(temp_f, p_f)
 
         CALL uy_f%finish()
