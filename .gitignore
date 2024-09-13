@@ -56,3 +56,4 @@ mglet
 # Build folder(s)
 build*
 
+.vscode

@@ -27,6 +27,17 @@ else()
     message(WARNING "HDF5 does not support parallel I/O")
 endif()
 
+include(FindOpenMP)
+if(NOT OpenMP_C_FOUND)
+    message(WARNING "OpenMP support for C compiler not found")
+endif()
+if(NOT OpenMP_CXX_FOUND)
+    message(WARNING "OpenMP support for CXX compiler not found")
+endif()
+if(NOT OpenMP_Fortran_FOUND)
+    message(WARNING "OpenMP support for Fortran compiler not found")
+endif()
+
 # CMake build options
 option(MGLET_REAL64 "Compile MGLET with double precision support" OFF)
 if(MGLET_REAL64)
