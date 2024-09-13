@@ -270,7 +270,7 @@ CONTAINS
 
         iles = 1
         IF (ilesmodel == 0) iles = 0
-!change here 
+!change here git 
         ! X direction
         DO i = 3-nfu, ii-3+nbu
             DO j = 3, jj-2
@@ -531,8 +531,6 @@ CONTAINS
         ! Set INTENT(out) to zero
         qtt = 0.0
 
-        !$omp target data map(to: qtu, qtv, qtw, rddx, rddy, rddz, netflux) map(tofrom: qtt)
-        !$omp target teams distribute parallel do collapse(3)
         DO i = 3, ii-2
             DO j = 3, jj-2
                 DO k = 3, kk-2
@@ -544,8 +542,6 @@ CONTAINS
                 END DO
             END DO
         END DO
-        !$omp end target teams distribute parallel do
-        !$omp end target data
     END SUBROUTINE fluxbalance_grid
 
 
