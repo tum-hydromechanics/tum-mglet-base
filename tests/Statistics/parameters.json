@@ -7,13 +7,13 @@
 	"itsamp": 10,
         "tend": 10000.0,
         "read": false,
-        "write": false,
+        "write": true,
         "continue": false
     },
     "io": {
         "grids": "grids.h5",
         "infile": "none.h5",
-        "outfile": "none.h5"
+        "outfile": "fields.h5"
     },
     "flow": {
         "solve": true,
@@ -49,10 +49,10 @@
     },
     "statistics": [
         "P_AVG", "U_AVG", "V_AVG", "W_AVG",
-        "UU_AVG", "VV_AVG", "WW_AVG",
+        "UU_AVG", "VV_AVG", "WW_AVG", "PP_AVG",
         "UV_AVG", "VW_AVG", "UW_AVG",
-	    "UUU_AVG", "VVV_AVG", "WWW_AVG",
-	    "UUV_AVG", "UUW_AVG", "UVW_AVG",
+        "UUU_AVG", "VVV_AVG", "WWW_AVG",
+        "UUV_AVG", "UUW_AVG", "UVW_AVG",
         "UVV_AVG", "UWW_AVG", "VVW_AVG", "VWW_AVG",
         "UP_AVG", "VP_AVG", "WP_AVG",
         "UxP_AVG", "VyP_AVG", "WzP_AVG",
