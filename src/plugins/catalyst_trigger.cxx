@@ -2079,11 +2079,8 @@ struct TransferFromMGLET{
     void (*cp_mgdims)(int*,int*,int*,const int*);
     void (*cp_mgbasb)(int*,int*,int*,int*,int*,int*,const int*);
     void (*cp_iterate_grids_lvl)(int*,const int*,const int*);
-#ifdef _MGLET_DOUBLE_PRECISION_
-    void (*cp_get_arrptr)(double*,const int*,const int*);
-#else
-    void (*cp_get_arrptr)(void*,const int*,const int*);
-#endif
+    void (*cp_get_arrptr)(void*,void*,const int*);
+    void (*cp_get_xyzptr)(void*,void*,void*,const int*);
     // data value (not pointers)
     int myid; 
     int numprocs; 
@@ -2094,7 +2091,8 @@ struct TransferFromMGLET{
 };
 
 
-int get_ngrids_lvl( TransferFromMGLET* args, int ilevel ){
+int get_ngrids_lvl( TransferFromMGLET* args, int ilevel )
+{
     int lvlcounter = 1;
     int igrid = -1;
     while ( true ) {
@@ -2113,19 +2111,39 @@ void show_field( TransferFromMGLET* args )
         for ( int igrd = 1; igrd <= ngrid; igrd++ )
         {
             int igrid;
-            void* ptr = nullptr;
-            int name;
             int kk; int jj; int ii;
-
-            std::cout << "Lvl = " << ilvl << " : " << igrd << " igrd" << std::endl;
+            void *ptr_arr = nullptr;
+            void *ptr_x = nullptr;
+            void *ptr_y = nullptr;
+            void *ptr_z = nullptr;
+            char const *name = "U_AVG";
+            
             args->cp_iterate_grids_lvl( &igrid, &igrd, &ilvl );
-
             if ( igrid > 0 )
             {
-                args->cp_get_arrptr( &ptr, &name, &igrid );
+                // calls to MGLET routines
                 args->cp_mgdims( &kk, &jj, &ii, &igrid );
-                float (*arr)[jj][kk] = (float (*)[jj][kk]) ptr;
-                std::cout << arr[2][2][2] << std::endl;
+                args->cp_get_arrptr( &ptr_arr, &name, &igrid );
+                args->cp_get_xyzptr( &ptr_x, &ptr_y, &ptr_z, &igrid );
+
+                // casting of void pointers to arrc[ii][jj][kk]
+                // from Fortran arrf(kk,jj,ii)
+#ifdef _MGLET_DOUBLE_PRECISION_
+                double (*arr)[jj][kk] = (double (*)[jj][kk]) ptr_arr;
+                double (*x_arr) = (double*) x_arr;
+                double (*y_arr) = (double*) y_arr;
+                double (*z_arr) = (double*) z_arr;
+#else
+                float (*val_arr)[jj][kk] = (float (*)[jj][kk]) ptr_arr;
+                float (*x_arr) = (float*) ptr_x;
+                float (*y_arr) = (float*) ptr_y;
+                float (*z_arr) = (float*) ptr_z;
+#endif
+                for ( int iz = 0; iz < kk; iz++ )
+                {
+                    std::cout << z_arr[iz] << ' ';
+                }
+                std::cout << std::endl;
             }
         }
     }
@@ -2139,22 +2157,22 @@ extern "C" void catalyst_trigger(
     void (*cp_mgdims)(int*,int*,int*,const int*),
     void (*cp_iterate_grids_lvl)(int*,const int*,const int*),
     void (*cp_mgbasb)(int*,int*,int*,int*,int*,int*,const int*),
-#ifdef _MGLET_DOUBLE_PRECISION_
-    void (*cp_get_arrptr)(double*,const int*,const int*),
-#else
-    void (*cp_get_arrptr)(void*,const int*,const int*),
-#endif
+    void (*cp_get_arrptr)(void*,void*,const int*),
+    void (*cp_get_xyzptr)(void*,void*,void*,const int*),
     int* myid, int* numprocs, int* istep,
-    int* nscal, int* lvlmin, int* lvlmax ) {
-
+    int* nscal, int* lvlmin, int* lvlmax ) 
+{
 
     // function body -------------------------------------------------
 
     TransferFromMGLET args;
+    // function pointers
     args.cp_mgdims = cp_mgdims;
     args.cp_mgbasb = cp_mgbasb;
     args.cp_iterate_grids_lvl = cp_iterate_grids_lvl;
     args.cp_get_arrptr = cp_get_arrptr;
+    args.cp_get_xyzptr = cp_get_xyzptr;
+    // data pointers (converted to values)
     args.myid = *myid;
     args.numprocs = *numprocs;
     args.istep = *istep;
