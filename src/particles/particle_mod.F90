@@ -1,13 +1,14 @@
 MODULE particle_mod
 
-    ! Do not 'USE' core_mod or ib_mod here, because they will get exported
-    ! (this module had no 'PRIVATE' default)
+    ! This module is responsible for:
+    ! Initialization of the particle simulation.
+    ! Finishing of the particle simulation.
+
+
     USE particle_timeintegration_mod
     USE particle_snapshot_mod
 
     IMPLICIT NONE(type, external)
-
-    !LOGICAL :: dsim_particles = .TRUE.
 
 CONTAINS
 
@@ -18,7 +19,7 @@ CONTAINS
         IF (dsim_particles) THEN
 
             IF (myid == 0) THEN
-                WRITE(*,*) "PARTICLE SIMULATION STARTED"
+                WRITE(*,*) "PARTICLE SIMULATION STARTED."
             END IF
 
             CALL set_timer(900, 'PARTICLES')
@@ -52,7 +53,7 @@ CONTAINS
         ! TODO: DEALLOCATIONS ETC. ...
 
         IF (myid == 0) THEN
-            WRITE(*,*) "PARTICLE SIMULATION FINISHED"
+            WRITE(*,*) "PARTICLE SIMULATION COMPLETED."
         END IF
 
     END SUBROUTINE finish_particles

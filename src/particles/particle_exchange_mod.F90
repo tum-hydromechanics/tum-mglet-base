@@ -474,7 +474,15 @@ CONTAINS
         ! BARRIER ONLY FOR DEGUGGING -- TEMPORARY <----------------------------------------------- TODO : remove
         CALL MPI_Barrier(MPI_COMM_WORLD)
 
-        CALL print_list_status(particle_list)
+        SELECT CASE (TRIM(particle_terminal))
+            CASE ("none")
+                CONTINUE
+            CASE ("normal")
+                CONTINUE
+            CASE ("verbose")
+                CALL print_list_status(particle_list)
+                WRITE(*, '()')
+        END SELECT
 
         IF (particle_list%active_np < active_np_old + sizeRecvBuf - sizeSendBuf) THEN
             SELECT CASE (TRIM(particle_terminal))

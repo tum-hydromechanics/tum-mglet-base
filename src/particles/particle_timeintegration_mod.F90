@@ -1,5 +1,3 @@
-! file for particle motion and timeintegration
-
 MODULE particle_timeintegration_mod
 
     USE particle_interpolation_mod
@@ -59,9 +57,10 @@ CONTAINS
 
         END IF
 
+        ! REMOVE later
         IF (myid == 0) THEN
             WRITE(*, *) '' ! REMOVE later
-            WRITE(*, *) 'New Timestep ...' ! REMOVE later
+            WRITE(*, '("NEW TIMESTEP - PARTICLE TIMEINTEGRATION:")')
         END IF
 
         DO i = 1, my_particle_list%ifinal
@@ -73,21 +72,21 @@ CONTAINS
 
             ! checking locality (Debug)
             IF (my_particle_list%particles(i)%iproc /= myid) THEN
-                WRITE(*,*) 'Particle on wrong proc at start of timestep'
+                WRITE(*, '("ERROR: Particle on wrong proc at start of current timestep")')
                 CALL errr(__FILE__, __LINE__)
             END IF
 
-            ! getting the grid
-            igrid = my_particle_list%particles(i)%igrid !just for clarity of the follwing expressions
+            ! assigning igrid for clarity of the follwing expressions
+            igrid = my_particle_list%particles(i)%igrid
 
             ! checking consistency (Debug)
             gfound = 1
             DO ig = 1, nMyGrids
-                IF ( my_particle_list%particles(i)%igrid == mygrids(ig) ) gfound = 1; EXIT
+                IF (my_particle_list%particles(i)%igrid == mygrids(ig)) gfound = 1; EXIT
             END DO
 
-            IF ( gfound == 0 ) THEN
-                WRITE(*, '("Particle grid ", I0, " is not on this process (", I0, ")")') my_particle_list%particles(i)%igrid, myid
+            IF (gfound == 0) THEN
+                WRITE(*, '("ERROR: Particle grid ", I0, " is not on this process (", I0, ")")') my_particle_list%particles(i)%igrid, myid
                 CALL errr(__FILE__, __LINE__)
             END IF
 
@@ -117,8 +116,6 @@ CONTAINS
             END IF
 
             CALL get_mgdims(kk, jj, ii, igrid)
-
-            ! EXPLICIT EULER FOR NOW
 
             ! Advection
             IF (dinterp_particles) THEN
@@ -151,20 +148,10 @@ CONTAINS
             diffusion_dy = SQRT(2 * D(2) * dt) * rand(2) / SQRT(rand(1)**(2) + rand(2)**(2) + rand(3)**(2))
             diffusion_dz = SQRT(2 * D(3) * dt) * rand(3) / SQRT(rand(1)**(2) + rand(2)**(2) + rand(3)**(2))
 
+            ! Advection + Diffusion
             pdx = advection_dx + diffusion_dx
             pdy = advection_dy + diffusion_dy
             pdz = advection_dz + diffusion_dz
-
-            ! Particle Boundary Interaction
-            CALL move_particle(my_particle_list%particles(i), pdx, pdy, pdz)
-
-            ! cound particcles to be sent (per process)
-            CALL prepare_particle_exchange(my_particle_list%particles(i))
-
-            ! Advection + Diffusion
-            !my_particle_list%particles(i)%x = my_particle_list%particles(i)%x + pdx
-            !my_particle_list%particles(i)%y = my_particle_list%particles(i)%y + pdy
-            !my_particle_list%particles(i)%z = my_particle_list%particles(i)%z + pdz
 
             ! for debugging
             SELECT CASE (TRIM(particle_terminal))
@@ -173,21 +160,19 @@ CONTAINS
                 CASE ("normal")
                     CONTINUE
                 CASE ("verbose")
-                    WRITE(*,'("Timeintegrating Particle ", I0, "(dt = ", F12.8,"):")') my_particle_list%particles(i)%ipart, dt
+                    WRITE(*,'("Pre Particle Motion:")')
+                    CALL print_particle_status(my_particle_list%particles(i))
+                    WRITE(*,'("Unhindered Motion", I0, "(dt = ", F12.8,"):")') my_particle_list%particles(i)%ipart, dt
                     WRITE(*,'("Particle ADVECTION [m] = ", 3F12.8)') advection_dx, advection_dy, advection_dz
                     WRITE(*,'("Particle DIFFUSION [m] = ", 3F12.8)') diffusion_dx, diffusion_dy, diffusion_dz
-                    WRITE(*, *) ' '
+                    WRITE(*, '()')
             END SELECT
 
-            SELECT CASE (TRIM(particle_terminal))
-                CASE ("none")
-                    CONTINUE
-                CASE ("normal")
-                    CONTINUE
-                CASE ("verbose")
-                    WRITE(*,'("Pre Migration:")')
-                    CALL print_particle_status(my_particle_list%particles(i))
-            END SELECT
+            ! Particle Boundary Interaction
+            CALL move_particle(my_particle_list%particles(i), pdx, pdy, pdz)
+
+            ! count particles to be sent (per process)
+            CALL prepare_particle_exchange(my_particle_list%particles(i))
 
         END DO
 

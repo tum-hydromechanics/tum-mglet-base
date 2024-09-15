@@ -1,6 +1,8 @@
 MODULE particle_config_mod
 
-!USE core_mod
+! This module is responsible for:
+! Reading of particle parameters from parameters.json file.
+
 USE comms_mod, ONLY: myid, numprocs
 USE err_mod
 USE precision_mod
@@ -22,29 +24,33 @@ INTEGER(intk) :: psnapshot_step
 
 REAL(realk) :: D(3) = 0.0_realk
 
-CONTAINS
+CONTAINS    !===================================
 
     SUBROUTINE init_particle_config()
 
         USE config_mod
         USE fort7_mod
 
-        !-----------------------------------
+        !- - - - - - - - - - - - - - - - - -
+
         TYPE(config_t) :: pconf
 
         IF (.NOT. fort7%exists("/particles")) THEN
+
             IF (myid == 0) THEN
-                WRITE(*, '("NO PARTICLE CONFIGURATION DATA. NO PARTICLE SIMULATION.")')
+                WRITE(*, '("NO PARTICLE CONFIGURATION DATA AVAILABLE. NO PARTICLE SIMULATION WILL BE CONDUCTED.")')
                 WRITE(*, '()')
             END IF
+
             RETURN
+
         END IF
 
         dsim_particles = .TRUE.
 
         CALL fort7%get(pconf, "/particles")
 
-        !-----------------------------------
+        !- - - - - - - - - - - - - - - - - -
 
         CALL pconf%get_value("/terminal", particle_terminal, "normal")
 
@@ -59,25 +65,27 @@ CONTAINS
                     CONTINUE
                 CASE ("normal")
                     WRITE(*, *) "WARNING: Unknown Terminal Output Specifier for Particle Modules. Using normal instead"
+                    WRITE(*, '()')
                 CASE ("verbose")
                     WRITE(*, *) "WARNING: Unknown Terminal Output Specifier for Particle Modules. Using normal instead"
+                    WRITE(*, '()')
             END SELECT
 
         END IF
 
-        !-----------------------------------
+        !- - - - - - - - - - - - - - - - - -
 
         CALL pconf%get_value("/read", dread_particles, .FALSE.)
 
-        !-----------------------------------
+        !- - - - - - - - - - - - - - - - - -
 
         CALL pconf%get_value("/interp", dinterp_particles, .TRUE.)
 
-        !-----------------------------------
+        !- - - - - - - - - - - - - - - - - -
 
         CALL pconf%get_value("/write", dwrite_particles, .TRUE.)
 
-        !-----------------------------------
+        !- - - - - - - - - - - - - - - - - -
 
         CALL pconf%get_value("/list_len", plist_len, 1000_intk)
 
@@ -90,8 +98,10 @@ CONTAINS
                         CONTINUE
                     CASE ("normal")
                         WRITE(*, *) "WARNING: Particle List Length must be positve. Using default Number ", plist_len, "instead."
+                        WRITE(*, '()')
                     CASE ("verbose")
-                        WRITE(*, *) "WARNING: Particle List Length must be positve. Using default Number ", plist_len, "instead."
+                        WRITE(*, *) "WARNING: Particle List Length must be positve. Using default Number ", plist_len, "instead."#
+                        WRITE(*, '()')
                 END SELECT
             END IF
 
@@ -99,7 +109,7 @@ CONTAINS
 
         END IF
 
-        !-----------------------------------
+        !- - - - - - - - - - - - - - - - - -
 
         CALL pconf%get_value("/init_np", init_npart, 100_intk)
 
@@ -111,8 +121,10 @@ CONTAINS
                         CONTINUE
                     CASE ("normal")
                         WRITE(*, *) "WARNING: Initial Number of Particles must be positve. Using default Number ", init_npart, "instead."
+                        WRITE(*, '()')
                     CASE ("verbose")
                         WRITE(*, *) "WARNING: Initial Number of Particles must be positve. Using default Number ", init_npart, "instead."
+                        WRITE(*, '()')
                 END SELECT
             END IF
 
@@ -125,9 +137,13 @@ CONTAINS
                     CASE ("none")
                         CONTINUE
                     CASE ("normal")
-                        WRITE(*, *) "WARNING: Initial Number of Particles must be smaller than the maximum List Length. Using default Number ", init_npart, "instead."
+                        WRITE(*, *) "WARNING: Initial Number of Particles must be smaller than the maximum List Length. Using default Number ", &
+                         init_npart, "instead."
+                        WRITE(*, '()')
                     CASE ("verbose")
-                        WRITE(*, *) "WARNING: Initial Number of Particles must be smaller than the maximum List Length. Using default Number ", init_npart, "instead."
+                        WRITE(*, *) "WARNING: Initial Number of Particles must be smaller than the maximum List Length. Using default Number ", &
+                         init_npart, "instead."
+                        WRITE(*, '()')
                 END SELECT
             END IF
 
@@ -135,7 +151,7 @@ CONTAINS
 
         END IF
 
-        !-----------------------------------
+        !- - - - - - - - - - - - - - - - - -
 
         CALL pconf%get_array("/D", D)
 
@@ -147,8 +163,10 @@ CONTAINS
                         CONTINUE
                     CASE ("normal")
                         WRITE(*, *) "WARNING: Diffusion Constant Dx must be positve. Using Dx = 0 instead."
+                        WRITE(*, '()')
                     CASE ("verbose")
                         WRITE(*, *) "WARNING: Diffusion Constant Dx must be positve. Using Dx = 0 instead."
+                        WRITE(*, '()')
                 END SELECT
             END IF
 
@@ -164,8 +182,10 @@ CONTAINS
                         CONTINUE
                     CASE ("normal")
                         WRITE(*, *) "WARNING: Diffusion Constant Dy must be positve. Using Dy = 0 instead."
+                        WRITE(*, '()')
                     CASE ("verbose")
                         WRITE(*, *) "WARNING: Diffusion Constant Dy must be positve. Using Dy = 0 instead."
+                        WRITE(*, '()')
                 END SELECT
             END IF
 
@@ -181,8 +201,10 @@ CONTAINS
                         CONTINUE
                     CASE ("normal")
                         WRITE(*, *) "WARNING: Diffusion Constant Dz must be positve. Using Dz = 0 instead."
+                        WRITE(*, '()')
                     CASE ("verbose")
                         WRITE(*, *) "WARNING: Diffusion Constant Dz must be positve. Using Dz = 0 instead."
+                        WRITE(*, '()')
                 END SELECT
             END IF
 
@@ -190,7 +212,7 @@ CONTAINS
 
         END IF
 
-        !-----------------------------------
+        !- - - - - - - - - - - - - - - - - -
 
         CALL pconf%get_value("/snapshot_step", psnapshot_step, 10_intk)
 
@@ -201,9 +223,11 @@ CONTAINS
                     CASE ("none")
                         CONTINUE
                     CASE ("normal")
-                        WRITE(*, *) "Invalid snapshot step. Should be integer greater or equal to 1. Using snapshot_step = 10 instead."
+                        WRITE(*, *) "WARNING: Snapshot step should be an integer greater or equal to 1. Using snapshot_step = 10 instead."
+                        WRITE(*, '()')
                     CASE ("verbose")
-                        WRITE(*, *) "Invalid snapshot step. Should be integer greater or equal to 1. Using snapshot_step = 10 instead."
+                        WRITE(*, *) "WARNING: Snapshot step should be an integer greater or equal to 1. Using snapshot_step = 10 instead."
+                        WRITE(*, '()')
                 END SELECT
             END IF
 
@@ -211,7 +235,7 @@ CONTAINS
 
         END IF
 
-        !-----------------------------------
+        !- - - - - - - - - - - - - - - - - -
 
         IF (myid == 0) THEN
             SELECT CASE (TRIM(particle_terminal))
@@ -219,24 +243,30 @@ CONTAINS
                         CONTINUE
                     CASE ("normal")
                         WRITE(*, '("PARTICLE CONFIGURATION:")')
-                        WRITE(*, '("Terminal Output:              ", A11)') particle_terminal
-                        WRITE(*, '("Reading ParticlesDict:        ", L11)') dread_particles
-                        WRITE(*, '("Field Interpolation:          ", L11)') dinterp_particles
-                        WRITE(*, '("Writing Particle Snapshots:   ", L11)') dwrite_particles
-                        WRITE(*, '("Particle Snapshot Step:       ", I11)') psnapshot_step
-                        WRITE(*, '("Max Particle List Length:     ", I11)') plist_len
-                        WRITE(*, '("Initial number of Particles:  ", I11)') init_npart
-                        WRITE(*, '("Diffusion Vector:             ", F11.9, " ", F11.9, " ", F11.9)') D(1), D(2), D(3)
+                        WRITE(*, '("Terminal Output:              ", A12)') particle_terminal
+                        WRITE(*, '("Reading ParticlesDict:        ", L12)') dread_particles
+                        WRITE(*, '("Field Interpolation:          ", L12)') dinterp_particles
+                        WRITE(*, '("Writing Particle Snapshots:   ", L12)') dwrite_particles
+                        WRITE(*, '("Particle Snapshot Step:       ", I12)') psnapshot_step
+                        WRITE(*, '("Max Particle List Length:     ", I12)') plist_len
+                        WRITE(*, '("Initial number of Particles:  ", I12)') init_npart
+                        WRITE(*, '("Diffusion Constant Dx:        ", E12.3)') D(1)
+                        WRITE(*, '("Diffusion Constant Dy:        ", E12.3)') D(2)
+                        WRITE(*, '("Diffusion Constant Dz:        ", E12.3)') D(3)
+                        WRITE(*, '()')
                     CASE ("verbose")
                         WRITE(*, '("PARTICLE CONFIGURATION:")')
-                        WRITE(*, '("Terminal Output:              ", A11)') particle_terminal
-                        WRITE(*, '("Reading ParticlesDict:        ", L11)') dread_particles
-                        WRITE(*, '("Field Interpolation:          ", L11)') dinterp_particles
-                        WRITE(*, '("Writing Particle Snapshots:   ", L11)') dwrite_particles
-                        WRITE(*, '("Particle Snapshot Step:       ", I11)') psnapshot_step
-                        WRITE(*, '("Max Particle List Length:     ", I11)') plist_len
-                        WRITE(*, '("Initial number of Particles:  ", I11)') init_npart
-                        WRITE(*, '("Diffusion Vector:             ", F11.9, " ", F11.9, " ", F11.9)') D(1), D(2), D(3)
+                        WRITE(*, '("Terminal Output:              ", A12)') particle_terminal
+                        WRITE(*, '("Reading ParticlesDict:        ", L12)') dread_particles
+                        WRITE(*, '("Field Interpolation:          ", L12)') dinterp_particles
+                        WRITE(*, '("Writing Particle Snapshots:   ", L12)') dwrite_particles
+                        WRITE(*, '("Particle Snapshot Step:       ", I12)') psnapshot_step
+                        WRITE(*, '("Max Particle List Length:     ", I12)') plist_len
+                        WRITE(*, '("Initial number of Particles:  ", I12)') init_npart
+                        WRITE(*, '("Diffusion Constant Dx:        ", E12.3)') D(1)
+                        WRITE(*, '("Diffusion Constant Dy:        ", E12.3)') D(2)
+                        WRITE(*, '("Diffusion Constant Dz:        ", E12.3)') D(3)
+                        WRITE(*, '()')
             END SELECT
         END IF
 

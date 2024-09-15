@@ -1,11 +1,7 @@
-! a module for particle input/output operations, if initial condition (ic)
-! or boundary conditions (bc) should be read from a file or information should
-! be written to a file
-
 MODULE particle_snapshot_mod
 
-    ! TODO: psnapshot_info_t to store number of serial files per time, times and accuracy/format of point coordinates
-    ! (sort of as a log file)
+    ! This module is responsible for:
+    ! Writing particle positions at predifined timesteps as VTK files (particle snapshots).
 
     USE utils_mod
 
@@ -19,18 +15,22 @@ MODULE particle_snapshot_mod
         INTEGER(intk) :: nprocs
 
         INTEGER(intk) :: itstep
-        CHARACTER(7) :: coordinate_format = '(F12.6)' !should depend on the domain lengths and be determined in init_psnapshots
+        !should depend on the domain lengths and be determined in init_psnapshots
+        CHARACTER(7) :: coordinate_format = '(F12.6)'
 
         INTEGER(intk) :: nsnapshots
-        INTEGER(intk), ALLOCATABLE :: nparticles(:) ! stores the number of particles for each snapshot; will be allocated to length = nsnapshots
-        INTEGER(intk), ALLOCATABLE :: timesteps(:) ! stores the integer of all timesteps for which a particle snapshot will be produced
-        REAL(realk), ALLOCATABLE :: times(:) ! stores the time for each snapshot; will be allocated to length = nsnapshots
+        ! stores the number of particles for each snapshot; will be allocated to length = nsnapshots
+        INTEGER(intk), ALLOCATABLE :: nparticles(:)
+        ! stores the integer of all timesteps for which a particle snapshot will be produced
+        INTEGER(intk), ALLOCATABLE :: timesteps(:)
+        ! stores the time for each snapshot; will be allocated to length = nsnapshots
+        REAL(realk), ALLOCATABLE :: times(:)
 
-        INTEGER(intk) :: counter = 0_intk ! stores the id (starting from 1 and rising contiguously) of the current snapshot
+        ! stores the id (starting from 1 and rising contiguously) of the current snapshot
+        INTEGER(intk) :: counter = 0_intk
 
     END TYPE psnapshot_info_t
 
-    !LOGICAL :: dwrite_particles = .TRUE.
     TYPE(psnapshot_info_t) :: psnapshot_info
 
 CONTAINS
@@ -59,14 +59,14 @@ CONTAINS
                         CONTINUE
                     CASE ("normal")
                         WRITE(*, *) ' '
-                        WRITE(*, *) "ERROR. Directory Particle_Snaphots already exists. Terminating Process!"
+                        WRITE(*, *) "ERROR: Directory Particle_Snaphots already exists. Terminating Process!"
                     CASE ("verbose")
                         WRITE(*, *) ' '
-                        WRITE(*, *) "ERROR. Directory Particle_Snaphots already exists. Terminating Process!"
+                        WRITE(*, *) "ERROR: Directory Particle_Snaphots already exists. Terminating Process!"
                 END SELECT
             END IF
 
-            CALL errr(__FILE__, __LINE__) ! or RETURN
+            CALL errr(__FILE__, __LINE__)
 
         END IF
 
@@ -100,7 +100,8 @@ CONTAINS
 
         DO i = 2, psnapshot_info%nsnapshots - 1
 
-            psnapshot_info%timesteps(i) = (i - 1_intk) * psnapshot_info%itstep ! assumes that dt is constant for the whole run
+            ! assumes that dt is constant for the whole run
+            psnapshot_info%timesteps(i) = (i - 1_intk) * psnapshot_info%itstep
 
         END DO
 
@@ -141,8 +142,9 @@ CONTAINS
 
         IF (psnapshot_info%timesteps(psnapshot_info%counter + 1) == itstep) THEN
 
-            psnapshot_info%counter = psnapshot_info%counter + 1_intk ! should be broadcasted via MPI so that no missmatches occur ?
+            psnapshot_info%counter = psnapshot_info%counter + 1_intk
 
+            ! Racing condition is prevented within the create_psnapshot_subfolder routine
             CALL create_psnapshot_subfolder()
 
             CALL write_psnapshot_piece()
@@ -180,14 +182,15 @@ CONTAINS
 
         END IF
 
+        ! alternatively
         ! CALL MPI_Barrier(MPI_COMM_WORLD)
 
     END SUBROUTINE create_psnapshot_subfolder
 
     !------------------------------
 
-    SUBROUTINE write_psnapshot_piece()
     ! writes vtp (xml) file containing all particles of the respective process
+    SUBROUTINE write_psnapshot_piece()
 
         ! local variables
         INTEGER(intk) :: i, unit = 162
@@ -242,8 +245,6 @@ CONTAINS
 
         END DO
 
-        ! also write vertices for visualization?
-
         WRITE(unit, '(A)') '        </DataArray>'
         WRITE(unit, '(A)') '      </Points>'
         WRITE(unit, '(A)') '    </Piece>'
@@ -254,13 +255,13 @@ CONTAINS
 
     !------------------------------
 
-    SUBROUTINE write_psnapshot_master(timeph)
     ! writes pvtp (xml) file (master file for all pieces of the same time)
+    SUBROUTINE write_psnapshot_master(timeph)
 
-        !subroutine arguments...
+        !subroutine arguments
         REAL(realk), INTENT(in) :: timeph
 
-        !local variables...
+        !local variables
         INTEGER(intk) :: proc, unit = 163
         CHARACTER(len = mglet_filename_max) :: filename, piece
 
@@ -330,6 +331,6 @@ CONTAINS
 
     !------------------------------
 
-    ! TODO: particle trajectories
+    ! TODO: particle trajectories ?
 
 END MODULE particle_snapshot_mod

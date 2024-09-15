@@ -1,11 +1,12 @@
-! particle file is for TYPE definitions and general handling of particles
-
 MODULE particle_core_mod
+
+    ! This module is responsible for:
+    ! Definition of the baseparticle_t type.
+    ! Basic operations on individual particles.
 
     USE grids_mod
     USE field_mod
     USE fields_mod
-
 
     USE particle_config_mod
 
@@ -13,9 +14,10 @@ MODULE particle_core_mod
 
     INTEGER(c_intk), PARAMETER :: particle_mpi_elems = 8
 
+    ! C binding for MPI compatability!
     TYPE, BIND(C) :: baseparticle_t
 
-        ! state definitions:
+        ! Particle state definitions:
         !-1/0 : particle is inactive
         !  1 : particle is active
         !  2 : particle is active, cell info has to be updated after displacement
@@ -38,13 +40,14 @@ MODULE particle_core_mod
     PUBLIC :: set_particle, set_particle_igrid, set_particle_cell, &
               update_particle_cell, print_particle_status
 
-CONTAINS
+CONTAINS    !===================================
 
     SUBROUTINE set_particle(particle, ipart, x, y, z, iproc, igrid, ijkcell)
 
-        ! Subroutine arguments
+        ! subroutine arguments
         TYPE(baseparticle_t), INTENT(inout) :: particle
 
+        ! local variables:
         INTEGER(intk), INTENT(in) :: ipart
         REAL(realk), INTENT(in) :: x, y, z
         INTEGER(intk), INTENT(in), OPTIONAL :: iproc
@@ -78,14 +81,14 @@ CONTAINS
 
     END SUBROUTINE set_particle
 
-
+    !-----------------------------------
 
     SUBROUTINE set_particle_igrid(particle)
 
-        ! Subroutine arguments
+        ! subroutine arguments
         TYPE(baseparticle_t), INTENT(inout) :: particle
 
-        !local variables:
+        ! local variables:
         INTEGER(intk) :: found = -1
         INTEGER(intk) :: i, igrid
         REAL(realk) :: minx, maxx, miny, maxy, minz, maxz
@@ -97,8 +100,8 @@ CONTAINS
                 CASE ("normal")
                     CONTINUE
                 CASE ("verbose")
-                    WRITE(*,*) ' '
                     WRITE(*, *) "WARNING: In get_p_ijkcell: Tried to locate particle that is not active!"
+                    WRITE(*, '()')
             END SELECT
             RETURN
         END IF
@@ -129,7 +132,8 @@ CONTAINS
             EXIT
         END DO
 
-        particle%state = found ! if particle is not found, deactivate particle
+        ! if particle is not found, deactivate particle
+        particle%state = found
 
         SELECT CASE (TRIM(particle_terminal))
             CASE ("none")
@@ -137,13 +141,14 @@ CONTAINS
             CASE ("normal")
                 CONTINUE
             CASE ("verbose")
-                WRITE(*,*) ' '
-                WRITE(*, '("WARNING: In get_p_igrid: Particle ", I0, " could not be found on any grid, process ", I0, " owns!")') particle%ipart, particle%iproc
+                WRITE(*, '("WARNING: In get_p_igrid: Particle ", I0, " could not be found on any grid, process ", I0, " owns!")') &
+                 particle%ipart, particle%iproc
+                WRITE(*, '()')
         END SELECT
 
     END SUBROUTINE set_particle_igrid
 
-
+    !-----------------------------------
 
     SUBROUTINE set_particle_cell(particle)
 
@@ -181,7 +186,8 @@ CONTAINS
                     CONTINUE
                 CASE ("verbose")
                     WRITE(*,*) ' '
-                    WRITE(*, '("WARNING: Coordinates of particle ", I0 ," do not lie within boundaries of particle grid ", I0)') particle%ipart, particle%igrid
+                    WRITE(*, '("WARNING: Coordinates of particle ", I0 ," do not lie within boundaries of particle grid ", I0)') &
+                     particle%ipart, particle%igrid
             END SELECT
 
             CALL set_particle_igrid( particle )
@@ -199,7 +205,8 @@ CONTAINS
         ! the following procedure is capable of handling stretched grids!
 
         ! find nearest x(i):
-        i = 1 + NINT((ii - 1) * (particle%x - minx) / (maxx - minx), intk) ! particle expression avoids errors for particlex = minx and particlex = maxx
+        ! particle expression avoids errors for particlex = minx and particlex = maxx
+        i = 1 + NINT((ii - 1) * (particle%x - minx) / (maxx - minx), intk)
         diff_old = ABS(x(i) - particle%x)
         diff_new = 0_realk
 
@@ -217,7 +224,8 @@ CONTAINS
         END DO
 
         ! find nearest y(j):
-        j = 1 + NINT((jj - 1) * (particle%y - miny) / (maxy - miny), intk) ! particle expression avoids errors for particley = miny and particley = maxy
+        ! particle expression avoids errors for particley = miny and particley = maxy
+        j = 1 + NINT((jj - 1) * (particle%y - miny) / (maxy - miny), intk)
         diff_old = ABS(y(j) - particle%y)
         diff_new = 0_realk
 
@@ -235,7 +243,8 @@ CONTAINS
         END DO
 
         ! find nearest z(k):
-        k = 1 + NINT((kk - 1) * (particle%z - minz) / (maxz - minz), intk) ! particle expression avoids errors for particlez = minz and particlez = maxz
+        ! particle expression avoids errors for particlez = minz and particlez = maxz
+        k = 1 + NINT((kk - 1) * (particle%z - minz) / (maxz - minz), intk)
         diff_old = ABS(z(k) - particle%z)
         diff_new = 0_realk
 
@@ -254,7 +263,7 @@ CONTAINS
 
     END SUBROUTINE set_particle_cell
 
-
+    !-----------------------------------
 
     SUBROUTINE update_particle_cell(particle)
 
@@ -277,8 +286,8 @@ CONTAINS
                 CASE ("normal")
                     CONTINUE
                 CASE ("verbose")
-                    WRITE(*,*) ' '
                     WRITE(*, *) "WARNING: In update_p_ijkcell: Tried to locate particle that is not active!"
+                    WRITE(*, '()')
             END SELECT
             RETURN
         END IF
@@ -302,7 +311,7 @@ CONTAINS
         CALL get_mgdims(kk, jj, ii, particle%igrid)
         CALL get_bbox(minx, maxx, miny, maxy, minz, maxz, particle%igrid)
 
-        ! the following assumes that the x/y/z values are sorted such that for any i < j and any direction x, x(i) < x(j) !
+        ! the following assumes that the x/y/z grid coordinates are sorted such that for any i < j and any direction x, x(i) < x(j) !
         ! the following procedure is capable of handling stretched grids!
 
         ! find nearest x:
@@ -372,7 +381,7 @@ CONTAINS
 
     END SUBROUTINE update_particle_cell
 
-
+    !-----------------------------------
 
     SUBROUTINE print_particle_status(particle)
 
@@ -380,20 +389,12 @@ CONTAINS
         TYPE(baseparticle_t), INTENT(in) :: particle
 
         IF (particle%state >= 1) THEN
-            SELECT CASE (TRIM(particle_terminal))
-                CASE ("none")
-                    CONTINUE
-                CASE ("normal")
-                    CONTINUE
-                CASE ("verbose")
-                    WRITE(*, '("Particle ", I0, " - Status:")') particle%ipart
-                    WRITE(*, '("iproc       = ", I12)') particle%iproc
-                    WRITE(*, '("igrid       = ", I12)') particle%igrid
-                    WRITE(*, '("x/y/z       = ", 3F12.6)') particle%x, particle%y, particle%z
-                    WRITE(*, '("i/j/k cell  = ", 3I12)') particle%ijkcell(1), particle%ijkcell(2), particle%ijkcell(3)
-                    !WRITE(*, '("facepath    = ", 3I12)') particle%facepath(1), particle%facepath(2), particle%facepath(3)
-                    WRITE(*, *) ' '
-            END SELECT
+                WRITE(*, '("Particle ", I0, " - Status:")') particle%ipart
+                WRITE(*, '("iproc       = ", I12)') particle%iproc
+                WRITE(*, '("igrid       = ", I12)') particle%igrid
+                WRITE(*, '("x/y/z       = ", 3F12.6)') particle%x, particle%y, particle%z
+                WRITE(*, '("i/j/k cell  = ", 3I12)') particle%ijkcell(1), particle%ijkcell(2), particle%ijkcell(3)
+                WRITE(*, '()')
         ELSE
             RETURN
         END IF

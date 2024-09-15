@@ -1,10 +1,13 @@
 MODULE particle_interpolation_mod
 
-USE particle_core_mod
+    ! This module is responsible for:
+    ! Interpolation of the flow field to deduce the advective velocity of particles.
 
-IMPLICIT NONE
+    USE particle_core_mod
 
-CONTAINS
+    IMPLICIT NONE
+
+CONTAINS    !===================================
 
     SUBROUTINE get_particle_uvw(kk, jj, ii, particle, &
                  p_u, p_v, p_w, u, v, w, x, y, z, dx, dy, dz, ddx, ddy, ddz)
@@ -215,13 +218,15 @@ CONTAINS
 
     !------------------------------
 
+    !Trilinear interpolation for a rectilinear grid !
     SUBROUTINE interp_trilinear(x, y, z, bbox, &
-        f, f19, f20, f21, f22, f23, f24, f25, f26) ! Trilinear interpolation for a rectilinear grid !
+        f, f19, f20, f21, f22, f23, f24, f25, f26)
 
         ! subroutine arguments
         REAL(realk), INTENT(in) :: x, y, z
         REAL(realk), DIMENSION(6), INTENT(in) :: bbox
-        REAL(realk), INTENT(in) :: f19, f20, f21, f22, f23, f24, f25, f26 ! numbers indicate the corners (see convention on the numbering of faces/edges/corners)
+        ! numbers indicate the corners (see convention on the numbering of faces/edges/corners)
+        REAL(realk), INTENT(in) :: f19, f20, f21, f22, f23, f24, f25, f26
         REAL(realk), INTENT(out) :: f
 
         ! local variables

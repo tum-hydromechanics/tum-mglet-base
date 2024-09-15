@@ -1,8 +1,10 @@
-! this file is for particle lists
-
 MODULE particle_list_mod
 
-    !===================================
+    ! This module is responsible for:
+    ! Definition of the particle_list_t type.
+    ! Storage of Particles in my_particle_list.
+    ! Basic list manipulations.
+    ! Initialization of partticles.
 
     USE MPI_f08
 
@@ -13,31 +15,28 @@ MODULE particle_list_mod
 
     IMPLICIT NONE
 
-    !-----------------------------------
-
     TYPE :: particle_list_t
 
-        INTEGER(intk) :: iproc           ! REMOVE (obsolete) ?
+        ! TODO: REMOVE (obsolete) ?
+        INTEGER(intk) :: iproc
 
-        INTEGER(intk) :: max_np        ! max number of particles of this process/list
-        INTEGER(intk) :: active_np = 0           ! number of active particles of this process/list
-        INTEGER(intk) :: ifinal          ! index of last entry of the list which holds an active particle
+        ! max number of particles of this process/list
+        INTEGER(intk) :: max_np
+        ! number of active particles of this process/list
+        INTEGER(intk) :: active_np = 0
+        ! index of last entry of the list which holds an active particle
+        INTEGER(intk) :: ifinal
 
+        ! array that hold the actual particles
         TYPE(baseparticle_t), ALLOCATABLE :: particles(:)
 
     END TYPE particle_list_t
 
-    !-----------------------------------
-
-    ! LOGICAL :: dread_particles = .FALSE.
-
-    TYPE(particle_list_t) :: my_particle_list ! rather declare in init_particle_list? NO
+    TYPE(particle_list_t) :: my_particle_list
 
     PUBLIC :: my_particle_list
 
-    !===================================
-
-CONTAINS
+CONTAINS    !===================================
 
     SUBROUTINE init_particle_list()
 
@@ -59,7 +58,7 @@ CONTAINS
             ALLOCATE(y(my_particle_list%max_np))
             ALLOCATE(z(my_particle_list%max_np))
 
-            ! all arguments directly taken from the particle lsit are input only
+            ! all arguments that are passed as particle list attributes are input only
             CALL read_particles(dread_particles, my_particle_list%max_np, global_np, ipart_arr, p_igrid_arr, x, y, z, read_np)
 
             IF (dread_particles) THEN
@@ -70,10 +69,11 @@ CONTAINS
                             CONTINUE
                         CASE ("normal")
                             WRITE(*,*) ' '
-                            WRITE(*, '("Initializing ", I0, " Particle(s):")') global_np
+                            WRITE(*, '("INITIALIZING ", I0, " PARTICLE(S):")') global_np
+                            WRITE(*, '()')
                         CASE ("verbose")
-                            WRITE(*,*) ' '
-                            WRITE(*, '("Initializing ", I0, " Particle(s):")') global_np
+                            WRITE(*, '("INITIALIZING ", I0, " PARTICLE(S):")') global_np
+                            WRITE(*, '()')
                     END SELECT
                 END IF
 
@@ -84,7 +84,15 @@ CONTAINS
                     CALL set_particle(my_particle_list%particles(i), &
                     ipart = ipart_arr(i), x = x(i), y = y(i), z = z(i), igrid = p_igrid_arr(i))
 
-                    CALL print_particle_status(my_particle_list%particles(i))
+                    SELECT CASE (TRIM(particle_terminal))
+                        CASE ("none")
+                            CONTINUE
+                        CASE ("normal")
+                            CONTINUE
+                        CASE ("verbose")
+                            CALL print_particle_status(my_particle_list%particles(i))
+                            WRITE(*, '()')
+                    END SELECT
 
                 END DO
 
@@ -98,9 +106,7 @@ CONTAINS
             DEALLOCATE(y)
             DEALLOCATE(z)
 
-        END IF
-
-        IF (.NOT. dread_particles) THEN
+        ELSEIF (.NOT. dread_particles) THEN
 
             my_particle_list%active_np = init_npart
 
@@ -119,11 +125,11 @@ CONTAINS
                     CASE ("none")
                         CONTINUE
                     CASE ("normal")
-                        WRITE(*,*) ' '
-                        WRITE(*, '("Initializing ", I0, " Particle(s):")') my_particle_list%active_np
+                        WRITE(*, '("INITIALIZING ", I0, " PARTICLE(S):")') my_particle_list%active_np
+                        WRITE(*, '()')
                     CASE ("verbose")
-                        WRITE(*,*) ' '
-                        WRITE(*, '("Initializing ", I0, " Particle(s):")') my_particle_list%active_np
+                        WRITE(*, '("INITIALIZING ", I0, " PARTICLE(S):")') my_particle_list%active_np
+                        WRITE(*, '()')
                 END SELECT
             END IF
 
@@ -134,11 +140,19 @@ CONTAINS
 
             DO i = 1, my_particle_list%active_np
 
-                CALL set_particle( my_particle_list%particles(i), &
+                CALL set_particle(my_particle_list%particles(i), &
                     ipart = ipart_arr(i), x = x(i), y = y(i), z = z(i), &
                     igrid = p_igrid_arr(i))
 
-                CALL print_particle_status( my_particle_list%particles(i) )
+                SELECT CASE (TRIM(particle_terminal))
+                    CASE ("none")
+                        CONTINUE
+                    CASE ("normal")
+                        CONTINUE
+                    CASE ("verbose")
+                        CALL print_particle_status(my_particle_list%particles(i))
+                    WRITE(*, '()')
+                END SELECT
 
             END DO
 
@@ -154,11 +168,11 @@ CONTAINS
                 CASE ("none")
                     CONTINUE
                 CASE ("normal")
-                    WRITE(*, *) ' '
                     WRITE(*, *) "Particle list of length ", my_particle_list%max_np, " initialized on process ", myid, "."
+                    WRITE(*, '()')
                 CASE ("verbose")
-                    WRITE(*, *) ' '
                     WRITE(*, *) "Particle list of length ", my_particle_list%max_np, " initialized on process ", myid, "."
+                    WRITE(*, '()')
         END SELECT
 
         ! BARRIER ONLY FOR DEGUGGING -- TEMPORARY <----------------------------------------------- TODO : remove
@@ -169,13 +183,11 @@ CONTAINS
                 CASE ("none")
                     CONTINUE
                 CASE ("normal")
-                    WRITE(*,*) ' '
-                    WRITE(*, '("Initialization of Particle(s) finished successfully.")')
-                    WRITE(*,*) ' '
+                    WRITE(*, '("INITIALIZATION OF PARTICLE(S) SUCCESSFULLY COMPLETED.")')
+                    WRITE(*, '()')
                 CASE ("verbose")
-                    WRITE(*,*) ' '
-                    WRITE(*, '("Initialization of Particle(s) finished successfully.")')
-                    WRITE(*,*) ' '
+                    WRITE(*, '("INITIALIZATION OF PARTICLE(S) SUCCESSFULLY COMPLETED.")')
+                    WRITE(*, '()')
             END SELECT
         END IF
 
@@ -183,23 +195,23 @@ CONTAINS
 
     !-----------------------------------
 
-    ! maybe this way of adding length to the particle list should be replaced by a smart pointer approach for the particle list type?
     SUBROUTINE reallocate_particle_list(particle_list, add_len)
 
         ! subroutine arguments
         TYPE(particle_list_t), INTENT(inout) :: particle_list
-        INTEGER, INTENT(in) :: add_len ! can also be negative to shorten the particle list
+        ! additional length (can also be negative to shorten the particle list!)
+        INTEGER, INTENT(in) :: add_len
 
         !local variables
         INTEGER(intk) :: i
-
-        ! local variable / this is a new list of particles (not the particle_list_t) with additional length compared to the particle list length
+        !new list of particles (not the particle_list_t) with additional length relative to particle_list%max_np
         TYPE(baseparticle_t), ALLOCATABLE :: particles_tmp(:)
 
         ALLOCATE(particles_tmp(particle_list%max_np + add_len))
 
+        !copy particles into temporary list
         DO i = 1, particle_list%ifinal
-            particles_tmp(i) = particle_list%particles(i) !copy particles into temporary list
+            particles_tmp(i) = particle_list%particles(i)
         END DO
 
         ! might be unnessecary, but ensures that all new particle slots are inactive
@@ -210,24 +222,25 @@ CONTAINS
         particle_list%max_np = particle_list%max_np + add_len
         particle_list%ifinal = MIN(particle_list%ifinal, particle_list%max_np)
 
-        CALL MOVE_ALLOC(particles_tmp, particle_list%particles) ! "rename" / make my
+        CALL MOVE_ALLOC(particles_tmp, particle_list%particles)
 
         SELECT CASE (TRIM(particle_terminal))
             CASE ("none")
                 CONTINUE
             CASE ("normal")
-                WRITE(*, *) ' '
                 WRITE(*, *) "Particle list enlarged by ", add_len, " on process ", myid, "."
+                WRITE(*, '()')
             CASE ("verbose")
-                WRITE(*, *) ' '
                 WRITE(*, *) "Particle list enlarged by ", add_len, " on process ", myid, "."
+                WRITE(*, '()')
         END SELECT
 
     END SUBROUTINE reallocate_particle_list
 
     !-----------------------------------
 
-    SUBROUTINE dist_ipart(npart, ipart_arr) ! this routine is supposed to hand out a list of unique particle ids (ipart) to every process ! ONLY NON MPI RUNS FOR NOW
+    !this routine is supposed to hand out a list of unique particle ids (ipart) to every process ! ONLY NON MPI RUNS FOR NOW
+    SUBROUTINE dist_ipart(npart, ipart_arr)
 
         ! subroutine arguments
         INTEGER(intk), INTENT(IN) :: npart
@@ -241,8 +254,6 @@ CONTAINS
             ipart_arr(counter) = i
             counter = counter + 1_intk
         END DO
-
-        ! MPI barrier
 
     END SUBROUTINE dist_ipart
 
@@ -260,8 +271,7 @@ CONTAINS
         REAL(realk) :: myvolume, volume_fractions(nmygrids), grid_rn
         REAL(realk) :: minx, maxx, miny, maxy, minz, maxz
 
-        ! compute combined volume of all grids this process owns (for now assumning ther is only one level)...
-
+        ! compute combined volume of all grids this process owns (assumning ther is only one level)
         myvolume = 0.0_realk
 
         DO i = 1, nmygrids
@@ -273,8 +283,7 @@ CONTAINS
 
         END DO
 
-        ! compute fraction of the combined volume of each grids volume (for now assumning ther is only one level)...
-
+        ! compute fraction of the combined volume of each grids volume (assumning ther is only one level)
         igrid = mygrids(1)
         CALL get_bbox(minx, maxx, miny, maxy, minz, maxz, igrid)
 
@@ -295,8 +304,7 @@ CONTAINS
 
         END DO
 
-        ! distribute particles along all grids this process owns (uniformely distibuted)
-
+        ! distribute particles among all grids this process owns (uniformely distibuted)
         DO j = 1, npart
 
             i = 1_intk
@@ -304,9 +312,7 @@ CONTAINS
             CALL RANDOM_NUMBER(grid_rn)
 
             DO WHILE (grid_rn > volume_fractions(i))
-
                 i = i + 1_intk
-
             END DO
 
             igrid = mygrids(i)
@@ -329,30 +335,19 @@ CONTAINS
 
     END SUBROUTINE dist_particles
 
-    !===================================
+    !-----------------------------------
 
     SUBROUTINE print_list_status(particle_list)
 
         ! subroutine arguments
         TYPE(particle_list_t), INTENT(in) :: particle_list
 
+        WRITE(*, *) "Particle list status on process ", myid, ": max_np = ", &
+         particle_list%max_np, ", active_np = ", particle_list%active_np, ", ifinal = ", particle_list%ifinal
 
-        SELECT CASE (TRIM(particle_terminal))
-            CASE ("none")
-                CONTINUE
-            CASE ("normal")
-                WRITE(*, *) "Particle list status on process ", myid, ": max_np = ", &
-                 particle_list%max_np, ", active_np = ", particle_list%active_np, ", ifinal = ", particle_list%ifinal
-                IF (myid == 0) THEN
-                    WRITE(*, *) " "
-                END IF
-            CASE ("verbose")
-                WRITE(*, *) "Particle list status on process ", myid, ": max_np = ", &
-                 particle_list%max_np, ", active_np = ", particle_list%active_np, ", ifinal = ", particle_list%ifinal
-                IF (myid == 0) THEN
-                    WRITE(*, *) " "
-                END IF
-        END SELECT
+        IF (myid == 0) THEN
+            WRITE(*, '()')
+        END IF
 
     END SUBROUTINE print_list_status
 

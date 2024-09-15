@@ -203,13 +203,13 @@ MODULE particle_bound_mod
 
         ! subroutine arguments
         TYPE(baseparticle_t), INTENT(inout) :: particle
-        REAL(realk), INTENT(inout) :: dx, dy, dz
+        REAL(realk), INTENT(in) :: dx, dy, dz
 
-        !local variables
+        ! local variables
         INTEGER(intk) :: newgrid, oldgrid, iface, grid_bc, destproc
         INTEGER(intk) :: neighbours(26)
         REAL(realk) :: x, y, z
-        REAL(realk) :: dx_to_here, dy_to_here, dz_to_here, dx_from_here, dy_from_here, dz_from_here
+        REAL(realk) :: dx_from_here, dy_from_here, dz_from_here
         REAL(realk) :: epsilon
         REAL(realk) :: n1, n2, n3
 
@@ -232,7 +232,7 @@ MODULE particle_bound_mod
                 CONTINUE
             CASE ("verbose")
                 WRITE(*, *) "MOVE PARTICLE: ----------------------START-----------------------"
-                CALL print_particle_status(particle)
+                WRITE(*, '()')
         END SELECT
 
         DO WHILE (epsilon < ABS(dx_from_here) .OR. epsilon < ABS(dy_from_here) .OR. epsilon < ABS(dz_from_here))
@@ -248,8 +248,7 @@ MODULE particle_bound_mod
                     WRITE(*, *) "dx/dy/dz:", dx_from_here, dy_from_here, dz_from_here
             END SELECT
 
-            CALL move_to_boundary(oldgrid, x, y, z, &
-            dx_from_here, dy_from_here, dz_from_here, dx_to_here, dy_to_here, dz_to_here, iface)
+            CALL move_to_boundary(oldgrid, x, y, z, dx_from_here, dy_from_here, dz_from_here, iface)
 
             SELECT CASE(iface)
                 CASE(0)
@@ -268,30 +267,7 @@ MODULE particle_bound_mod
                     grid_bc = particle_boundaries%top(oldgrid)
             END SELECT
 
-
-            SELECT CASE (TRIM(particle_terminal))
-                CASE ("none")
-                    CONTINUE
-                CASE ("normal")
-                    CONTINUE
-                CASE ("verbose")
-                    WRITE(*, *) ""
-                    WRITE(*, *) "Boundary:"
-                    WRITE(*, *) "iface:", iface
-            END SELECT
-
             IF (grid_bc == 0) THEN
-
-
-                SELECT CASE (TRIM(particle_terminal))
-                    CASE ("none")
-                        CONTINUE
-                    CASE ("normal")
-                        CONTINUE
-                    CASE ("verbose")
-                        WRITE(*, *) "Same Grid."
-                        WRITE(*, *) ""
-                END SELECT
 
                 newgrid = oldgrid
 
@@ -305,8 +281,8 @@ MODULE particle_bound_mod
                     CASE ("normal")
                         CONTINUE
                     CASE ("verbose")
-                        WRITE(*, *) "Connect."
-                        WRITE(*, *) ""
+                        WRITE(*, '("Connect Boundary reached. iface = ", IO)') iface
+                        WRITE(*, '()')
                 END SELECT
 
                 CALL get_neighbours(neighbours, oldgrid)
@@ -322,8 +298,8 @@ MODULE particle_bound_mod
                     CASE ("normal")
                         CONTINUE
                     CASE ("verbose")
-                        WRITE(*, *) "Periodic."
-                        WRITE(*, *) ""
+                        WRITE(*, '("Periodic Boundary reached. iface = ", IO)') iface
+                        WRITE(*, '()')
                 END SELECT
 
                 CALL get_neighbours(neighbours, oldgrid)
@@ -341,7 +317,8 @@ MODULE particle_bound_mod
                     CASE ("normal")
                         CONTINUE
                     CASE ("verbose")
-                        WRITE(*, *) "Reflect."
+                        WRITE(*, '("Reflect Boundary reached. iface = ", IO)') iface
+                        WRITE(*, '()')
                 END SELECT
 
                 newgrid = oldgrid
@@ -365,8 +342,7 @@ MODULE particle_bound_mod
                 CASE ("normal")
                     CONTINUE
                 CASE ("verbose")
-                    WRITE(*, *) "New igrid:", newgrid
-                    WRITE(*, *) "x/y/z:", x, y, z
+                    CALL print_particle_status(particle)
             END SELECT
 
         END DO
@@ -396,18 +372,14 @@ MODULE particle_bound_mod
             particle%state = 1
         END IF
 
-        dx = 0
-        dy = 0
-        dz = 0
-
         SELECT CASE (TRIM(particle_terminal))
             CASE ("none")
                 CONTINUE
             CASE ("normal")
                 CONTINUE
             CASE ("verbose")
-                CALL print_particle_status(particle)
                 WRITE(*, *) "MOVE PARTICLE: ----------------------END-----------------------"
+                WRITE(*, '()')
         END SELECT
 
     END SUBROUTINE move_particle
@@ -415,18 +387,17 @@ MODULE particle_bound_mod
     !-----------------------------------
 
     ! this subroutine only considers grids on the same level
-    SUBROUTINE move_to_boundary(igrid, x, y, z, dx, dy, dz, dx_to_b, dy_to_b, dz_to_b, iface)
+    SUBROUTINE move_to_boundary(igrid, x, y, z, dx, dy, dz, iface)
 
         ! subroutine arguments
         INTEGER(intk), INTENT(in) :: igrid
         REAL(realk), INTENT(inout) :: x, y, z
         REAL(realk), INTENT(inout) :: dx, dy, dz
-        REAL(realk), INTENT(out) :: dx_to_b, dy_to_b, dz_to_b
         INTEGER(intk), INTENT(out) :: iface
 
         !local variables
         REAL(realk) :: minx, maxx, miny, maxy, minz, maxz
-        REAL(realk) :: lx, ly, lz, rx, ry, rz
+        REAL(realk) :: lx, ly, lz, rx, ry, rz, dx_to_b, dy_to_b, dz_to_b
 
         CALL get_bbox(minx, maxx, miny, maxy, minz, maxz, igrid)
 
@@ -479,12 +450,12 @@ MODULE particle_bound_mod
 
             iface = 1
 
-            x = x + lx
-            y = y + (lx * dy/dx)
-            z = z + (lx * dz/dx)
             dx_to_b = lx
             dy_to_b = (lx * dy/dx)
             dz_to_b = (lx * dz/dx)
+            x = x + dx_to_b
+            y = y + dy_to_b
+            z = z + dz_to_b
             dx = dx - dx_to_b
             dy = dy - dy_to_b
             dz = dz - dz_to_b
@@ -493,12 +464,12 @@ MODULE particle_bound_mod
 
             iface = 2
 
-            x = x + lx
-            y = y + (lx * dy/dx)
-            z = z + (lx * dz/dx)
             dx_to_b = lx
             dy_to_b = (lx * dy/dx)
             dz_to_b = (lx * dz/dx)
+            x = x + dx_to_b
+            y = y + dy_to_b
+            z = z + dz_to_b
             dx = dx - dx_to_b
             dy = dy - dy_to_b
             dz = dz - dz_to_b
@@ -507,12 +478,12 @@ MODULE particle_bound_mod
 
             iface = 3
 
-            x = x + (ly * dx/dy)
-            y = y + ly
-            z = z + (ly * dz/dy)
             dx_to_b = (ly * dx/dy)
             dy_to_b = ly
             dz_to_b = (ly * dz/dy)
+            x = x + dx_to_b
+            y = y + dy_to_b
+            z = z + dz_to_b
             dx = dx - dx_to_b
             dy = dy - dy_to_b
             dz = dz - dz_to_b
@@ -521,12 +492,12 @@ MODULE particle_bound_mod
 
             iface = 4
 
-            x = x + (ly * dx/dy)
-            y = y + ly
-            z = z + (lz * dz/dy)
             dx_to_b = (ly * dx/dy)
             dy_to_b = ly
             dz_to_b = (ly * dz/dy)
+            x = x + dx_to_b
+            y = y + dy_to_b
+            z = z + dz_to_b
             dx = dx - dx_to_b
             dy = dy - dy_to_b
             dz = dz - dz_to_b
@@ -536,12 +507,12 @@ MODULE particle_bound_mod
 
             iface = 5
 
-            x = x + (lz * dx/dz)
-            y = y + (lz * dy/dz)
-            z = z + lz
             dx_to_b = (lz * dx/dz)
             dy_to_b = (lz * dy/dz)
             dz_to_b = lz
+            x = x + dx_to_b
+            y = y + dy_to_b
+            z = z + dz_to_b
             dx = dx - dx_to_b
             dy = dy - dy_to_b
             dz = dz - dz_to_b
@@ -550,12 +521,12 @@ MODULE particle_bound_mod
 
             iface = 6
 
-            x = x + (lz * dx/dz)
-            y = y + (lz * dy/dz)
-            z = z + lz
             dx_to_b = (lz * dx/dz)
             dy_to_b = (lz * dy/dz)
             dz_to_b = lz
+            x = x + dx_to_b
+            y = y + dy_to_b
+            z = z + dz_to_b
             dx = dx - dx_to_b
             dy = dy - dy_to_b
             dz = dz - dz_to_b

@@ -1,12 +1,17 @@
 MODULE particle_dict_mod
 
+    ! This module is responsible for:
+    ! Reading of initial particle coordinates from the ParticleDict.txt file.
+
     USE grids_mod
 
     USE particle_config_mod
 
     IMPLICIT NONE
 
-CONTAINS
+    PUBLIC :: read_particles
+
+CONTAINS    !===================================
 
     SUBROUTINE read_particles(dread_particles, list_len, dict_len, ipart_arr, p_igrid_arr, x, y, z, read_np)
 
@@ -32,11 +37,12 @@ CONTAINS
                 CASE ("none")
                     CONTINUE
                 CASE ("normal")
-                    WRITE(*, *) ' '
                     WRITE(*, *) "WARNING: No file for reading particles detected! Using automated initial particle distribution instead."
+                    WRITE(*, '()')
                 CASE ("verbose")
                     WRITE(*, *) ' '
                     WRITE(*, *) "WARNING: No file for reading particles detected! Using automated initial particle distribution instead."
+                    WRITE(*, '()')
             END SELECT
         END IF
 
@@ -44,9 +50,9 @@ CONTAINS
 
     END IF
 
-    ! the following is not optimized for multiple processes !
+    ! CAUTION: the following is not optimized for multiple processes !
 
-    OPEN(unit, file = 'ParticleDict.txt', status = 'OLD', action = 'READ') ! can file be opened by more than 1 process at the same time?
+    OPEN(unit, file = 'ParticleDict.txt', status = 'OLD', action = 'READ')
 
     READ(unit, fmt = *) dict_len
 
@@ -55,19 +61,21 @@ CONTAINS
             CASE ("none")
                 CONTINUE
             CASE ("normal")
-                WRITE(*,*) ' '
-                WRITE(*, '("Reading ", I0, " Particle(s) on ", I0, " processes.")') dict_len, numprocs
+                WRITE(*, '("READING ", I0, " PARTICLE(S) ON ", I0, " PROCESSES.")') dict_len, numprocs
+                WRITE(*, '()')
             CASE ("verbose")
-                WRITE(*, *) ' '
-                WRITE(*, '("Reading ", I0, " Particle(s) on ", I0, " processes.")') dict_len, numprocs
+                WRITE(*, '("READING ", I0, " PARTICLE(S) ON ", I0, " PROCESSES.")') dict_len, numprocs
+                WRITE(*, '()')
         END SELECT
     END IF
 
-    ! particle dict is screened from top to bottom
-    ! if a particle is found to lie on a grid of this process, the particle is stored on this process
-    ! once the particle list length has been reached, no more particles are read on this process
-    ! -> depending on the parameterization of the particle list and the dict length, some particles might not be registered
+    ! ParticleDict.txt is screened from top to bottom.
+    ! If a particle is found to lie on a grid of this process, the particle is stored on this process.
+    ! Once the particle list length has been reached, no more particles are read on this process.
+    ! Hence, depending on the parameterization of the particle list and the dict length, some particles might not be registered!
+
     read_np = 0
+
     DO ipart = 1, dict_len
 
         READ(unit, fmt = *) xtemp, ytemp, ztemp
@@ -133,11 +141,11 @@ CONTAINS
             CASE ("none")
                 CONTINUE
             CASE ("normal")
-                WRITE(*, '("Reading ParticleDict finished successfully.")')
-                WRITE(*, *) ' '
+                WRITE(*, '("READING OF PARTICLES SUCCESSFULLY COMPLETED.")')
+                WRITE(*, '()')
             CASE ("verbose")
-                WRITE(*, '("Reading ParticleDict finished successfully.")')
-                WRITE(*, *) ' '
+                WRITE(*, '("READING OF PARTICLES SUCCESSFULLY COMPLETED.")')
+                WRITE(*, '()')
         END SELECT
     END IF
 
