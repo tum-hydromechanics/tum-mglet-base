@@ -66,18 +66,20 @@ MODULE particle_bound_mod
         particle_boundaries%bottom = 0
         particle_boundaries%top = 0
 
+
+
         DO i = 1, ngrid
             igrid = i ! (?) <------------------------------------------
             DO iface = 1, 6
-                nbocd = nboconds(iface, igrid)
-                DO ibocd = 1, nbocd
+                ibocd = 3
                     CALL get_bc_ctyp(ctyp, ibocd, iface, igrid)
+                    WRITE(*, *) "CTYP: ", ctyp
                     SELECT CASE(iface)
                     CASE(1)
-                        IF (ctyp == 'NOS') THEN
+                        IF (ctyp == 'REF') THEN
                             particle_boundaries%front(igrid) = 3
-                        ELSEIF (ctyp == 'SLI') THEN
-                            particle_boundaries%front(igrid) = 3
+                        ELSEIF (ctyp == 'PER') THEN
+                            particle_boundaries%front(igrid) = 2
                         ELSEIF (ctyp == 'CON') THEN
                             CALL get_neighbours(neighbours, igrid)
                             CALL get_bbox(minx, maxx, miny, maxy, minz, maxz, igrid)
@@ -89,10 +91,10 @@ MODULE particle_bound_mod
                             END IF
                         END IF
                     CASE(2)
-                        IF (ctyp == 'NOS') THEN
+                        IF (ctyp == 'REF') THEN
                             particle_boundaries%back(igrid) = 3
-                        ELSEIF (ctyp == 'SLI') THEN
-                            particle_boundaries%back(igrid) = 3
+                        ELSEIF (ctyp == 'PER') THEN
+                            particle_boundaries%back(igrid) = 2
                         ELSEIF (ctyp == 'CON') THEN
                             CALL get_neighbours(neighbours, igrid)
                             CALL get_bbox(minx, maxx, miny, maxy, minz, maxz, igrid)
@@ -104,10 +106,10 @@ MODULE particle_bound_mod
                             END IF
                         END IF
                     CASE(3)
-                        IF (ctyp == 'NOS') THEN
+                        IF (ctyp == 'REF') THEN
                             particle_boundaries%right(igrid) = 3
-                        ELSEIF (ctyp == 'SLI') THEN
-                            particle_boundaries%right(igrid) = 3
+                        ELSEIF (ctyp == 'PER') THEN
+                            particle_boundaries%right(igrid) = 2
                         ELSEIF (ctyp == 'CON') THEN
                             CALL get_neighbours(neighbours, igrid)
                             CALL get_bbox(minx, maxx, miny, maxy, minz, maxz, igrid)
@@ -119,10 +121,10 @@ MODULE particle_bound_mod
                             END IF
                         END IF
                     CASE(4)
-                        IF (ctyp == 'NOS') THEN
+                        IF (ctyp == 'REF') THEN
                             particle_boundaries%left(igrid) = 3
-                        ELSEIF (ctyp == 'SLI') THEN
-                            particle_boundaries%left(igrid) = 3
+                        ELSEIF (ctyp == 'PER') THEN
+                            particle_boundaries%left(igrid) = 2
                         ELSEIF (ctyp == 'CON') THEN
                             CALL get_neighbours(neighbours, igrid)
                             CALL get_bbox(minx, maxx, miny, maxy, minz, maxz, igrid)
@@ -134,10 +136,10 @@ MODULE particle_bound_mod
                             END IF
                         END IF
                     CASE(5)
-                        IF (ctyp == 'NOS') THEN
+                        IF (ctyp == 'REF') THEN
                             particle_boundaries%bottom(igrid) = 3
-                        ELSEIF (ctyp == 'SLI') THEN
-                            particle_boundaries%bottom(igrid) = 3
+                        ELSEIF (ctyp == 'PER') THEN
+                            particle_boundaries%bottom(igrid) = 2
                         ELSEIF (ctyp == 'CON') THEN
                             CALL get_neighbours(neighbours, igrid)
                             CALL get_bbox(minx, maxx, miny, maxy, minz, maxz, igrid)
@@ -149,10 +151,10 @@ MODULE particle_bound_mod
                             END IF
                         END IF
                     CASE(6)
-                        IF (ctyp == 'NOS') THEN
+                        IF (ctyp == 'REF') THEN
                             particle_boundaries%top(igrid) = 3
-                        ELSEIF (ctyp == 'SLI') THEN
-                            particle_boundaries%top(igrid) = 3
+                        ELSEIF (ctyp == 'PER') THEN
+                            particle_boundaries%top(igrid) = 2
                         ELSEIF (ctyp == 'CON') THEN
                             CALL get_neighbours(neighbours, igrid)
                             CALL get_bbox(minx, maxx, miny, maxy, minz, maxz, igrid)
@@ -164,19 +166,18 @@ MODULE particle_bound_mod
                             END IF
                         END IF
                     END SELECT
-                END DO
             END DO
         END DO
 
         DO i = 1, ngrid
 
-            WRITE(*, *) "Boundaries of Grid: ", i
-            WRITE(*, *) "FRONT: ", particle_boundaries%front(i)
-            WRITE(*, *) "BACK: ", particle_boundaries%back(i)
-            WRITE(*, *) "RIGHT: ", particle_boundaries%right(i)
-            WRITE(*, *) "LEFT: ", particle_boundaries%left(i)
-            WRITE(*, *) "BOTTOM: ", particle_boundaries%bottom(i)
-            WRITE(*, *) "TOP: ", particle_boundaries%top(i)
+            WRITE(*, *) "Boundaries of Grid:   ", i
+            WRITE(*, *) "FRONT:                ", particle_boundaries%front(i)
+            WRITE(*, *) "BACK:                 ", particle_boundaries%back(i)
+            WRITE(*, *) "RIGHT:                ", particle_boundaries%right(i)
+            WRITE(*, *) "LEFT:                 ", particle_boundaries%left(i)
+            WRITE(*, *) "BOTTOM:               ", particle_boundaries%bottom(i)
+            WRITE(*, *) "TOP:                  ", particle_boundaries%top(i)
 
         END DO
 
@@ -215,6 +216,7 @@ MODULE particle_bound_mod
         epsilon = SQRT(dx**(2) + dy**(2) + dz**(2)) / 10**3
 
         oldgrid = particle%igrid
+        newgrid = particle%igrid
         x = particle%x
         y = particle%y
         z = particle%z
@@ -499,7 +501,7 @@ MODULE particle_bound_mod
             dz_to_b = (lx * dz/dx)
             dx = dx - dx_to_b
             dy = dy - dy_to_b
-            dz = dz - dy_to_b
+            dz = dz - dz_to_b
 
         ELSEIF (dy < 0 .AND. rx < ry .AND. rz <= ry) THEN
 
@@ -510,7 +512,7 @@ MODULE particle_bound_mod
             z = z + (ly * dz/dy)
             dx_to_b = (ly * dx/dy)
             dy_to_b = ly
-            dy_to_b = (ly * dz/dy)
+            dz_to_b = (ly * dz/dy)
             dx = dx - dx_to_b
             dy = dy - dy_to_b
             dz = dz - dz_to_b
@@ -524,7 +526,7 @@ MODULE particle_bound_mod
             z = z + (lz * dz/dy)
             dx_to_b = (ly * dx/dy)
             dy_to_b = ly
-            dy_to_b = (ly * dz/dy)
+            dz_to_b = (ly * dz/dy)
             dx = dx - dx_to_b
             dy = dy - dy_to_b
             dz = dz - dz_to_b
@@ -593,6 +595,8 @@ MODULE particle_bound_mod
     END SUBROUTINE apply_periodic_boundary
 
     SUBROUTINE apply_reflect_boundary(dx, dy, dz, n1, n2, n3)
+
+        ! Presumption: Particle is already exactily on the boundary!
 
         ! subroutine arguments
         REAL(realk), INTENT(inout) :: dx, dy, dz
