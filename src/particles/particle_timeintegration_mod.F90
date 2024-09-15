@@ -5,6 +5,7 @@ MODULE particle_timeintegration_mod
     USE particle_interpolation_mod
     USE particle_exchange_mod
     USE particle_list_mod
+    USE particle_bound_mod
 
     IMPLICIT NONE
 
@@ -16,7 +17,7 @@ CONTAINS
         REAL(realk), INTENT(in) :: dt
 
         ! local variables
-        INTEGER(intk) :: igrid, i, ii, jj, kk, gfound, ig
+        INTEGER(intk) :: igrid, i, ii, jj, kk, gfound, ig, destgrid
         REAL(realk) :: p_u, p_v, p_w
 
         TYPE(field_t), POINTER :: x_f, y_f, z_f
@@ -33,7 +34,7 @@ CONTAINS
 
         CALL start_timer(910)
 
-        !is calling the geometric fields obsolete when using core_mode -> corefields_mod ?
+        ! is calling the geometric fields obsolete when using core_mode -> corefields_mod ?
         CALL get_field(x_f, "X")
         CALL get_field(y_f, "Y")
         CALL get_field(z_f, "Z")
@@ -66,12 +67,12 @@ CONTAINS
         DO i = 1, my_particle_list%ifinal
 
             ! checking activity
-            IF ( my_particle_list%particles(i)%state < 1 ) THEN
+            IF (my_particle_list%particles(i)%state < 1) THEN
                 CYCLE
             END IF
 
             ! checking locality (Debug)
-            IF ( my_particle_list%particles(i)%iproc /= myid ) THEN
+            IF (my_particle_list%particles(i)%iproc /= myid) THEN
                 WRITE(*,*) 'Particle on wrong proc at start of timestep'
                 CALL errr(__FILE__, __LINE__)
             END IF
@@ -155,11 +156,15 @@ CONTAINS
             pdz = advection_dz + diffusion_dz
 
             ! Particle Boundary Interaction
+            CALL move_particle(my_particle_list%particles(i), pdx, pdy, pdz)
+
+            ! cound particcles to be sent (per process)
+            CALL prepare_particle_exchange(my_particle_list%particles(i))
 
             ! Advection + Diffusion
-            my_particle_list%particles(i)%x = my_particle_list%particles(i)%x + pdx
-            my_particle_list%particles(i)%y = my_particle_list%particles(i)%y + pdy
-            my_particle_list%particles(i)%z = my_particle_list%particles(i)%z + pdz
+            !my_particle_list%particles(i)%x = my_particle_list%particles(i)%x + pdx
+            !my_particle_list%particles(i)%y = my_particle_list%particles(i)%y + pdy
+            !my_particle_list%particles(i)%z = my_particle_list%particles(i)%z + pdz
 
             ! for debugging
             SELECT CASE (TRIM(particle_terminal))

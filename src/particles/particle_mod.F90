@@ -29,6 +29,8 @@ CONTAINS
 
             CALL init_particle_list()
 
+            CALL init_particle_boundaries()
+
             ! initializing intra-level communication
             CALL init_particle_exchange()
 

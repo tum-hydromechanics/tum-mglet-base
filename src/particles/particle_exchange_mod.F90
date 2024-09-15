@@ -51,6 +51,9 @@ MODULE particle_exchange_mod
     ! Number of send and receive connections
     INTEGER(intk) :: iSend = 0, iRecv = 0
 
+    ! ...
+    INTEGER(intk), ALLOCATABLE :: npsend(:)
+
     ! Variable to indicate if the connection information has
     ! been created.
     LOGICAL :: isInit = .FALSE.
@@ -153,10 +156,25 @@ MODULE particle_exchange_mod
         19, 20, 21, 23, 22, 24, 25 /), SHAPE(rescue_nbr))
 
         ! Publicly callable functions of module
-        PUBLIC :: init_particle_exchange, exchange_particles, finish_particle_exchange, get_target_grid
+        PUBLIC :: init_particle_exchange, exchange_particles, finish_particle_exchange, get_target_grid, prepare_particle_exchange
 
 CONTAINS
 
+    SUBROUTINE prepare_particle_exchange(particle)
+
+        ! subroutine arguments
+        TYPE(baseparticle_t), INTENT(in) :: particle
+
+        ! local variables
+        INTEGER(intk) :: iproc
+
+        DO iproc = 1, iSend
+            IF (sendConns(1, iproc) == particle%iproc) THEN
+                npsend(iproc) = npsend(iproc) + 1
+            END IF
+        END DO
+
+    END SUBROUTINE prepare_particle_exchange
 
     SUBROUTINE exchange_particles(particle_list)
 
@@ -172,14 +190,14 @@ CONTAINS
         INTEGER(intk) :: active_np_old  ! for safety checks
 
         ! we use "intk" instead of "ifk" (limits numbers)
-        INTEGER(intk), ALLOCATABLE :: npsend(:)
+        ! INTEGER(intk), ALLOCATABLE :: npsend(:)
         INTEGER(intk), ALLOCATABLE :: nprecv(:)
         INTEGER(intk), ALLOCATABLE :: ndispsend(:)
         INTEGER(intk), ALLOCATABLE :: ndisprecv(:)
         INTEGER(intk), ALLOCATABLE :: sendind(:)
 
-        ALLOCATE(npsend(iSend))
-        npsend = 0
+        ! ALLOCATE(npsend(iSend))
+        ! npsend = 0
 
         IF ( .NOT. isInit ) THEN
             WRITE(*,*) 'Particle connect not initialized'
@@ -188,58 +206,58 @@ CONTAINS
 
         active_np_old = particle_list%active_np
 
-        DO i = 1, particle_list%ifinal
+        ! DO i = 1, particle_list%ifinal
 
-            ! jumping inactive particles
-            IF ( particle_list%particles(i)%state < 1 ) THEN
-                CYCLE
-            END IF
+        !     ! jumping inactive particles
+        !     IF ( particle_list%particles(i)%state < 1 ) THEN
+        !         CYCLE
+        !     END IF
 
-            ! setting the destination of particle (quo vadis, particle?)
-            CALL get_target_grid(particle_list%particles(i), destgrid, destproc, iface)
+        !     ! setting the destination of particle (quo vadis, particle?)
+        !     CALL get_target_grid(particle_list%particles(i), destgrid, destproc, iface)
 
 
-            IF ( destproc > numprocs .OR. destproc < 0 ) THEN
-                WRITE(*,*) 'Obviously ill-addressed particle to proc', destproc
-                CALL errr(__FILE__, __LINE__)
-            END IF
+        !     IF ( destproc > numprocs .OR. destproc < 0 ) THEN
+        !         WRITE(*,*) 'Obviously ill-addressed particle to proc', destproc
+        !         CALL errr(__FILE__, __LINE__)
+        !     END IF
 
-            ! coordinate manipulation of particles passing periodic boundaries
-            ! (at this point igrid is still NOT updated, meaning particle%igrid is still the "old" grid)
-            CALL update_coordinates(particle_list%particles(i), destgrid, iface)
+        !     ! coordinate manipulation of particles passing periodic boundaries
+        !     ! (at this point igrid is still NOT updated, meaning particle%igrid is still the "old" grid)
+        !     CALL update_coordinates(particle_list%particles(i), destgrid, iface)
 
-            ! triage of particles
-            IF (particle_list%particles(i)%igrid == destgrid) THEN
+        !     ! triage of particles
+        !     IF (particle_list%particles(i)%igrid == destgrid) THEN
 
-                ! particle stays on grid
-                CALL update_particle_cell(particle_list%particles(i))
+        !         ! particle stays on grid
+        !         CALL update_particle_cell(particle_list%particles(i))
 
-            ELSE
+        !     ELSE
 
-                ! particle changes the grid
-                IF ( destproc == myid ) THEN
+        !         ! particle changes the grid
+        !         IF ( destproc == myid ) THEN
 
-                    ! particle remains on process
-                    particle_list%particles(i)%igrid = destgrid
-                    CALL set_particle_cell(particle_list%particles(i))
+        !             ! particle remains on process
+        !             particle_list%particles(i)%igrid = destgrid
+        !             CALL set_particle_cell(particle_list%particles(i))
 
-                ELSE
+        !         ELSE
 
-                    ! particle is marked for MPI transfer
-                    particle_list%particles(i)%iproc = destproc
-                    particle_list%particles(i)%igrid = destgrid
+        !             ! particle is marked for MPI transfer
+        !             particle_list%particles(i)%iproc = destproc
+        !             particle_list%particles(i)%igrid = destgrid
 
-                    ! search for the process to send to (only checks few "neighbor processes")
-                    DO iproc = 1, iSend
-                        IF (sendConns(1, iproc) == particle_list%particles(i)%iproc) THEN
-                            npsend(iproc) = npsend(iproc) + 1
-                        END IF
-                    END DO
+        !             ! search for the process to send to (only checks few "neighbor processes")
+        !             DO iproc = 1, iSend
+        !                 IF (sendConns(1, iproc) == particle_list%particles(i)%iproc) THEN
+        !                     npsend(iproc) = npsend(iproc) + 1
+        !                 END IF
+        !             END DO
 
-                END IF
+        !         END IF
 
-            END IF
-        END DO
+        !     END IF
+        ! END DO
 
         ! --- step 1: The marking is done (grid and proc indicate destination). Done.
         ! --- step 2: The counting is done. Done.
@@ -290,7 +308,7 @@ CONTAINS
         j = 1
         DO i = 1, particle_list%ifinal
             ! jumping inactive particles
-            IF (particle_list%particles(i)%state < 1) THEN
+            IF (particle_list%particles(i)%state /= 4) THEN
                 CYCLE
             END IF
             ! jumping local particles
@@ -495,7 +513,6 @@ CONTAINS
 
         ! --- step 9: Received particles have been copied into list. Done.
 
-        DEALLOCATE( npsend )
         DEALLOCATE( nprecv )
         DEALLOCATE( ndispsend )
         DEALLOCATE( sendBufParticle )
@@ -760,6 +777,9 @@ CONTAINS
         END DO
 
         nRecv = 0
+
+        ALLOCATE(npsend(iSend))
+        npsend = 0
 
         ! creating the MPI data type
         CALL create_particle_mpitype(particle_mpitype)
@@ -1105,65 +1125,65 @@ CONTAINS
         CALL MPI_Type_free(triple_int_mpi_type)
     END SUBROUTINE create_particle_mpitype
 
-    SUBROUTINE update_coordinates(particle, destgrid, iface)
-
-        ! subroutine arguments
-        TYPE(baseparticle_t), INTENT(inout) :: particle
-        INTEGER(intk), INTENT(in) :: destgrid, iface
-
-        ! local variables
-        REAL(realk) :: old_minx, old_maxx, old_miny, old_maxy, old_minz, old_maxz, &
-         new_minx, new_maxx, new_miny, new_maxy, new_minz, new_maxz
-        LOGICAL :: passed_pb = .FALSE.
-
-        CALL get_bbox(old_minx, old_maxx, old_miny, old_maxy, old_minz, old_maxz, particle%igrid)
-        CALL get_bbox(new_minx, new_maxx, new_miny, new_maxy, new_minz, new_maxz, destgrid)
-
-        IF (particle%x < new_minx) THEN
-            particle%x = new_maxx - ABS(particle%x - old_minx)
-            passed_pb = .TRUE.
-        END IF
-
-        IF (new_maxx < particle%x) THEN
-            particle%x = new_minx + ABS(particle%x - old_maxx)
-            passed_pb = .TRUE.
-        END IF
-
-        IF (particle%y < new_miny) THEN
-            particle%y = new_maxy - ABS(particle%y - old_miny)
-            passed_pb = .TRUE.
-        END IF
-
-        IF (new_maxy < particle%y) THEN
-            particle%y = new_miny + ABS(particle%y - old_maxy)
-            passed_pb = .TRUE.
-        END IF
-
-        IF (particle%z < new_minz) THEN
-            particle%z = new_maxz - ABS(particle%z - old_minz)
-            passed_pb = .TRUE.
-        END IF
-
-        IF (new_maxz < particle%z) THEN
-            particle%z = new_minz + ABS(particle%z - old_maxz)
-            passed_pb = .TRUE.
-        END IF
-
-        ! for debugging
-        IF (passed_pb) THEN
-            SELECT CASE (TRIM(particle_terminal))
-                CASE ("none")
-                    CONTINUE
-                CASE ("normal")
-                    CONTINUE
-                CASE ("verbose")
-                    WRITE(*, *) ' '
-                    WRITE(*, *) "Particle ", particle%ipart, " passed periodic boundary (grid ", &
-                    particle%igrid, " to grid ", destgrid, " via face: ", iface, ")!"
-            END SELECT
-        END IF
-
-    END SUBROUTINE update_coordinates
+!    SUBROUTINE update_coordinates(particle, destgrid, iface)
+!
+!        ! subroutine arguments
+!        TYPE(baseparticle_t), INTENT(inout) :: particle
+!        INTEGER(intk), INTENT(in) :: destgrid, iface
+!
+!        ! local variables
+!        REAL(realk) :: old_minx, old_maxx, old_miny, old_maxy, old_minz, old_maxz, &
+!         new_minx, new_maxx, new_miny, new_maxy, new_minz, new_maxz
+!        LOGICAL :: passed_pb = .FALSE.
+!
+!        CALL get_bbox(old_minx, old_maxx, old_miny, old_maxy, old_minz, old_maxz, particle%igrid)
+!        CALL get_bbox(new_minx, new_maxx, new_miny, new_maxy, new_minz, new_maxz, destgrid)
+!
+!        IF (particle%x < new_minx) THEN
+!            particle%x = new_maxx - ABS(particle%x - old_minx)
+!            passed_pb = .TRUE.
+!        END IF
+!
+!        IF (new_maxx < particle%x) THEN
+!            particle%x = new_minx + ABS(particle%x - old_maxx)
+!            passed_pb = .TRUE.
+!        END IF
+!
+!        IF (particle%y < new_miny) THEN
+!            particle%y = new_maxy - ABS(particle%y - old_miny)
+!            passed_pb = .TRUE.
+!        END IF
+!
+!        IF (new_maxy < particle%y) THEN
+!            particle%y = new_miny + ABS(particle%y - old_maxy)
+!            passed_pb = .TRUE.
+!        END IF
+!
+!        IF (particle%z < new_minz) THEN
+!            particle%z = new_maxz - ABS(particle%z - old_minz)
+!            passed_pb = .TRUE.
+!        END IF
+!
+!        IF (new_maxz < particle%z) THEN
+!            particle%z = new_minz + ABS(particle%z - old_maxz)
+!            passed_pb = .TRUE.
+!        END IF
+!
+!        ! for debugging
+!        IF (passed_pb) THEN
+!            SELECT CASE (TRIM(particle_terminal))
+!                CASE ("none")
+!                    CONTINUE
+!                CASE ("normal")
+!                    CONTINUE
+!                CASE ("verbose")
+!                    WRITE(*, *) ' '
+!                    WRITE(*, *) "Particle ", particle%ipart, " passed periodic boundary (grid ", &
+!                    particle%igrid, " to grid ", destgrid, " via face: ", iface, ")!"
+!            END SELECT
+!        END IF
+!
+!    END SUBROUTINE update_coordinates
 
     ! copy particles from recieve Buffer into passed particle list
     SUBROUTINE integrate_particles(particle_list, sendind)
