@@ -403,55 +403,35 @@ CONTAINS
             END DO
         END DO
 
-
-        ! Special treatment at par boundaries
-        ! Substraction of downwind and addition of upwind T-value
-        ! to finally get an upwind scheme in case of flow towards coarse grid
-        IF (nfro == 8) THEN
-            i =  3
-            DO j = 3, jj-2
-                DO k = 3, kk-2
-                    adv = (ddy(j)*ddz(k)) * (u(k, j, i) - ABS(u(k, j, i))) &
-                        * 0.5 * 0.5 * (-t(k, j, i) + t(k, j, i+1))
-                    qtu(k, j, i) = qtu(k, j, i) + adv
-                END DO
-            END DO
-        END IF
-
-        IF (nbac == 8) THEN
-            i = ii-3
-            DO j = 3, jj-2
-                DO k = 3, kk-2
-                    adv = (ddy(j)*ddz(k)) * (u(k, j, i) + ABS(u(k, j, i))) &
-                        * 0.5 * 0.5 * (t(k, j, i) - t(k, j, i+1))
-                    qtu(k, j, i) = qtu(k, j, i) + adv
-                END DO
-            END DO
-        END IF
-
+        !$omp target data map(to: u, v, w, t, ddy, ddz, ddx) map(tofrom: qtu, qtv, qtw)
         IF (nrgt == 8) THEN
+            j = 3
+            !$omp target teams distribute parallel do collapse(2)
             DO i = 3, ii-2
-                j = 3
                 DO k = 3, kk-2
                     adv = (ddx(i)*ddz(k)) * (v(k, j, i) - ABS(v(k, j, i))) &
                         * 0.5 * 0.5 * (-t(k, j, i) + t(k, j+1, i) )
                     qtv(k, j, i) = qtv(k, j, i) + adv
                 END DO
             END DO
+            !$omp end target teams distribute parallel do
         END IF
 
         IF (nlft == 8) THEN
+            j = jj-3
+            !$omp target teams distribute parallel do collapse(2)
             DO i = 3, ii-2
-                j = jj-3
                 DO k = 3, kk-2
                     adv = (ddx(i)*ddz(k)) * (v(k, j, i) + ABS(v(k, j, i))) &
                         * 0.5 * 0.5 * (t(k, j, i) - t(k, j+1, i))
                     qtv(k, j, i) = qtv(k, j, i) + adv
                 END DO
             END DO
+            !$omp end target teams distribute parallel do
         END IF
 
         IF (nbot == 8) THEN
+            !$omp target teams distribute parallel do collapse(2)
             DO i = 3, ii-2
                 DO j = 3, jj-2
                     k = 3
@@ -460,9 +440,11 @@ CONTAINS
                     qtw(k, j, i) = qtw(k, j, i) + adv
                 END DO
             END DO
+            !$omp end target teams distribute parallel do
         END IF
 
         IF (ntop == 8) THEN
+            !$omp target teams distribute parallel do collapse(2)
             DO i = 3, ii-2
                 DO j = 3, jj-2
                     k = kk-3
@@ -471,7 +453,9 @@ CONTAINS
                     qtw(k, j, i) = qtw(k, j, i) + adv
                 END DO
             END DO
+            !$omp end target teams distribute parallel do
         END IF
+        !$omp end target data
     END SUBROUTINE tstsca4_grid
 
 
