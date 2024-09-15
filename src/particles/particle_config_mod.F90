@@ -100,7 +100,7 @@ CONTAINS    !===================================
                         WRITE(*, *) "WARNING: Particle List Length must be positve. Using default Number ", plist_len, "instead."
                         WRITE(*, '()')
                     CASE ("verbose")
-                        WRITE(*, *) "WARNING: Particle List Length must be positve. Using default Number ", plist_len, "instead."#
+                        WRITE(*, *) "WARNING: Particle List Length must be positve. Using default Number ", plist_len, "instead."
                         WRITE(*, '()')
                 END SELECT
             END IF
