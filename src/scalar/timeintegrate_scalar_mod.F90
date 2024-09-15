@@ -483,20 +483,12 @@ CONTAINS
         ! Local variables
         INTEGER(intk) :: n, i, j, k
         INTEGER(intk) :: kk, jj, ii
-        TYPE(field_t), POINTER :: rddx_f, rddy_f, rddz_f
-        !REAL(realk), POINTER, CONTIGUOUS, DIMENSION(:, :, :) :: qtu, qtv, qtw, &
-        !    qtt
-        !REAL(realk), POINTER, CONTIGUOUS:: rddx(:), rddy(:), rddz(:)
-
-        ! all grids rddx, rddy and rddz
-        ! size: nmygrids * SIZE(rddx_f%arr)
-        REAL(realk), POINTER, CONTIGUOUS:: ag_rddx(:, :), ag_rddy(:, :), ag_rddz(:, :)
-
-        ! all grids
-        REAL(realk), POINTER, CONTIGUOUS:: ag_qtt(:, :, :, :), ag_qtu(:, :, :, :), ag_qtv(:, :, :, :), ag_qtw(:, :, :, :)
         REAL(realk) :: netflux
+        TYPE(field_t), POINTER :: rddx_f, rddy_f, rddz_f
 
-        !TYPE(offload_realfield) :: rddx_offload
+        ! Expensive data to offload
+        REAL(realk), POINTER, CONTIGUOUS:: ag_rddx(:, :), ag_rddy(:, :), ag_rddz(:, :)
+        REAL(realk), POINTER, CONTIGUOUS:: ag_qtt(:, :, :, :), ag_qtu(:, :, :, :), ag_qtv(:, :, :, :), ag_qtw(:, :, :, :)
 
         CALL start_timer(411)
 
@@ -504,17 +496,14 @@ CONTAINS
         CALL get_field(rddy_f, "RDDY")
         CALL get_field(rddz_f, "RDDZ")
 
-        !CALL rddx_offload%set_data_ptr(rddx_f)
-
         CALL rddx_f%arr_grid_ptr(ag_rddx)
         CALL rddy_f%arr_grid_ptr(ag_rddy)
         CALL rddz_f%arr_grid_ptr(ag_rddz)
 
-
-        CALL qtt_f%arr_grid_ptr3(ag_qtt)
-        CALL qtu_f%arr_grid_ptr3(ag_qtu)
-        CALL qtv_f%arr_grid_ptr3(ag_qtv)
-        CALL qtw_f%arr_grid_ptr3(ag_qtw)
+        CALL qtt_f%arr_grid_ptr(ag_qtt)
+        CALL qtu_f%arr_grid_ptr(ag_qtu)
+        CALL qtv_f%arr_grid_ptr(ag_qtv)
+        CALL qtw_f%arr_grid_ptr(ag_qtw)
 
         kk = 36
         jj = 36
@@ -522,10 +511,8 @@ CONTAINS
 
         !$omp target data map(to: ag_rddx, ag_rddy, ag_rddz, ag_qtu, ag_qtv, ag_qtw) map(tofrom: ag_qtt)
         
-        !$omp target teams distribute
+        !$omp target teams distribute parallel do simd collapse(4)
         DO n = 1, nmygrids        
-
-            !$omp parallel do collapse(3)
             DO i = 3, ii-2
                 DO j = 3, jj-2
                     DO k = 3, kk-2
@@ -537,9 +524,8 @@ CONTAINS
                     END DO
                 END DO
             END DO
-            !$omp end parallel do
         END DO
-        !$omp end target teams distribute
+        !$omp end target teams distribute parallel do simd
 
         !$omp end target data
                 

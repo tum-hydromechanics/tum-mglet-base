@@ -38,7 +38,8 @@ MODULE realfield_mod
         PROCEDURE, PRIVATE :: get_grid1, get_grid3
 
         PROCEDURE :: get_arr_ptr
-        PROCEDURE :: arr_grid_ptr => arr_grid_ptr1
+        GENERIC, PUBLIC :: arr_grid_ptr => arr_grid_ptr1, arr_grid_ptr3
+        PROCEDURE :: arr_grid_ptr1
         PROCEDURE :: arr_grid_ptr3
         
         PROCEDURE :: copy_from
