@@ -243,9 +243,9 @@ MODULE particle_bound_mod
                 CASE ("normal")
                     CONTINUE
                 CASE ("verbose")
-                    WRITE(*, *) ""
                     WRITE(*, *) "Way to go:"
                     WRITE(*, *) "dx/dy/dz:", dx_from_here, dy_from_here, dz_from_here
+                    WRITE(*, '()')
             END SELECT
 
             CALL move_to_boundary(oldgrid, x, y, z, dx_from_here, dy_from_here, dz_from_here, iface)
@@ -281,7 +281,7 @@ MODULE particle_bound_mod
                     CASE ("normal")
                         CONTINUE
                     CASE ("verbose")
-                        WRITE(*, '("Connect Boundary reached. iface = ", IO)') iface
+                        WRITE(*, '("Connect Boundary reached. iface = ", I1)') iface
                         WRITE(*, '()')
                 END SELECT
 
@@ -298,7 +298,7 @@ MODULE particle_bound_mod
                     CASE ("normal")
                         CONTINUE
                     CASE ("verbose")
-                        WRITE(*, '("Periodic Boundary reached. iface = ", IO)') iface
+                        WRITE(*, '("Periodic Boundary reached. iface = ", I1)') iface
                         WRITE(*, '()')
                 END SELECT
 
@@ -317,7 +317,7 @@ MODULE particle_bound_mod
                     CASE ("normal")
                         CONTINUE
                     CASE ("verbose")
-                        WRITE(*, '("Reflect Boundary reached. iface = ", IO)') iface
+                        WRITE(*, '("Reflect Boundary reached. iface = ", I1)') iface
                         WRITE(*, '()')
                 END SELECT
 
@@ -342,7 +342,9 @@ MODULE particle_bound_mod
                 CASE ("normal")
                     CONTINUE
                 CASE ("verbose")
-                    CALL print_particle_status(particle)
+                    WRITE(*, *) "Current Coordinates:"
+                    WRITE(*, *) "x/y/z:", x, y, z
+                    WRITE(*, '()')
             END SELECT
 
         END DO
@@ -365,12 +367,39 @@ MODULE particle_bound_mod
         particle%z = z
 
         IF (particle%state == 2) THEN
+            SELECT CASE (TRIM(particle_terminal))
+                CASE ("none")
+                    CONTINUE
+                CASE ("normal")
+                    CONTINUE
+                CASE ("verbose")
+                    WRITE(*, *) "Updating Particle Cell."
+                    WRITE(*, '()')
+            END SELECT
             CALL update_particle_cell(particle)
             particle%state = 1
         ELSEIF (particle%state == 3) THEN
+            SELECT CASE (TRIM(particle_terminal))
+                CASE ("none")
+                    CONTINUE
+                CASE ("normal")
+                    CONTINUE
+                CASE ("verbose")
+                    WRITE(*, *) "Setting Particle Cell."
+                    WRITE(*, '()')
+            END SELECT
             CALL set_particle_cell(particle)
             particle%state = 1
         END IF
+
+        SELECT CASE (TRIM(particle_terminal))
+                CASE ("none")
+                    CONTINUE
+                CASE ("normal")
+                    CONTINUE
+                CASE ("verbose")
+                    CALL print_particle_status(particle)
+        END SELECT
 
         SELECT CASE (TRIM(particle_terminal))
             CASE ("none")

@@ -19,7 +19,8 @@ CONTAINS
         IF (dsim_particles) THEN
 
             IF (myid == 0) THEN
-                WRITE(*,*) "PARTICLE SIMULATION STARTED."
+                WRITE(*, '("PARTICLE SIMULATION STARTED.")')
+                WRITE(*, '()')
             END IF
 
             CALL set_timer(900, 'PARTICLES')

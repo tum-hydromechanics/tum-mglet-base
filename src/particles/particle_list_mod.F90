@@ -106,7 +106,9 @@ CONTAINS    !===================================
             DEALLOCATE(y)
             DEALLOCATE(z)
 
-        ELSEIF (.NOT. dread_particles) THEN
+        END IF
+
+        IF (.NOT. dread_particles) THEN
 
             my_particle_list%active_np = init_npart
 

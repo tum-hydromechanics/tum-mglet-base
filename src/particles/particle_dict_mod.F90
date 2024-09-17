@@ -141,9 +141,11 @@ CONTAINS    !===================================
             CASE ("none")
                 CONTINUE
             CASE ("normal")
+                WRITE(*, '()')
                 WRITE(*, '("READING OF PARTICLES SUCCESSFULLY COMPLETED.")')
                 WRITE(*, '()')
             CASE ("verbose")
+                WRITE(*, '()')
                 WRITE(*, '("READING OF PARTICLES SUCCESSFULLY COMPLETED.")')
                 WRITE(*, '()')
         END SELECT
