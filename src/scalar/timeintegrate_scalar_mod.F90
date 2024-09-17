@@ -7,6 +7,7 @@ MODULE timeintegrate_scalar_mod
     USE itinfo_scalar_mod
     USE gc_scastencils_mod
     USE offload_helper_mod
+    USE pointers_mod
 
     IMPLICIT NONE(type, external)
     PRIVATE
@@ -32,6 +33,8 @@ CONTAINS
         IF (.NOT. solve_scalar) RETURN
         CALL start_timer(400)
         CALL start_timer(401)
+
+        CALL offload_constants()
 
         ! Local temporary storage ("scrap")
         CALL qtt%init("QTT")
@@ -98,6 +101,8 @@ CONTAINS
             ! TODO: Fill ghost layers of T (maybe only at last IRK?)
         END DO
         CALL stop_timer(402)
+
+        CALL release_constants()
 
         CALL qtt%finish()
         CALL qtu%finish()

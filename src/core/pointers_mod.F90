@@ -12,7 +12,7 @@ MODULE pointers_mod
 
     PUBLIC :: init_pointers, finish_pointers, get_ip1, &
         get_ip3, get_ip3n, get_ibb, get_ibbn, &
-        idim3d, idim2d, get_len3
+        idim3d, idim2d, get_len3, ip3d, ip1d
 
 CONTAINS
     SUBROUTINE init_pointers()
@@ -59,6 +59,7 @@ CONTAINS
             WRITE(*, '("    idim1d:        ", I0)') idim1d
             WRITE(*, '()')
         END IF
+        print*, ip1d
     END SUBROUTINE init_pointers
 
 
