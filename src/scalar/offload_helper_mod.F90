@@ -1,6 +1,5 @@
 MODULE offload_helper_mod
-    USE precision_mod, ONLY: intk, realk, mglet_hdf5_real, mglet_mpi_real
-    USE field_mod
+    USE precision_mod, ONLY: intk, realk
 
     IMPLICIT NONE(type, external)
     PRIVATE
@@ -9,28 +8,31 @@ MODULE offload_helper_mod
 
     PUBLIC :: N_CELLS_PER_DIM, ptr_to_grid1, ptr_to_grid3
 CONTAINS
-    FUNCTION ptr_to_grid1(ptr_a, n_grid) RESULT(ptr_grid)
+    FUNCTION ptr_to_grid1(arr_ptr, n_grid) RESULT(grid_ptr)
         !$omp declare target
-        REAL(realk), POINTER, CONTIGUOUS, INTENT(in) :: ptr_a(:)
+        ! Function arguments
+        REAL(realk), POINTER, CONTIGUOUS, INTENT(in) :: arr_ptr(:)
         INTEGER(intk), INTENT(in) :: n_grid
-
-        REAL(realk), POINTER, CONTIGUOUS :: ptr_grid(:)
+        ! Result variables
+        REAL(realk), POINTER, CONTIGUOUS :: grid_ptr(:)
+        ! Local variables
         INTEGER(intk) :: ip
+        
         ip = (n_grid - 1) * N_CELLS_PER_DIM + 1
-
-        ptr_grid(1:N_CELLS_PER_DIM) => ptr_a(ip:ip+N_CELLS_PER_DIM-1)
+        grid_ptr(1:N_CELLS_PER_DIM) => arr_ptr(ip:ip+N_CELLS_PER_DIM-1)
     END FUNCTION ptr_to_grid1
 
-    FUNCTION ptr_to_grid3(ptr_a, n_grid) RESULT(ptr_grid)
+    FUNCTION ptr_to_grid3(arr_ptr, n_grid) RESULT(grid_ptr)
         !$omp declare target
-        REAL(realk), POINTER, CONTIGUOUS, INTENT(in) :: ptr_a(:)
+        ! Function arguments
+        REAL(realk), POINTER, CONTIGUOUS, INTENT(in) :: arr_ptr(:)
         INTEGER(intk), INTENT(in) :: n_grid
-
-        REAL(realk), POINTER, CONTIGUOUS :: ptr_grid(:, :, :)
+        ! Result variables
+        REAL(realk), POINTER, CONTIGUOUS :: grid_ptr(:, :, :)
+        ! Local variables
         INTEGER(intk) :: ip
+        
         ip = (n_grid - 1) * N_CELLS_PER_DIM**3 + 1
-
-        ptr_grid(1:N_CELLS_PER_DIM, 1:N_CELLS_PER_DIM, 1:N_CELLS_PER_DIM) => ptr_a(ip:ip+N_CELLS_PER_DIM**3-1)
+        grid_ptr(1:N_CELLS_PER_DIM, 1:N_CELLS_PER_DIM, 1:N_CELLS_PER_DIM) => arr_ptr(ip:ip+N_CELLS_PER_DIM**3-1)
     END FUNCTION ptr_to_grid3
-
 END MODULE offload_helper_mod
