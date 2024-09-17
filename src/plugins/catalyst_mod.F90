@@ -11,8 +11,8 @@ MODULE catalyst_mod
 
     INTERFACE
         SUBROUTINE catalyst_trigger( &
-            p_mgdims, p_list_grids_lvl, p_mgbasb, & 
-            p_get_arrptr, p_get_xyzptr, &
+            p_mgdims, p_list_grids_lvl, p_mgbasb, p_get_bbox, &
+            p_get_arrptr, p_get_xyzptr, p_get_dxyzptr, p_get_ddxyzptr, &
             myid, numprocs, istep, &
             nscal, lvlmin, lvlmax ) BIND(C, name="catalyst_trigger")
 
@@ -20,8 +20,8 @@ MODULE catalyst_mod
 
             ! pointers must be passed with VALUE (it is already a pointer)
             TYPE(c_funptr), INTENT(in), VALUE :: &
-                p_mgdims, p_list_grids_lvl, p_mgbasb, & 
-                p_get_arrptr, p_get_xyzptr
+                p_mgdims, p_list_grids_lvl, p_mgbasb, p_get_bbox, &
+                p_get_arrptr, p_get_xyzptr, p_get_dxyzptr, p_get_ddxyzptr
 
             ! rest is handled as pointers
             INTEGER(kind=c_int), INTENT(in) :: &
@@ -31,13 +31,12 @@ MODULE catalyst_mod
         END SUBROUTINE catalyst_trigger
     END INTERFACE
 
-    interface
-        integer(c_int) function strlen(string) bind(C)
-        import :: c_int, c_ptr
-        type(c_ptr), intent(in) :: string ! value?
-        end function
-    end interface
-
+    ! interface
+    !     integer(c_int) function strlen(string) bind(C)
+    !     import :: c_int, c_ptr
+    !     type(c_ptr), intent(in) :: string ! value?
+    !     end function
+    ! end interface
 
     LOGICAL :: isInit = .false.
     LOGICAL :: exists = .false.
@@ -73,11 +72,11 @@ CONTAINS
         REAL(realk), INTENT(in) :: timeph
         REAL(realk), INTENT(in) :: dt
 
-
-
         ! local variables
         TYPE(C_FUNPTR) :: cp_mgdims, cp_iterate_grids_lvl, &
-                          cp_mgbasb, cp_get_arrptr, cp_get_xyzptr
+                          cp_mgbasb, cp_get_bbox, &
+                          cp_get_arrptr, cp_get_xyzptr, &
+                          cp_get_dxyzptr, cp_get_ddxyzptr
 
         INTEGER(kind=C_INT) :: c_myid, c_numprocs, c_istep, &
                                c_nscal, c_lvlmin, c_lvlmax
@@ -87,8 +86,12 @@ CONTAINS
         cp_mgdims = C_FUNLOC( c_mgdims )
         cp_iterate_grids_lvl = C_FUNLOC( c_iterate_grids_lvl )
         cp_mgbasb = C_FUNLOC( c_mgbasb )
+        cp_get_bbox = C_FUNLOC( c_get_bbox )
+
         cp_get_arrptr = C_FUNLOC( c_get_arrptr )
         cp_get_xyzptr = C_FUNLOC( c_get_xyzptr )
+        cp_get_dxyzptr = C_FUNLOC( c_get_dxyzptr )
+        cp_get_ddxyzptr = C_FUNLOC( c_get_ddxyzptr )
 
         ! convert the remaining integer to ensure consistency
         c_myid = INT( myid, kind=C_INT )
@@ -100,18 +103,12 @@ CONTAINS
 
         ! calling the C function described in the interface
         CALL catalyst_trigger( &
-            cp_mgdims, cp_iterate_grids_lvl, cp_mgbasb, &
-            cp_get_arrptr, cp_get_xyzptr, &
+            cp_mgdims, cp_iterate_grids_lvl, cp_mgbasb, cp_get_bbox, &
+            cp_get_arrptr, cp_get_xyzptr, cp_get_dxyzptr, cp_get_ddxyzptr, &
             c_myid, c_numprocs, c_istep, &
             c_nscal, c_lvlmin, c_lvlmax )
 
     END SUBROUTINE sample_catalyst
-
-
-    ! MISSING FUCTION
-    ! get coordinates
-    ! get numgrids on level
-
 
 
     ! Return grid dimensions with INT(kind=4) arguments
@@ -141,6 +138,7 @@ CONTAINS
         INTEGER(kind=c_int), INTENT(in) :: cigrid
         INTEGER(kind=c_int), INTENT(out) :: cnfro, cnbac, cnrgt, cnlft, cnbot, cntop
         INTEGER(kind=intk) :: nfro, nbac, nrgt, nlft, nbot, ntop, igrid
+        ! Function body
         igrid = INT(cigrid, kind=intk)
         ! calling the MGLET routine
         CALL get_mgbasb(nfro, nbac, nrgt, nlft, nbot, ntop, igrid)
@@ -195,10 +193,10 @@ CONTAINS
         CALL get_field(field, TRIM(f_name))
         CALL field%get_ptr(f_arr_ptr, igrid_tmp)
         c_arr_ptr = C_LOC( f_arr_ptr )
-    END SUBROUTINE c_get_arrptr  
+    END SUBROUTINE c_get_arrptr
 
 
-    ! Facilitates iteration over local grids on certain level with INT(kind=4) arguments
+    ! Function returns pointers for the 1D fields X, Y, Z
     SUBROUTINE c_get_xyzptr(c_x_ptr, c_y_ptr, c_z_ptr, igrid) bind(C)
         USE ISO_C_BINDING, ONLY: c_int, c_ptr, c_loc
         USE core_mod, ONLY: intk, realk, get_field, field_t
@@ -225,30 +223,113 @@ CONTAINS
         CALL get_field(z_f, 'Z')
         CALL z_f%get_ptr(f_z_ptr, igrid_tmp)
         c_z_ptr = C_LOC(f_z_ptr)
-    END SUBROUTINE c_get_xyzptr 
+    END SUBROUTINE c_get_xyzptr
 
+
+    ! Function returns pointers for the 1D fields DX, DY, DZ
+    SUBROUTINE c_get_dxyzptr(c_dx_ptr, c_dy_ptr, c_dz_ptr, igrid) bind(C)
+        USE ISO_C_BINDING, ONLY: c_int, c_ptr, c_loc
+        USE core_mod, ONLY: intk, realk, get_field, field_t
+        IMPLICIT NONE
+        ! Variables
+        INTEGER(kind=c_int), INTENT(in) :: igrid
+        TYPE(c_ptr), INTENT(out) :: c_dx_ptr
+        TYPE(c_ptr), INTENT(out) :: c_dy_ptr
+        TYPE(c_ptr), INTENT(out) :: c_dz_ptr
+        ! Local variables
+        INTEGER(kind=intk) :: igrid_tmp
+        REAL(kind=realk), POINTER, CONTIGUOUS :: f_dx_ptr(:)
+        REAL(kind=realk), POINTER, CONTIGUOUS :: f_dy_ptr(:)
+        REAL(kind=realk), POINTER, CONTIGUOUS :: f_dz_ptr(:)
+        TYPE(field_t), POINTER :: dx_f, dy_f, dz_f
+        ! Function body
+        igrid_tmp = INT(igrid, kind=intk)
+        CALL get_field(dx_f, 'DX')
+        CALL dx_f%get_ptr(f_dx_ptr, igrid_tmp)
+        c_dx_ptr = C_LOC(f_dx_ptr)
+        CALL get_field(dy_f, 'DY')
+        CALL dy_f%get_ptr(f_dy_ptr, igrid_tmp)
+        c_dy_ptr = C_LOC(f_dy_ptr)
+        CALL get_field(dz_f, 'DZ')
+        CALL dz_f%get_ptr(f_dz_ptr, igrid_tmp)
+        c_dz_ptr = C_LOC(f_dz_ptr)
+    END SUBROUTINE c_get_dxyzptr
+
+
+    ! Function returns pointers for the 1D fields DDX, DDY, DDZ
+    SUBROUTINE c_get_ddxyzptr(c_ddx_ptr, c_ddy_ptr, c_ddz_ptr, c_igrid) bind(C)
+        USE ISO_C_BINDING, ONLY: c_int, c_ptr, c_loc
+        USE core_mod, ONLY: intk, realk, get_field, field_t
+        IMPLICIT NONE
+        ! Variables
+        INTEGER(kind=c_int), INTENT(in) :: c_igrid
+        TYPE(c_ptr), INTENT(out) :: c_ddx_ptr
+        TYPE(c_ptr), INTENT(out) :: c_ddy_ptr
+        TYPE(c_ptr), INTENT(out) :: c_ddz_ptr
+        ! Local variables
+        INTEGER(kind=intk) :: igrid_tmp
+        REAL(kind=realk), POINTER, CONTIGUOUS :: f_ddx_ptr(:)
+        REAL(kind=realk), POINTER, CONTIGUOUS :: f_ddy_ptr(:)
+        REAL(kind=realk), POINTER, CONTIGUOUS :: f_ddz_ptr(:)
+        TYPE(field_t), POINTER :: ddx_f, ddy_f, ddz_f
+        ! Function body
+        igrid_tmp = INT(c_igrid, kind=intk)
+        CALL get_field(ddx_f, 'DDX')
+        CALL ddx_f%get_ptr(f_ddx_ptr, igrid_tmp)
+        c_ddx_ptr = C_LOC(f_ddx_ptr)
+        CALL get_field(ddy_f, 'DDY')
+        CALL ddy_f%get_ptr(f_ddy_ptr, igrid_tmp)
+        c_ddy_ptr = C_LOC(f_ddy_ptr)
+        CALL get_field(ddz_f, 'DDZ')
+        CALL ddz_f%get_ptr(f_ddz_ptr, igrid_tmp)
+        c_ddz_ptr = C_LOC(f_ddz_ptr)
+    END SUBROUTINE c_get_ddxyzptr
+
+
+    ! Returns the boundary type at front, back, right, left, bottom, top for igrid
+    SUBROUTINE c_get_bbox(c_minx, c_maxx, c_miny, c_maxy, c_minz, c_maxz, c_igrid) bind(C)
+        USE ISO_C_BINDING, ONLY: c_int, c_float
+        USE core_mod, ONLY: intk, get_mgbasb, get_bbox
+        IMPLICIT NONE
+        ! Variables
+        INTEGER(kind=c_int), INTENT(in) :: c_igrid
+        REAL(kind=c_float), INTENT(out) :: c_minx, c_maxx, c_miny, c_maxy, c_minz, c_maxz
+        REAL(kind=realk) :: minx, maxx, miny, maxy, minz, maxz
+        INTEGER :: igrid
+        ! Function body
+        igrid = INT(c_igrid, kind=intk)
+        ! calling the MGLET routine
+        CALL get_bbox(minx, maxx, miny, maxy, minz, maxz, igrid)
+        ! transforming back for C interoperability
+        c_minx = REAL(minx, kind=c_float)
+        c_maxx = REAL(maxx, kind=c_float)
+        c_miny = REAL(miny, kind=c_float)
+        c_maxy = REAL(maxy, kind=c_float)
+        c_minz = REAL(minz, kind=c_float)
+        c_maxz = REAL(maxz, kind=c_float)
+    END SUBROUTINE c_get_bbox
 
 
     ! found at https://stackoverflow.com/questions/41247242/c-and-fortran-interoperability-for-strings
-    subroutine c_string_f_char(C_string, F_string)
-        use ISO_C_BINDING
+    SUBROUTINE c_string_f_char(C_string, F_string)
+        USE ISO_C_BINDING
+        IMPLICIT NONE
+        ! Variables
         type(C_PTR), intent(in) :: C_string
         character(len=*), intent(out) :: F_string
         character(len=1, kind=C_CHAR), dimension(:), pointer :: p_chars
         integer :: i
         if (.not. C_associated(C_string)) then
-          F_string = ' '
+            F_string = ' '
         else
-          call C_F_pointer(C_string, p_chars, [huge(0)])
-          do i = 1, len(F_string)
-            if (p_chars(i) == C_NULL_CHAR) exit
-            F_string(i:i) = p_chars(i)
-          end do
-          if (i <= len(F_string)) F_string(i:) = ' '
+            call C_F_pointer(C_string, p_chars, [huge(0)])
+            do i = 1, len(F_string)
+                if (p_chars(i) == C_NULL_CHAR) exit
+                    F_string(i:i) = p_chars(i)
+                end do
+            if (i <= len(F_string)) F_string(i:) = ' '
         end if
-    end subroutine
-
-
+    END SUBROUTINE
 
 END MODULE catalyst_mod
 
@@ -274,7 +355,7 @@ END MODULE catalyst_mod
     !     CALL get_fieldptr(f_arr_ptr, TRIM(name), igrid_tmp)
     !     WRITE(*,*) f_arr_ptr(3,3,3);
     !     c_arr_ptr = C_LOC( f_arr_ptr )
-    ! END SUBROUTINE c_get_arrptr  
+    ! END SUBROUTINE c_get_arrptr
 
 
 
