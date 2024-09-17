@@ -489,6 +489,8 @@ CONTAINS
         REAL(realk), POINTER, CONTIGUOUS, DIMENSION(:) :: rddx_a, rddy_a, rddz_a
         REAL(realk), POINTER, CONTIGUOUS, DIMENSION(:) :: qtt_a, qtu_a, qtv_a, qtw_a
        
+        REAL(realk), POINTER, CONTIGUOUS, DIMENSION(:) :: rddx, rddy, rddz
+        REAL(realk), POINTER, CONTIGUOUS, DIMENSION(:, :, :) :: qtt, qtu, qtv, qtw
 
         CALL start_timer(411)
 
@@ -513,16 +515,23 @@ CONTAINS
         
         !$omp target teams distribute 
         DO n = 1, nmygrids
+            CALL ptr_to_grid1(rddx_a, n, rddx)
+            CALL ptr_to_grid1(rddy_a, n, rddy)
+            CALL ptr_to_grid1(rddz_a, n, rddz)
+
+            CALL ptr_to_grid3(qtt_a, n, qtt)
+            CALL ptr_to_grid3(qtu_a, n, qtu)
+            CALL ptr_to_grid3(qtv_a, n, qtv)
+            CALL ptr_to_grid3(qtw_a, n, qtw)
+
             CALL fluxbalance_grid( &
                 kk, jj, ii, &
-                subptr3(qtt_a, n), subptr3(qtu_a, n), subptr3(qtv_a, n), subptr3(qtw_a, n), &
-                subptr1(rddx_a, n), subptr1(rddy_a, n), subptr1(rddz_a, n))
+                qtt, qtu, qtv, qtw, &
+                rddx, rddy, rddz)
         END DO
         !$omp end target teams distribute
-
         !$omp end target data
 
-        !print *, MAXVAL(qtu_f%arr)
         CALL stop_timer(411)
     END SUBROUTINE fluxbalance
 
@@ -556,28 +565,49 @@ CONTAINS
         !$omp end parallel do simd
     END SUBROUTINE fluxbalance_grid
 
-    FUNCTION subptr1(ptr_a, n_grid) RESULT(ptr)
+    !FUNCTION subptr1(ptr_a, n_grid) RESULT(ptr)
+    !    !$omp declare target
+    !    REAL(realk), POINTER, CONTIGUOUS, INTENT(in) :: ptr_a(:)
+    !    INTEGER(intk), INTENT(in) :: n_grid
+
+    !    REAL(realk), POINTER, CONTIGUOUS, DIMENSION(:) :: ptr
+
+    !    ptr(1 : 36) => ptr_a((n_grid - 1) * 36 + 1 : n_grid * 36)
+    !END FUNCTION subptr1
+
+    SUBROUTINE ptr_to_grid1(ptr_a, n_grid, ptr_grid)
         !$omp declare target
         REAL(realk), POINTER, CONTIGUOUS, INTENT(in) :: ptr_a(:)
+        REAL(realk), POINTER, CONTIGUOUS, INTENT(inout) :: ptr_grid(:)
         INTEGER(intk), INTENT(in) :: n_grid
 
-        REAL(realk), POINTER, CONTIGUOUS, DIMENSION(:) :: ptr
+        ptr_grid(1 : 36) => ptr_a((n_grid - 1) * 36 + 1 : n_grid * 36)
+    END SUBROUTINE ptr_to_grid1
 
-        ptr(1 : 36) => ptr_a((n_grid - 1) * 36 + 1 : n_grid * 36)
-    END FUNCTION subptr1
-
-    FUNCTION subptr3(ptr_a, n_grid) RESULT(ptr)
+    SUBROUTINE ptr_to_grid3(ptr_a, n_grid, ptr_grid)
         !$omp declare target
         REAL(realk), POINTER, CONTIGUOUS, INTENT(in) :: ptr_a(:)
+        REAL(realk), POINTER, CONTIGUOUS, INTENT(inout) :: ptr_grid(:, :, :)
         INTEGER(intk), INTENT(in) :: n_grid
 
-        REAL(realk), POINTER, CONTIGUOUS, DIMENSION(:, :, :) :: ptr
         INTEGER(intk) :: ip
         ip = (n_grid - 1) * 36**3 + 1
 
-        ptr(1:36, 1:36, 1:36) => ptr_a(ip:ip+36**3-1)
+        ptr_grid(1:36, 1:36, 1:36) => ptr_a(ip:ip+36**3-1)
+    END SUBROUTINE ptr_to_grid3
 
-    END FUNCTION subptr3
+    !FUNCTION subptr3(ptr_a, n_grid) RESULT(ptr)
+    !    !$omp declare target
+    !    REAL(realk), POINTER, CONTIGUOUS, INTENT(in) :: ptr_a(:)
+    !    INTEGER(intk), INTENT(in) :: n_grid
+
+    !    REAL(realk), POINTER, CONTIGUOUS, DIMENSION(:, :, :) :: ptr
+    !    INTEGER(intk) :: ip
+    !    ip = (n_grid - 1) * 36**3 + 1
+
+    !    ptr(1:36, 1:36, 1:36) => ptr_a(ip:ip+36**3-1)
+
+    !END FUNCTION subptr3
 
     SUBROUTINE comp_tmean(tmean, tmeansqr, kk, jj, ii, t, ddx, ddy, ddz)
         ! Subroutine arguments
