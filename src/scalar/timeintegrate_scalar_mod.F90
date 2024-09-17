@@ -34,8 +34,6 @@ CONTAINS
         CALL start_timer(400)
         CALL start_timer(401)
 
-        CALL offload_constants()
-
         ! Local temporary storage ("scrap")
         CALL qtt%init("QTT")
         CALL qtu%init("QTU", istag=1)
@@ -101,8 +99,6 @@ CONTAINS
             ! TODO: Fill ghost layers of T (maybe only at last IRK?)
         END DO
         CALL stop_timer(402)
-
-        CALL release_constants()
 
         CALL qtt%finish()
         CALL qtu%finish()
@@ -486,45 +482,43 @@ CONTAINS
         TYPE(field_t), INTENT(in) :: qtu_f, qtv_f, qtw_f
 
         ! Local variables
-        INTEGER(intk) :: n
-        INTEGER(intk) :: kk, jj, ii
-        TYPE(field_t), POINTER :: rddx_f, rddy_f, rddz_f
+        INTEGER(intk) :: igrid
 
         ! Expensive data to offload
-        REAL(realk), POINTER, CONTIGUOUS, DIMENSION(:) :: rddx_a, rddy_a, rddz_a
         REAL(realk), POINTER, CONTIGUOUS, DIMENSION(:) :: qtt_a, qtu_a, qtv_a, qtw_a
-       
+
         CALL start_timer(411)
-
-        CALL get_field(rddx_f, "RDDX")
-        CALL get_field(rddy_f, "RDDY")
-        CALL get_field(rddz_f, "RDDZ")
-
-        CALL rddx_f%get_arr_ptr(rddx_a)
-        CALL rddy_f%get_arr_ptr(rddy_a)
-        CALL rddz_f%get_arr_ptr(rddz_a)
 
         CALL qtt_f%get_arr_ptr(qtt_a)
         CALL qtu_f%get_arr_ptr(qtu_a)
         CALL qtv_f%get_arr_ptr(qtv_a)
         CALL qtw_f%get_arr_ptr(qtw_a)
 
-        kk = N_CELLS_PER_DIM
-        jj = N_CELLS_PER_DIM
-        ii = N_CELLS_PER_DIM
-
-        !$omp target data map(to: qtu_a, qtv_a, qtw_a, rddx_a, rddy_a, rddz_a) map(tofrom: qtt_a)
+        !$omp target data map(to: qtu_a, qtv_a, qtw_a) map(from: qtt_a)
         !$omp target teams distribute 
-        DO n = 1, nmygrids
-            CALL fluxbalance_grid(kk, jj, ii, &
-                ptr_to_grid3(qtt_a, n), ptr_to_grid3(qtu_a, n), ptr_to_grid3(qtv_a, n), ptr_to_grid3(qtw_a, n), &
-                ptr_to_grid_x(rddx_a, n), ptr_to_grid_y(rddy_a, n), ptr_to_grid_z(rddz_a, n))
+        DO igrid = 1, nmygrids
+            BLOCK
+                REAL(realk), POINTER, CONTIGUOUS, DIMENSION(:, :, :) :: qtt, qtu, qtv, qtw
+                REAL(realk), POINTER, CONTIGUOUS, DIMENSION(:) :: rddx, rddy, rddz
+                INTEGER(intk) :: kk, jj, ii
+
+                CALL ptr_to_grid3(qtt_a, igrid, qtt)
+                CALL ptr_to_grid3(qtu_a, igrid, qtu)
+                CALL ptr_to_grid3(qtv_a, igrid, qtv)
+                CALL ptr_to_grid3(qtw_a, igrid, qtw)
+
+                CALL ptr_to_grid_x(rddx_offload, igrid, rddx)
+                CALL ptr_to_grid_y(rddy_offload, igrid, rddy)
+                CALL ptr_to_grid_z(rddz_offload, igrid, rddz)
+
+                CALL get_mgdims_target(kk, jj, ii, igrid)
+                CALL fluxbalance_grid(kk, jj, ii, qtt, qtu, qtv, qtw, rddx, rddy, rddz)
+            END BLOCK
         END DO
         !$omp end target teams distribute
         !$omp end target data
 
         print *, MAXVAL(qtu_f%arr)
-
 
         CALL stop_timer(411)
     END SUBROUTINE fluxbalance

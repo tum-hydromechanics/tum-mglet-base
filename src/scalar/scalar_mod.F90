@@ -13,6 +13,7 @@ CONTAINS
         USE core_mod, ONLY: dcont, set_timer
         USE itinfo_scalar_mod, ONLY: init_itinfo_scalar
         USE scastat_mod, ONLY: init_scastat
+        USE offload_helper_mod, ONLY: offload_constants
         USE gc_scastencils_mod
         USE ib_mod
 
@@ -31,6 +32,8 @@ CONTAINS
         CALL init_tfield()
         CALL init_scastat()
 
+        CALL offload_constants()
+
         ! Need to call this here - cannot be in scacore because that
         ! create a circular dependency
         SELECT TYPE(ib)
@@ -45,8 +48,11 @@ CONTAINS
     SUBROUTINE finish_scalar
         USE itinfo_scalar_mod, ONLY: finish_itinfo_scalar
         USE scastat_mod, ONLY: finish_scastat
+        USE offload_helper_mod, ONLY: finish_offload_constants
 
         IF (.NOT. has_scalar) RETURN
+
+        CALL finish_offload_constants()
 
         CALL finish_scastat()
         CALL finish_itinfo_scalar()

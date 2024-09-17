@@ -59,7 +59,6 @@ CONTAINS
             WRITE(*, '("    idim1d:        ", I0)') idim1d
             WRITE(*, '()')
         END IF
-        print*, ip1d
     END SUBROUTINE init_pointers
 
 
