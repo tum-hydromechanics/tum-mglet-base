@@ -518,7 +518,7 @@ CONTAINS
         DO n = 1, nmygrids
             CALL fluxbalance_grid(kk, jj, ii, &
                 ptr_to_grid3(qtt_a, n), ptr_to_grid3(qtu_a, n), ptr_to_grid3(qtv_a, n), ptr_to_grid3(qtw_a, n), &
-                ptr_to_grid1(rddx_a, n), ptr_to_grid1(rddy_a, n), ptr_to_grid1(rddz_a, n))
+                ptr_to_grid_x(rddx_a, n), ptr_to_grid_y(rddy_a, n), ptr_to_grid_z(rddz_a, n))
         END DO
         !$omp end target teams distribute
         !$omp end target data
