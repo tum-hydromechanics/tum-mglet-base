@@ -476,6 +476,8 @@ CONTAINS
     END SUBROUTINE tstsca4_grid
 
     SUBROUTINE fluxbalance(qtt_f, qtu_f, qtv_f, qtw_f)
+        USE omp_lib
+
         ! Subroutine arguments
         TYPE(field_t), INTENT(inout) :: qtt_f
         TYPE(field_t), INTENT(in) :: qtu_f, qtv_f, qtw_f
@@ -489,6 +491,9 @@ CONTAINS
         ! Expensive data to offload
         REAL(realk), POINTER, CONTIGUOUS:: ag_rddx(:, :), ag_rddy(:, :), ag_rddz(:, :)
         REAL(realk), POINTER, CONTIGUOUS:: ag_qtt(:, :, :, :), ag_qtu(:, :, :, :), ag_qtv(:, :, :, :), ag_qtw(:, :, :, :)
+
+        !REAL(realk), POINTER, CONTIGUOUS:: rddx(:)
+       
 
         CALL start_timer(411)
 
@@ -505,14 +510,27 @@ CONTAINS
         CALL qtv_f%arr_grid_ptr(ag_qtv)
         CALL qtw_f%arr_grid_ptr(ag_qtw)
 
+        !CALL rddx_f%get_arr_ptr(rddx)
+
         kk = 36
         jj = 36
         ii = 36
 
-        !$omp target data map(to: ag_rddx, ag_rddy, ag_rddz, ag_qtu, ag_qtv, ag_qtw) map(tofrom: ag_qtt)
+        !print*, "--------------"
+        !print*, MINVAL(ag_qtt)
+        !print*, MAXVAL(ag_qtt)
+        ag_qtt = 0
+        !print*, MINVAL(ag_qtv)
+        !print*, MAXVAL(ag_qtv)
+
+        !$omp target data map(to: nmygrids, i, j, k, ii, jj, kk, netflux, ag_rddx, ag_rddy, ag_rddz, ag_qtu, ag_qtv, ag_qtw) map(tofrom: ag_qtt)
         
-        !$omp target teams distribute parallel do simd collapse(4)
-        DO n = 1, nmygrids        
+        !$omp target teams distribute
+        DO n = 1, nmygrids
+            
+            !CALL flux_grid(subptr(rddx, n))
+
+            !$omp parallel do collapse(3)
             DO i = 3, ii-2
                 DO j = 3, jj-2
                     DO k = 3, kk-2
@@ -520,19 +538,37 @@ CONTAINS
                         netflux = ag_qtu(n, k, j, i-1) - ag_qtu(n, k, j, i) + ag_qtv(n, k, j-1, i) &
                             - ag_qtv(n, k, j, i) + ag_qtw(n, k-1, j, i) - ag_qtw(n, k, j, i)
 
-                        ag_qtt(n, k, j, i) = ag_rddz(n, k) * ag_rddy(n, j) * ag_rddx(n, k) * netflux
+                        ag_qtt(n, k, j, i) = ag_rddz(n, k) * ag_rddy(n, j) * ag_rddx(n, i) * netflux
                     END DO
                 END DO
             END DO
+            !$omp end parallel do
         END DO
-        !$omp end target teams distribute parallel do simd
-
+        !$omp end target teams distribute 
         !$omp end target data
-                
-        
+
+        print *, MAXVAL(qtu_f%arr)
+
 
         CALL stop_timer(411)
     END SUBROUTINE fluxbalance
+
+    !FUNCTION subptr(arr, n_grid) RESULT(ptr)
+    !    !$omp declare target
+    !    REAL(realk), POINTER, INTENT(in) :: arr(:)
+    !    INTEGER(intk), INTENT(in) :: n_grid
+
+    !    REAL(realk), POINTER :: ptr(:)
+
+    !    ptr(1 : 36) => arr((n_grid - 1) * 36 + 1 : n_grid * 36)
+    !END FUNCTION subptr
+
+    !SUBROUTINE flux_grid(test_arr)
+    !    !$omp declare target
+    !    REAL(realk), POINTER, INTENT(in) :: test_arr(:)
+
+    !    test_arr = 99
+    !END SUBROUTINE flux_grid
 
     SUBROUTINE comp_tmean(tmean, tmeansqr, kk, jj, ii, t, ddx, ddy, ddz)
         ! Subroutine arguments
