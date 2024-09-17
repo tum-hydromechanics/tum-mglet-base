@@ -46,8 +46,6 @@ CONTAINS    !===================================
 
         ! subroutine arguments
         TYPE(baseparticle_t), INTENT(inout) :: particle
-
-        ! local variables:
         INTEGER(intk), INTENT(in) :: ipart
         REAL(realk), INTENT(in) :: x, y, z
         INTEGER(intk), INTENT(in), OPTIONAL :: iproc
@@ -156,7 +154,7 @@ CONTAINS    !===================================
         TYPE(baseparticle_t), INTENT(inout) :: particle
 
         ! local variables
-        INTEGER(intk) :: k, j, i, kk, jj, ii
+        INTEGER(intk) :: k, j, i, kk, jj, ii, counter, max_iterations = 10
 
         TYPE(field_t), POINTER :: x_f, y_f, z_f
         REAL(realk), POINTER, CONTIGUOUS :: x(:), y(:), z(:)
@@ -173,8 +171,11 @@ CONTAINS    !===================================
                     WRITE(*,*) ' '
                     WRITE(*, *) "WARNING: In get_p_ijkcell: Tried to locate particle that is not active!"
             END SELECT
+
             RETURN
+
         END IF
+
         CALL get_bbox(minx, maxx, miny, maxy, minz, maxz, particle%igrid)
 
         ! check if particle is located on igrid, KEEP particle check up?
@@ -190,7 +191,8 @@ CONTAINS    !===================================
                      particle%ipart, particle%igrid
             END SELECT
 
-            CALL set_particle_igrid( particle )
+            CALL set_particle_igrid(particle)
+
         END IF
 
         CALL get_field(x_f, "X")
@@ -205,61 +207,103 @@ CONTAINS    !===================================
         ! the following procedure is capable of handling stretched grids!
 
         ! find nearest x(i):
-        ! particle expression avoids errors for particlex = minx and particlex = maxx
-        i = 1 + NINT((ii - 1) * (particle%x - minx) / (maxx - minx), intk)
-        diff_old = ABS(x(i) - particle%x)
-        diff_new = 0_realk
+        counter = 1
 
-        DO WHILE (diff_new < diff_old)
+        i = 3 + NINT((ii - 5) * (particle%x - minx) / (maxx - minx), intk)
+        particle%ijkcell(1) = i
+        diff_old = ABS(x(i) - particle%x)
+        diff_new = 0
+
+        DO WHILE (diff_new < diff_old .AND. counter <= max_iterations)
             particle%ijkcell(1) = i
             diff_old = ABS(x(i) - particle%x)
             IF (x(i) <= particle%x) THEN
-                i = i + CEILING((ii - i) * (particle%x - x(i)) / (maxx - x(i)), intk)
+                ! the denominator of the fraction will NOT be zero because x(i) /= maxx for all i
+                i = i + CEILING((ii - 2 - i) * (particle%x - x(i)) / (maxx - x(i)), intk)
             ELSEIF (x(i) > particle%x) THEN
-                i = 1_intk + FLOOR(i * (particle%x - minx) / (x(i) - minx), intk)
+                i = 3 + FLOOR((i - 2) * (particle%x - minx) / (x(i) - minx), intk)
             ELSE
                 EXIT
             END IF
             diff_new = ABS(x(i) - particle%x)
+
+            counter = counter + 1
         END DO
 
-        ! find nearest y(j):
-        ! particle expression avoids errors for particley = miny and particley = maxy
-        j = 1 + NINT((jj - 1) * (particle%y - miny) / (maxy - miny), intk)
-        diff_old = ABS(y(j) - particle%y)
-        diff_new = 0_realk
+        IF (i < 3) THEN
+            i = 3
+            particle%ijkcell(1) = i
+        ELSEIF (i > (ii - 2)) THEN
+            i = ii - 2
+            particle%ijkcell(1) = i
+        END IF
 
-        DO WHILE (diff_new < diff_old)
+        ! find nearest y(j):
+        counter = 1
+
+        j = 3 + NINT((jj - 5) * (particle%y - miny) / (maxy - miny), intk)
+        particle%ijkcell(2) = j
+        diff_old = ABS(y(j) - particle%y)
+        diff_new = 0
+
+        DO WHILE (diff_new < diff_old .AND. counter <= max_iterations)
             particle%ijkcell(2) = j
             diff_old = ABS(y(j) - particle%y)
             IF (y(j) <= particle%y) THEN
-                j = j + CEILING((jj - j) * (particle%y - y(j)) / (maxy - y(j)), intk)
+            ! the denominator of the fraction will NOT be zero because y(j) /= maxx for all j
+                j = j + CEILING((jj - 2 - j) * (particle%y - y(j)) / (maxy - y(j)), intk)
             ELSEIF (y(j) > particle%y) THEN
-                j = 1_intk + FLOOR(j * (particle%y - miny) / (y(j) - miny), intk)
+                j = 3 + FLOOR((j - 2) * (particle%y - miny) / (y(j) - miny), intk)
             ELSE
                 EXIT
             END IF
             diff_new = ABS(y(j) - particle%y)
+
+            counter = counter + 1
         END DO
 
-        ! find nearest z(k):
-        ! particle expression avoids errors for particlez = minz and particlez = maxz
-        k = 1 + NINT((kk - 1) * (particle%z - minz) / (maxz - minz), intk)
-        diff_old = ABS(z(k) - particle%z)
-        diff_new = 0_realk
+        IF (j < 3) THEN
+            j = 3
+            particle%ijkcell(2) = j
+        ELSEIF (j > (jj - 2)) THEN
+            j = jj - 2
+            particle%ijkcell(2) = j
+        END IF
 
-        DO WHILE (diff_new < diff_old)
+        ! find nearest z(k):
+        counter = 1
+
+        k = 3 + NINT((kk - 5) * (particle%z - minz) / (maxz - minz), intk)
+        particle%ijkcell(3) = k
+        diff_old = ABS(z(k) - particle%z)
+        diff_new = 0
+
+        DO WHILE (diff_new < diff_old .AND. counter <= max_iterations)
             particle%ijkcell(3) = k
             diff_old = ABS(z(k) - particle%z)
             IF (z(k) <= particle%z) THEN
-                k = k + CEILING((kk - k) * (particle%z - z(k)) / (maxz - z(k)), intk)
+                ! the denominator of the fraction will NOT be zero because z(k) /= maxx for all k
+                k = k + CEILING((kk - 2 - k) * (particle%z - z(k)) / (maxz - z(k)), intk)
             ELSEIF (z(k) > particle%z) THEN
-                k = 1_intk + FLOOR(k * (particle%z - minz) / (z(k) - minz), intk)
+                k = 3 + FLOOR((k - 2) * (particle%z - minz) / (z(k) - minz), intk)
             ELSE
                 EXIT
             END IF
             diff_new = ABS(z(k) - particle%z)
+
+            counter = counter + 1
         END DO
+
+        IF (k < 3) THEN
+            k = 3
+            particle%ijkcell(3) = k
+        ELSEIF (i > (ii - 2)) THEN
+            k = kk - 2
+            particle%ijkcell(3) = k
+        END IF
+
+        ! TODO: rethink this safety operation
+        CALL update_particle_cell(particle)
 
     END SUBROUTINE set_particle_cell
 
@@ -276,8 +320,7 @@ CONTAINS    !===================================
 
         REAL(realk) :: diff_old, diff_new
         REAL(realk) :: minx, maxx, miny, maxy, minz, maxz
-        INTEGER(intk) :: k, j, i, kk, jj, ii
-        INTEGER(intk) :: istart, iend, istep, jstart, jend, jstep, kstart, kend, kstep
+        INTEGER(intk) :: k, j, i, kk, jj, ii, istep, jstep, kstep
 
         IF (particle%state < 1) THEN
             SELECT CASE (TRIM(particle_terminal))
@@ -315,69 +358,52 @@ CONTAINS    !===================================
         ! the following procedure is capable of handling stretched grids!
 
         ! find nearest x:
-        istart = particle%ijkcell(1) + NINT((particle%x - x(particle%ijkcell(1))) / dx(particle%ijkcell(1)))
-        istart = MAX(istart, 1_intk)
-        istart = MIN(istart, ii)
-        istep = SIGN(INT(1, intk), NINT((particle%x - x(istart)), intk))
-        iend = 1_intk + (istep + 1_intk) / 2_intk * (ii - 1_intk)
+        istep = INT(SIGN(1.0_realk, particle%x - x(particle%ijkcell(1))), intk)
 
-        diff_old = x(istart) - particle%x
+        i = particle%ijkcell(1) + istep
 
-        DO i = istart + istep, iend, istep
-            diff_new = x(i) - particle%x
-            IF (diff_new > diff_old) THEN
-                particle%ijkcell(1) = i - istep
-                EXIT
-            ELSEIF (i == iend) THEN
-                particle%ijkcell(1) = i
-            ELSE
-                diff_old = diff_new
-            END IF
+        diff_old = ABS(x(particle%ijkcell(1)) - particle%x)
+        diff_new = ABS(x(i) - particle%x)
+
+        DO WHILE (diff_new < diff_old)
+            i = i + istep
+            diff_old = diff_new
+            diff_new = ABS(x(i) - particle%x)
         END DO
+
+        particle%ijkcell(1) = MIN(MAX(i - istep, 3), ii - 2)
 
         ! find nearest y:
-        jstart = particle%ijkcell(2) + NINT((particle%y - y(particle%ijkcell(2))) / dy(particle%ijkcell(2)))
-        jstart = MAX(jstart, 1_intk)
-        jstart = MIN(jstart, jj)
-        jstep = SIGN(INT(1, intk), NINT((particle%y - y(jstart)), intk))
-        jend = 1_intk + (jstep + 1_intk) / 2_intk * (jj - 1_intk)
+        jstep = INT(SIGN(1.0_realk, particle%y - y(particle%ijkcell(2))), intk)
 
-        diff_old = y(jstart) - particle%y
+        j = particle%ijkcell(2) + jstep
 
-        DO j = jstart + jstep, jend, jstep
-            diff_new = y(j) - particle%y
-            IF (diff_new > diff_old) THEN
-                particle%ijkcell(2) = j - jstep
-                EXIT
-            ELSEIF (j == jend) THEN
-                particle%ijkcell(2) = j
-            ELSE
-                diff_old = diff_new
-                CYCLE
-            END IF
+        diff_old = ABS(y(particle%ijkcell(2)) - particle%y)
+        diff_new = ABS(y(j) - particle%y)
+
+        DO WHILE (diff_new < diff_old)
+            j = j + jstep
+            diff_old = diff_new
+            diff_new = ABS(y(j) - particle%y)
         END DO
+
+        particle%ijkcell(2) = MIN(MAX(j - jstep, 3), jj - 2)
 
         ! find nearest z:
-        kstart = particle%ijkcell(3) + NINT((particle%z - z(particle%ijkcell(3))) / dz(particle%ijkcell(3)))
-        kstart = MAX(kstart, 1_intk)
-        kstart = MIN(kstart, kk)
-        kstep = SIGN(INT(1, intk), NINT((particle%z - z(kstart)), intk))
-        kend = 1_intk + (kstep + 1_intk) / 2_intk * (kk - 1_intk)
+        kstep = INT(SIGN(1.0_realk, particle%z - z(particle%ijkcell(3))), intk)
 
-        diff_old = z(kstart) - particle%z
+        k = particle%ijkcell(3) + kstep
 
-        DO k = kstart + kstep, kend, kstep
-            diff_new = z(k) - particle%z
-            IF (diff_new > diff_old) THEN
-                particle%ijkcell(3) = k - kstep
-                EXIT
-            ELSEIF (k == kend) THEN
-                particle%ijkcell(3) = k
-            ELSE
-                diff_old = diff_new
-                CYCLE
-            END IF
+        diff_old = ABS(z(particle%ijkcell(3)) - particle%z)
+        diff_new = ABS(z(k) - particle%z)
+
+        DO WHILE (diff_new < diff_old)
+            k = k + kstep
+            diff_old = diff_new
+            diff_new = ABS(z(k) - particle%z)
         END DO
+
+        particle%ijkcell(3) = MIN(MAX(k - kstep, 3), kk - 2)
 
     END SUBROUTINE update_particle_cell
 
