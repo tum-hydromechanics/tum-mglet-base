@@ -6,7 +6,7 @@ MODULE timeintegrate_scalar_mod
     USE bound_scalar_mod
     USE itinfo_scalar_mod
     USE gc_scastencils_mod
-    USE offload_realfield_wrapper_mod
+    USE offload_helper_mod
 
     IMPLICIT NONE(type, external)
     PRIVATE
@@ -504,9 +504,9 @@ CONTAINS
         CALL qtv_f%get_arr_ptr(qtv_a)
         CALL qtw_f%get_arr_ptr(qtw_a)
 
-        kk = 36
-        jj = 36
-        ii = 36
+        kk = N_CELLS_PER_DIM
+        jj = N_CELLS_PER_DIM
+        ii = N_CELLS_PER_DIM
 
         !$omp target data map(to: qtu_a, qtv_a, qtw_a, rddx_a, rddy_a, rddz_a) map(tofrom: qtt_a)
         !$omp target teams distribute 
@@ -553,29 +553,6 @@ CONTAINS
         END DO
         !$omp end parallel do simd
     END SUBROUTINE fluxbalance_grid
-
-    FUNCTION ptr_to_grid1(ptr_a, n_grid) RESULT(ptr_grid)
-        !$omp declare target
-        REAL(realk), POINTER, CONTIGUOUS, INTENT(in) :: ptr_a(:)
-        INTEGER(intk), INTENT(in) :: n_grid
-
-        REAL(realk), POINTER, CONTIGUOUS :: ptr_grid(:)
-
-        ptr_grid(1:36) => ptr_a((n_grid - 1) * 36 + 1 : n_grid * 36)
-    END FUNCTION ptr_to_grid1
-
-    FUNCTION ptr_to_grid3(ptr_a, n_grid) RESULT(ptr_grid)
-        !$omp declare target
-        REAL(realk), POINTER, CONTIGUOUS, INTENT(in) :: ptr_a(:)
-        INTEGER(intk), INTENT(in) :: n_grid
-
-        REAL(realk), POINTER, CONTIGUOUS :: ptr_grid(:, :, :)
-
-        INTEGER(intk) :: ip
-        ip = (n_grid - 1) * 36**3 + 1
-
-        ptr_grid(1:36, 1:36, 1:36) => ptr_a(ip:ip+36**3-1)
-    END FUNCTION ptr_to_grid3
 
     SUBROUTINE comp_tmean(tmean, tmeansqr, kk, jj, ii, t, ddx, ddy, ddz)
         ! Subroutine arguments
