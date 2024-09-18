@@ -10,14 +10,21 @@ MODULE offload_helper_mod
 
 
     INTEGER(intk), POINTER, CONTIGUOUS :: ip3d_offload(:), ip1d_offload(:)
-    INTEGER(intk), POINTER, CONTIGUOUS :: mgdims_offload(:)
-    REAL(realk), POINTER, CONTIGUOUS :: rddx_offload(:), rddy_offload(:), rddz_offload(:)
-    INTEGER(intk), POINTER, CONTIGUOUS :: mgbasb_offload(:)
+    INTEGER(intk), POINTER, CONTIGUOUS :: mgdims_offload(:), mgbasb_offload(:)
 
-    !$omp declare target(ip3d_offload, ip1d_offload, mgdims_offload, rddx_offload, rddy_offload, rddz_offload, mgbasb_offload)
+    REAL(realk), POINTER, CONTIGUOUS :: rddx_offload(:), rddy_offload(:), rddz_offload(:)
+    REAL(realk), POINTER, CONTIGUOUS :: ddx_offload(:), ddy_offload(:), ddz_offload(:)
+    REAL(realk), POINTER, CONTIGUOUS :: rdx_offload(:), rdy_offload(:), rdz_offload(:)
+    REAL(realk), POINTER, CONTIGUOUS :: bt_offload(:)
+
+    !$omp declare target(ip3d_offload, ip1d_offload, mgdims_offload, mgbasb_offload, &
+    !$omp& rddx_offload, rddy_offload, rddz_offload, rdx_offload, rdy_offload, rdz_offload, &
+    !$omp& ddx_offload, ddy_offload, ddz_offload, bt_offload)
 
     PUBLIC :: ptr_to_grid_x, ptr_to_grid_y, ptr_to_grid_z, ptr_to_grid3, &
-        offload_constants, finish_offload_constants, rddx_offload, rddy_offload, rddz_offload, get_mgdims_target, get_mgbasb_target
+        offload_constants, finish_offload_constants, get_mgdims_target, get_mgbasb_target, &
+        ddx_offload, ddy_offload, ddz_offload, rdx_offload, rdy_offload, rdz_offload, rddx_offload, rddy_offload, rddz_offload, &
+        bt_offload
 CONTAINS
     SUBROUTINE offload_constants()
         USE pointers_mod, ONLY: ip3d, ip1d
@@ -27,7 +34,7 @@ CONTAINS
 
         ! Local variablees
         INTEGER(intk) :: igrid, i, mgdims_arr_size, kk, jj, ii, nfro, nbac, nrgt, nlft, nbot, ntop
-        TYPE(field_t), POINTER :: rddx_f, rddy_f, rddz_f
+        TYPE(field_t), POINTER :: rddx_f, rddy_f, rddz_f, bt_f, ddx_f, ddy_f, ddz_f, rdx_f, rdy_f, rdz_f
 
         ! Create grids_mod copy to offload
         mgdims_arr_size = N_DIMS * nmygrids
@@ -47,12 +54,34 @@ CONTAINS
         ip1d_offload = ip1d
 
         ! Create copy for grid constants
+        CALL get_field(bt_f, "BT")
+        CALL get_field(ddx_f, "DDX")
+        CALL get_field(ddy_f, "DDY")
+        CALL get_field(ddz_f, "DDZ")
+        CALL get_field(rdx_f, "RDX")
+        CALL get_field(rdy_f, "RDY")
+        CALL get_field(rdz_f, "RDZ")
         CALL get_field(rddx_f, "RDDX")
         CALL get_field(rddy_f, "RDDY")
         CALL get_field(rddz_f, "RDDZ")
+        
+        ALLOCATE(bt_offload(SIZE(bt_f%arr)))
+        ALLOCATE(ddx_offload(SIZE(ddx_f%arr)))
+        ALLOCATE(ddy_offload(SIZE(ddy_f%arr)))
+        ALLOCATE(ddz_offload(SIZE(ddz_f%arr)))
+        ALLOCATE(rdx_offload(SIZE(rdx_f%arr)))
+        ALLOCATE(rdy_offload(SIZE(rdy_f%arr)))
+        ALLOCATE(rdz_offload(SIZE(rdz_f%arr)))
         ALLOCATE(rddx_offload(SIZE(rddx_f%arr)))
         ALLOCATE(rddy_offload(SIZE(rddy_f%arr)))
         ALLOCATE(rddz_offload(SIZE(rddz_f%arr)))
+        bt_offload = bt_f%arr
+        ddx_offload = ddx_f%arr
+        ddy_offload = ddy_f%arr
+        ddz_offload = ddz_f%arr
+        rdx_offload = rdx_f%arr
+        rdy_offload = rdy_f%arr
+        rdz_offload = rdz_f%arr
         rddx_offload = rddx_f%arr
         rddy_offload = rddy_f%arr
         rddz_offload = rddz_f%arr
@@ -71,15 +100,25 @@ CONTAINS
             mgbasb_offload(i+5) = ntop
         END DO
 
-        !$omp target enter data map(to: ip3d_offload, ip1d_offload, mgdims_offload, rddx_offload, rddy_offload, rddz_offload, mgbasb_offload)
+        !$omp target enter data map(to: ip3d_offload, ip1d_offload, mgdims_offload, mgbasb_offload, &
+        !$omp& rddx_offload, rddy_offload, rddz_offload, ddx_offload, ddy_offload, ddz_offload, &
+        !$omp& rdx_offload, rdy_offload, rdz_offload)
     END SUBROUTINE offload_constants
 
     SUBROUTINE finish_offload_constants()
-        !$omp target exit data map(delete: ip3d_offload, ip1d_offload, mgdims_offload, rddx_offload, rddy_offload, rddz_offload, mgbasb_offload)
+        !$omp target exit data map(delete: ip3d_offload, ip1d_offload, mgdims_offload, mgbasb_offload, &
+        !$omp& rddx_offload, rddy_offload, rddz_offload, ddx_offload, ddy_offload, ddz_offload, &
+        !$omp& rdx_offload, rdy_offload, rdz_offload)
 
         DEALLOCATE(ip3d_offload)
         DEALLOCATE(ip1d_offload)
         DEALLOCATE(mgdims_offload)
+        DEALLOCATE(ddx_offload)
+        DEALLOCATE(ddy_offload)
+        DEALLOCATE(ddz_offload)
+        DEALLOCATE(rdx_offload)
+        DEALLOCATE(rdy_offload)
+        DEALLOCATE(rdz_offload)
         DEALLOCATE(rddx_offload)
         DEALLOCATE(rddy_offload)
         DEALLOCATE(rddz_offload)
