@@ -332,6 +332,7 @@ CONTAINS
                     diff = -gsca(k)*rdx(i)*(t(k, j, i+1) - t(k, j, i))*area
 
                     ! Final result
+                    !print *, adv
                     qtu(k, j, i) = adv + diff
                 END DO
                 !$omp end simd
