@@ -4,25 +4,29 @@ MODULE offload_helper_mod
     IMPLICIT NONE(type, external)
     PRIVATE
 
-    INTEGER(intk), PARAMETER :: N_CELLS_PER_DIM = 36
     INTEGER(intk), PARAMETER :: N_DIMS = 3
+    INTEGER(intk), PARAMETER :: N_BASB = 6
+    REAL(realk), PARAMETER :: e = 2.71828182846
+
 
     INTEGER(intk), POINTER, CONTIGUOUS :: ip3d_offload(:), ip1d_offload(:)
     INTEGER(intk), POINTER, CONTIGUOUS :: mgdims_offload(:)
     REAL(realk), POINTER, CONTIGUOUS :: rddx_offload(:), rddy_offload(:), rddz_offload(:)
+    INTEGER(intk), POINTER, CONTIGUOUS :: mgbasb_offload(:)
 
-    !$omp declare target(ip3d_offload, ip1d_offload, mgdims_offload, rddx_offload, rddy_offload, rddz_offload)
+    !$omp declare target(ip3d_offload, ip1d_offload, mgdims_offload, rddx_offload, rddy_offload, rddz_offload, mgbasb_offload)
 
-    PUBLIC :: N_CELLS_PER_DIM, ptr_to_grid_x, ptr_to_grid_y, ptr_to_grid_z, ptr_to_grid3, offload_constants, finish_offload_constants, rddx_offload, rddy_offload, rddz_offload, get_mgdims_target
+    PUBLIC :: ptr_to_grid_x, ptr_to_grid_y, ptr_to_grid_z, ptr_to_grid3, &
+        offload_constants, finish_offload_constants, rddx_offload, rddy_offload, rddz_offload, get_mgdims_target, get_mgbasb_target, sca_prt
 CONTAINS
     SUBROUTINE offload_constants()
         USE pointers_mod, ONLY: ip3d, ip1d
-        USE grids_mod, ONLY: nmygrids, get_mgdims
+        USE grids_mod, ONLY: nmygrids, get_mgdims, get_mgbasb
         USE fields_mod
         USE realfield_mod
 
         ! Local variablees
-        INTEGER(intk) :: igrid, i, mgdims_arr_size, kk, jj, ii
+        INTEGER(intk) :: igrid, i, mgdims_arr_size, kk, jj, ii, nfro, nbac, nrgt, nlft, nbot, ntop
         TYPE(field_t), POINTER :: rddx_f, rddy_f, rddz_f
 
         ! Create grids_mod copy to offload
@@ -35,7 +39,6 @@ CONTAINS
             mgdims_offload(i+1) = jj
             mgdims_offload(i+2) = kk
         END DO
-        print *, mgdims_offload
 
         ! Create pointers_mod copy to offload
         ALLOCATE(ip3d_offload(SIZE(ip3d)))
@@ -50,16 +53,29 @@ CONTAINS
         ALLOCATE(rddx_offload(SIZE(rddx_f%arr)))
         ALLOCATE(rddy_offload(SIZE(rddy_f%arr)))
         ALLOCATE(rddz_offload(SIZE(rddz_f%arr)))
-
         rddx_offload = rddx_f%arr
         rddy_offload = rddy_f%arr
         rddz_offload = rddz_f%arr
 
-        !$omp target enter data map(to: ip3d_offload, ip1d_offload, mgdims_offload, rddx_offload, rddy_offload, rddz_offload)
+
+        ! Precompute boundary conditions
+        ALLOCATE(mgbasb_offload(N_BASB * nmygrids))
+        DO igrid = 1, nmygrids
+            i = (igrid - 1) * N_BASB + 1
+            CALL get_mgbasb(nfro, nbac, nrgt, nlft, nbot, ntop, igrid)
+            mgbasb_offload(i) = nfro
+            mgbasb_offload(i+1) = nbac
+            mgbasb_offload(i+2) = nrgt
+            mgbasb_offload(i+3) = nlft
+            mgbasb_offload(i+4) = nbot
+            mgbasb_offload(i+5) = ntop
+        END DO
+
+        !$omp target enter data map(to: ip3d_offload, ip1d_offload, mgdims_offload, rddx_offload, rddy_offload, rddz_offload, mgbasb_offload)
     END SUBROUTINE offload_constants
 
     SUBROUTINE finish_offload_constants()
-        !$omp target exit data map(delete: ip3d_offload, ip1d_offload, mgdims_offload, rddx_offload, rddy_offload, rddz_offload)
+        !$omp target exit data map(delete: ip3d_offload, ip1d_offload, mgdims_offload, rddx_offload, rddy_offload, rddz_offload, mgbasb_offload)
 
         DEALLOCATE(ip3d_offload)
         DEALLOCATE(ip1d_offload)
@@ -67,7 +83,46 @@ CONTAINS
         DEALLOCATE(rddx_offload)
         DEALLOCATE(rddy_offload)
         DEALLOCATE(rddz_offload)
+        DEALLOCATE(mgbasb_offload)
     END SUBROUTINE finish_offload_constants
+
+    FUNCTION sca_prt(sca_prmol, sca_kayscrawford, sca_prturb, gtgmol) RESULT(res)
+        !$omp declare target
+        REAL(realk), INTENT(IN) :: sca_prmol, sca_prturb, gtgmol
+        INTEGER(intk), INTENT(IN) :: sca_kayscrawford
+
+        REAL(realk) :: res
+        REAL(realk) :: kayscrawford
+
+        IF (sca_kayscrawford == 0) THEN
+            res = sca_prturb
+        ELSE
+            IF (gtgmol > 0.0) THEN
+                kayscrawford = 0.5882 + 0.228*gtgmol &
+                    - 0.0441*gtgmol**2*(1.0 - exp(-5.165/gtgmol))
+            ELSE
+                kayscrawford = sca_prmol
+            ENDIF
+            res = kayscrawford
+        END IF
+    END FUNCTION sca_prt
+
+    SUBROUTINE get_mgbasb_target(nfro, nbac, nrgt, nlft, nbot, ntop, igrid)
+        !$omp declare target
+        INTEGER(intk), INTENT(OUT) :: nfro, nbac, nrgt, nlft, nbot, ntop
+        INTEGER(intk), INTENT(IN) :: igrid
+
+        ! Local variablees
+        INTEGER(intk) :: i
+        i = (igrid - 1) * N_BASB + 1
+
+        nfro = mgbasb_offload(i)
+        nbac = mgbasb_offload(i+1)
+        nrgt = mgbasb_offload(i+2)
+        nlft = mgbasb_offload(i+3)
+        nbot = mgbasb_offload(i+4)
+        ntop = mgbasb_offload(i+5)
+    END SUBROUTINE get_mgbasb_target
 
     SUBROUTINE get_mgdims_target(kk, jj, ii, igrid)
         !$omp declare target
@@ -76,7 +131,7 @@ CONTAINS
 
         ! Local variablees
         INTEGER(intk) :: i
-        i = (igrid - 1) * 3 + 1
+        i = (igrid - 1) * N_DIMS + 1
 
         ii = mgdims_offload(i)
         jj = mgdims_offload(i+1)
@@ -141,7 +196,7 @@ CONTAINS
         REAL(realk), POINTER, CONTIGUOUS, INTENT(in) :: arr_ptr(:)
         REAL(realk), POINTER, CONTIGUOUS, INTENT(inout) :: grid_ptr(:)
         INTEGER(intk), INTENT(in) :: n_grid
-        
+
         ! Local variables
         INTEGER(intk) :: ip, len
         

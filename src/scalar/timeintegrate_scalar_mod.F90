@@ -169,15 +169,17 @@ CONTAINS
         TYPE(scalar_t), INTENT(in) :: sca
 
         ! Local variables
-        INTEGER(intk) :: i, igrid
-        INTEGER(intk) :: kk, jj, ii
-        INTEGER(intk) :: nfro, nbac, nrgt, nlft, nbot, ntop
+        INTEGER(intk) :: igrid
         TYPE(field_t), POINTER :: u_f, v_f, w_f, g_f
         TYPE(field_t), POINTER :: bt_f, ddx_f, ddy_f, ddz_f, rdx_f, rdy_f, rdz_f
-        REAL(realk), POINTER, CONTIGUOUS, DIMENSION(:, :, :) :: qtu, qtv, qtw, &
-            t, u, v, w, g, bt
-        REAL(realk), POINTER, CONTIGUOUS, DIMENSION(:) :: ddx, ddy, ddz, &
-            rdx, rdy, rdz
+
+        ! Expensive data to offload
+        REAL(realk), POINTER, CONTIGUOUS, DIMENSION(:) :: qtu_a, qtv_a, qtw_a, t_a, u_a, v_a, w_a, g_a, bt_a
+        REAL(realk), POINTER, CONTIGUOUS, DIMENSION(:) :: ddx_a, ddy_a, ddz_a, rdx_a, rdy_a, rdz_a
+        REAL(realk) :: sca_prmol
+        INTEGER(intk) :: sca_kayscrawford
+        sca_prmol = sca%prmol
+        sca_kayscrawford = sca%kayscrawford
 
         CALL start_timer(410)
 
@@ -194,41 +196,65 @@ CONTAINS
         CALL get_field(rdy_f, "RDY")
         CALL get_field(rdz_f, "RDZ")
 
-        DO i = 1, nmygrids
-            igrid = mygrids(i)
+        CALL qtu_f%get_arr_ptr(qtu_a)
+        CALL qtu_f%get_arr_ptr(qtv_a)
+        CALL qtu_f%get_arr_ptr(qtw_a)
+        CALL t_f%get_arr_ptr(t_a)
+        CALL u_f%get_arr_ptr(u_a)
+        CALL v_f%get_arr_ptr(v_a)
+        CALL w_f%get_arr_ptr(w_a)
+        CALL g_f%get_arr_ptr(g_a)
+        CALL bt_f%get_arr_ptr(bt_a)
+        CALL ddx_f%get_arr_ptr(ddx_a)
+        CALL ddy_f%get_arr_ptr(ddy_a)
+        CALL ddz_f%get_arr_ptr(ddz_a)
+        CALL rdx_f%get_arr_ptr(rdx_a)
+        CALL rdy_f%get_arr_ptr(rdy_a)
+        CALL rdz_f%get_arr_ptr(rdz_a)
 
-            CALL get_mgdims(kk, jj, ii, igrid)
-            CALL get_mgbasb(nfro, nbac, nrgt, nlft, nbot, ntop, igrid)
+        !$omp target data map(to: t_a, u_a, v_a, w_a, g_a, bt_a, ddx_a, ddy_a, ddz_a, rdx_a, rdy_a, rdz_a) map(from: qtu_a, qtv_a, qtw_a)
+        !$omp target teams distribute
+        DO igrid = 1, nmygrids
+            BLOCK
+                INTEGER(intk) :: kk, jj, ii
+                INTEGER(intk) :: nfro, nbac, nrgt, nlft, nbot, ntop
+                REAL(realk), POINTER, CONTIGUOUS, DIMENSION(:) :: ddx, ddy, ddz, rdx, rdy, rdz
+                REAL(realk), POINTER, CONTIGUOUS, DIMENSION(:, :, :) :: qtu, qtv, qtw, t, u, v, w, g, bt
 
-            CALL qtu_f%get_ptr(qtu, igrid)
-            CALL qtv_f%get_ptr(qtv, igrid)
-            CALL qtw_f%get_ptr(qtw, igrid)
+                CALL get_mgbasb_target(nfro, nbac, nrgt, nlft, nbot, ntop, igrid)
+                CALL get_mgdims_target(kk, jj, ii, igrid)
 
-            CALL t_f%get_ptr(t, igrid)
-            CALL u_f%get_ptr(u, igrid)
-            CALL v_f%get_ptr(v, igrid)
-            CALL w_f%get_ptr(w, igrid)
-            CALL g_f%get_ptr(g, igrid)
-            CALL bt_f%get_ptr(bt, igrid)
+                CALL ptr_to_grid3(qtu_a, igrid, qtu)
+                CALL ptr_to_grid3(qtv_a, igrid, qtv)
+                CALL ptr_to_grid3(qtw_a, igrid, qtw)
+                CALL ptr_to_grid3(t_a, igrid, t)
+                CALL ptr_to_grid3(u_a, igrid, u)
+                CALL ptr_to_grid3(v_a, igrid, v)
+                CALL ptr_to_grid3(w_a, igrid, w)
+                CALL ptr_to_grid3(g_a, igrid, g)
+                CALL ptr_to_grid3(bt_a, igrid, bt)
 
-            CALL ddx_f%get_ptr(ddx, igrid)
-            CALL ddy_f%get_ptr(ddy, igrid)
-            CALL ddz_f%get_ptr(ddz, igrid)
-            CALL rdx_f%get_ptr(rdx, igrid)
-            CALL rdy_f%get_ptr(rdy, igrid)
-            CALL rdz_f%get_ptr(rdz, igrid)
+                CALL ptr_to_grid_x(ddx_a, igrid, ddx)
+                CALL ptr_to_grid_y(ddy_a, igrid, ddy)
+                CALL ptr_to_grid_z(ddz_a, igrid, ddz)
+                CALL ptr_to_grid_x(rdx_a, igrid, rdx)
+                CALL ptr_to_grid_y(rdy_a, igrid, rdy)
+                CALL ptr_to_grid_z(rdz_a, igrid, rdz)
 
-            CALL tstsca4_grid(kk, jj, ii, qtu, qtv, qtw, t, u, v, w, g, bt, &
-                ddx, ddy, ddz, rdx, rdy, rdz, sca, nfro, nbac, nrgt, nlft, &
+                CALL tstsca4_grid(kk, jj, ii, qtu, qtv, qtw, t, u, v, w, g, bt, &
+                ddx, ddy, ddz, rdx, rdy, rdz, sca_prmol, sca_kayscrawford, prturb, nfro, nbac, nrgt, nlft, &
                 nbot, ntop)
+            END BLOCK
         END DO
+        !$omp end target teams distribute
+        !$omp end target data
 
         CALL stop_timer(410)
     END SUBROUTINE tstsca4
 
 
     SUBROUTINE tstsca4_grid(kk, jj, ii, qtu, qtv, qtw, t, u, v, w, g, bt, &
-            ddx, ddy, ddz, rdx, rdy, rdz, sca, nfro, nbac, nrgt, nlft, &
+            ddx, ddy, ddz, rdx, rdy, rdz, sca_prmol, sca_kayscrawford, sca_prturb, nfro, nbac, nrgt, nlft, &
             nbot, ntop)
 
         ! Subroutine arguments
@@ -237,7 +263,8 @@ CONTAINS
         REAL(realk), INTENT(IN), DIMENSION(kk, jj, ii) :: t, u, v, w, g, bt
         REAL(realk), INTENT(IN) :: ddx(ii), ddy(jj), ddz(kk), &
             rdx(ii), rdy(jj), rdz(kk)
-        TYPE(scalar_t), INTENT(in) :: sca
+        REAL(realk), INTENT(in) :: sca_prmol, sca_prturb
+        INTEGER(intk), INTENT(IN) :: sca_kayscrawford
         INTEGER(intk), INTENT(IN) :: nfro, nbac, nrgt, nlft, nbot, ntop
 
         ! Local variables
@@ -279,21 +306,21 @@ CONTAINS
                 ! Scalar diffusivity LES/DNS computation
                 IF (iles == 1) THEN
                     DO k = 3, kk-2
-                        gscamol = gmol/rho/sca%prmol
+                        gscamol = gmol/rho/sca_prmol
                         gtgmolp = (g(k, j, i) - gmol)/gmol
                         gtgmoln = (g(k, j, i+1) - gmol)/gmol
 
                         ! 1/Re * 1/Pr + 1/Re_t * 1/Pr_t:
                         gsca(k) = gscamol &
                             + (g(k, j, i+1) + g(k, j, i) - 2.0*gmol) / rho &
-                            / (sca%prt(gtgmoln) + sca%prt(gtgmolp))
+                            / (sca_prt(sca_prmol, sca_kayscrawford, sca_prturb, gtgmoln) + sca_prt(sca_prmol, sca_kayscrawford, sca_prturb, gtgmolp))
 
                         ! Limit gsca here MAX(...,0): no negative diffusion!
                         gsca(k) = MAX(gscamol, gsca(k))
                     END DO
                 ELSE
                     DO k = 3, kk-2
-                        gsca(k) = gmol/rho/sca%prmol
+                        gsca(k) = gmol/rho/sca_prmol
                     END DO
                 END IF
 
@@ -323,21 +350,21 @@ CONTAINS
                 ! Scalar diffusivity LES/DNS computation
                 IF (iles == 1) THEN
                     DO k = 3, kk-2
-                        gscamol = gmol/rho/sca%prmol
+                        gscamol = gmol/rho/sca_prmol
                         gtgmolp = (g(k, j, i) - gmol)/gmol
                         gtgmoln = (g(k, j+1, i) - gmol)/gmol
 
                         ! 1/Re * 1/Pr + 1/Re_t * 1/Pr_t:
                         gsca(k) = gscamol &
                             + (g(k, j+1, i) + g(k, j, i) - 2.0*gmol) / rho &
-                            / (sca%prt(gtgmoln) + sca%prt(gtgmolp))
+                            / (sca_prt(sca_prmol, sca_kayscrawford, sca_prturb, gtgmoln) + sca_prt(sca_prmol, sca_kayscrawford, sca_prturb, gtgmolp))
 
                         ! Limit gsca here MAX(...,0): no negative diffusion!
                         gsca(k) = MAX(gscamol, gsca(k))
                     END DO
                 ELSE
                     DO k = 3, kk-2
-                        gsca(k) = gmol/rho/sca%prmol
+                        gsca(k) = gmol/rho/sca_prmol
                     END DO
                 END IF
 
@@ -367,21 +394,21 @@ CONTAINS
                 ! Scalar diffusivity LES/DNS computation
                 IF (iles == 1) THEN
                     DO k = 3-nbw, kk-3+ntw
-                        gscamol = gmol/rho/sca%prmol
+                        gscamol = gmol/rho/sca_prmol
                         gtgmolp = (g(k, j, i) - gmol)/gmol
                         gtgmoln = (g(k+1, j, i) - gmol)/gmol
 
                         ! 1/Re * 1/Pr + 1/Re_t * 1/Pr_t:
                         gsca(k) = gscamol &
                             + (g(k+1, j, i) + g(k, j, i) - 2.0*gmol) / rho &
-                            / (sca%prt(gtgmoln) + sca%prt(gtgmolp))
+                            / (sca_prt(sca_prmol, sca_kayscrawford, sca_prturb, gtgmoln) + sca_prt(sca_prmol, sca_kayscrawford, sca_prturb, gtgmolp))
 
                         ! Limit gsca here MAX(...,0): no negative diffusion!
                         gsca(k) = MAX(gscamol, gsca(k))
                     END DO
                 ELSE
                     DO k = 3-nbw, kk-3+ntw
-                        gsca(k) = gmol/rho/sca%prmol
+                        gsca(k) = gmol/rho/sca_prmol
                     END DO
                 END IF
 
