@@ -17,7 +17,7 @@ MODULE offload_helper_mod
     !$omp declare target(ip3d_offload, ip1d_offload, mgdims_offload, rddx_offload, rddy_offload, rddz_offload, mgbasb_offload)
 
     PUBLIC :: ptr_to_grid_x, ptr_to_grid_y, ptr_to_grid_z, ptr_to_grid3, &
-        offload_constants, finish_offload_constants, rddx_offload, rddy_offload, rddz_offload, get_mgdims_target, get_mgbasb_target, sca_prt
+        offload_constants, finish_offload_constants, rddx_offload, rddy_offload, rddz_offload, get_mgdims_target, get_mgbasb_target
 CONTAINS
     SUBROUTINE offload_constants()
         USE pointers_mod, ONLY: ip3d, ip1d
@@ -85,27 +85,6 @@ CONTAINS
         DEALLOCATE(rddz_offload)
         DEALLOCATE(mgbasb_offload)
     END SUBROUTINE finish_offload_constants
-
-    FUNCTION sca_prt(sca_prmol, sca_kayscrawford, sca_prturb, gtgmol) RESULT(res)
-        !$omp declare target
-        REAL(realk), INTENT(IN) :: sca_prmol, sca_prturb, gtgmol
-        INTEGER(intk), INTENT(IN) :: sca_kayscrawford
-
-        REAL(realk) :: res
-        REAL(realk) :: kayscrawford
-
-        IF (sca_kayscrawford == 0) THEN
-            res = sca_prturb
-        ELSE
-            IF (gtgmol > 0.0) THEN
-                kayscrawford = 0.5882 + 0.228*gtgmol &
-                    - 0.0441*gtgmol**2*(1.0 - exp(-5.165/gtgmol))
-            ELSE
-                kayscrawford = sca_prmol
-            ENDIF
-            res = kayscrawford
-        END IF
-    END FUNCTION sca_prt
 
     SUBROUTINE get_mgbasb_target(nfro, nbac, nrgt, nlft, nbot, ntop, igrid)
         !$omp declare target

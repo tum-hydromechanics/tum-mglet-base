@@ -197,8 +197,8 @@ CONTAINS
         CALL get_field(rdz_f, "RDZ")
 
         CALL qtu_f%get_arr_ptr(qtu_a)
-        CALL qtu_f%get_arr_ptr(qtv_a)
-        CALL qtu_f%get_arr_ptr(qtw_a)
+        CALL qtv_f%get_arr_ptr(qtv_a)
+        CALL qtw_f%get_arr_ptr(qtw_a)
         CALL t_f%get_arr_ptr(t_a)
         CALL u_f%get_arr_ptr(u_a)
         CALL v_f%get_arr_ptr(v_a)
@@ -212,7 +212,7 @@ CONTAINS
         CALL rdy_f%get_arr_ptr(rdy_a)
         CALL rdz_f%get_arr_ptr(rdz_a)
 
-        !$omp target data map(to: t_a, u_a, v_a, w_a, g_a, bt_a, ddx_a, ddy_a, ddz_a, rdx_a, rdy_a, rdz_a) map(from: qtu_a, qtv_a, qtw_a)
+        !$omp target data map(to: t_a, u_a, v_a, w_a, g_a, bt_a, ddx_a, ddy_a, ddz_a, rdx_a, rdy_a, rdz_a) map(tofrom: qtu_a, qtv_a, qtw_a)
         !$omp target teams distribute
         DO igrid = 1, nmygrids
             BLOCK
@@ -243,7 +243,7 @@ CONTAINS
 
                 CALL tstsca4_grid(kk, jj, ii, qtu, qtv, qtw, t, u, v, w, g, bt, &
                 ddx, ddy, ddz, rdx, rdy, rdz, sca_prmol, sca_kayscrawford, prturb, nfro, nbac, nrgt, nlft, &
-                nbot, ntop)
+                nbot, ntop, ilesmodel, gmol, rho)
             END BLOCK
         END DO
         !$omp end target teams distribute
@@ -255,8 +255,8 @@ CONTAINS
 
     SUBROUTINE tstsca4_grid(kk, jj, ii, qtu, qtv, qtw, t, u, v, w, g, bt, &
             ddx, ddy, ddz, rdx, rdy, rdz, sca_prmol, sca_kayscrawford, sca_prturb, nfro, nbac, nrgt, nlft, &
-            nbot, ntop)
-
+            nbot, ntop, ilesmodel_offlad, gmol_offload, rho_offload)
+        !$omp declare target
         ! Subroutine arguments
         INTEGER(intk), INTENT(IN) :: kk, jj, ii
         REAL(realk), INTENT(OUT), DIMENSION(kk, jj, ii) :: qtu, qtv, qtw
@@ -266,6 +266,8 @@ CONTAINS
         REAL(realk), INTENT(in) :: sca_prmol, sca_prturb
         INTEGER(intk), INTENT(IN) :: sca_kayscrawford
         INTEGER(intk), INTENT(IN) :: nfro, nbac, nrgt, nlft, nbot, ntop
+        INTEGER(intk), INTENT(IN) :: ilesmodel_offlad
+        REAL(realk), INTENT(IN) :: gmol_offload, rho_offload
 
         ! Local variables
         INTEGER(intk) :: i, j, k
@@ -298,21 +300,22 @@ CONTAINS
         IF (ntop == 7) ntw = 1
 
         iles = 1
-        IF (ilesmodel == 0) iles = 0
+        IF (ilesmodel_offlad == 0) iles = 0
 
         ! X direction
+        !!$omp parallel do collapse(2)
         DO i = 3-nfu, ii-3+nbu
             DO j = 3, jj-2
                 ! Scalar diffusivity LES/DNS computation
                 IF (iles == 1) THEN
                     DO k = 3, kk-2
-                        gscamol = gmol/rho/sca_prmol
-                        gtgmolp = (g(k, j, i) - gmol)/gmol
-                        gtgmoln = (g(k, j, i+1) - gmol)/gmol
+                        gscamol = gmol_offload/rho_offload/sca_prmol
+                        gtgmolp = (g(k, j, i) - gmol_offload)/gmol_offload
+                        gtgmoln = (g(k, j, i+1) - gmol_offload)/gmol_offload
 
                         ! 1/Re * 1/Pr + 1/Re_t * 1/Pr_t:
                         gsca(k) = gscamol &
-                            + (g(k, j, i+1) + g(k, j, i) - 2.0*gmol) / rho &
+                            + (g(k, j, i+1) + g(k, j, i) - 2.0*gmol_offload) / rho_offload &
                             / (sca_prt(sca_prmol, sca_kayscrawford, sca_prturb, gtgmoln) + sca_prt(sca_prmol, sca_kayscrawford, sca_prturb, gtgmolp))
 
                         ! Limit gsca here MAX(...,0): no negative diffusion!
@@ -320,7 +323,7 @@ CONTAINS
                     END DO
                 ELSE
                     DO k = 3, kk-2
-                        gsca(k) = gmol/rho/sca_prmol
+                        gsca(k) = gmol_offload/rho_offload/sca_prmol
                     END DO
                 END IF
 
@@ -339,24 +342,27 @@ CONTAINS
                     diff = -gsca(k)*rdx(i)*(t(k, j, i+1) - t(k, j, i))*area
 
                     ! Final result
+                    !print *, adv
                     qtu(k, j, i) = adv + diff
                 END DO
             END DO
         END DO
+        !!$omp end parallel do
 
         ! Y direction
+        !!$omp parallel do
         DO i = 3, ii-2
             DO j = 3-nrv, jj-3+nlv
                 ! Scalar diffusivity LES/DNS computation
                 IF (iles == 1) THEN
                     DO k = 3, kk-2
-                        gscamol = gmol/rho/sca_prmol
-                        gtgmolp = (g(k, j, i) - gmol)/gmol
-                        gtgmoln = (g(k, j+1, i) - gmol)/gmol
+                        gscamol = gmol_offload/rho_offload/sca_prmol
+                        gtgmolp = (g(k, j, i) - gmol_offload)/gmol_offload
+                        gtgmoln = (g(k, j+1, i) - gmol_offload)/gmol_offload
 
                         ! 1/Re * 1/Pr + 1/Re_t * 1/Pr_t:
                         gsca(k) = gscamol &
-                            + (g(k, j+1, i) + g(k, j, i) - 2.0*gmol) / rho &
+                            + (g(k, j+1, i) + g(k, j, i) - 2.0*gmol_offload) / rho_offload &
                             / (sca_prt(sca_prmol, sca_kayscrawford, sca_prturb, gtgmoln) + sca_prt(sca_prmol, sca_kayscrawford, sca_prturb, gtgmolp))
 
                         ! Limit gsca here MAX(...,0): no negative diffusion!
@@ -364,7 +370,7 @@ CONTAINS
                     END DO
                 ELSE
                     DO k = 3, kk-2
-                        gsca(k) = gmol/rho/sca_prmol
+                        gsca(k) = gmol_offload/rho_offload/sca_prmol
                     END DO
                 END IF
 
@@ -387,20 +393,22 @@ CONTAINS
                 END DO
             END DO
         END DO
+        !!$omp end parallel do
 
         ! Z direction
+        !!$omp parallel do
         DO i = 3, ii-2
             DO j = 3, jj-2
                 ! Scalar diffusivity LES/DNS computation
                 IF (iles == 1) THEN
                     DO k = 3-nbw, kk-3+ntw
-                        gscamol = gmol/rho/sca_prmol
-                        gtgmolp = (g(k, j, i) - gmol)/gmol
-                        gtgmoln = (g(k+1, j, i) - gmol)/gmol
+                        gscamol = gmol_offload/rho_offload/sca_prmol
+                        gtgmolp = (g(k, j, i) - gmol_offload)/gmol_offload
+                        gtgmoln = (g(k+1, j, i) - gmol_offload)/gmol_offload
 
                         ! 1/Re * 1/Pr + 1/Re_t * 1/Pr_t:
                         gsca(k) = gscamol &
-                            + (g(k+1, j, i) + g(k, j, i) - 2.0*gmol) / rho &
+                            + (g(k+1, j, i) + g(k, j, i) - 2.0*gmol_offload) / rho_offload &
                             / (sca_prt(sca_prmol, sca_kayscrawford, sca_prturb, gtgmoln) + sca_prt(sca_prmol, sca_kayscrawford, sca_prturb, gtgmolp))
 
                         ! Limit gsca here MAX(...,0): no negative diffusion!
@@ -408,7 +416,7 @@ CONTAINS
                     END DO
                 ELSE
                     DO k = 3-nbw, kk-3+ntw
-                        gsca(k) = gmol/rho/sca_prmol
+                        gsca(k) = gmol_offload/rho_offload/sca_prmol
                     END DO
                 END IF
 
@@ -431,7 +439,11 @@ CONTAINS
                 END DO
             END DO
         END DO
+        !!$omp end parallel do
 
+
+        ! These loops are not used in our basic scalar test
+        ! ------------------------------------------------------------------------------------------------------------
 
         ! Special treatment at par boundaries
         ! Substraction of downwind and addition of upwind T-value
@@ -502,6 +514,27 @@ CONTAINS
             END DO
         END IF
     END SUBROUTINE tstsca4_grid
+
+    FUNCTION sca_prt(sca_prmol, sca_kayscrawford, sca_prturb, gtgmol) RESULT(res)
+        !$omp declare target
+        REAL(realk), INTENT(IN) :: sca_prmol, sca_prturb, gtgmol
+        INTEGER(intk), INTENT(IN) :: sca_kayscrawford
+
+        REAL(realk) :: res
+        REAL(realk) :: kayscrawford
+
+        IF (sca_kayscrawford == 0) THEN
+            res = sca_prturb
+        ELSE
+            IF (gtgmol > 0.0) THEN
+                kayscrawford = 0.5882 + 0.228*gtgmol &
+                    - 0.0441*gtgmol**2*(1.0 - exp(-5.165/gtgmol))
+            ELSE
+                kayscrawford = sca_prmol
+            ENDIF
+            res = kayscrawford
+        END IF
+    END FUNCTION sca_prt
 
     SUBROUTINE fluxbalance(qtt_f, qtu_f, qtv_f, qtw_f)
         ! Subroutine arguments

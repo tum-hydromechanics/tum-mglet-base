@@ -171,7 +171,7 @@ Compiling MGLET with GPU support is possible by using the following instructions
 2. Create a separate `build` directory in the source code root and enter that
 directory: `mkdir build && cd build`
 
-3. Run CMake: `CXXFLAGS="-g -fopenmp -foffload=nvptx-none" FFLAGS="-g -fopenmp -foffload=nvptx-none" cmake .. --preset=gnu-release` (replace the preset with your
+3. Run CMake: `CXXFLAGS="-g -fopenmp -foffload=-lm -foffload=nvptx-none" FFLAGS="-g -fopenmp -foffload=-lm -foffload=nvptx-none" cmake .. --preset=gnu-release` (replace the preset with your
 desired one)
 
 4. Compile: `make`
