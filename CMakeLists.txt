@@ -120,6 +120,13 @@ FetchContent_Declare(exprtk
 )
 FetchContent_MakeAvailable(exprtk)
 
+# Catalyst API library
+FetchContent_Declare(catalyst
+    GIT_REPOSITORY https://gitlab.kitware.com/paraview/catalyst.git
+    GIT_TAG a4ce1e818f9211c9623d0bdf25020da5922dce81
+)
+FetchContent_MakeAvailable(catalyst)
+
 # Perform various compiler checks
 add_subdirectory("cmake")
 add_subdirectory("src")
