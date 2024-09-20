@@ -1,13 +1,12 @@
 MODULE catalyst_mod
 
-    USE, INTRINSIC :: ISO_C_BINDING, ONLY: C_PTR, C_CHAR, C_INT
+    USE, INTRINSIC :: ISO_C_BINDING, ONLY: C_PTR, C_CHAR, C_INT, C_NULL_PTR
     USE precision_mod, ONLY: intk, realk
     USE comms_mod, ONLY: myid, numprocs
 
     IMPLICIT NONE(type, external)
-    PRIVATE
 
-    ! see "create_pvtk"
+    PRIVATE
 
     INTERFACE
         SUBROUTINE catalyst_trigger( &
@@ -31,15 +30,12 @@ MODULE catalyst_mod
         END SUBROUTINE catalyst_trigger
     END INTERFACE
 
-    ! interface
-    !     integer(c_int) function strlen(string) bind(C)
-    !     import :: c_int, c_ptr
-    !     type(c_ptr), intent(in) :: string ! value?
-    !     end function
-    ! end interface
+    ! Module variables
 
     LOGICAL :: isInit = .false.
     LOGICAL :: exists = .false.
+
+    TYPE(c_ptr) :: node = c_null_ptr
 
     PUBLIC :: init_catalyst, sample_catalyst, finish_catalyst
 
