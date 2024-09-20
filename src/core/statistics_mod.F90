@@ -383,7 +383,7 @@ CONTAINS
                     DO j=3, jj-2
                         DO k=3, kk-2
                             out(k,j,i) = (phi(k+1,j,i) - phi(k-1,j,i))/ &
-                            (1/rdz(j) + 1/rdz(j-1))
+                            (1/rdz(k) + 1/rdz(k-1))
                         END DO
                     END DO
                 END DO 
