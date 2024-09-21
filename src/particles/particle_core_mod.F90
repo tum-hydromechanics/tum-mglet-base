@@ -371,7 +371,7 @@ CONTAINS    !===================================
             diff_new = ABS(x(i) - particle%x)
         END DO
 
-        particle%ijkcell(1) = MIN(MAX(i - istep, 3), ii - 2)
+        particle%ijkcell(1) = MIN(MAX(i - istep, 1), ii)
 
         ! find nearest y:
         jstep = INT(SIGN(1.0_realk, particle%y - y(particle%ijkcell(2))), intk)
@@ -387,7 +387,7 @@ CONTAINS    !===================================
             diff_new = ABS(y(j) - particle%y)
         END DO
 
-        particle%ijkcell(2) = MIN(MAX(j - jstep, 3), jj - 2)
+        particle%ijkcell(2) = MIN(MAX(j - jstep, 1), jj)
 
         ! find nearest z:
         kstep = INT(SIGN(1.0_realk, particle%z - z(particle%ijkcell(3))), intk)
@@ -403,7 +403,7 @@ CONTAINS    !===================================
             diff_new = ABS(z(k) - particle%z)
         END DO
 
-        particle%ijkcell(3) = MIN(MAX(k - kstep, 3), kk - 2)
+        particle%ijkcell(3) = MIN(MAX(k - kstep, 1), kk)
 
     END SUBROUTINE update_particle_cell
 

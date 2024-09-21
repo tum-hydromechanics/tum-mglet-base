@@ -48,13 +48,13 @@
         ]
     },
     "particles": {
-        "terminal": "normal",
+        "terminal": "verbose",
         "read": true,
         "interp": true,
         "write": true,
         "snapshot_step": 1,
         "init_np": 10,
         "list_len": 100,
-        "D":[1.0, 1.0, 1.0]
+        "D":[1, 1, 0.0]
     }
 }

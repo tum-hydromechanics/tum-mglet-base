@@ -3,7 +3,7 @@ MODULE particle_timeintegration_mod
     USE particle_interpolation_mod
     USE particle_exchange_mod
     USE particle_list_mod
-    USE particle_bound_mod
+    USE particle_boundaries_mod
 
     IMPLICIT NONE
 
@@ -15,6 +15,7 @@ CONTAINS
         REAL(realk), INTENT(in) :: dt
 
         ! local variables
+        TYPE(baseparticle_t) :: particle_clone
         INTEGER(intk) :: igrid, i, ii, jj, kk, gfound, ig, destgrid
         REAL(realk) :: p_u, p_v, p_w
 
@@ -168,8 +169,12 @@ CONTAINS
                     WRITE(*, '()')
             END SELECT
 
+            particle_clone = my_particle_list%particles(i)
+
             ! Particle Boundary Interaction
-            CALL move_particle(my_particle_list%particles(i), pdx, pdy, pdz)
+            CALL move_particle(particle_clone, pdx, pdy, pdz)
+
+            my_particle_list%particles(i) = particle_clone
 
             ! count particles to be sent (per process)
             CALL prepare_particle_exchange(my_particle_list%particles(i))

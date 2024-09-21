@@ -1,13 +1,37 @@
-MODULE particle_bound_mod
+MODULE particle_boundaries_mod
     USE precision_mod, ONLY: realk, intk
     USE core_mod
     USE particle_list_mod
 
-    ! particle boundary types integer identifiers
-    ! connect  => 1
-    ! periodic => 2
-    ! reflect  => 3
+    IMPLICIT NONE
 
+    INTEGER(intk), PARAMETER :: facelist(4,26) = RESHAPE((/ &
+        1, 1, 0, 0, &
+        1, 2, 0, 0, &
+        1, 3, 0, 0, &
+        1, 4, 0, 0, &
+        1, 5, 0, 0, &
+        1, 6, 0, 0, &
+        2, 1, 3, 0, &
+        2, 1, 4, 0, &
+        2, 1, 5, 0, &
+        2, 1, 6, 0, &
+        2, 2, 3, 0, &
+        2, 2, 4, 0, &
+        2, 2, 5, 0, &
+        2, 2, 6, 0, &
+        2, 3, 5, 0, &
+        2, 3, 6, 0, &
+        2, 4, 5, 0, &
+        2, 4, 6, 0, &
+        3, 1, 3, 5, &
+        3, 1, 3, 6, &
+        3, 1, 4, 5, &
+        3, 1, 4, 6, &
+        3, 2, 3, 5, &
+        3, 2, 3, 6, &
+        3, 2, 4, 5, &
+        3, 2, 4, 6 /), SHAPE(facelist))
 
     TYPE :: obstacle_t
 
@@ -26,12 +50,9 @@ MODULE particle_bound_mod
 
     TYPE :: particle_boundaries_t
 
-        INTEGER(intk), ALLOCATABLE :: front(:)
-        INTEGER(intk), ALLOCATABLE :: back(:)
-        INTEGER(intk), ALLOCATABLE :: right(:)
-        INTEGER(intk), ALLOCATABLE :: left(:)
-        INTEGER(intk), ALLOCATABLE :: bottom(:)
-        INTEGER(intk), ALLOCATABLE :: top(:)
+        INTEGER(intk), ALLOCATABLE :: face_neighbours(:, :)
+
+        REAL(realk), ALLOCATABLE :: face_normals(:, :, :)
 
         TYPE(obstacle_list_t), ALLOCATABLE :: obstacle_lists(:) ! every grid has one list! (not an exact analog to the particle list)
 
@@ -44,139 +65,146 @@ MODULE particle_bound_mod
     SUBROUTINE init_particle_boundaries()
 
         ! local variables
-        INTEGER(intk) :: i, igrid, iface, ibocd, nbocd
+        INTEGER(intk) :: igrid, ibocd, iface, jface, i, j
         INTEGER(intk) :: neighbours(26)
-
-        REAL(realk) :: minx, maxx, miny, maxy, minz, maxz, n_minx, n_maxx, n_miny, n_maxy, n_minz, n_maxz
-
+        ! to store which boundary surfaces (faces 1-6) that define a lower order face (7-26) are of connect (or periodic) type:
+        INTEGER(intk) :: connect_faces(4)
+        REAL(realk) :: minx, maxx, miny, maxy, minz, maxz, n_minx, n_maxx, n_miny, n_maxy, n_minz, n_maxz, magnitude
         CHARACTER(len=8) :: ctyp
+        LOGICAL :: found
 
-        ALLOCATE(particle_boundaries%front(ngrid))
-        ALLOCATE(particle_boundaries%back(ngrid))
-        ALLOCATE(particle_boundaries%right(ngrid))
-        ALLOCATE(particle_boundaries%left(ngrid))
-        ALLOCATE(particle_boundaries%bottom(ngrid))
-        ALLOCATE(particle_boundaries%top(ngrid))
-        ALLOCATE(particle_boundaries%obstacle_lists(ngrid))
+        ALLOCATE(particle_boundaries%face_normals(3, 26, ngrid))
+        particle_boundaries%face_normals = 0.0
 
-        particle_boundaries%front = 0
-        particle_boundaries%back = 0
-        particle_boundaries%right = 0
-        particle_boundaries%left = 0
-        particle_boundaries%bottom = 0
-        particle_boundaries%top = 0
+        ALLOCATE(particle_boundaries%face_neighbours(26, ngrid))
 
+        ibocd = 3
+        DO igrid = 1, ngrid
 
+            CALL get_neighbours(neighbours, igrid)
 
-        DO i = 1, ngrid
-            igrid = i ! (?) <------------------------------------------
             DO iface = 1, 6
-                ibocd = 3
-                    CALL get_bc_ctyp(ctyp, ibocd, iface, igrid)
-                    SELECT CASE(iface)
+
+                CALL get_bc_ctyp(ctyp, ibocd, iface, igrid)
+
+                particle_boundaries%face_neighbours(iface, igrid) = neighbours(iface)
+
+                SELECT CASE(iface)
                     CASE(1)
                         IF (ctyp == 'REF') THEN
-                            particle_boundaries%front(igrid) = 3
-                        ELSEIF (ctyp == 'PER') THEN
-                            particle_boundaries%front(igrid) = 2
-                        ELSEIF (ctyp == 'CON') THEN
-                            CALL get_neighbours(neighbours, igrid)
-                            CALL get_bbox(minx, maxx, miny, maxy, minz, maxz, igrid)
-                            CALL get_bbox(n_minx, n_maxx, n_miny, n_maxy, n_minz, n_maxz, neighbours(iface))
-                            IF (maxx <= n_minx .OR. igrid == neighbours(iface)) THEN
-                                particle_boundaries%front(igrid) = 2
-                            ELSE
-                                particle_boundaries%front(igrid) = 1
-                            END IF
+                            particle_boundaries%face_normals(1, 1, igrid) = 1.0
+                            particle_boundaries%face_neighbours(iface, igrid) = igrid
                         END IF
                     CASE(2)
                         IF (ctyp == 'REF') THEN
-                            particle_boundaries%back(igrid) = 3
-                        ELSEIF (ctyp == 'PER') THEN
-                            particle_boundaries%back(igrid) = 2
-                        ELSEIF (ctyp == 'CON') THEN
-                            CALL get_neighbours(neighbours, igrid)
-                            CALL get_bbox(minx, maxx, miny, maxy, minz, maxz, igrid)
-                            CALL get_bbox(n_minx, n_maxx, n_miny, n_maxy, n_minz, n_maxz, neighbours(iface))
-                            IF (n_maxx <= minx .OR. igrid == neighbours(iface)) THEN
-                                particle_boundaries%back(igrid) = 2
-                            ELSE
-                                particle_boundaries%back(igrid) = 1
-                            END IF
+                            particle_boundaries%face_normals(1, 2, igrid) = -1.0
+                            particle_boundaries%face_neighbours(iface, igrid) = igrid
                         END IF
                     CASE(3)
                         IF (ctyp == 'REF') THEN
-                            particle_boundaries%right(igrid) = 3
-                        ELSEIF (ctyp == 'PER') THEN
-                            particle_boundaries%right(igrid) = 2
-                        ELSEIF (ctyp == 'CON') THEN
-                            CALL get_neighbours(neighbours, igrid)
-                            CALL get_bbox(minx, maxx, miny, maxy, minz, maxz, igrid)
-                            CALL get_bbox(n_minx, n_maxx, n_miny, n_maxy, n_minz, n_maxz, neighbours(iface))
-                            IF (maxy <= n_miny .OR. igrid == neighbours(iface)) THEN
-                                particle_boundaries%right(igrid) = 2
-                            ELSE
-                                particle_boundaries%right(igrid) = 1
-                            END IF
+                            particle_boundaries%face_normals(2, 3, igrid) = 1.0
+                            particle_boundaries%face_neighbours(iface, igrid) = igrid
                         END IF
                     CASE(4)
                         IF (ctyp == 'REF') THEN
-                            particle_boundaries%left(igrid) = 3
-                        ELSEIF (ctyp == 'PER') THEN
-                            particle_boundaries%left(igrid) = 2
-                        ELSEIF (ctyp == 'CON') THEN
-                            CALL get_neighbours(neighbours, igrid)
-                            CALL get_bbox(minx, maxx, miny, maxy, minz, maxz, igrid)
-                            CALL get_bbox(n_minx, n_maxx, n_miny, n_maxy, n_minz, n_maxz, neighbours(iface))
-                            IF (n_maxy <= miny .OR. igrid == neighbours(iface)) THEN
-                                particle_boundaries%left(igrid) = 2
-                            ELSE
-                                particle_boundaries%left(igrid) = 1
-                            END IF
+                            particle_boundaries%face_normals(2, 4, igrid) = -1.0
+                            particle_boundaries%face_neighbours(iface, igrid) = igrid
                         END IF
                     CASE(5)
                         IF (ctyp == 'REF') THEN
-                            particle_boundaries%bottom(igrid) = 3
-                        ELSEIF (ctyp == 'PER') THEN
-                            particle_boundaries%bottom(igrid) = 2
-                        ELSEIF (ctyp == 'CON') THEN
-                            CALL get_neighbours(neighbours, igrid)
-                            CALL get_bbox(minx, maxx, miny, maxy, minz, maxz, igrid)
-                            CALL get_bbox(n_minx, n_maxx, n_miny, n_maxy, n_minz, n_maxz, neighbours(iface))
-                            IF (maxz <= n_minz .OR. igrid == neighbours(iface)) THEN
-                                particle_boundaries%bottom(igrid) = 2
-                            ELSE
-                                particle_boundaries%bottom(igrid) = 1
-                            END IF
+                            particle_boundaries%face_normals(3, 5, igrid) = 1.0
+                            particle_boundaries%face_neighbours(iface, igrid) = igrid
                         END IF
                     CASE(6)
                         IF (ctyp == 'REF') THEN
-                            particle_boundaries%top(igrid) = 3
-                        ELSEIF (ctyp == 'PER') THEN
-                            particle_boundaries%top(igrid) = 2
-                        ELSEIF (ctyp == 'CON') THEN
-                            CALL get_neighbours(neighbours, igrid)
-                            CALL get_bbox(minx, maxx, miny, maxy, minz, maxz, igrid)
-                            CALL get_bbox(n_minx, n_maxx, n_miny, n_maxy, n_minz, n_maxz, neighbours(iface))
-                            IF (n_maxz <= minz .OR. igrid == neighbours(iface)) THEN
-                                particle_boundaries%top(igrid) = 2
-                            ELSE
-                                particle_boundaries%top(igrid) = 1
-                            END IF
+                            particle_boundaries%face_normals(3, 6, igrid) = -1.0
+                            particle_boundaries%face_neighbours(iface, igrid) = igrid
                         END IF
-                    END SELECT
+                END SELECT
+
+            END DO
+
+            DO iface = 7, 26
+
+                connect_faces = 0
+
+                DO i = 2, 4
+                    IF (facelist(i, iface) == 0) THEN
+                        CONTINUE
+                    ELSE
+
+                        CALL get_bc_ctyp(ctyp, ibocd, facelist(i, iface), igrid)
+
+                        IF (ctyp == 'CON' .OR. ctyp == 'PER') THEN
+                            connect_faces(1) = connect_faces(1) + 1
+                            connect_faces(i) = facelist(i, iface)
+                        END IF
+
+                        DO j = 1, 3
+                            particle_boundaries%face_normals(j, iface, igrid) = &
+                            particle_boundaries%face_normals(j, iface, igrid) + particle_boundaries%face_normals(j, facelist(i, iface), igrid)
+                        END DO
+
+                    END IF
+                END DO
+
+                particle_boundaries%face_neighbours(iface, igrid) = igrid
+                found = .FALSE.
+                DO jface = 1, 26
+                    IF (facelist(1, jface) /= connect_faces(1)) THEN
+                        CONTINUE
+                    ELSE
+                        found = .TRUE.
+                        DO i = 2, 1 + facelist(1, jface)
+                            IF (facelist(i, jface) /= connect_faces(2) &
+                             .AND. facelist(i, jface) /= connect_faces(3) .AND. facelist(i, jface) /= connect_faces(4)) THEN
+                                found = .FALSE.
+                                EXIT
+                            ELSE
+                                CONTINUE
+                            END IF
+                        END DO
+                        IF (found .eqv. .TRUE.) THEN
+                            particle_boundaries%face_neighbours(iface, igrid) = jface
+                        END IF
+                    END IF
+                END DO
+
+                magnitude = SQRT(particle_boundaries%face_normals(1, iface, igrid)**2 + &
+                 particle_boundaries%face_normals(2, iface, igrid)**2 + &
+                 particle_boundaries%face_normals(3, iface, igrid)**2)
+
+                DO j = 1, 3
+                    particle_boundaries%face_normals(j, iface, igrid) = particle_boundaries%face_normals(j, iface, igrid) / magnitude
+                END DO
+
             END DO
         END DO
 
-        DO i = 1, ngrid
+        DO igrid = 1, ngrid
 
-            WRITE(*, *) "Boundaries of Grid:   ", i
-            WRITE(*, *) "FRONT:                ", particle_boundaries%front(i)
-            WRITE(*, *) "BACK:                 ", particle_boundaries%back(i)
-            WRITE(*, *) "RIGHT:                ", particle_boundaries%right(i)
-            WRITE(*, *) "LEFT:                 ", particle_boundaries%left(i)
-            WRITE(*, *) "BOTTOM:               ", particle_boundaries%bottom(i)
-            WRITE(*, *) "TOP:                  ", particle_boundaries%top(i)
+            WRITE(*, *) "------ Boundaries ------ grid:   ", igrid
+            CALL get_bc_ctyp(ctyp, ibocd, 1, igrid)
+            WRITE(*, *) "FRONT:                ", ctyp
+            CALL get_bc_ctyp(ctyp, ibocd, 2, igrid)
+            WRITE(*, *) "BACK:                 ", ctyp
+            CALL get_bc_ctyp(ctyp, ibocd, 3, igrid)
+            WRITE(*, *) "RIGHT:                ", ctyp
+            CALL get_bc_ctyp(ctyp, ibocd, 4, igrid)
+            WRITE(*, *) "LEFT:                 ", ctyp
+            CALL get_bc_ctyp(ctyp, ibocd, 5, igrid)
+            WRITE(*, *) "BOTTOM:               ", ctyp
+            CALL get_bc_ctyp(ctyp, ibocd, 6, igrid)
+            WRITE(*, *) "TOP:                  ", ctyp
+
+            WRITE(*, *) "Faces:"
+            DO iface = 1, 26
+                WRITE(*, *) "Face:                 ", iface
+                WRITE(*, *) "Neigbhour grid:       ", particle_boundaries%face_neighbours(iface, igrid)
+                WRITE(*, *) "Normal vector (n1):   ", particle_boundaries%face_normals(1, iface, igrid)
+                WRITE(*, *) "Normal vector (n2):   ", particle_boundaries%face_normals(2, iface, igrid)
+                WRITE(*, *) "Normal vector (n3):   ", particle_boundaries%face_normals(3, iface, igrid)
+            END DO
 
         END DO
 
@@ -186,12 +214,7 @@ MODULE particle_bound_mod
 
     SUBROUTINE finish_particle_boundaries()
 
-        DEALLOCATE(particle_boundaries%front)
-        DEALLOCATE(particle_boundaries%back)
-        DEALLOCATE(particle_boundaries%right)
-        DEALLOCATE(particle_boundaries%left)
-        DEALLOCATE(particle_boundaries%bottom)
-        DEALLOCATE(particle_boundaries%top)
+        DEALLOCATE(particle_boundaries%face_normals)
         DEALLOCATE(particle_boundaries%obstacle_lists)
 
     END SUBROUTINE finish_particle_boundaries
@@ -205,7 +228,7 @@ MODULE particle_bound_mod
         REAL(realk), INTENT(in) :: dx, dy, dz
 
         ! local variables
-        INTEGER(intk) :: newgrid, oldgrid, iface, grid_bc, destproc
+        INTEGER(intk) :: temp_grid, iface, grid_bc, destproc
         INTEGER(intk) :: neighbours(26)
         REAL(realk) :: x, y, z
         REAL(realk) :: dx_from_here, dy_from_here, dz_from_here
@@ -214,8 +237,8 @@ MODULE particle_bound_mod
 
         epsilon = SQRT(dx**(2) + dy**(2) + dz**(2)) / 10**3
 
-        oldgrid = particle%igrid
-        newgrid = particle%igrid
+        temp_grid = particle%igrid
+
         x = particle%x
         y = particle%y
         z = particle%z
@@ -247,93 +270,14 @@ MODULE particle_bound_mod
                     WRITE(*, '()')
             END SELECT
 
-            CALL move_to_boundary(oldgrid, x, y, z, dx_from_here, dy_from_here, dz_from_here, iface)
+            CALL move_to_boundary(temp_grid, x, y, z, dx_from_here, dy_from_here, dz_from_here, iface)
 
-            SELECT CASE(iface)
-                CASE(0)
-                    grid_bc = 0
-                CASE(1)
-                    grid_bc = particle_boundaries%front(oldgrid)
-                CASE(2)
-                    grid_bc = particle_boundaries%back(oldgrid)
-                CASE(3)
-                    grid_bc = particle_boundaries%right(oldgrid)
-                CASE(4)
-                    grid_bc = particle_boundaries%left(oldgrid)
-                CASE(5)
-                    grid_bc = particle_boundaries%bottom(oldgrid)
-                CASE(6)
-                    grid_bc = particle_boundaries%top(oldgrid)
-            END SELECT
+            CALL reflect_at_boundary(dx_from_here, dy_from_here, dz_from_here, &
+             particle_boundaries%face_normals(1, iface, temp_grid), &
+             particle_boundaries%face_normals(2, iface, temp_grid), &
+             particle_boundaries%face_normals(3, iface, temp_grid))
 
-            IF (grid_bc == 0) THEN
-
-                newgrid = oldgrid
-
-                particle%state = MAX(particle%state, 2)
-
-            ELSEIF (grid_bc == 1) THEN
-
-                SELECT CASE (TRIM(particle_terminal))
-                    CASE ("none")
-                        CONTINUE
-                    CASE ("normal")
-                        CONTINUE
-                    CASE ("verbose")
-                        WRITE(*, '("Connect Boundary reached. iface = ", I1)') iface
-                        WRITE(*, '()')
-                END SELECT
-
-                CALL get_neighbours(neighbours, oldgrid)
-                newgrid = neighbours(iface)
-
-                particle%state = MAX(particle%state, 3)
-
-            ELSEIF (grid_bc == 2) THEN
-
-                SELECT CASE (TRIM(particle_terminal))
-                    CASE ("none")
-                        CONTINUE
-                    CASE ("normal")
-                        CONTINUE
-                    CASE ("verbose")
-                        WRITE(*, '("Periodic Boundary reached. iface = ", I1)') iface
-                        WRITE(*, '()')
-                END SELECT
-
-                CALL get_neighbours(neighbours, oldgrid)
-                newgrid = neighbours(iface)
-
-                CALL apply_periodic_boundary(x, y, z, oldgrid, newgrid, iface)
-
-                particle%state = MAX(particle%state, 3)
-
-            ELSEIF (grid_bc == 3) THEN
-
-                SELECT CASE (TRIM(particle_terminal))
-                    CASE ("none")
-                        CONTINUE
-                    CASE ("normal")
-                        CONTINUE
-                    CASE ("verbose")
-                        WRITE(*, '("Reflect Boundary reached. iface = ", I1)') iface
-                        WRITE(*, '()')
-                END SELECT
-
-                newgrid = oldgrid
-
-                CALL get_normal_vector(iface, n1, n2, n3)
-                CALL apply_reflect_boundary(dx_from_here, dy_from_here, dz_from_here, n1, n2, n3)
-
-                particle%state = MAX(particle%state, 2)
-
-            ELSE
-
-                ! TODO: ERROR/WARNING
-
-            END IF
-
-            oldgrid = newgrid
+            temp_grid = particle_boundaries%face_neighbours(iface, temp_grid)
 
             SELECT CASE (TRIM(particle_terminal))
                 CASE ("none")
@@ -348,73 +292,28 @@ MODULE particle_bound_mod
 
         END DO
 
-        destproc = idprocofgrd(newgrid)
+        !IF ( destproc > numprocs .OR. destproc < 0 ) THEN
+        !    WRITE(*,*) 'Ill-addressed particle to proc', destproc
+        !    CALL errr(__FILE__, __LINE__)
+        !END IF
 
-        IF ( destproc > numprocs .OR. destproc < 0 ) THEN
-            WRITE(*,*) 'Ill-addressed particle to proc', destproc
-            CALL errr(__FILE__, __LINE__)
-        END IF
+        !IF (destproc /= myid) THEN
+        !    particle%state = 4
+        !END IF
 
-        IF (destproc /= myid) THEN
-            particle%state = 4
-        END IF
-
-        particle%iproc = destproc
-        particle%igrid = newgrid
         particle%x = x
         particle%y = y
         particle%z = z
 
-        IF (particle%state == 2) THEN
-            SELECT CASE (TRIM(particle_terminal))
-                CASE ("none")
-                    CONTINUE
-                CASE ("normal")
-                    CONTINUE
-                CASE ("verbose")
-                    WRITE(*, *) "Updating Particle Cell."
-                    WRITE(*, '()')
-            END SELECT
-            CALL update_particle_cell(particle)
-            particle%state = 1
-        ELSEIF (particle%state == 3) THEN
-            SELECT CASE (TRIM(particle_terminal))
-                CASE ("none")
-                    CONTINUE
-                CASE ("normal")
-                    CONTINUE
-                CASE ("verbose")
-                    WRITE(*, *) "Setting Particle Cell."
-                    WRITE(*, '()')
-            END SELECT
-            CALL set_particle_cell(particle)
-            particle%state = 1
-        END IF
-
-        SELECT CASE (TRIM(particle_terminal))
-                CASE ("none")
-                    CONTINUE
-                CASE ("normal")
-                    CONTINUE
-                CASE ("verbose")
-                    CALL print_particle_status(particle)
-        END SELECT
-
-        SELECT CASE (TRIM(particle_terminal))
-            CASE ("none")
-                CONTINUE
-            CASE ("normal")
-                CONTINUE
-            CASE ("verbose")
-                WRITE(*, *) "MOVE PARTICLE: ----------------------END-----------------------"
-                WRITE(*, '()')
-        END SELECT
+        CALL update_particle_cell(particle)
 
     END SUBROUTINE move_particle
 
     !-----------------------------------
 
-    ! this subroutine only considers grids on the same level
+    ! This subroutine only considers grids on the same level
+    ! CAUTION: Here, igrid refers to the grid the particle coordinates are currently on and of which the boundaries are relevant.
+    ! This might NOT be particle%igrid, which is used to deduce the velocity from.
     SUBROUTINE move_to_boundary(igrid, x, y, z, dx, dy, dz, iface)
 
         ! subroutine arguments
@@ -428,6 +327,7 @@ MODULE particle_bound_mod
         REAL(realk) :: lx, ly, lz, rx, ry, rz, dx_to_b, dy_to_b, dz_to_b
 
         CALL get_bbox(minx, maxx, miny, maxy, minz, maxz, igrid)
+
 
         IF (x < minx) THEN
                         SELECT CASE (TRIM(particle_terminal))
@@ -512,9 +412,6 @@ MODULE particle_bound_mod
             END SELECT
             z = maxz
         END IF
-
-        ! check if particle is on boundary already...
-        CALL get_current_face(igrid, x, y, z, iface)
 
         IF (dx < 0) THEN
             lx = (minx - x)
@@ -658,7 +555,7 @@ MODULE particle_bound_mod
 
         END IF
 
-        ! get face after x/y/z have been altered
+        ! get face after x/y/z have (potentially) been altered
         CALL get_current_face(igrid, x, y, z, iface)
 
     END SUBROUTINE move_to_boundary
@@ -787,7 +684,7 @@ MODULE particle_bound_mod
 
     END SUBROUTINE apply_periodic_boundary
 
-    SUBROUTINE apply_reflect_boundary(dx, dy, dz, n1, n2, n3)
+    SUBROUTINE reflect_at_boundary(dx, dy, dz, n1, n2, n3)
 
         ! Presumption: Particle is already exactily on the boundary!
 
@@ -804,7 +701,7 @@ MODULE particle_bound_mod
         dy = dy - 2 * dot_product * n2
         dz = dz - 2 * dot_product * n3
 
-    END SUBROUTINE apply_reflect_boundary
+    END SUBROUTINE reflect_at_boundary
 
     SUBROUTINE get_normal_vector(iface, n1, n2, n3)
 
@@ -970,4 +867,4 @@ MODULE particle_bound_mod
 
     END SUBROUTINE update_coordinates
 
-END MODULE particle_bound_mod
+END MODULE particle_boundaries_mod
