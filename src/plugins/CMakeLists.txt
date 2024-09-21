@@ -1,6 +1,7 @@
 add_library(plugins STATIC
     builtin_plugins_mod.F90
     catalyst_mod.F90
+    CatalystAdapter.h
     catalyst_trigger.cxx
     derivfields_mod.F90
     probes_mod.F90
@@ -18,4 +19,5 @@ target_link_libraries(plugins
     PRIVATE ib
     PRIVATE ${MPI_Fortran_LIBRARIES}
     PRIVATE ${HDF5_Fortran_LIBRARIES}
+    PRIVATE catalyst::catalyst
 )

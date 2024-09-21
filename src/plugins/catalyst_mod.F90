@@ -3,6 +3,7 @@ MODULE catalyst_mod
     USE, INTRINSIC :: ISO_C_BINDING, ONLY: C_PTR, C_CHAR, C_INT, C_NULL_PTR
     USE precision_mod, ONLY: intk, realk
     USE comms_mod, ONLY: myid, numprocs
+    USE grids_mod, ONLY: minlevel, maxlevel
 
     IMPLICIT NONE(type, external)
 
@@ -30,6 +31,16 @@ MODULE catalyst_mod
         END SUBROUTINE catalyst_trigger
     END INTERFACE
 
+    
+    INTERFACE
+        SUBROUTINE catalyst_init() BIND(C, name="catalyst_init")
+
+            USE ISO_C_BINDING, ONLY: c_funptr, c_int
+
+        END SUBROUTINE catalyst_init
+    END INTERFACE
+
+
     ! Module variables
 
     LOGICAL :: isInit = .false.
@@ -50,7 +61,8 @@ CONTAINS
         REAL(realk), INTENT(in) :: dt
         REAL(realk), INTENT(in) :: tend
 
-        CONTINUE
+        CALL catalyst_init()
+
     END SUBROUTINE init_catalyst
 
 
@@ -93,9 +105,9 @@ CONTAINS
         c_myid = INT( myid, kind=C_INT )
         c_numprocs = INT( numprocs, kind=C_INT )
         c_istep = INT( itstep, kind=C_INT )
-        c_nscal = INT( 1, kind=C_INT )
-        c_lvlmin = INT( 1, kind=C_INT )
-        c_lvlmax = INT( 2, kind=C_INT )
+        c_nscal = INT( 1, kind=C_INT )   ! TO DO (!!!)
+        c_lvlmin = INT( minlevel, kind=C_INT )
+        c_lvlmax = INT( maxlevel, kind=C_INT )
 
         ! calling the C function described in the interface
         CALL catalyst_trigger( &

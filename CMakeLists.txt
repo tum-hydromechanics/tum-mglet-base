@@ -30,6 +30,9 @@ else()
     message(WARNING "HDF5 does not support parallel I/O")
 endif()
 
+find_package(catalyst 2.0 REQUIRED)
+message(STATUS "${catalyst_DIR}")
+
 # CMake build options
 option(MGLET_REAL64 "Compile MGLET with double precision support" OFF)
 if(MGLET_REAL64)
@@ -121,11 +124,11 @@ FetchContent_Declare(exprtk
 FetchContent_MakeAvailable(exprtk)
 
 # Catalyst API library
-FetchContent_Declare(catalyst
-    GIT_REPOSITORY https://gitlab.kitware.com/paraview/catalyst.git
-    GIT_TAG a4ce1e818f9211c9623d0bdf25020da5922dce81
-)
-FetchContent_MakeAvailable(catalyst)
+# FetchContent_Declare(catalyst
+#     GIT_REPOSITORY https://gitlab.kitware.com/paraview/catalyst.git
+#     GIT_TAG a4ce1e818f9211c9623d0bdf25020da5922dce81
+# )
+# FetchContent_MakeAvailable(catalyst)
 
 # Perform various compiler checks
 add_subdirectory("cmake")

@@ -5,6 +5,8 @@
 #include <chrono>
 #include <cmath>
 
+#include "CatalystAdapter.h"
+
 // #include "vtkPointData.h"
 // #include "vtkCellData.h"
 // #include "vtkFieldData.h"
@@ -2121,7 +2123,7 @@ void show_arrays( int ii, int jj, int kk,
 
     for ( int k = 2; k < kk-2; k++ )
     {
-        std::cout << arr[3][3][k] << std::endl;
+        std::cout << "ARR = " << arr[3][3][k] << std::endl;
     }
 
 };
@@ -2134,6 +2136,8 @@ void process_arguments( TransferFromMGLET* args )
         int ngridlvl = get_ngrids_lvl( args, ilvl );
         for ( int igrdlvl = 1; igrdlvl <= ngridlvl; igrdlvl++ )
         {
+            // std::cout << igrdlvl << std::endl;
+
             // grid properties
             int igrid; int kk; int jj; int ii;
 
@@ -2153,7 +2157,7 @@ void process_arguments( TransferFromMGLET* args )
             void *ptr_ddx = nullptr;
             void *ptr_ddy = nullptr;
             void *ptr_ddz = nullptr;
-            char const *name = "U_AVG";
+            char const *name = "U";
 
             args->cp_iterate_grids_lvl( &igrid, &igrdlvl, &ilvl );
             if ( igrid > 0 )
@@ -2255,6 +2259,26 @@ extern "C" void catalyst_trigger(
 
     return;
 }
+
+
+
+extern "C" void catalyst_init()
+{
+
+    // function body -------------------------------------------------
+
+    std::cout << "C++ : Init has been called" << std::endl;
+
+    CatalystAdaptor::Initialize();
+
+    // function body -------------------------------------------------
+
+    return;
+}
+
+
+
+
 
 
 

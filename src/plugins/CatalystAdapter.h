@@ -28,32 +28,40 @@ namespace CatalystAdaptor
  * `conduit_node`. However, this example shows that one can
  * indeed use Catalyst's C++ API, if the developer so chooses.
  */
+
+
 void Initialize()
 {
-  // Populate the catalyst_initialize argument based on the "initialize" protocol [1].
-  // [1] https://docs.paraview.org/en/latest/Catalyst/blueprints.html#protocol-initialize
-  conduit_cpp::Node node;
+    // Populate the catalyst_initialize argument based on the "initialize" protocol [1].
+    // [1] https://docs.paraview.org/en/latest/Catalyst/blueprints.html#protocol-initialize
+    conduit_cpp::Node node;
 
-  // Using the arguments given to the driver set the filename for the catalyst
-  // script and pass the rest of the arguments as arguments of the script
-  // itself. To retrieve these  arguments from the script  use the `get_args()`
-  // method of the paraview catalyst module [2]
-  // [2] https://www.paraview.org/paraview-docs/latest/python/paraview.catalyst.html
-  node["catalyst/scripts/script/filename"].set_string("script.py");
+    // Using the arguments given to the driver set the filename for the catalyst
+    // script and pass the rest of the arguments as arguments of the script
+    // itself. To retrieve these  arguments from the script  use the `get_args()`
+    // method of the paraview catalyst module [2]
+    // [2] https://www.paraview.org/paraview-docs/latest/python/paraview.catalyst.html
+    node["catalyst/scripts/script/filename"].set_string("script.py");
 
-  // For this example we hardcode the implementation name to "paraview" and
-  // define the "PARAVIEW_IMPL_DIR" during compilation time (see the
-  // accompanying CMakeLists.txt). We could however defined them via
-  // environmental variables  see [1].
-  node["catalyst_load/implementation"] = "paraview";
-  node["catalyst_load/search_paths/paraview"] = "none";
+    // For this example we hardcode the implementation name to "paraview" and
+    // define the "PARAVIEW_IMPL_DIR" during compilation time (see the
+    // accompanying CMakeLists.txt). We could however defined them via
+    // environmental variables  see [1].
+    node["catalyst_load/implementation"] = "paraview";
+    node["catalyst_load/search_paths/paraview"] = "/home/simon/Software/paraview_build/lib/catalyst/";
 
-  catalyst_status err = catalyst_initialize(conduit_cpp::c_node(&node));
-  if (err != catalyst_status_ok)
-  {
-    std::cerr << "Failed to initialize Catalyst: " << err << std::endl;
-  }
+    catalyst_status err = catalyst_initialize(conduit_cpp::c_node(&node));
+    if (err == catalyst_status_ok)
+    {
+        std::cerr << "Successfully initialized Catalyst" << std::endl;
+    } 
+    else
+    {
+        std::cerr << "Failed to initialize Catalyst: " << err << std::endl;
+    }
 }
+
+
 
 // void Execute(int cycle, double time, Grid& grid, Attributes& attribs)
 // {
