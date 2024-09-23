@@ -49,5 +49,10 @@
         ]
     },
 
+    "catalyst": {
+        "path": "/home/simon/Software/paraview_build/lib/catalyst/",
+        "script": "script.py"
+    },
+
     "uvwbulk": true
 }

@@ -2262,14 +2262,19 @@ extern "C" void catalyst_trigger(
 
 
 
-extern "C" void catalyst_init()
+extern "C" void catalyst_init( 
+    const char* file, 
+    const char* impl, 
+    const char* path )
 {
 
     // function body -------------------------------------------------
 
-    std::cout << "C++ : Init has been called" << std::endl;
+    std::cout << file << std::endl;
+    std::cout << impl << std::endl;
+    std::cout << path << std::endl;
 
-    CatalystAdaptor::Initialize();
+    CatalystAdaptor::Initialize( file, impl, path );
 
     // function body -------------------------------------------------
 

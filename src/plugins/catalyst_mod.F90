@@ -1,9 +1,12 @@
 MODULE catalyst_mod
 
-    USE, INTRINSIC :: ISO_C_BINDING, ONLY: C_PTR, C_CHAR, C_INT, C_NULL_PTR
+    USE, INTRINSIC :: ISO_C_BINDING, ONLY: C_PTR, C_CHAR, C_INT, C_NULL_PTR, C_NULL_CHAR
     USE precision_mod, ONLY: intk, realk
     USE comms_mod, ONLY: myid, numprocs
     USE grids_mod, ONLY: minlevel, maxlevel
+    USE config_mod
+    USE fort7_mod
+    USE err_mod
 
     IMPLICIT NONE(type, external)
 
@@ -31,20 +34,29 @@ MODULE catalyst_mod
         END SUBROUTINE catalyst_trigger
     END INTERFACE
 
-    
-    INTERFACE
-        SUBROUTINE catalyst_init() BIND(C, name="catalyst_init")
 
-            USE ISO_C_BINDING, ONLY: c_funptr, c_int
+    INTERFACE
+        SUBROUTINE catalyst_init(file, impl, &
+            path) BIND(C, name="catalyst_init")
+
+            USE ISO_C_BINDING, ONLY: c_char
+
+            CHARACTER(C_CHAR), INTENT(IN) :: file(*)
+            CHARACTER(C_CHAR), INTENT(IN) :: impl(*)
+            CHARACTER(C_CHAR), INTENT(IN) :: path(*)
 
         END SUBROUTINE catalyst_init
     END INTERFACE
-
 
     ! Module variables
 
     LOGICAL :: isInit = .false.
     LOGICAL :: exists = .false.
+    TYPE(config_t) :: cata_conf
+
+    CHARACTER(len=127) :: path_char
+    CHARACTER(len=127) :: script_char
+    CHARACTER(len=127) :: implementation_char
 
     TYPE(c_ptr) :: node = c_null_ptr
 
@@ -61,9 +73,65 @@ CONTAINS
         REAL(realk), INTENT(in) :: dt
         REAL(realk), INTENT(in) :: tend
 
-        CALL catalyst_init()
+        IF (.NOT. fort7%exists("/catalyst")) THEN
+            RETURN
+        END IF
+
+        ! Required values
+        CALL fort7%get(cata_conf, "/catalyst")
+        IF ( cata_conf%is_char("/path") ) THEN
+            CALL cata_conf%get_value("/path", path_char)
+        ELSE
+            WRITE(*,*) "Specifiy path of directory that contains libcatalyst-paraview.so"
+            CALL errr(__FILE__, __LINE__)
+        END IF
+        
+        IF ( cata_conf%is_char("/script") ) THEN
+            CALL cata_conf%get_value("/script", script_char)
+        ELSE
+            WRITE(*,*) "Specifiy Python script for Catalyst."
+            CALL errr(__FILE__, __LINE__)
+        END IF
+
+        implementation_char = "paraview"
+
+        ! WRITE(*,*) LEN(TRIM(path_char))
+        ! WRITE(*,*) LEN((script_char))
+
+        CALL pass_to_init( TRIM(script_char), &
+            TRIM(implementation_char), TRIM(path_char) )
+
+        isInit = .true.
 
     END SUBROUTINE init_catalyst
+
+
+    SUBROUTINE pass_to_init(file, impl, path)
+        ! Subroutine arguments
+        CHARACTER(len=*), INTENT(in) :: file
+        CHARACTER(len=*), INTENT(in) :: impl
+        CHARACTER(len=*), INTENT(in) :: path
+
+        ! Local variables
+        CHARACTER(c_char), DIMENSION(LEN(file)+1) :: c_file
+        CHARACTER(c_char), DIMENSION(LEN(impl)+1) :: c_impl
+        CHARACTER(c_char), DIMENSION(LEN(path)+1) :: c_path
+
+        ! Add trailing C_NULL_CHAR to file
+        c_file(1:LEN(file)) = TRANSFER(file, c_file)
+        c_file(LEN_TRIM(file)+1) = C_NULL_CHAR
+
+        ! Add trailing C_NULL_CHAR to file
+        c_impl(1:LEN(impl)) = TRANSFER(impl, c_impl)
+        c_impl(LEN_TRIM(impl)+1) = C_NULL_CHAR        
+
+        ! Add trailing C_NULL_CHAR to path
+        c_path(1:LEN(path)) = TRANSFER(path, c_path)
+        c_path(LEN_TRIM(path)+1) = C_NULL_CHAR        
+
+        CALL catalyst_init( c_file, c_impl, c_path )
+
+    END SUBROUTINE pass_to_init
 
 
     SUBROUTINE finish_catalyst()
