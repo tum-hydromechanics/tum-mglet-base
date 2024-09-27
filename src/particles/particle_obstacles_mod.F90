@@ -21,14 +21,14 @@ CONTAINS    !===================================
     SUBROUTINE read_obstacles()
 
         ! local variables
-        INTEGER(intk) :: unit, dict_len, iobst
+        INTEGER(intk) :: unit = 1, dict_len, iobst
 
         IF (.NOT. dread_obstacles) THEN
             ALLOCATE(obstacles(0))
             RETURN
         END IF
 
-        INQUIRE(file = 'ObstacleDict.txt', exist = dread_obstacles)
+        INQUIRE(file = 'ObstaclesDict.txt', exist = dread_obstacles)
 
         IF (.NOT. dread_obstacles) THEN
 

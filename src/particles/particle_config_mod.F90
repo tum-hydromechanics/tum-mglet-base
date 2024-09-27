@@ -80,7 +80,7 @@ CONTAINS    !===================================
 
         !- - - - - - - - - - - - - - - - - -
 
-        CALL pconf%get_value("/read_obs", dread_obstacles, .FALSE.)
+        CALL pconf%get_value("/read_obst", dread_obstacles, .FALSE.)
 
         !- - - - - - - - - - - - - - - - - -
 

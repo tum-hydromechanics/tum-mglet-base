@@ -169,7 +169,7 @@ MODULE particle_boundaries_mod
 
         DO igrid = 1, ngrid
 
-            WRITE(*, *) "------ Boundaries ------ grid:   ", igrid
+            WRITE(*, *) "------ Boundaries, Grid:   ", igrid, "------"
             CALL get_bc_ctyp(ctyp, ibocd, 1, igrid)
             WRITE(*, *) "FRONT:                ", ctyp
             CALL get_bc_ctyp(ctyp, ibocd, 2, igrid)
@@ -193,6 +193,8 @@ MODULE particle_boundaries_mod
             END DO
 
         END DO
+
+        WRITE(*, *) " "
 
         CALL read_obstacles()
 
@@ -262,15 +264,37 @@ MODULE particle_boundaries_mod
             CALL move_to_boundary(temp_grid, x, y, z, dx_from_here, dy_from_here, dz_from_here, iface, iobst)
 
             IF (0 < iobst) THEN
+
+                SELECT CASE (TRIM(particle_terminal))
+                    CASE ("none")
+                        CONTINUE
+                    CASE ("normal")
+                        CONTINUE
+                    CASE ("verbose")
+                        WRITE(*, *) "Particle reflected at Obstacle!"
+                END SELECT
+
                 CALL reflect_at_obstacle(iobst, x, y, z, dx_from_here, dy_from_here, dz_from_here)
+
             ELSEIF (0 < iface) THEN
+
+                SELECT CASE (TRIM(particle_terminal))
+                    CASE ("none")
+                        CONTINUE
+                    CASE ("normal")
+                        CONTINUE
+                    CASE ("verbose")
+                        WRITE(*, *) "Particle reflected at Grid face."
+                END SELECT
+
                 CALL reflect_at_boundary(dx_from_here, dy_from_here, dz_from_here, &
                 particle_boundaries%face_normals(1, iface, temp_grid), &
                 particle_boundaries%face_normals(2, iface, temp_grid), &
                 particle_boundaries%face_normals(3, iface, temp_grid))
-            END IF
 
-            temp_grid = particle_boundaries%face_neighbours(iface, temp_grid)
+                temp_grid = particle_boundaries%face_neighbours(iface, temp_grid)
+
+            END IF
 
             SELECT CASE (TRIM(particle_terminal))
                 CASE ("none")
@@ -301,6 +325,16 @@ MODULE particle_boundaries_mod
 
         CALL update_particle_cell(particle)
 
+        SELECT CASE (TRIM(particle_terminal))
+            CASE ("none")
+                CONTINUE
+            CASE ("normal")
+                CONTINUE
+            CASE ("verbose")
+                WRITE(*, *) "MOVE PARTICLE: -----------------------END------------------------"
+                WRITE(*, '()')
+        END SELECT
+
     END SUBROUTINE move_particle
 
     !-----------------------------------
@@ -321,7 +355,7 @@ MODULE particle_boundaries_mod
         INTEGER(intk) :: i, nobst
         REAL(realk) :: minx, maxx, miny, maxy, minz, maxz
         REAL(realk) :: lx, ly, lz, rx, ry, rz, dx_to_b, dy_to_b, dz_to_b
-        REAL(realk) :: s, sa, sb, a, b, c, d, cx, cy, cz, r
+        REAL(realk) :: s, sa, sb, smin, a, b, c, d, cx, cy, cz, r
 
         CALL get_bbox(minx, maxx, miny, maxy, minz, maxz, igrid)
 
@@ -411,13 +445,16 @@ MODULE particle_boundaries_mod
         END IF
 
         ! OBSTACLES
-        ! find intersection points of particle path (straight) and sphere surface
+        ! find intersection points of the line the particle moves on (straight) and the sphere surface
             ! particle path: X(s) = X + dX * s with s: [0, 1] (X is the vector (x/y/z))
             ! => |X + dX * s - C| =! r (C is the sphere center (cx/cy/cz))
             ! => (x + dx * s -cx)² + (y + dy * s -cy)² + (z + dz * s -cz)² =! r² (r is the sphere radius)
             ! => s1/s2 = sa/sb = (-b +/- sqrt(b² - 4ac)) / 2a (corefficients see code)
 
+        smin =  EPSILON(s) / MIN(dx, dy, dz)
+
         s = 1.0
+
         ! first coefficient
         a = (dx**2 + dy**2 + dz**2)
 
@@ -428,10 +465,14 @@ MODULE particle_boundaries_mod
         DO i = 1, nobst
 
             ! for readability
-            cx = obstacles(iobst)%x
-            cy = obstacles(iobst)%y
-            cz = obstacles(iobst)%z
-            r = obstacles(iobst)%radius
+            cx = obstacles(i)%x
+            cy = obstacles(i)%y
+            cz = obstacles(i)%z
+            r = obstacles(i)%radius
+
+            IF (r < SQRT((x + EPSILON(x) * dx - cx)**2 + (y + EPSILON(y) * dy - cy)**2 + (z + EPSILON(z) * dz - cz)**2)) THEN
+
+            END IF
 
             ! sphere dependent coefficients
             b = 2*x*dx + 2*y*dy + 2*z*dz - 2*cx*dx - 2*cy*dy - 2*cz*dz
@@ -446,13 +487,23 @@ MODULE particle_boundaries_mod
             sa = (-b + SQRT(d)) / 2 / a
             sb = (-b - SQRT(d)) / 2 / a
 
+            ! if sa is outside [0, 1], the intersection point is not on the actual limited path of the particel
+            ! => set sa to an arbitrary number higher than 1, so it wont get registered later
             IF (sa < 0 .OR. 1 < sa) THEN
-                ! set sa to an arbitrary number higher than 1
+                sa = 1.1
+            ! if sa is 0, but the particle moves away from the boundary it is on
+            ! => set sa to an arbitrary number higher than 1, so it wont get registered later
+            ELSEIF (sa == 0 .AND. r < SQRT((x + smin * dx - cx)**2 + (y + smin * dy - cy)**2 + (z + smin * dz - cz)**2)) THEN
                 sa = 1.1
             END IF
 
+            ! if sb is outside [0, 1], the intersection point is not on the actual limited path of the particel
+            ! => set sb to an arbitrary number higher than 1, so it wont get registered later
             IF (sb < 0 .OR. 1 < sb) THEN
-                ! set sb to an arbitrary number higher than 1
+                sb = 1.1
+            ! if sb is 0, but the particle moves away from the boundary it is on
+            ! => set sb to an arbitrary number higher than 1, so it wont get registered later
+            ELSEIF (sb == 0 .AND. r < SQRT((x + smin * dx - cx)**2 + (y + smin * dy - cy)**2 + (z + smin * dz - cz)**2)) THEN
                 sb = 1.1
             END IF
 
@@ -468,20 +519,44 @@ MODULE particle_boundaries_mod
 
         END DO
 
+        IF (s == 0.0) THEN
+            RETURN
+        END IF
+
         ! GRID BOUNDARIES
-        ! now check if any grid boundary is reached before any obstacle is hit
+        ! now check if any grid boundary is reached before any obstacle is reached
 
         IF (dx < 0) THEN
             lx = (minx - x)
             IF(lx == 0) THEN
-                CALL get_current_face(igrid, x, y, z, iface)
+                IF (is_inside_grid(igrid, x + smin * dx, y + smin * dy, z + smin * dz)) THEN
+                    x = x + dx * smin
+                    y = y + dy * smin
+                    z = z + dz * smin
+                    dx = dx * (1 - smin)
+                    dy = dy * (1 - smin)
+                    dz = dz * (1 - smin)
+                    iface = 0
+                ELSE
+                    CALL get_current_face(igrid, x, y, z, iface)
+                END IF
                 RETURN
             END IF
             rx = dx * s / lx
         ELSEIF (0 < dx) THEN
             lx = (maxx - x)
             IF(lx == 0) THEN
-                CALL get_current_face(igrid, x, y, z, iface)
+                IF (is_inside_grid(igrid, x + smin * dx, y + smin * dy, z + smin * dz)) THEN
+                    x = x + dx * smin
+                    y = y + dy * smin
+                    z = z + dz * smin
+                    dx = dx * (1 - smin)
+                    dy = dy * (1 - smin)
+                    dz = dz * (1 - smin)
+                    iface = 0
+                ELSE
+                    CALL get_current_face(igrid, x, y, z, iface)
+                END IF
                 RETURN
             END IF
             rx = dx * s / lx
@@ -492,14 +567,34 @@ MODULE particle_boundaries_mod
         IF (dy < 0) THEN
             ly = (miny - y)
             IF(ly == 0) THEN
-                CALL get_current_face(igrid, x, y, z, iface)
+                IF (is_inside_grid(igrid, x + smin * dx, y + smin * dy, z + smin * dz)) THEN
+                    x = x + dx * smin
+                    y = y + dy * smin
+                    z = z + dz * smin
+                    dx = dx * (1 - smin)
+                    dy = dy * (1 - smin)
+                    dz = dz * (1 - smin)
+                    iface = 0
+                ELSE
+                    CALL get_current_face(igrid, x, y, z, iface)
+                END IF
                 RETURN
             END IF
             ry = dy * s / ly
         ELSEIF (0 < dy) THEN
             ly = (maxy - y)
             IF(ly == 0) THEN
-                CALL get_current_face(igrid, x, y, z, iface)
+                IF (is_inside_grid(igrid, x + smin * dx, y + smin * dy, z + smin * dz)) THEN
+                    x = x + dx * smin
+                    y = y + dy * smin
+                    z = z + dz * smin
+                    dx = dx * (1 - smin)
+                    dy = dy * (1 - smin)
+                    dz = dz * (1 - smin)
+                    iface = 0
+                ELSE
+                    CALL get_current_face(igrid, x, y, z, iface)
+                END IF
                 RETURN
             END IF
             ry = dy * s / ly
@@ -510,14 +605,34 @@ MODULE particle_boundaries_mod
         IF (dz < 0) THEN
             lz = (minz - z)
             IF(lz == 0) THEN
-                CALL get_current_face(igrid, x, y, z, iface)
+                IF (is_inside_grid(igrid, x + smin * dx, y + smin * dy, z + smin * dz)) THEN
+                    x = x + dx * smin
+                    y = y + dy * smin
+                    z = z + dz * smin
+                    dx = dx * (1 - smin)
+                    dy = dy * (1 - smin)
+                    dz = dz * (1 - smin)
+                    iface = 0
+                ELSE
+                    CALL get_current_face(igrid, x, y, z, iface)
+                END IF
                 RETURN
             END IF
             rz = dz * s / lz
         ELSEIF (0 < dz) THEN
             lz = (maxz - z)
             IF(lz == 0) THEN
-                CALL get_current_face(igrid, x, y, z, iface)
+                IF (is_inside_grid(igrid, x + smin * dx, y + smin * dy, z + smin * dz)) THEN
+                    x = x + dx * smin
+                    y = y + dy * smin
+                    z = z + dz * smin
+                    dx = dx * (1 - smin)
+                    dy = dy * (1 - smin)
+                    dz = dz * (1 - smin)
+                    iface = 0
+                ELSE
+                    CALL get_current_face(igrid, x, y, z, iface)
+                END IF
                 RETURN
             END IF
             rz = dz * s / lz
@@ -787,8 +902,8 @@ MODULE particle_boundaries_mod
         magnitude = SQRT(n1**2 + n2**2 + n3**2)
 
         n1 = n1 / magnitude
-        n2 = n1 / magnitude
-        n3 = n1 / magnitude
+        n2 = n2 / magnitude
+        n3 = n3 / magnitude
 
         CALL reflect_at_boundary(dx, dy, dz, n1, n2, n3)
 
@@ -839,5 +954,45 @@ MODULE particle_boundaries_mod
         END IF
 
     END SUBROUTINE update_coordinates
+
+    function is_inside_grid(igrid, x, y, z) result(res)
+
+        ! subroutine arguments
+        INTEGER(intk), INTENT(in) :: igrid
+        REAL(realk), INTENT(in) :: x, y, z
+
+        ! local variables
+        REAL(realk) :: minx, maxx, miny, maxy, minz, maxz
+
+        ! return value
+        LOGICAL :: res = .TRUE.
+
+        CALL get_bbox(minx, maxx, miny, maxy, minz, maxz, igrid)
+
+        IF (x < minx) THEN
+            res = .FALSE.
+        END IF
+
+        IF (x > maxx) THEN
+            res = .FALSE.
+        END IF
+
+        IF (y < miny) THEN
+            res = .FALSE.
+        END IF
+
+        IF (y > maxy) THEN
+            res = .FALSE.
+        END IF
+
+        IF (z < minz) THEN
+            res = .FALSE.
+        END IF
+
+        IF (z > maxz) THEN
+            res = .FALSE.
+        END IF
+
+    END FUNCTION is_inside_grid
 
 END MODULE particle_boundaries_mod
