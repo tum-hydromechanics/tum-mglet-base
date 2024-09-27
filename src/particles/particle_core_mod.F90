@@ -18,8 +18,8 @@ MODULE particle_core_mod
     TYPE, BIND(C) :: baseparticle_t
 
         ! Particle state definitions:
-        !-1/0 : particle is inactive
-        !  1 : particle is active
+        ! ...-2/-1/0 : particle is inactive
+        !  1 : particle is active, no further information specified
         !  2 : particle is active, cell info has to be updated after displacement
         !  3 : particle is active, grid and cell info have to be updated after displacement
         !  4 : particle is active, particle has to be passed to other process after displacement

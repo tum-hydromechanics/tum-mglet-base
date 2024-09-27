@@ -4,6 +4,7 @@ add_library(particles STATIC
     particle_list_mod.F90
     particle_dict_mod.F90
     particle_snapshot_mod.F90
+    particle_obstacles_mod.F90
     particle_boundaries_mod.F90
     particle_exchange_mod.F90
     particle_interpolation_mod.F90

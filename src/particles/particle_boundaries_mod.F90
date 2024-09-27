@@ -1,7 +1,10 @@
 MODULE particle_boundaries_mod
+
     USE precision_mod, ONLY: realk, intk
     USE core_mod
+
     USE particle_list_mod
+    USE particle_obstacles_mod
 
     IMPLICIT NONE
 
@@ -33,28 +36,11 @@ MODULE particle_boundaries_mod
         3, 2, 4, 5, &
         3, 2, 4, 6 /), SHAPE(facelist))
 
-    TYPE :: obstacle_t
-
-        REAL(realk) :: radius
-        REAL(realk) :: center(3)
-        INTEGER(intk) :: particle_boundary_type
-
-    END TYPE obstacle_t
-
-    TYPE :: obstacle_list_t ! every grid has one list! (not an exact analog to the particle list)
-
-        INTEGER(intk) :: igrid
-        TYPE(obstacle_t), ALLOCATABLE :: obstacles(:)
-
-    END TYPE obstacle_list_t
-
     TYPE :: particle_boundaries_t
 
         INTEGER(intk), ALLOCATABLE :: face_neighbours(:, :)
 
         REAL(realk), ALLOCATABLE :: face_normals(:, :, :)
-
-        TYPE(obstacle_list_t), ALLOCATABLE :: obstacle_lists(:) ! every grid has one list! (not an exact analog to the particle list)
 
     END TYPE particle_boundaries_t
 
@@ -208,6 +194,8 @@ MODULE particle_boundaries_mod
 
         END DO
 
+        CALL read_obstacles()
+
     END SUBROUTINE init_particle_boundaries
 
     !-----------------------------------
@@ -215,7 +203,8 @@ MODULE particle_boundaries_mod
     SUBROUTINE finish_particle_boundaries()
 
         DEALLOCATE(particle_boundaries%face_normals)
-        DEALLOCATE(particle_boundaries%obstacle_lists)
+        DEALLOCATE(particle_boundaries%face_neighbours)
+        DEALLOCATE(obstacles)
 
     END SUBROUTINE finish_particle_boundaries
 
@@ -228,7 +217,7 @@ MODULE particle_boundaries_mod
         REAL(realk), INTENT(in) :: dx, dy, dz
 
         ! local variables
-        INTEGER(intk) :: temp_grid, iface, grid_bc, destproc
+        INTEGER(intk) :: temp_grid, iface, iobst, grid_bc, destproc
         INTEGER(intk) :: neighbours(26)
         REAL(realk) :: x, y, z
         REAL(realk) :: dx_from_here, dy_from_here, dz_from_here
@@ -270,12 +259,16 @@ MODULE particle_boundaries_mod
                     WRITE(*, '()')
             END SELECT
 
-            CALL move_to_boundary(temp_grid, x, y, z, dx_from_here, dy_from_here, dz_from_here, iface)
+            CALL move_to_boundary(temp_grid, x, y, z, dx_from_here, dy_from_here, dz_from_here, iface, iobst)
 
-            CALL reflect_at_boundary(dx_from_here, dy_from_here, dz_from_here, &
-             particle_boundaries%face_normals(1, iface, temp_grid), &
-             particle_boundaries%face_normals(2, iface, temp_grid), &
-             particle_boundaries%face_normals(3, iface, temp_grid))
+            IF (0 < iobst) THEN
+                CALL reflect_at_obstacle(iobst, x, y, z, dx_from_here, dy_from_here, dz_from_here)
+            ELSEIF (0 < iface) THEN
+                CALL reflect_at_boundary(dx_from_here, dy_from_here, dz_from_here, &
+                particle_boundaries%face_normals(1, iface, temp_grid), &
+                particle_boundaries%face_normals(2, iface, temp_grid), &
+                particle_boundaries%face_normals(3, iface, temp_grid))
+            END IF
 
             temp_grid = particle_boundaries%face_neighbours(iface, temp_grid)
 
@@ -301,6 +294,7 @@ MODULE particle_boundaries_mod
         !    particle%state = 4
         !END IF
 
+        ! do not update the particle grid here!
         particle%x = x
         particle%y = y
         particle%z = z
@@ -314,21 +308,24 @@ MODULE particle_boundaries_mod
     ! This subroutine only considers grids on the same level
     ! CAUTION: Here, igrid refers to the grid the particle coordinates are currently on and of which the boundaries are relevant.
     ! This might NOT be particle%igrid, which is used to deduce the velocity from.
-    SUBROUTINE move_to_boundary(igrid, x, y, z, dx, dy, dz, iface)
+    SUBROUTINE move_to_boundary(igrid, x, y, z, dx, dy, dz, iface, iobst)
 
         ! subroutine arguments
         INTEGER(intk), INTENT(in) :: igrid
         REAL(realk), INTENT(inout) :: x, y, z
         REAL(realk), INTENT(inout) :: dx, dy, dz
         INTEGER(intk), INTENT(out) :: iface
+        INTEGER(intk), INTENT(out) :: iobst
 
         !local variables
+        INTEGER(intk) :: i, nobst
         REAL(realk) :: minx, maxx, miny, maxy, minz, maxz
         REAL(realk) :: lx, ly, lz, rx, ry, rz, dx_to_b, dy_to_b, dz_to_b
+        REAL(realk) :: s, sa, sb, a, b, c, d, cx, cy, cz, r
 
         CALL get_bbox(minx, maxx, miny, maxy, minz, maxz, igrid)
 
-
+        ! check regarding arithmetic errors
         IF (x < minx) THEN
                         SELECT CASE (TRIM(particle_terminal))
                 CASE ("none")
@@ -413,20 +410,81 @@ MODULE particle_boundaries_mod
             z = maxz
         END IF
 
+        ! OBSTACLES
+        ! find intersection points of particle path (straight) and sphere surface
+            ! particle path: X(s) = X + dX * s with s: [0, 1] (X is the vector (x/y/z))
+            ! => |X + dX * s - C| =! r (C is the sphere center (cx/cy/cz))
+            ! => (x + dx * s -cx)² + (y + dy * s -cy)² + (z + dz * s -cz)² =! r² (r is the sphere radius)
+            ! => s1/s2 = sa/sb = (-b +/- sqrt(b² - 4ac)) / 2a (corefficients see code)
+
+        s = 1.0
+        ! first coefficient
+        a = (dx**2 + dy**2 + dz**2)
+
+        ! iterate over all obstacles of the grid
+        nobst = SIZE(obstacles)
+        iobst = 0
+
+        DO i = 1, nobst
+
+            ! for readability
+            cx = obstacles(iobst)%x
+            cy = obstacles(iobst)%y
+            cz = obstacles(iobst)%z
+            r = obstacles(iobst)%radius
+
+            ! sphere dependent coefficients
+            b = 2*x*dx + 2*y*dy + 2*z*dz - 2*cx*dx - 2*cy*dy - 2*cz*dz
+            c = x**2 + y**2 + z**2 + cx**2 + cy**2 + cz**2 - 2*x*cx - 2*y*cy - 2*z*cz - r**2
+
+            d = b**2 - 4*a*c
+
+            IF (d < 0) THEN
+                CONTINUE
+            END IF
+
+            sa = (-b + SQRT(d)) / 2 / a
+            sb = (-b - SQRT(d)) / 2 / a
+
+            IF (sa < 0 .OR. 1 < sa) THEN
+                ! set sa to an arbitrary number higher than 1
+                sa = 1.1
+            END IF
+
+            IF (sb < 0 .OR. 1 < sb) THEN
+                ! set sb to an arbitrary number higher than 1
+                sb = 1.1
+            END IF
+
+            IF (sa < s) THEN
+                s = sa
+                iobst = i
+            END IF
+
+            IF (sb < s) THEN
+                s = sb
+                iobst = i
+            END IF
+
+        END DO
+
+        ! GRID BOUNDARIES
+        ! now check if any grid boundary is reached before any obstacle is hit
+
         IF (dx < 0) THEN
             lx = (minx - x)
             IF(lx == 0) THEN
                 CALL get_current_face(igrid, x, y, z, iface)
                 RETURN
             END IF
-            rx = dx / lx
+            rx = dx * s / lx
         ELSEIF (0 < dx) THEN
             lx = (maxx - x)
             IF(lx == 0) THEN
                 CALL get_current_face(igrid, x, y, z, iface)
                 RETURN
             END IF
-            rx = dx / lx
+            rx = dx * s / lx
         ELSE
             rx = 0.0_realk
         END IF
@@ -437,14 +495,14 @@ MODULE particle_boundaries_mod
                 CALL get_current_face(igrid, x, y, z, iface)
                 RETURN
             END IF
-            ry = dy / ly
+            ry = dy * s / ly
         ELSEIF (0 < dy) THEN
             ly = (maxy - y)
             IF(ly == 0) THEN
                 CALL get_current_face(igrid, x, y, z, iface)
                 RETURN
             END IF
-            ry = dy / ly
+            ry = dy * s / ly
         ELSE
             ry = 0.0_realk
         END IF
@@ -455,30 +513,35 @@ MODULE particle_boundaries_mod
                 CALL get_current_face(igrid, x, y, z, iface)
                 RETURN
             END IF
-            rz = dz / lz
+            rz = dz * s / lz
         ELSEIF (0 < dz) THEN
             lz = (maxz - z)
             IF(lz == 0) THEN
                 CALL get_current_face(igrid, x, y, z, iface)
                 RETURN
             END IF
-            rz = dz / lz
+            rz = dz * s / lz
         ELSE
             rz = 0.0_realk
         END IF
 
         IF (rx < 1.0_realk .AND. ry < 1.0_realk .AND. rz < 1.0_realk) THEN
 
-            x = x + dx
-            y = y + dy
-            z = z + dz
-            dx = 0
-            dy = 0
-            dz = 0
+            x = x + dx * s
+            y = y + dy * s
+            z = z + dz * s
+            dx = dx * (1 - s)
+            dy = dy * (1 - s)
+            dz = dz * (1 - s)
+
+            iface = 0
 
             RETURN
 
         END IF
+
+        ! if the routine did not return yet, no obstacle will be hit before some grid boundary
+        iobst = 0
 
         IF (dx < 0 .AND. ry <= rx .AND. rz <= rx) THEN
 
@@ -686,7 +749,7 @@ MODULE particle_boundaries_mod
 
     SUBROUTINE reflect_at_boundary(dx, dy, dz, n1, n2, n3)
 
-        ! Presumption: Particle is already exactily on the boundary!
+        ! Presumption: Particle is already exactly on the boundary!
 
         ! subroutine arguments
         REAL(realk), INTENT(inout) :: dx, dy, dz
@@ -703,123 +766,33 @@ MODULE particle_boundaries_mod
 
     END SUBROUTINE reflect_at_boundary
 
-    SUBROUTINE get_normal_vector(iface, n1, n2, n3)
+    ! TODO: make this an obstacle method
+    SUBROUTINE reflect_at_obstacle(iobst, x, y, z, dx, dy, dz)
+
+        ! Presumption 1: Particle is already exactly on the boundary!
+        ! Presumption 2: Obstacle is a sphere!
 
         ! subroutine arguments
-        INTEGER(intk), INTENT(in) :: iface
-        REAL(realk), INTENT(out) :: n1, n2, n3 ! normal vector components
+        INTEGER(intk), INTENT(in) :: iobst
+        REAL(realk), INTENT(in) :: x, y, z
+        REAL(realk), INTENT(inout) :: dx, dy, dz
 
         ! local variables
-        LOGICAL :: found
+        REAL(realk) :: n1, n2 , n3, magnitude
 
-        SELECT CASE(iface)
-            CASE(1)
-                n1 = 1
-                n2 = 0
-                n3 = 0
-            CASE(2)
-                n1 = -1
-                n2 = 0
-                n3 = 0
-            CASE(3)
-                n1 = 0
-                n2 = 1
-                n3 = 0
-            CASE(4)
-                n1 = 0
-                n2 = -1
-                n3 = 0
-            CASE(5)
-                n1 = 0
-                n2 = 0
-                n3 = 1
-            CASE(6)
-                n1 = 0
-                n2 = 0
-                n3 = -1
-            CASE(7)
-                n1 = 1/SQRT(2.0)
-                n2 = 1/SQRT(2.0)
-                n3 = 0
-            CASE(8)
-                n1 = 1/SQRT(2.0)
-                n2 = -1/SQRT(2.0)
-                n3 = 0
-            CASE(9)
-                n1 = 1/SQRT(2.0)
-                n2 = 0
-                n3 = 1/SQRT(2.0)
-            CASE(10)
-                n1 = 1/SQRT(2.0)
-                n2 = 0
-                n3 = -1/SQRT(2.0)
-            CASE(11)
-                n1 = -1/SQRT(2.0)
-                n2 = 1/SQRT(2.0)
-                n3 = 0
-            CASE(12)
-                n1 = -1/SQRT(2.0)
-                n2 = -1/SQRT(2.0)
-                n3 = 0
-            CASE(13)
-                n1 = -1/SQRT(2.0)
-                n2 = 0
-                n3 = 1/SQRT(2.0)
-            CASE(14)
-                n1 = -1/SQRT(2.0)
-                n2 = 0
-                n3 = -1/SQRT(2.0)
-            CASE(15)
-                n1 = 0
-                n2 = 1/SQRT(2.0)
-                n3 = 1/SQRT(2.0)
-            CASE(16)
-                n1 = 0
-                n2 = 1/SQRT(2.0)
-                n3 = -1/SQRT(2.0)
-            CASE(17)
-                n1 = 0
-                n2 = -1/SQRT(2.0)
-                n3 = 1/SQRT(2.0)
-            CASE(18)
-                n1 = 0
-                n2 = -1/SQRT(2.0)
-                n3 = -1/SQRT(2.0)
-            CASE(19)
-                n1 = 1/SQRT(3.0)
-                n2 = 1/SQRT(3.0)
-                n3 = 1/SQRT(3.0)
-            CASE(20)
-                n1 = 1/SQRT(3.0)
-                n2 = 1/SQRT(3.0)
-                n3 = -1/SQRT(3.0)
-            CASE(21)
-                n1 = 1/SQRT(3.0)
-                n2 = -1/SQRT(3.0)
-                n3 = 1/SQRT(3.0)
-            CASE(22)
-                n1 = 1/SQRT(3.0)
-                n2 = -1/SQRT(3.0)
-                n3 = -1/SQRT(3.0)
-            CASE(23)
-                n1 = -1/SQRT(3.0)
-                n2 = 1/SQRT(3.0)
-                n3 = 1/SQRT(3.0)
-            CASE(24)
-                n1 = -1/SQRT(3.0)
-                n2 = 1/SQRT(3.0)
-                n3 = -1/SQRT(3.0)
-            CASE(25)
-                n1 = -1/SQRT(3.0)
-                n2 = -1/SQRT(3.0)
-                n3 = 1/SQRT(3.0)
-            CASE(26)
-                n1 = -1/SQRT(3.0)
-                n2 = -1/SQRT(3.0)
-                n3 = -1/SQRT(3.0)
-        END SELECT
+        n1 = x - obstacles(iobst)%x
+        n2 = y - obstacles(iobst)%y
+        n3 = z - obstacles(iobst)%z
 
-    END SUBROUTINE get_normal_vector
+        magnitude = SQRT(n1**2 + n2**2 + n3**2)
+
+        n1 = n1 / magnitude
+        n2 = n1 / magnitude
+        n3 = n1 / magnitude
+
+        CALL reflect_at_boundary(dx, dy, dz, n1, n2, n3)
+
+    END SUBROUTINE reflect_at_obstacle
 
     SUBROUTINE update_coordinates(oldgrid, newgrid, x, y, z)
 

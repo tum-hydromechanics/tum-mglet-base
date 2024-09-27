@@ -169,15 +169,15 @@ CONTAINS
                     WRITE(*, '()')
             END SELECT
 
-            particle_clone = my_particle_list%particles(i)
+            ! particle_clone = my_particle_list%particles(i)
 
             ! Particle Boundary Interaction
-            CALL move_particle(particle_clone, pdx, pdy, pdz)
+            CALL move_particle(my_particle_list%particles(i), pdx, pdy, pdz)
 
-            my_particle_list%particles(i) = particle_clone
+            ! my_particle_list%particles(i) = particle_clone
 
             ! count particles to be sent (per process)
-            CALL prepare_particle_exchange(my_particle_list%particles(i))
+            ! CALL prepare_particle_exchange(my_particle_list%particles(i))
 
         END DO
 

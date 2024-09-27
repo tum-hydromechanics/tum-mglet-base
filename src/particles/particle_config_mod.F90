@@ -15,6 +15,7 @@ LOGICAL :: dsim_particles = .FALSE.
 CHARACTER(len = 7) :: particle_terminal
 
 LOGICAL :: dread_particles
+LOGICAL :: dread_obstacles
 LOGICAL :: dinterp_particles
 LOGICAL :: dwrite_particles
 
@@ -76,6 +77,10 @@ CONTAINS    !===================================
         !- - - - - - - - - - - - - - - - - -
 
         CALL pconf%get_value("/read", dread_particles, .FALSE.)
+
+        !- - - - - - - - - - - - - - - - - -
+
+        CALL pconf%get_value("/read_obs", dread_obstacles, .FALSE.)
 
         !- - - - - - - - - - - - - - - - - -
 
@@ -245,6 +250,7 @@ CONTAINS    !===================================
                         WRITE(*, '("PARTICLE CONFIGURATION:")')
                         WRITE(*, '("Terminal Output:              ", A12)') particle_terminal
                         WRITE(*, '("Reading ParticlesDict:        ", L12)') dread_particles
+                        WRITE(*, '("Reading ObstaclesDict:        ", L12)') dread_obstacles
                         WRITE(*, '("Field Interpolation:          ", L12)') dinterp_particles
                         WRITE(*, '("Writing Particle Snapshots:   ", L12)') dwrite_particles
                         WRITE(*, '("Particle Snapshot Step:       ", I12)') psnapshot_step
@@ -258,6 +264,7 @@ CONTAINS    !===================================
                         WRITE(*, '("PARTICLE CONFIGURATION:")')
                         WRITE(*, '("Terminal Output:              ", A12)') particle_terminal
                         WRITE(*, '("Reading ParticlesDict:        ", L12)') dread_particles
+                        WRITE(*, '("Reading ObstaclesDict:        ", L12)') dread_obstacles
                         WRITE(*, '("Field Interpolation:          ", L12)') dinterp_particles
                         WRITE(*, '("Writing Particle Snapshots:   ", L12)') dwrite_particles
                         WRITE(*, '("Particle Snapshot Step:       ", I12)') psnapshot_step
