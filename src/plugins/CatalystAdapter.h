@@ -79,20 +79,17 @@ void Execute(TransferFromMGLET* args)
     // Conduit node for the execution
     conduit_cpp::Node exec_params;
 
-    // declaring data vector (must be here - otherwise out-of-scope)
-    std::vector<float> Pressure;
-
     // add cycle information
     auto state = exec_params["catalyst/state"];
     state["timestep"].set(args->istep);
     state["time"].set( (float) args->istep);
-    // state["multiblock"].set(1);
+    state["multiblock"].set(1);
 
     // opening one channel named "grid"
     auto channel = exec_params["catalyst/channels/grid"];
-    channel["type"].set("mesh");
+    channel["type"].set("multimesh");
 
-    for ( int ilvl = 1; ilvl <= 1; ilvl++ )
+    for ( int ilvl = 2; ilvl <= 2; ilvl++ )
     {
         int ngridlvl = get_ngrids_lvl( args, ilvl );
         for ( int igrdlvl = 1; igrdlvl <= ngridlvl; igrdlvl++ )
@@ -179,28 +176,26 @@ void Execute(TransferFromMGLET* args)
                 numStr = std::string(n_zero - std::min(n_zero, (int) numStr.length()), '0') + numStr;
                 std::string blockName = dataStr + numStr;
 
-                auto mesh = channel["data"];
+                auto mesh = channel[blockName];
 
-                // populate the data node following the Mesh Blueprint [4]
-                // [4] https://llnl-conduit.readthedocs.io/en/latest/blueprint_mesh.html
+                mdx = ( maxx - minx ) / ( ii - 4 );
+                mdy = ( maxy - miny ) / ( jj - 4 );
+                mdz = ( maxz - minz ) / ( kk - 4 );
 
                 // start with coordsets
                 mesh["coordsets/coords/type"].set("uniform");
 
-                mesh["coordsets/coords/dims/i"].set(ii+1);
+                mesh["coordsets/coords/dims/i"].set(kk+1);
                 mesh["coordsets/coords/dims/j"].set(jj+1);
-                mesh["coordsets/coords/dims/k"].set(kk+1);
+                mesh["coordsets/coords/dims/k"].set(ii+1);
 
-                mesh["coordsets/coords/origin/x"].set(minx);
-                mesh["coordsets/coords/origin/y"].set(miny);
-                mesh["coordsets/coords/origin/z"].set(minz);
+                mesh["coordsets/coords/origin/x"].set(minz - 2.0 * mdz);
+                mesh["coordsets/coords/origin/y"].set(miny - 2.0 * mdy);
+                mesh["coordsets/coords/origin/z"].set(minx - 2.0 * mdx);
 
-                mdx = ( maxx - minx ) / ( ii - 4 );
-                mesh["coordsets/coords/spacing/dx"].set(mdx);
-                mdy = ( maxy - miny ) / ( jj - 4 );
+                mesh["coordsets/coords/spacing/dx"].set(mdz);
                 mesh["coordsets/coords/spacing/dy"].set(mdy);
-                mdz = ( maxz - minz ) / ( kk - 4 );
-                mesh["coordsets/coords/spacing/dz"].set(mdz);
+                mesh["coordsets/coords/spacing/dz"].set(mdx);
 
                 // Next, add topology
                 mesh["topologies/mesh/type"].set("uniform");
@@ -209,16 +204,11 @@ void Execute(TransferFromMGLET* args)
                 // Finally, add fields.
                 auto fields = mesh["fields"];
 
-                Pressure.resize( (ii*jj*kk) );
-                for ( int a = 0; a < (ii*jj*kk); a++ ){
-                    Pressure[a] = (float) a;
-                }
-
-                // pressure is cell-data
-                fields["pressure/association"].set("element");
-                fields["pressure/topology"].set("mesh");
-                fields["pressure/volume_dependent"].set("false");
-                fields["pressure/values"].set_external(&Pressure[0], (ii*jj*kk), 0, sizeof(float) );
+                // velocity_x is cell-data
+                fields["velocity_x/association"].set("element");
+                fields["velocity_x/topology"].set("mesh");
+                fields["velocity_x/volume_dependent"].set("false");
+                fields["velocity_x/values"].set_external(val_arr, (ii*jj*kk), 0, sizeof(float) );
 
             }
         }
