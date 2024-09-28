@@ -1,7 +1,7 @@
 {
     "time": {
         "dt": 0.05,
-        "mtstep": 40,
+        "mtstep": 4000,
         "tstat": 0.0,
         "itinfo": 10,
 	"itsamp": 10,
@@ -17,11 +17,11 @@
     },
     "flow": {
         "solve": true,
-        "gmol": 0.0001,
+        "gmol": 0.00005,
         "rho": 1.0,
-        "uinf": [0.0, 0.0, 0.0],
+        "uinf": [0.5, 0.0, 0.0],
         "gradp": [-0.005, 0.0, 0.0],
-        "tu_level": 0.0,
+        "tu_level": 0.2,
         "pressuresolver": {
             "type": "sip",
             "epcorr": 0.00005,
@@ -46,6 +46,10 @@
                 "prmol": 1.0
             }
         ]
+    },
+    "catalyst": {
+        "path": "/home/simon/Software/paraview_build/lib/catalyst/",
+        "script": "catalyst_pipeline.py"
     },
     "statistics": [
         "P_AVG", "U_AVG", "V_AVG", "W_AVG",
