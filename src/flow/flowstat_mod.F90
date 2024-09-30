@@ -79,6 +79,10 @@ CONTAINS
         CALL register_statfield("UyP+VxP_AVG", comp_uyvxp_avg)
         CALL register_statfield("UzP+WxP_AVG", comp_uyvxp_avg)
         CALL register_statfield("VzP+WyP_AVG", comp_uyvxp_avg)
+
+        CALL register_statfield("VORxVORx_AVG", comp_vor_sqr_avg)
+        CALL register_statfield("VORyVORy_AVG", comp_vor_sqr_avg)
+        CALL register_statfield("VORzVORz_AVG", comp_vor_sqr_avg)
     END SUBROUTINE init_flowstat
 
 
@@ -899,5 +903,70 @@ CONTAINS
         CALL vx_f%finish()
         CALL temp_f%finish()
     END SUBROUTINE comp_uyvxp_avg
+
+    SUBROUTINE comp_vor_sqr_avg(field, name, dt)
+        ! Subroutine arguments
+        TYPE(field_t), INTENT(inout) :: field
+        CHARACTER(len=*), INTENT(in) :: name
+        REAL(realk), INTENT(in) :: dt
+
+        ! Local Variables
+        TYPE(field_t) :: uy_f, vx_f
+        INTEGER(intk), PARAMETER :: units(*) = [0, 0, -2, 0, 0, 0, 0]
+        INTEGER(intk), PARAMETER :: units_ux(*) = [0, 0, -1, 0, 0, 0, 0]
+        TYPE(field_t), POINTER :: u_f, v_f
+        INTEGER(intk) :: istag, jstag, kstag
+        CHARACTER(len=3) :: ivar1, ivar2
+        CHARACTER(len=2) :: name_uy, name_vx
+
+        SELECT CASE (TRIM(name))
+        CASE ("VORxVORx_AVG")
+            CALL get_field(u_f, "W")
+            CALL get_field(v_f, "V")
+            istag = 0
+            jstag = 1
+            kstag = 1
+            name_uy = 'WY'
+            name_vx = 'VZ'
+            ivar1 = 'DYS'
+            ivar2 = 'DZS'
+        CASE("VORyVORy_AVG")
+            CALL get_field(u_f, "U")
+            CALL get_field(v_f, "W")
+            istag = 1
+            jstag = 0
+            kstag = 1
+            name_uy = 'UZ'
+            name_vx = 'WX'
+            ivar1 = 'DZS'
+            ivar2 = 'DXS'
+        CASE ("VORzVORz_AVG")
+            CALL get_field(u_f, "V")
+            CALL get_field(v_f, "U")
+            istag = 0
+            jstag = 1
+            kstag = 1
+            name_uy = 'VX'
+            name_vx = 'UY'
+            ivar1 = 'DXS'
+            ivar2 = 'DYS'
+        CASE DEFAULT
+            CALL errr(__FILE__, __LINE__)
+        END SELECT
+
+        CALL field%init(name, istag=istag, jstag=jstag, kstag=kstag, &
+            units=units)
+        CALL uy_f%init(name_uy, istag=istag, jstag=jstag, kstag=kstag, &
+            units=units_ux)
+        CALL vx_f%init(name_vx, istag=istag, jstag=jstag, kstag=kstag, &
+            units=units_ux)
+
+        CALL differentiate(uy_f, u_f, ivar1)
+        CALL differentiate(vx_f, v_f, ivar2)
+        field%arr = (uy_f%arr - vx_f%arr)**2
+
+        CALL uy_f%finish()
+        CALL vx_f%finish()
+    END SUBROUTINE comp_vor_sqr_avg
 
 END MODULE flowstat_mod
