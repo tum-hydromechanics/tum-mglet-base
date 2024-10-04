@@ -4,6 +4,7 @@ MODULE particle_exchange_mod
 
     USE particle_list_mod
     USE particle_core_mod
+    USE particle_utils_mod
 
     IMPLICIT NONE (type, external)
 
@@ -334,7 +335,6 @@ CONTAINS
         END IF
 
         ! --- step 6: Allocating the recieve buffer and displacements. Done.
-
 
         ! posting non-blocking (!) receives
         ! int MPI_Irecv(void *buf, int count,
@@ -798,7 +798,7 @@ CONTAINS
 
         ! local variables
         INTEGER(intk) :: neighbours(26)
-        REAL(realk) :: minx, maxx, miny, maxy, minz, maxz
+        REAL(realk) :: minx, maxx, miny, maxy, minz, maxz, dist
 
         ! getting the box of last grid the particla
         CALL get_bbox(minx, maxx, miny, maxy, minz, maxz, particle%igrid)
@@ -806,96 +806,18 @@ CONTAINS
         ! intialization (will be overwritten is particle left grid)
         iface = -1
 
-        ! chack if particle is still on grid first as this will be the case for most particles (assuming a reasonable grid size)
+        ! check if particle is still on grid first as this will be the case for most particles (assuming a reasonable grid size)
         ! to reduce operations
-        IF (minx <= particle%x .AND. particle%x <= maxx .AND. &
-            miny <= particle%y .AND. particle%y <= maxy .AND. &
-            minz <= particle%z .AND. particle%z <= maxz) THEN
-                    iface = 0
-        ELSE
-            ! checking the geometrical relation
-            IF (particle%x < minx) THEN !-------------------------------------------------------- low x
-                IF (particle%y < miny) THEN !--------------------------------------------- low y, low x
-                    IF (particle%z < minz) THEN !---------------------------------- low z, low y, low x
-                        iface = 19
-                    ELSEIF (minz <= particle%z .AND. particle%z <= maxz) THEN !---- mid z, low y, low x
-                        iface = 7
-                    ELSEIF (maxz < particle%z) THEN !----------------------------- high z, low y, low x
-                        iface = 20
-                    END IF
-                ELSEIF (miny <= particle%y .AND. particle%y <= maxy) THEN !--------------- mid y, low x
-                    IF (particle%z < minz) THEN !---------------------------------- low z, mid y, low x
-                        iface = 9
-                    ELSEIF (minz <= particle%z .AND. particle%z <= maxz) THEN !---- mid z, mid y, low x
-                        iface = 1
-                    ELSEIF (maxz < particle%z) THEN !----------------------------- high z, mid y, low x
-                        iface = 10
-                    END IF
-                ELSEIF (maxy < particle%y) THEN !---------------------------------------- high y, low x
-                    IF (particle%z < minz) THEN !--------------------------------- low z, high y, low x
-                        iface = 21
-                    ELSEIF (minz <= particle%z .AND. particle%z <= maxz) THEN !--- mid z, high y, low x
-                        iface = 8
-                    ELSEIF (maxz < particle%z) THEN !---------------------------- high z, high y, low x
-                        iface = 22
-                    END IF
-                END IF
-            ELSEIF (minx <= particle%x .AND. particle%x <= maxx) THEN !-------------------------- mid x
-                IF (particle%y < miny) THEN !--------------------------------------------- low y, mid x
-                    IF (particle%z < minz) THEN !---------------------------------- low z, low y, mid x
-                        iface = 15
-                    ELSEIF (minz <= particle%z .AND. particle%z <= maxz) THEN !---- mid z, low y, mid x
-                        iface = 3
-                    ELSEIF (maxz < particle%z) THEN !----------------------------- high z, low y, mid x
-                        iface = 16
-                    END IF
-                ELSEIF (miny <= particle%y .AND. particle%y <= maxy) THEN !--------------- mid y, mid x
-                    IF (particle%z < minz) THEN !---------------------------------- low z, mid y, mid x
-                        iface = 5
-                    ELSEIF (minz <= particle%z .AND. particle%z <= maxz) THEN !---- mid z, mid y, mid x
-                        iface = 0
-                    ELSEIF (maxz < particle%z) THEN !----------------------------- high z, mid y, mid x
-                        iface = 6
-                    END IF
-                ELSEIF (maxy < particle%y) THEN !---------------------------------------- high y, mid x
-                    IF (particle%z < minz) THEN !--------------------------------- low z, high y, mid x
-                        iface = 17
-                    ELSEIF (minz <= particle%z .AND. particle%z <= maxz) THEN !--- mid z, high y, mid x
-                        iface = 4
-                    ELSEIF (maxz < particle%z) THEN !---------------------------- high z, high y, mid x
-                        iface = 18
-                    END IF
-                END IF
-            ELSEIF (maxx < particle%x) THEN !--------------------------------------------------- high x
-                IF (particle%y < miny) THEN !-------------------------------------------- low y, high x
-                    IF (particle%z < minz) THEN !--------------------------------- low z, low y, high x
-                        iface = 23
-                    ELSEIF (minz <= particle%z .AND. particle%z <= maxz) THEN !--- mid z, low y, high x
-                        iface = 11
-                    ELSEIF (maxz < particle%z) THEN !---------------------------- high z, low y, high x
-                        iface = 24
-                    END IF
-                ELSEIF (miny <= particle%y .AND. particle%y <= maxy) THEN !-------------- mid y, high x
-                    IF (particle%z < minz) THEN !--------------------------------- low z, mid y, high x
-                        iface = 13
-                    ELSEIF (minz <= particle%z .AND. particle%z <= maxz) THEN !--- mid z, mid y, high x
-                        iface = 2
-                    ELSEIF (maxz < particle%z) THEN !---------------------------- high z, mid y, high x
-                        iface = 14
-                    END IF
-                ELSEIF (maxy < particle%y) THEN !--------------------------------------- high y, high x
-                    IF (particle%z < minz) THEN !-------------------------------- low z, high y, high x
-                        iface = 25
-                    ELSEIF (minz <= particle%z .AND. particle%z <= maxz) THEN !-- mid z, high y, high x
-                        iface = 12
-                    ELSEIF (maxz < particle%z) THEN !--------------------------- high z, high y, high x
-                        iface = 26
-                    END IF
-                END IF
-            END IF !-------------------------------------------------------------
+        CALL get_exit_face(particle, dist, iface)
+
+        ! if the distance to the grid "dist" is 0, the particle is still on the grid
+        ! however, get_exit_face might still return (iface > 0) if the particle is exactly on any grid boundary
+        ! if so, set iface to 0
+        IF (dist == 0) THEN
+            iface = 0
         END IF
 
-        IF ( iface == 0 ) THEN
+        IF (iface == 0) THEN
             ! particle stays on the same grid
             destgrid = particle%igrid
             destproc = particle%iproc
@@ -913,12 +835,12 @@ CONTAINS
                     END IF
             END SELECT
 
-            IF ( destproc /= myid ) THEN
+            IF (destproc /= myid) THEN
                 WRITE(*,*) 'Inconsistent particle parameters'
                 CALL errr(__FILE__, __LINE__)
             END IF
 
-        ELSE IF ( iface > 0 ) THEN
+        ELSE IF (iface > 0) THEN
             ! particle moves across grid boundary
             CALL get_neighbours(neighbours, particle%igrid)
             destgrid = neighbours(iface)
@@ -937,7 +859,7 @@ CONTAINS
                     END IF
             END SELECT
 
-            IF ( destproc == myid ) THEN
+            IF (destproc == myid) THEN
                 destproc = particle%iproc
             END IF
 
@@ -947,8 +869,6 @@ CONTAINS
         END IF
 
     END SUBROUTINE get_target_grid
-
-
 
     SUBROUTINE create_particle_mpitype(dtype)
         ! Subrouitine arguments
@@ -998,68 +918,6 @@ CONTAINS
         ! cleaning up the auxiliary type
         CALL MPI_Type_free(triple_int_mpi_type)
     END SUBROUTINE create_particle_mpitype
-
-    SUBROUTINE update_coordinates(particle, destgrid, iface)
-
-        ! subroutine arguments
-        TYPE(baseparticle_t), INTENT(inout) :: particle
-        INTEGER(intk), INTENT(in) :: destgrid, iface
-
-        ! local variables
-        REAL(realk) :: old_minx, old_maxx, old_miny, old_maxy, old_minz, old_maxz, &
-         new_minx, new_maxx, new_miny, new_maxy, new_minz, new_maxz
-        LOGICAL :: passed_pb
-
-        passed_pb = .FALSE.
-
-        CALL get_bbox(old_minx, old_maxx, old_miny, old_maxy, old_minz, old_maxz, particle%igrid)
-        CALL get_bbox(new_minx, new_maxx, new_miny, new_maxy, new_minz, new_maxz, destgrid)
-
-        IF (particle%x < new_minx) THEN
-            particle%x = new_maxx - ABS(particle%x - old_minx)
-            passed_pb = .TRUE.
-        END IF
-
-        IF (new_maxx < particle%x) THEN
-            particle%x = new_minx + ABS(particle%x - old_maxx)
-            passed_pb = .TRUE.
-        END IF
-
-        IF (particle%y < new_miny) THEN
-            particle%y = new_maxy - ABS(particle%y - old_miny)
-            passed_pb = .TRUE.
-        END IF
-
-        IF (new_maxy < particle%y) THEN
-            particle%y = new_miny + ABS(particle%y - old_maxy)
-            passed_pb = .TRUE.
-        END IF
-
-        IF (particle%z < new_minz) THEN
-            particle%z = new_maxz - ABS(particle%z - old_minz)
-            passed_pb = .TRUE.
-        END IF
-
-        IF (new_maxz < particle%z) THEN
-            particle%z = new_minz + ABS(particle%z - old_maxz)
-            passed_pb = .TRUE.
-        END IF
-
-        ! for debugging
-        IF (passed_pb) THEN
-            SELECT CASE (TRIM(particle_terminal))
-                CASE ("none")
-                    CONTINUE
-                CASE ("normal")
-                    CONTINUE
-                CASE ("verbose")
-                    WRITE(*, *) ' '
-                    WRITE(*, *) "Particle ", particle%ipart, " passed periodic boundary (grid ", &
-                    particle%igrid, " to grid ", destgrid, " via face: ", iface, ")!"
-            END SELECT
-        END IF
-
-    END SUBROUTINE update_coordinates
 
     ! copy particles from recieve Buffer into passed particle list
     SUBROUTINE integrate_particles(particle_list, sendind)

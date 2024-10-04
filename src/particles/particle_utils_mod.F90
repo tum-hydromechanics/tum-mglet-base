@@ -9,10 +9,10 @@ MODULE particle_utils_mod
         MODULE PROCEDURE :: get_exit_face_p
     END INTERFACE get_exit_face
 
-    INTERFACE update_coordinates2
+    INTERFACE update_coordinates
         MODULE PROCEDURE :: update_coordinates_c
         MODULE PROCEDURE :: update_coordinates_p
-    END INTERFACE update_coordinates2
+    END INTERFACE update_coordinates
 
     CONTAINS
 
@@ -272,5 +272,227 @@ MODULE particle_utils_mod
 
     END SUBROUTINE update_coordinates_c
 
+    FUNCTION is_inside_grid(igrid, x, y, z) result(res)
+
+        ! subroutine arguments
+        INTEGER(intk), INTENT(in) :: igrid
+        REAL(realk), INTENT(in) :: x, y, z
+
+        ! local variables
+        REAL(realk) :: minx, maxx, miny, maxy, minz, maxz
+
+        ! return value
+        LOGICAL :: res
+
+        res = .TRUE.
+
+        CALL get_bbox(minx, maxx, miny, maxy, minz, maxz, igrid)
+
+        IF (x < minx) THEN
+            res = .FALSE.
+        END IF
+
+        IF (x > maxx) THEN
+            res = .FALSE.
+        END IF
+
+        IF (y < miny) THEN
+            res = .FALSE.
+        END IF
+
+        IF (y > maxy) THEN
+            res = .FALSE.
+        END IF
+
+        IF (z < minz) THEN
+            res = .FALSE.
+        END IF
+
+        IF (z > maxz) THEN
+            res = .FALSE.
+        END IF
+
+    END FUNCTION is_inside_grid
+
+        !IF (minx <= particle%x .AND. particle%x <= maxx .AND. &
+        !    miny <= particle%y .AND. particle%y <= maxy .AND. &
+        !    minz <= particle%z .AND. particle%z <= maxz) THEN
+        !            iface = 0
+        !ELSE
+        !    ! checking the geometrical relation
+        !    IF (particle%x < minx) THEN !-------------------------------------------------------- low x
+        !        IF (particle%y < miny) THEN !--------------------------------------------- low y, low x
+        !            IF (particle%z < minz) THEN !---------------------------------- low z, low y, low x
+        !                iface = 19
+        !            ELSEIF (minz <= particle%z .AND. particle%z <= maxz) THEN !---- mid z, low y, low x
+        !                iface = 7
+        !            ELSEIF (maxz < particle%z) THEN !----------------------------- high z, low y, low x
+        !                iface = 20
+        !            END IF
+        !        ELSEIF (miny <= particle%y .AND. particle%y <= maxy) THEN !--------------- mid y, low x
+        !            IF (particle%z < minz) THEN !---------------------------------- low z, mid y, low x
+        !                iface = 9
+        !            ELSEIF (minz <= particle%z .AND. particle%z <= maxz) THEN !---- mid z, mid y, low x
+        !                iface = 1
+        !            ELSEIF (maxz < particle%z) THEN !----------------------------- high z, mid y, low x
+        !                iface = 10
+        !            END IF
+        !        ELSEIF (maxy < particle%y) THEN !---------------------------------------- high y, low x
+        !            IF (particle%z < minz) THEN !--------------------------------- low z, high y, low x
+        !                iface = 21
+        !            ELSEIF (minz <= particle%z .AND. particle%z <= maxz) THEN !--- mid z, high y, low x
+        !                iface = 8
+        !            ELSEIF (maxz < particle%z) THEN !---------------------------- high z, high y, low x
+        !                iface = 22
+        !            END IF
+        !        END IF
+        !    ELSEIF (minx <= particle%x .AND. particle%x <= maxx) THEN !-------------------------- mid x
+        !        IF (particle%y < miny) THEN !--------------------------------------------- low y, mid x
+        !            IF (particle%z < minz) THEN !---------------------------------- low z, low y, mid x
+        !                iface = 15
+        !            ELSEIF (minz <= particle%z .AND. particle%z <= maxz) THEN !---- mid z, low y, mid x
+        !                iface = 3
+        !            ELSEIF (maxz < particle%z) THEN !----------------------------- high z, low y, mid x
+        !                iface = 16
+        !            END IF
+        !        ELSEIF (miny <= particle%y .AND. particle%y <= maxy) THEN !--------------- mid y, mid x
+        !            IF (particle%z < minz) THEN !---------------------------------- low z, mid y, mid x
+        !                iface = 5
+        !            ELSEIF (minz <= particle%z .AND. particle%z <= maxz) THEN !---- mid z, mid y, mid x
+        !                iface = 0
+        !            ELSEIF (maxz < particle%z) THEN !----------------------------- high z, mid y, mid x
+        !                iface = 6
+        !            END IF
+        !        ELSEIF (maxy < particle%y) THEN !---------------------------------------- high y, mid x
+        !            IF (particle%z < minz) THEN !--------------------------------- low z, high y, mid x
+        !                iface = 17
+        !            ELSEIF (minz <= particle%z .AND. particle%z <= maxz) THEN !--- mid z, high y, mid x
+        !                iface = 4
+        !            ELSEIF (maxz < particle%z) THEN !---------------------------- high z, high y, mid x
+        !                iface = 18
+        !            END IF
+        !        END IF
+        !    ELSEIF (maxx < particle%x) THEN !--------------------------------------------------- high x
+        !        IF (particle%y < miny) THEN !-------------------------------------------- low y, high x
+        !            IF (particle%z < minz) THEN !--------------------------------- low z, low y, high x
+        !                iface = 23
+        !            ELSEIF (minz <= particle%z .AND. particle%z <= maxz) THEN !--- mid z, low y, high x
+        !                iface = 11
+        !            ELSEIF (maxz < particle%z) THEN !---------------------------- high z, low y, high x
+        !                iface = 24
+        !            END IF
+        !        ELSEIF (miny <= particle%y .AND. particle%y <= maxy) THEN !-------------- mid y, high x
+        !            IF (particle%z < minz) THEN !--------------------------------- low z, mid y, high x
+        !                iface = 13
+        !            ELSEIF (minz <= particle%z .AND. particle%z <= maxz) THEN !--- mid z, mid y, high x
+        !                iface = 2
+        !            ELSEIF (maxz < particle%z) THEN !---------------------------- high z, mid y, high x
+        !                iface = 14
+        !            END IF
+        !        ELSEIF (maxy < particle%y) THEN !--------------------------------------- high y, high x
+        !            IF (particle%z < minz) THEN !-------------------------------- low z, high y, high x
+        !                iface = 25
+        !            ELSEIF (minz <= particle%z .AND. particle%z <= maxz) THEN !-- mid z, high y, high x
+        !                iface = 12
+        !            ELSEIF (maxz < particle%z) THEN !--------------------------- high z, high y, high x
+        !                iface = 26
+        !            END IF
+        !        END IF
+        !    END IF !-------------------------------------------------------------
+        !END IF
+
+    !SUBROUTINE get_current_face(igrid, x, y, z, iface)
+!
+    !    ! subroutine arguments
+    !    INTEGER(intk), INTENT(in) :: igrid
+    !    REAL(realk), INTENT(in) :: x, y, z
+    !    INTEGER(intk), INTENT(out) :: iface
+!
+    !    ! local variables
+    !    REAL(realk) :: minx, maxx, miny, maxy, minz, maxz
+!
+    !    CALL get_bbox(minx, maxx, miny, maxy, minz, maxz, igrid)
+!
+    !    IF (x == minx) THEN !-------------------------------------------------------- low x
+    !        IF (y == miny) THEN !--------------------------------------------- low y, low x
+    !            IF (z == minz) THEN !---------------------------------- low z, low y, low x
+    !                iface = 19
+    !            ELSEIF (minz < z .AND. z < maxz) THEN !---------------- mid z, low y, low x
+    !                iface = 7
+    !            ELSEIF (z == maxz) THEN !----------------------------- high z, low y, low x
+    !                iface = 20
+    !            END IF
+    !        ELSEIF (miny < y .AND. y < maxy) THEN !--------------------------- mid y, low x
+    !            IF (z == minz) THEN !---------------------------------- low z, mid y, low x
+    !                iface = 9
+    !            ELSEIF (minz < z .AND. z < maxz) THEN !---------------- mid z, mid y, low x
+    !                iface = 1
+    !            ELSEIF (z == maxz) THEN !----------------------------- high z, mid y, low x
+    !                iface = 10
+    !            END IF
+    !        ELSEIF (y == maxy) THEN !---------------------------------------- high y, low x
+    !            IF (z == minz) THEN !--------------------------------- low z, high y, low x
+    !                iface = 21
+    !            ELSEIF (minz < z .AND. z < maxz) THEN !--------------- mid z, high y, low x
+    !                iface = 8
+    !            ELSEIF (z == maxz) THEN !---------------------------- high z, high y, low x
+    !                iface = 22
+    !            END IF
+    !        END IF
+    !    ELSEIF (minx < x .AND. x < maxx) THEN !-------------------------------------- mid x
+    !        IF (y == miny) THEN !--------------------------------------------- low y, mid x
+    !            IF (z == minz) THEN !---------------------------------- low z, low y, mid x
+    !                iface = 15
+    !            ELSEIF (minz < z .AND. z < maxz) THEN !---------------- mid z, low y, mid x
+    !                iface = 3
+    !            ELSEIF (z == maxz) THEN !----------------------------- high z, low y, mid x
+    !                iface = 16
+    !            END IF
+    !        ELSEIF (miny < y .AND. y < maxy) THEN !--------------------------- mid y, mid x
+    !            IF (z == minz) THEN !---------------------------------- low z, mid y, mid x
+    !                iface = 5
+    !            ELSEIF (minz < z .AND. z < maxz) THEN !---------------- mid z, mid y, mid x
+    !                iface = 0
+    !            ELSEIF (z == maxz) THEN !----------------------------- high z, mid y, mid x
+    !                iface = 6
+    !            END IF
+    !        ELSEIF (y == maxy) THEN !---------------------------------------- high y, mid x
+    !            IF (z == minz) THEN !--------------------------------- low z, high y, mid x
+    !                iface = 17
+    !            ELSEIF (minz < z .AND. z < maxz) THEN !--------------- mid z, high y, mid x
+    !                iface = 4
+    !            ELSEIF (z == maxz) THEN !---------------------------- high z, high y, mid x
+    !                iface = 18
+    !            END IF
+    !        END IF
+    !    ELSEIF (x == maxx) THEN !--------------------------------------------------- high x
+    !        IF (y == miny) THEN !-------------------------------------------- low y, high x
+    !            IF (z == minz) THEN !--------------------------------- low z, low y, high x
+    !                iface = 23
+    !            ELSEIF (minz < z .AND. z < maxz) THEN !--------------- mid z, low y, high x
+    !                iface = 11
+    !            ELSEIF (z == maxz) THEN !---------------------------- high z, low y, high x
+    !                iface = 24
+    !            END IF
+    !        ELSEIF (miny < y .AND. y < maxy) THEN !-------------------------- mid y, high x
+    !            IF (z == minz) THEN !--------------------------------- low z, mid y, high x
+    !                iface = 13
+    !            ELSEIF (minz < z .AND. z < maxz) THEN !--------------- mid z, mid y, high x
+    !                iface = 2
+    !            ELSEIF (z == maxz) THEN !---------------------------- high z, mid y, high x
+    !                iface = 14
+    !            END IF
+    !        ELSEIF (y == maxy) THEN !--------------------------------------- high y, high x
+    !            IF (z == minz) THEN !-------------------------------- low z, high y, high x
+    !                iface = 25
+    !            ELSEIF (minz < z .AND. z < maxz) THEN !-------------- mid z, high y, high x
+    !                iface = 12
+    !            ELSEIF (z == maxz) THEN !--------------------------- high z, high y, high x
+    !                iface = 26
+    !            END IF
+    !        END IF
+    !    END IF
+!
+    !END SUBROUTINE get_current_face
 
 END MODULE particle_utils_mod

@@ -312,7 +312,7 @@ MODULE particle_boundaries_mod
                 particle_boundaries%face_normals(2, iface, temp_grid), &
                 particle_boundaries%face_normals(3, iface, temp_grid))
 
-                CALL update_coordinates2(temp_grid, particle_boundaries%face_neighbours(iface, temp_grid), iface, x, y, z)
+                CALL update_coordinates(temp_grid, particle_boundaries%face_neighbours(iface, temp_grid), iface, x, y, z)
 
                 temp_grid = particle_boundaries%face_neighbours(iface, temp_grid)
 
@@ -478,14 +478,14 @@ MODULE particle_boundaries_mod
         IF (dx < 0) THEN
             lx = (minx - x)
             IF(lx == 0) THEN
-                CALL get_current_face(temp_grid, x, y, z, iface)
+                CALL get_exit_face(temp_grid, x, y, z, dist, iface)
                 RETURN
             END IF
             rx = dx * s / lx
         ELSEIF (0 < dx) THEN
             lx = (maxx - x)
             IF(lx == 0) THEN
-                CALL get_current_face(temp_grid, x, y, z, iface)
+                CALL get_exit_face(temp_grid, x, y, z, dist, iface)
                 RETURN
             END IF
             rx = dx * s / lx
@@ -496,14 +496,14 @@ MODULE particle_boundaries_mod
         IF (dy < 0) THEN
             ly = (miny - y)
             IF(ly == 0) THEN
-                CALL get_current_face(temp_grid, x, y, z, iface)
+                CALL get_exit_face(temp_grid, x, y, z, dist, iface)
                 RETURN
             END IF
             ry = dy * s / ly
         ELSEIF (0 < dy) THEN
             ly = (maxy - y)
             IF(ly == 0) THEN
-                CALL get_current_face(temp_grid, x, y, z, iface)
+                CALL get_exit_face(temp_grid, x, y, z, dist, iface)
                 RETURN
             END IF
             ry = dy * s / ly
@@ -514,14 +514,14 @@ MODULE particle_boundaries_mod
         IF (dz < 0) THEN
             lz = (minz - z)
             IF(lz == 0) THEN
-                CALL get_current_face(temp_grid, x, y, z, iface)
+                CALL get_exit_face(temp_grid, x, y, z, dist, iface)
                 RETURN
             END IF
             rz = dz * s / lz
         ELSEIF (0 < dz) THEN
             lz = (maxz - z)
             IF(lz == 0) THEN
-                CALL get_current_face(temp_grid, x, y, z, iface)
+                CALL get_exit_face(temp_grid, x, y, z, dist, iface)
                 RETURN
             END IF
             rz = dz * s / lz
@@ -598,7 +598,6 @@ MODULE particle_boundaries_mod
             dy = dy - dy_to_b
             dz = dz - dz_to_b
 
-
         ELSEIF (dz < 0 .AND. rx < rz .AND. ry < rz) THEN
 
             dx_to_b = (lz * dx/dz)
@@ -626,103 +625,9 @@ MODULE particle_boundaries_mod
         END IF
 
         ! get face after x/y/z have (potentially) been altered
-        CALL get_current_face(temp_grid, x, y, z, iface)
+        CALL get_exit_face(temp_grid, x, y, z, dist, iface)
 
     END SUBROUTINE move_to_boundary
-
-    SUBROUTINE get_current_face(igrid, x, y, z, iface)
-
-        ! subroutine arguments
-        INTEGER(intk), INTENT(in) :: igrid
-        REAL(realk), INTENT(in) :: x, y, z
-        INTEGER(intk), INTENT(out) :: iface
-
-        ! local variables
-        REAL(realk) :: minx, maxx, miny, maxy, minz, maxz
-
-        CALL get_bbox(minx, maxx, miny, maxy, minz, maxz, igrid)
-
-        IF (x == minx) THEN !-------------------------------------------------------- low x
-            IF (y == miny) THEN !--------------------------------------------- low y, low x
-                IF (z == minz) THEN !---------------------------------- low z, low y, low x
-                    iface = 19
-                ELSEIF (minz < z .AND. z < maxz) THEN !---------------- mid z, low y, low x
-                    iface = 7
-                ELSEIF (z == maxz) THEN !----------------------------- high z, low y, low x
-                    iface = 20
-                END IF
-            ELSEIF (miny < y .AND. y < maxy) THEN !--------------------------- mid y, low x
-                IF (z == minz) THEN !---------------------------------- low z, mid y, low x
-                    iface = 9
-                ELSEIF (minz < z .AND. z < maxz) THEN !---------------- mid z, mid y, low x
-                    iface = 1
-                ELSEIF (z == maxz) THEN !----------------------------- high z, mid y, low x
-                    iface = 10
-                END IF
-            ELSEIF (y == maxy) THEN !---------------------------------------- high y, low x
-                IF (z == minz) THEN !--------------------------------- low z, high y, low x
-                    iface = 21
-                ELSEIF (minz < z .AND. z < maxz) THEN !--------------- mid z, high y, low x
-                    iface = 8
-                ELSEIF (z == maxz) THEN !---------------------------- high z, high y, low x
-                    iface = 22
-                END IF
-            END IF
-        ELSEIF (minx < x .AND. x < maxx) THEN !-------------------------------------- mid x
-            IF (y == miny) THEN !--------------------------------------------- low y, mid x
-                IF (z == minz) THEN !---------------------------------- low z, low y, mid x
-                    iface = 15
-                ELSEIF (minz < z .AND. z < maxz) THEN !---------------- mid z, low y, mid x
-                    iface = 3
-                ELSEIF (z == maxz) THEN !----------------------------- high z, low y, mid x
-                    iface = 16
-                END IF
-            ELSEIF (miny < y .AND. y < maxy) THEN !--------------------------- mid y, mid x
-                IF (z == minz) THEN !---------------------------------- low z, mid y, mid x
-                    iface = 5
-                ELSEIF (minz < z .AND. z < maxz) THEN !---------------- mid z, mid y, mid x
-                    iface = 0
-                ELSEIF (z == maxz) THEN !----------------------------- high z, mid y, mid x
-                    iface = 6
-                END IF
-            ELSEIF (y == maxy) THEN !---------------------------------------- high y, mid x
-                IF (z == minz) THEN !--------------------------------- low z, high y, mid x
-                    iface = 17
-                ELSEIF (minz < z .AND. z < maxz) THEN !--------------- mid z, high y, mid x
-                    iface = 4
-                ELSEIF (z == maxz) THEN !---------------------------- high z, high y, mid x
-                    iface = 18
-                END IF
-            END IF
-        ELSEIF (x == maxx) THEN !--------------------------------------------------- high x
-            IF (y == miny) THEN !-------------------------------------------- low y, high x
-                IF (z == minz) THEN !--------------------------------- low z, low y, high x
-                    iface = 23
-                ELSEIF (minz < z .AND. z < maxz) THEN !--------------- mid z, low y, high x
-                    iface = 11
-                ELSEIF (z == maxz) THEN !---------------------------- high z, low y, high x
-                    iface = 24
-                END IF
-            ELSEIF (miny < y .AND. y < maxy) THEN !-------------------------- mid y, high x
-                IF (z == minz) THEN !--------------------------------- low z, mid y, high x
-                    iface = 13
-                ELSEIF (minz < z .AND. z < maxz) THEN !--------------- mid z, mid y, high x
-                    iface = 2
-                ELSEIF (z == maxz) THEN !---------------------------- high z, mid y, high x
-                    iface = 14
-                END IF
-            ELSEIF (y == maxy) THEN !--------------------------------------- high y, high x
-                IF (z == minz) THEN !-------------------------------- low z, high y, high x
-                    iface = 25
-                ELSEIF (minz < z .AND. z < maxz) THEN !-------------- mid z, high y, high x
-                    iface = 12
-                ELSEIF (z == maxz) THEN !--------------------------- high z, high y, high x
-                    iface = 26
-                END IF
-            END IF
-        END IF
-
-    END SUBROUTINE get_current_face
 
     SUBROUTINE apply_periodic_boundary(x, y, z, oldgrid, newgrid, iface)
 
@@ -806,93 +711,5 @@ MODULE particle_boundaries_mod
         CALL reflect_at_boundary(dx, dy, dz, n1, n2, n3)
 
     END SUBROUTINE reflect_at_obstacle
-
-    SUBROUTINE update_coordinates(oldgrid, newgrid, x, y, z)
-
-        ! subroutine arguments
-        INTEGER(intk), INTENT(in) :: oldgrid, newgrid
-        REAL(realk), INTENT(inout) :: x, y, z
-
-        ! local variables
-        REAL(realk) :: old_minx, old_maxx, old_miny, old_maxy, old_minz, old_maxz, &
-         new_minx, new_maxx, new_miny, new_maxy, new_minz, new_maxz
-        LOGICAL :: passed_pb = .FALSE.
-
-        CALL get_bbox(old_minx, old_maxx, old_miny, old_maxy, old_minz, old_maxz, oldgrid)
-        CALL get_bbox(new_minx, new_maxx, new_miny, new_maxy, new_minz, new_maxz, newgrid)
-
-        IF (x < new_minx) THEN
-            x = new_maxx - ABS(x - old_minx)
-            passed_pb = .TRUE.
-        END IF
-
-        IF (new_maxx < x) THEN
-            x = new_minx + ABS(x - old_maxx)
-            passed_pb = .TRUE.
-        END IF
-
-        IF (y < new_miny) THEN
-            y = new_maxy - ABS(y - old_miny)
-            passed_pb = .TRUE.
-        END IF
-
-        IF (new_maxy < y) THEN
-            y = new_miny + ABS(y - old_maxy)
-            passed_pb = .TRUE.
-        END IF
-
-        IF (z < new_minz) THEN
-            z = new_maxz - ABS(z - old_minz)
-            passed_pb = .TRUE.
-        END IF
-
-        IF (new_maxz < z) THEN
-            z = new_minz + ABS(z - old_maxz)
-            passed_pb = .TRUE.
-        END IF
-
-    END SUBROUTINE update_coordinates
-
-    function is_inside_grid(igrid, x, y, z) result(res)
-
-        ! subroutine arguments
-        INTEGER(intk), INTENT(in) :: igrid
-        REAL(realk), INTENT(in) :: x, y, z
-
-        ! local variables
-        REAL(realk) :: minx, maxx, miny, maxy, minz, maxz
-
-        ! return value
-        LOGICAL :: res
-
-        res = .TRUE.
-
-        CALL get_bbox(minx, maxx, miny, maxy, minz, maxz, igrid)
-
-        IF (x < minx) THEN
-            res = .FALSE.
-        END IF
-
-        IF (x > maxx) THEN
-            res = .FALSE.
-        END IF
-
-        IF (y < miny) THEN
-            res = .FALSE.
-        END IF
-
-        IF (y > maxy) THEN
-            res = .FALSE.
-        END IF
-
-        IF (z < minz) THEN
-            res = .FALSE.
-        END IF
-
-        IF (z > maxz) THEN
-            res = .FALSE.
-        END IF
-
-    END FUNCTION is_inside_grid
 
 END MODULE particle_boundaries_mod
