@@ -5,6 +5,7 @@ MODULE particle_boundaries_mod
 
     USE particle_list_mod
     USE particle_obstacles_mod
+    USE particle_utils_mod
 
     IMPLICIT NONE
 
@@ -220,9 +221,12 @@ MODULE particle_boundaries_mod
 
         ! local variables
         INTEGER(intk) :: temp_grid, iface, iobst, grid_bc, destproc
+        INTEGER(intk) :: counter
         INTEGER(intk) :: neighbours(26)
         REAL(realk) :: x, y, z
+        REAL(realk) :: dx_step, dy_step, dz_step
         REAL(realk) :: dx_from_here, dy_from_here, dz_from_here
+        REAL(realk) :: dx_eff, dy_eff, dz_eff
         REAL(realk) :: epsilon
         REAL(realk) :: n1, n2, n3
 
@@ -242,6 +246,10 @@ MODULE particle_boundaries_mod
         dy_from_here = dy
         dz_from_here = dz
 
+        dx_eff = 0.0
+        dy_eff = 0.0
+        dz_eff = 0.0
+
         iobst = 0
 
         SELECT CASE (TRIM(particle_terminal))
@@ -254,7 +262,15 @@ MODULE particle_boundaries_mod
                 WRITE(*, '()')
         END SELECT
 
-        DO WHILE (epsilon < SQRT(dx_from_here**(2) + dy_from_here**(2) + dz_from_here**(2)))
+        counter = 1
+        DO WHILE (epsilon < SQRT(dx_from_here**(2) + dy_from_here**(2) + dz_from_here**(2)) .AND. counter <= 10)
+
+            CALL move_to_boundary(temp_grid, x, y, z, &
+             dx_from_here, dy_from_here, dz_from_here, dx_step, dy_step, dz_step, iface, iobst)
+
+            dx_eff = dx_eff + dx_step
+            dy_eff = dy_eff + dy_step
+            dz_eff = dz_eff + dz_step
 
             SELECT CASE (TRIM(particle_terminal))
                 CASE ("none")
@@ -266,8 +282,6 @@ MODULE particle_boundaries_mod
                     WRITE(*, *) "dx/dy/dz:", dx_from_here, dy_from_here, dz_from_here
                     WRITE(*, '()')
             END SELECT
-
-            CALL move_to_boundary(temp_grid, x, y, z, dx_from_here, dy_from_here, dz_from_here, iface, iobst)
 
             IF (0 < iobst) THEN
 
@@ -298,6 +312,8 @@ MODULE particle_boundaries_mod
                 particle_boundaries%face_normals(2, iface, temp_grid), &
                 particle_boundaries%face_normals(3, iface, temp_grid))
 
+                CALL update_coordinates2(temp_grid, particle_boundaries%face_neighbours(iface, temp_grid), iface, x, y, z)
+
                 temp_grid = particle_boundaries%face_neighbours(iface, temp_grid)
 
             END IF
@@ -313,21 +329,14 @@ MODULE particle_boundaries_mod
                     WRITE(*, '()')
             END SELECT
 
+            counter = counter + 1
+
         END DO
 
-        !IF ( destproc > numprocs .OR. destproc < 0 ) THEN
-        !    WRITE(*,*) 'Ill-addressed particle to proc', destproc
-        !    CALL errr(__FILE__, __LINE__)
-        !END IF
-
-        !IF (destproc /= myid) THEN
-        !    particle%state = 4
-        !END IF
-
         ! do not update the particle grid here!
-        particle%x = x
-        particle%y = y
-        particle%z = z
+        particle%x = particle%x + dx_eff
+        particle%y = particle%y + dy_eff
+        particle%z = particle%z + dz_eff
 
         CALL update_particle_cell(particle)
 
@@ -346,111 +355,28 @@ MODULE particle_boundaries_mod
     !-----------------------------------
 
     ! This subroutine only considers grids on the same level
-    ! CAUTION: Here, igrid refers to the grid the particle coordinates are currently on and of which the boundaries are relevant.
+    ! CAUTION: Here, temp_grid refers to the grid the particle coordinates are currently on and of which the boundaries are relevant.
     ! This might NOT be particle%igrid, which is used to deduce the velocity from.
-    SUBROUTINE move_to_boundary(igrid, x, y, z, dx, dy, dz, iface, iobst)
+    SUBROUTINE move_to_boundary(temp_grid, x, y, z, dx, dy, dz, dx_to_b, dy_to_b, dz_to_b, iface, iobst)
 
         ! subroutine arguments
-        INTEGER(intk), INTENT(in) :: igrid
+        INTEGER(intk), INTENT(inout) :: temp_grid
         REAL(realk), INTENT(inout) :: x, y, z
         REAL(realk), INTENT(inout) :: dx, dy, dz
+        REAL(realk), INTENT(out) :: dx_to_b, dy_to_b, dz_to_b
         INTEGER(intk), INTENT(out) :: iface
         INTEGER(intk), INTENT(inout) :: iobst
 
         !local variables
         INTEGER(intk) :: i, nobst
+        REAL(realk) :: dist
         REAL(realk) :: minx, maxx, miny, maxy, minz, maxz
-        REAL(realk) :: lx, ly, lz, rx, ry, rz, dx_to_b, dy_to_b, dz_to_b
+        REAL(realk) :: lx, ly, lz, rx, ry, rz
         REAL(realk) :: s, sa, sb, smin, a, b, c, d, cx, cy, cz, r
 
-        CALL get_bbox(minx, maxx, miny, maxy, minz, maxz, igrid)
+        CALL get_bbox(minx, maxx, miny, maxy, minz, maxz, temp_grid)
 
-        ! check regarding arithmetic errors
-        IF (x < minx) THEN
-                        SELECT CASE (TRIM(particle_terminal))
-                CASE ("none")
-                    CONTINUE
-                CASE ("normal")
-                    WRITE(*, *) "WARNING: In move_to_boundary: Particle outside of grid boundaries (px < minx)! Setting px to minx."
-                    WRITE(*, '()')
-                CASE ("verbose")
-                    WRITE(*, *) "WARNING: In move_to_boundary: Particle outside of grid boundaries (px < minx)! Setting px to minx."
-                    WRITE(*, '()')
-            END SELECT
-            x = minx
-        END IF
-
-        IF (x > maxx) THEN
-            SELECT CASE (TRIM(particle_terminal))
-                CASE ("none")
-                    CONTINUE
-                CASE ("normal")
-                    WRITE(*, *) "WARNING: In move_to_boundary: Particle outside of grid boundaries (px < minx)! Setting px to minx."
-                    WRITE(*, '()')
-                CASE ("verbose")
-                    WRITE(*, *) "WARNING: In move_to_boundary: Particle outside of grid boundaries (px > maxx)! Setting px to maxx."
-                    WRITE(*, '()')
-            END SELECT
-            x = maxx
-        END IF
-
-        IF (y < miny) THEN
-                        SELECT CASE (TRIM(particle_terminal))
-                CASE ("none")
-                    CONTINUE
-                CASE ("normal")
-                    WRITE(*, *) "WARNING: In move_to_boundary: Particle outside of grid boundaries (py < miny)! Setting py to miny."
-                    WRITE(*, '()')
-                CASE ("verbose")
-                    WRITE(*, *) "WARNING: In move_to_boundary: Particle outside of grid boundaries (py < miny)! Setting py to miny."
-                    WRITE(*, '()')
-            END SELECT
-            y = miny
-        END IF
-
-        IF (y > maxy) THEN
-            SELECT CASE (TRIM(particle_terminal))
-                CASE ("none")
-                    CONTINUE
-                CASE ("normal")
-                    WRITE(*, *) "WARNING: In move_to_boundary: Particle outside of grid boundaries (py < miny)! Setting py to miny."
-                    WRITE(*, '()')
-                CASE ("verbose")
-                    WRITE(*, *) "WARNING: In move_to_boundary: Particle outside of grid boundaries (py > maxy)! Setting py to maxy."
-                    WRITE(*, '()')
-            END SELECT
-            y = maxy
-        END IF
-
-        IF (z < minz) THEN
-                        SELECT CASE (TRIM(particle_terminal))
-                CASE ("none")
-                    CONTINUE
-                CASE ("normal")
-                    WRITE(*, *) "WARNING: In move_to_boundary: Particle outside of grid boundaries (pz < minz)! Setting pz to minz."
-                    WRITE(*, '()')
-                CASE ("verbose")
-                    WRITE(*, *) "WARNING: In move_to_boundary: Particle outside of grid boundaries (pz < minz)! Setting pz to minz."
-                    WRITE(*, '()')
-            END SELECT
-            z = minz
-        END IF
-
-        IF (z > maxz) THEN
-            SELECT CASE (TRIM(particle_terminal))
-                CASE ("none")
-                    CONTINUE
-                CASE ("normal")
-                    WRITE(*, *) "WARNING: In move_to_boundary: Particle outside of grid boundaries (pz < minz)! Setting pz to minz."
-                    WRITE(*, '()')
-                CASE ("verbose")
-                    WRITE(*, *) "WARNING: In move_to_boundary: Particle outside of grid boundaries (pz > maxz)! Setting pz to maxz."
-                    WRITE(*, '()')
-            END SELECT
-            z = maxz
-        END IF
-
-        ! OBSTACLES
+        ! STEP 1 - OBSTACLES
         ! find intersection points of the line the particle moves on (straight) and the sphere surface
             ! particle path: X(s) = X + dX * s with s: [0, 1] (X is the vector (x/y/z))
             ! => |X + dX * s - C| =! r (C is the sphere center (cx/cy/cz))
@@ -546,20 +472,20 @@ MODULE particle_boundaries_mod
 
         END DO
 
-        ! GRID BOUNDARIES
+        ! STEP 2 - GRID BOUNDARIES
         ! now check if any grid boundary is reached before any obstacle is reached
 
         IF (dx < 0) THEN
             lx = (minx - x)
             IF(lx == 0) THEN
-                CALL get_current_face(igrid, x, y, z, iface)
+                CALL get_current_face(temp_grid, x, y, z, iface)
                 RETURN
             END IF
             rx = dx * s / lx
         ELSEIF (0 < dx) THEN
             lx = (maxx - x)
             IF(lx == 0) THEN
-                CALL get_current_face(igrid, x, y, z, iface)
+                CALL get_current_face(temp_grid, x, y, z, iface)
                 RETURN
             END IF
             rx = dx * s / lx
@@ -570,14 +496,14 @@ MODULE particle_boundaries_mod
         IF (dy < 0) THEN
             ly = (miny - y)
             IF(ly == 0) THEN
-                CALL get_current_face(igrid, x, y, z, iface)
+                CALL get_current_face(temp_grid, x, y, z, iface)
                 RETURN
             END IF
             ry = dy * s / ly
         ELSEIF (0 < dy) THEN
             ly = (maxy - y)
             IF(ly == 0) THEN
-                CALL get_current_face(igrid, x, y, z, iface)
+                CALL get_current_face(temp_grid, x, y, z, iface)
                 RETURN
             END IF
             ry = dy * s / ly
@@ -588,14 +514,14 @@ MODULE particle_boundaries_mod
         IF (dz < 0) THEN
             lz = (minz - z)
             IF(lz == 0) THEN
-                CALL get_current_face(igrid, x, y, z, iface)
+                CALL get_current_face(temp_grid, x, y, z, iface)
                 RETURN
             END IF
             rz = dz * s / lz
         ELSEIF (0 < dz) THEN
             lz = (maxz - z)
             IF(lz == 0) THEN
-                CALL get_current_face(igrid, x, y, z, iface)
+                CALL get_current_face(temp_grid, x, y, z, iface)
                 RETURN
             END IF
             rz = dz * s / lz
@@ -605,12 +531,15 @@ MODULE particle_boundaries_mod
 
         IF (rx < 1.0_realk .AND. ry < 1.0_realk .AND. rz < 1.0_realk) THEN
 
-            x = x + dx * s
-            y = y + dy * s
-            z = z + dz * s
-            dx = dx * (1 - s)
-            dy = dy * (1 - s)
-            dz = dz * (1 - s)
+            dx_to_b = dx * s
+            dy_to_b = dy * s
+            dz_to_b = dz * s
+            x = x + dx_to_b
+            y = y + dy_to_b
+            z = z + dz_to_b
+            dx = dx - dx_to_b
+            dy = dy - dy_to_b
+            dz = dz - dz_to_b
 
             iface = 0
 
@@ -697,7 +626,7 @@ MODULE particle_boundaries_mod
         END IF
 
         ! get face after x/y/z have (potentially) been altered
-        CALL get_current_face(igrid, x, y, z, iface)
+        CALL get_current_face(temp_grid, x, y, z, iface)
 
     END SUBROUTINE move_to_boundary
 

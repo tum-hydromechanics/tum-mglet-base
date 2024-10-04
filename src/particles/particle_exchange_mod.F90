@@ -88,73 +88,6 @@ MODULE particle_exchange_mod
         3, 2, 4, 5, &
         3, 2, 4, 6 /), SHAPE(facelist))
 
-    ! These patterns come from a Python program, however, it was discovered,
-    ! that the GC fcorr-stencils need in inner corners a special rescue
-    ! neighbor. fcorr-stencils exist from 3..ii-1 and so on. In the inner
-    ! corners in a three-grid configuration, in the front-left (8),
-    ! front-top (10) and right-top (16), these need data to come from
-    ! the grids that treat the face-normal velocity also face-normal. This is
-    ! because the face-normal and face-tangential velocities are
-    ! treated diffrently.
-    !
-    ! The original un-altered order of these faces are in the comment
-    ! behind the adapted ones.
-    INTEGER(intk), PARAMETER :: rescue_dir(7, 26) = RESHAPE((/ &
-        1, 0, 0, 0, 0, 0, 0, &
-        2, 0, 0, 0, 0, 0, 0, &
-        3, 0, 0, 0, 0, 0, 0, &
-        4, 0, 0, 0, 0, 0, 0, &
-        5, 0, 0, 0, 0, 0, 0, &
-        6, 0, 0, 0, 0, 0, 0, &
-        7, 1, 3, 0, 0, 0, 0, &
-        8, 4, 1, 0, 0, 0, 0, &  ! 8, 1, 4, 0, 0, 0, 0, &
-        9, 1, 5, 0, 0, 0, 0, &
-        10, 6, 1, 0, 0, 0, 0, &  ! 10, 1, 6, 0, 0, 0, 0, &
-        11, 2, 3, 0, 0, 0, 0, &
-        12, 2, 4, 0, 0, 0, 0, &
-        13, 2, 5, 0, 0, 0, 0, &
-        14, 2, 6, 0, 0, 0, 0, &
-        15, 3, 5, 0, 0, 0, 0, &
-        16, 6, 3, 0, 0, 0, 0, &  ! 16, 3, 6, 0, 0, 0, 0, &
-        17, 4, 5, 0, 0, 0, 0, &
-        18, 4, 6, 0, 0, 0, 0, &
-        19, 7, 9, 15, 1, 3, 5, &
-        20, 7, 10, 16, 1, 3, 6, &
-        21, 8, 9, 17, 1, 4, 5, &
-        22, 8, 10, 18, 1, 4, 6, &
-        23, 11, 13, 15, 2, 3, 5, &
-        24, 11, 14, 16, 2, 3, 6, &
-        25, 12, 13, 17, 2, 4, 5, &
-        26, 12, 14, 18, 2, 4, 6 /), SHAPE(rescue_dir))
-
-    INTEGER(intk), PARAMETER :: rescue_nbr(7, 26) = RESHAPE((/ &
-        2, 0, 0, 0, 0, 0, 0, &
-        1, 0, 0, 0, 0, 0, 0, &
-        4, 0, 0, 0, 0, 0, 0, &
-        3, 0, 0, 0, 0, 0, 0, &
-        6, 0, 0, 0, 0, 0, 0, &
-        5, 0, 0, 0, 0, 0, 0, &
-        12, 11, 8, 0, 0, 0, 0, &
-        11, 7, 12, 0, 0, 0, 0, &  ! 11, 12, 7, 0, 0, 0, 0, &
-        14, 13, 10, 0, 0, 0, 0, &
-        13, 9, 14, 0, 0, 0, 0, &  ! 13, 14, 9, 0, 0, 0, 0, &
-        8, 7, 12, 0, 0, 0, 0, &
-        7, 8, 11, 0, 0, 0, 0, &
-        10, 9, 14, 0, 0, 0, 0, &
-        9, 10, 13, 0, 0, 0, 0, &
-        18, 17, 16, 0, 0, 0, 0, &
-        17, 15, 18, 0, 0, 0, 0, &  ! 17, 18, 15, 0, 0, 0, 0, &
-        16, 15, 18, 0, 0, 0, 0, &
-        15, 16, 17, 0, 0, 0, 0, &
-        26, 25, 24, 22, 23, 21, 20, &
-        25, 26, 23, 21, 24, 22, 19, &
-        24, 23, 26, 20, 25, 19, 22, &
-        23, 24, 25, 19, 26, 20, 21, &
-        22, 21, 20, 26, 19, 25, 24, &
-        21, 22, 19, 25, 20, 26, 23, &
-        20, 19, 22, 24, 21, 23, 26, &
-        19, 20, 21, 23, 22, 24, 25 /), SHAPE(rescue_nbr))
-
         ! Publicly callable functions of module
         PUBLIC :: init_particle_exchange, exchange_particles, finish_particle_exchange, get_target_grid !, prepare_particle_exchange
 
@@ -795,73 +728,6 @@ CONTAINS
 
     END SUBROUTINE init_particle_exchange
 
-!    ! JULIUS: from my understanding this is obsolete here, not sure though...
-!    SUBROUTINE get_nbrs(iface, neighbours, nbrgrid, nbrface)
-!        INTEGER(intk), INTENT(IN) :: iface
-!        INTEGER(intk), INTENT(IN) :: neighbours(26)
-!        INTEGER(intk), INTENT(OUT) :: nbrgrid
-!        INTEGER(intk), INTENT(OUT) :: nbrface
-!
-!        INTEGER(intk) :: n_rescue, i, dir
-!        INTEGER(intk) :: iface1, iface2, iface3
-!        INTEGER(intk) :: itypbc1, itypbc2, itypbc3
-!
-!        ! Should be 7...
-!        n_rescue = SIZE(rescue_nbr, 1)
-!
-!        ! 0 means no connect
-!        nbrgrid = 0
-!        nbrface = 0
-!        DO i = 1, n_rescue
-!            dir = rescue_dir(i, iface)
-!
-!            ! rescue_dir is ordered and when a 0 is encountered there is
-!            ! nothing more to do...
-!            IF (dir == 0) THEN
-!                EXIT
-!            END IF
-!
-!            ! If there is a neighbour in this position, use this
-!            IF (neighbours(dir) > 0) THEN
-!                nbrgrid = neighbours(dir)
-!                nbrface = rescue_nbr(i, iface)
-!
-!                ! Check if this is suited for a connect (symmetry req.)
-!                ! This require knowledge of the global grid structure -
-!                ! currently this is OK.
-!                ! JULIUS: Is this ever relevant for the init connect method? See condition regarding boundaries
-!                ! that is checked for each face, e.g. line 690
-!                IF (nbrface > 18) THEN
-!                    ! Get adjacent primary faces
-!                    iface1 = facelist(2, nbrface)
-!                    iface2 = facelist(3, nbrface)
-!                    iface3 = facelist(4, nbrface)
-!
-!                    ! Get type of BC on these
-!                    itypbc1 = itypboconds(1, iface1, nbrgrid)
-!                    itypbc2 = itypboconds(1, iface2, nbrgrid)
-!                    itypbc3 = itypboconds(1, iface3, nbrgrid)
-!
-!                    ! If none of the neighboring faces are CON or CO1, the connect
-!                    ! should not be carried out - check next neighbour
-!                    IF ((.NOT. (itypbc1 == 7 .OR. itypbc1 == 19)) .AND. &
-!                            (.NOT. (itypbc2 == 7 .OR. itypbc2 == 19)) .AND. &
-!                            (.NOT. (itypbc3 == 7 .OR. itypbc3 == 19))) THEN
-!                        ! Reset neighbour information and cycle loop
-!                        nbrgrid = 0
-!                        nbrface = 0
-!                        CYCLE
-!                    END IF
-!                END IF
-!
-!                ! If sofar, all is good!
-!                EXIT
-!            END IF
-!        END DO
-!    END SUBROUTINE get_nbrs
-
-
-
     SUBROUTINE finish_particle_exchange()
         isInit = .FALSE.
 
@@ -1142,7 +1008,9 @@ CONTAINS
         ! local variables
         REAL(realk) :: old_minx, old_maxx, old_miny, old_maxy, old_minz, old_maxz, &
          new_minx, new_maxx, new_miny, new_maxy, new_minz, new_maxz
-        LOGICAL :: passed_pb = .FALSE.
+        LOGICAL :: passed_pb
+
+        passed_pb = .FALSE.
 
         CALL get_bbox(old_minx, old_maxx, old_miny, old_maxy, old_minz, old_maxz, particle%igrid)
         CALL get_bbox(new_minx, new_maxx, new_miny, new_maxy, new_minz, new_maxz, destgrid)

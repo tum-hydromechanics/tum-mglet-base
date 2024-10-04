@@ -2,6 +2,7 @@ add_library(particles STATIC
     particle_config_mod.F90
     particle_core_mod.F90
     particle_list_mod.F90
+    particle_utils_mod.F90
     particle_dict_mod.F90
     particle_snapshot_mod.F90
     particle_obstacles_mod.F90
