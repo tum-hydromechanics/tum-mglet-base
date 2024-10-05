@@ -44,6 +44,7 @@ CONTAINS
         CALL stop_timer(401)
 
         CALL start_timer(402)
+
         DO l = 1, nsca
             ! Fetch fields
             CALL get_field(t, scalar(l)%name)
@@ -278,8 +279,6 @@ CONTAINS
         current_prt_gtgmoln = sca%prt(gtgmoln)
         current_prt_gtgmolp = sca%prt(gtgmolp)
 
-        !INTEGER :: current_gmol
-        !current_gmol =  sca%prt(gtgmoln)
 !$omp target data map(to: u, v, w, t, g, rdx, rdy, ddx, ddy, ddz, bt) map(tofrom: qtu, qtv, qtw)
     ! X direction
         IF (iles == 1) THEN
@@ -453,7 +452,36 @@ CONTAINS
     !$omp end target data
   
 
+        ! Special treatment at par boundaries
+        ! Substraction of downwind and addition of upwind T-value
+        ! to finally get an upwind scheme in case of flow towards coarse grid
         !$omp target data map(to: u, v, w, t, ddy, ddz, ddx) map(tofrom: qtu, qtv, qtw)
+        IF (nfro == 8) THEN
+            i =  3
+            !$omp target teams distribute parallel do collapse(2)
+            DO j = 3, jj-2
+                DO k = 3, kk-2
+                    adv = (ddy(j)*ddz(k)) * (u(k, j, i) - ABS(u(k, j, i))) &
+                        * 0.5 * 0.5 * (-t(k, j, i) + t(k, j, i+1))
+                    qtu(k, j, i) = qtu(k, j, i) + adv
+                END DO
+            END DO
+            !$omp end target teams distribute parallel do
+        END IF
+
+        IF (nbac == 8) THEN
+            i = ii-3
+            !$omp target teams distribute parallel do collapse(2)
+            DO j = 3, jj-2
+                DO k = 3, kk-2
+                    adv = (ddy(j)*ddz(k)) * (u(k, j, i) + ABS(u(k, j, i))) &
+                        * 0.5 * 0.5 * (t(k, j, i) - t(k, j, i+1))
+                    qtu(k, j, i) = qtu(k, j, i) + adv
+                END DO
+            END DO
+            !$omp end target teams distribute parallel do
+        END IF
+
         IF (nrgt == 8) THEN
             j = 3
             !$omp target teams distribute parallel do collapse(2)
