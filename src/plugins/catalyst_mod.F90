@@ -1,12 +1,7 @@
 MODULE catalyst_mod
 
     USE, INTRINSIC :: ISO_C_BINDING, ONLY: C_PTR, C_CHAR, C_INT, C_NULL_PTR, C_NULL_CHAR
-    USE precision_mod, ONLY: intk, realk
-    USE comms_mod, ONLY: myid, numprocs
-    USE grids_mod, ONLY: minlevel, maxlevel
-    USE config_mod
-    USE fort7_mod
-    USE err_mod
+    USE core_mod
 
     IMPLICIT NONE(type, external)
 
@@ -93,14 +88,18 @@ CONTAINS
             CALL errr(__FILE__, __LINE__)
         END IF
 
+        ! Only implemented for Paraview
         implementation_char = "paraview"
-
-        ! WRITE(*,*) LEN(TRIM(path_char))
-        ! WRITE(*,*) LEN((script_char))
 
         CALL pass_to_init( TRIM(script_char), &
             TRIM(implementation_char), TRIM(path_char) )
 
+        ! Auxiliary fields for C-ordered arrays
+        CALL set_field("U_C")
+        CALL set_field("V_C")
+        CALL set_field("W_C")
+
+        ! Declaring initialized
         isInit = .true.
 
     END SUBROUTINE init_catalyst
@@ -148,6 +147,8 @@ CONTAINS
         REAL(realk), INTENT(in) :: timeph
         REAL(realk), INTENT(in) :: dt
 
+        TYPE(field_t), POINTER :: u_c_f, v_c_f, w_c_f
+
         ! local variables
         TYPE(C_FUNPTR) :: cp_mgdims, cp_iterate_grids_lvl, &
                           cp_mgbasb, cp_get_bbox, &
@@ -176,6 +177,12 @@ CONTAINS
         c_nscal = INT( 1, kind=C_INT )   ! TO DO (!!!)
         c_lvlmin = INT( minlevel, kind=C_INT )
         c_lvlmax = INT( maxlevel, kind=C_INT )
+
+        ! preparing the C-ordered fields
+        CALL get_field(u_c_f, "U_C")
+        CALL get_field(v_c_f, "V_C")
+        CALL get_field(w_c_f, "W_C")
+        CALL field_to_c(u_c_f, v_c_f, w_c_f)
 
         ! calling the C function described in the interface
         CALL catalyst_trigger( &
@@ -406,6 +413,58 @@ CONTAINS
             if (i <= len(F_string)) F_string(i:) = ' '
         end if
     END SUBROUTINE
+
+
+    SUBROUTINE field_to_c(u_c_f, v_c_f, w_c_f)
+        ! Subroutine arguments
+        TYPE(field_t), INTENT(inout) :: u_c_f, v_c_f, w_c_f
+        ! Local variables
+        INTEGER(intk) :: i, igrid
+        INTEGER(intk) :: kk, jj, ii
+        TYPE(field_t), POINTER :: u_f, v_f, w_f
+        REAL(realk), POINTER, CONTIGUOUS :: arr_c(:, :, :), arr(:, :, :)
+        INTEGER, PARAMETER :: nbl = 2
+        CALL get_field(u_f, "U")
+        CALL get_field(v_f, "V")
+        CALL get_field(w_f, "W")
+
+        DO i = 1, nmygrids
+            igrid = mygrids(i)
+            CALL get_mgdims(kk, jj, ii, igrid)
+            ! treating U
+            CALL u_f%get_ptr(arr, igrid)
+            CALL u_c_f%get_ptr(arr_c, igrid)
+            CALL field_to_c_grid(kk, jj, ii, nbl, arr_c, arr)
+            ! treating V
+            CALL v_f%get_ptr(arr, igrid)
+            CALL v_c_f%get_ptr(arr_c, igrid)
+            CALL field_to_c_grid(kk, jj, ii, nbl, arr_c, arr)
+            ! treating W
+            CALL w_f%get_ptr(arr, igrid)
+            CALL w_c_f%get_ptr(arr_c, igrid)
+            CALL field_to_c_grid(kk, jj, ii, nbl, arr_c, arr)
+        END DO
+
+    END SUBROUTINE field_to_c
+
+
+    PURE SUBROUTINE field_to_c_grid(kk, jj, ii, nbl, arr_c, arr_f)
+        ! Subroutine arguments
+        INTEGER(intk), INTENT(in) :: kk, jj, ii, nbl
+        REAL(realk), INTENT(inout) :: arr_c(ii-2*nbl, jj-2*nbl, kk-2*nbl)
+        REAL(realk), INTENT(in) :: arr_f(kk, jj, ii)
+        ! Local variables
+        INTEGER :: k, j, i
+        ! Inversion of indices for usage in C
+        DO i = 1, ii-2*nbl
+            DO j = 1, jj-2*nbl
+                DO k = 1, kk-2*nbl
+                    arr_c(i, j, k) = arr_f(k+nbl, j+nbl, i+nbl)
+                END DO
+            END DO
+        END DO
+    END SUBROUTINE field_to_c_grid
+
 
 END MODULE catalyst_mod
 

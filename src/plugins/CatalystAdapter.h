@@ -4,6 +4,8 @@
 
 #include <catalyst.hpp>
 
+#include <mpi.h>
+
 #include <iostream>
 #include <string>
 #include <chrono>
@@ -79,6 +81,12 @@ void Execute(TransferFromMGLET* args)
     // Conduit node for the execution
     conduit_cpp::Node exec_params;
 
+    // testing MPI
+    // int numRanks(1), myRank(0);
+    // MPI_Comm_size(MPI_COMM_WORLD, &numRanks);
+    // MPI_Comm_rank(MPI_COMM_WORLD, &myRank);
+    // std::cout << numRanks << myRank << std::endl;
+
     // add cycle information
     auto state = exec_params["catalyst/state"];
     state["timestep"].set(args->istep);
@@ -151,29 +159,17 @@ void Execute(TransferFromMGLET* args)
 
                 args->cp_get_bbox( &minx, &maxx, &miny, &maxy, &minz, &maxz, &igrid );
 
-                char const *u_name = "U";
+                char const *u_name = "U_C";
                 args->cp_get_arrptr( &ptr_arr, &u_name, &igrid );
                 float (*vel_u) = (float*) ptr_arr;
 
-                char const *v_name = "V";
+                char const *v_name = "V_C";
                 args->cp_get_arrptr( &ptr_arr, &v_name, &igrid );
                 float (*vel_v) = (float*) ptr_arr;
 
-                char const *w_name = "W";
+                char const *w_name = "W_C";
                 args->cp_get_arrptr( &ptr_arr, &w_name, &igrid );
-                float (*vel_w) = (float*) ptr_arr;
-
-                char const *ua_name = "U_AVG";
-                args->cp_get_arrptr( &ptr_arr, &ua_name, &igrid );
-                float (*vel_u_avg) = (float*) ptr_arr;
-
-                char const *va_name = "V_AVG";
-                args->cp_get_arrptr( &ptr_arr, &va_name, &igrid );
-                float (*vel_v_avg) = (float*) ptr_arr;
-
-                char const *wa_name = "W_AVG";
-                args->cp_get_arrptr( &ptr_arr, &wa_name, &igrid );
-                float (*vel_w_avg) = (float*) ptr_arr;                
+                float (*vel_w) = (float*) ptr_arr;          
 
                 args->cp_get_xyzptr( &ptr_x, &ptr_y, &ptr_z, &igrid );
                 args->cp_get_dxyzptr( &ptr_dx, &ptr_dy, &ptr_dz, &igrid );
@@ -206,17 +202,17 @@ void Execute(TransferFromMGLET* args)
                 // start with coordsets
                 mesh["coordsets/coords/type"].set("uniform");
 
-                mesh["coordsets/coords/dims/i"].set(kk+1);
-                mesh["coordsets/coords/dims/j"].set(jj+1);
-                mesh["coordsets/coords/dims/k"].set(ii+1);
+                mesh["coordsets/coords/dims/i"].set(ii+1-4);
+                mesh["coordsets/coords/dims/j"].set(jj+1-4);
+                mesh["coordsets/coords/dims/k"].set(kk+1-4);
 
-                mesh["coordsets/coords/origin/x"].set(minz - 2.0 * mdz);
-                mesh["coordsets/coords/origin/y"].set(miny - 2.0 * mdy);
-                mesh["coordsets/coords/origin/z"].set(minx - 2.0 * mdx);
+                mesh["coordsets/coords/origin/x"].set(minx);
+                mesh["coordsets/coords/origin/y"].set(miny);
+                mesh["coordsets/coords/origin/z"].set(minz); 
 
-                mesh["coordsets/coords/spacing/dx"].set(mdz);
+                mesh["coordsets/coords/spacing/dx"].set(mdx);
                 mesh["coordsets/coords/spacing/dy"].set(mdy);
-                mesh["coordsets/coords/spacing/dz"].set(mdx);
+                mesh["coordsets/coords/spacing/dz"].set(mdz);
 
                 // Next, add topology
                 mesh["topologies/mesh/type"].set("uniform");
@@ -225,42 +221,26 @@ void Execute(TransferFromMGLET* args)
                 // Finally, add fields.
                 auto fields = mesh["fields"];
 
+                // number of value entries without boundary layer
+                const int nval = (ii-4)*(jj-4)*(kk-4);
+
                 // velocity_x is cell-data
                 fields["u/association"].set("element");
                 fields["u/topology"].set("mesh");
                 fields["u/volume_dependent"].set("false");
-                fields["u/values"].set_external(vel_u, (ii*jj*kk), 0, sizeof(float) );
-
-                // velocity_x is cell-data
-                fields["u_avg/association"].set("element");
-                fields["u_avg/topology"].set("mesh");
-                fields["u_avg/volume_dependent"].set("false");
-                fields["u_avg/values"].set_external(vel_u_avg, (ii*jj*kk), 0, sizeof(float) );
+                fields["u/values"].set_external(vel_u, nval, 0, sizeof(float) );
 
                 // velocity_y is cell-data
                 fields["v/association"].set("element");
                 fields["v/topology"].set("mesh");
                 fields["v/volume_dependent"].set("false");
-                fields["v/values"].set_external(vel_v, (ii*jj*kk), 0, sizeof(float) );
-
-                // velocity_y is cell-data
-                fields["v_avg/association"].set("element");
-                fields["v_avg/topology"].set("mesh");
-                fields["v_avg/volume_dependent"].set("false");
-                fields["v_avg/values"].set_external(vel_v_avg, (ii*jj*kk), 0, sizeof(float) );
+                fields["v/values"].set_external(vel_v, nval, 0, sizeof(float) );
 
                 // velocity_z is cell-data
                 fields["w/association"].set("element");
                 fields["w/topology"].set("mesh");
                 fields["w/volume_dependent"].set("false");
-                fields["w/values"].set_external(vel_w, (ii*jj*kk), 0, sizeof(float) );
-
-                // velocity_z is cell-data
-                fields["w_avg/association"].set("element");
-                fields["w_avg/topology"].set("mesh");
-                fields["w_avg/volume_dependent"].set("false");
-                fields["w_avg/values"].set_external(vel_w_avg, (ii*jj*kk), 0, sizeof(float) );
-
+                fields["w/values"].set_external(vel_w, nval, 0, sizeof(float) );
             }
         }
     }

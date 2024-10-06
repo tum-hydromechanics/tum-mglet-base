@@ -1,7 +1,7 @@
 {
     "time": {
         "dt": 0.05,
-        "mtstep": 4000,
+        "mtstep": 40000,
         "tstat": 0.0,
         "itinfo": 10,
 	"itsamp": 10,
