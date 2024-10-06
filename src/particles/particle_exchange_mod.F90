@@ -5,6 +5,7 @@ MODULE particle_exchange_mod
     USE particle_list_mod
     USE particle_core_mod
     USE particle_utils_mod
+    USE particle_gridstat_mod
 
     IMPLICIT NONE (type, external)
 
@@ -110,12 +111,13 @@ CONTAINS
 !
 !    END SUBROUTINE prepare_particle_exchange
 
-    SUBROUTINE exchange_particles(particle_list)
+    SUBROUTINE exchange_particles(particle_list, itstep)
 
         IMPLICIT NONE
 
         ! subroutine argument
         TYPE(particle_list_t), INTENT(inout) :: particle_list
+        INTEGER(intk), INTENT(in) :: itstep
 
         !local variables
         INTEGER(intk) :: i, j, iproc, pos, num
@@ -168,12 +170,18 @@ CONTAINS
 
             ELSE
 
+                ! for gridstat
+                CALL deregister_particle(particle_list%particles(i), itstep)
+
                 ! particle changes the grid
                 IF ( destproc == myid ) THEN
 
                     ! particle remains on process
                     particle_list%particles(i)%igrid = destgrid
                     CALL set_particle_cell(particle_list%particles(i))
+
+                    ! for gridstat
+                    CALL register_particle(particle_list%particles(i), itstep)
 
                 ELSE
 
@@ -391,7 +399,12 @@ CONTAINS
                     WRITE(*,*) "Particle delivered to wrong proc", i, recvBufParticle(i)%iproc, myid
                     CALL errr(__FILE__, __LINE__)
                 END IF
-                CALL set_particle_cell( recvBufParticle(i) )
+
+                CALL set_particle_cell(recvBufParticle(i))
+
+                ! for gridstat
+                CALL register_particle(recvBufParticle(i), itstep)
+
             END DO
         END IF
 
@@ -889,19 +902,21 @@ CONTAINS
         CALL MPI_Get_address(foo%ipart, disp(2))
         CALL MPI_Get_address(foo%iproc, disp(3))
         CALL MPI_Get_address(foo%igrid, disp(4))
-        CALL MPI_Get_address(foo%ijkcell, disp(5))
-        CALL MPI_Get_address(foo%x, disp(6))
-        CALL MPI_Get_address(foo%y, disp(7))
-        CALL MPI_Get_address(foo%z, disp(8))
+        CALL MPI_Get_address(foo%itstep, disp(5))
+        CALL MPI_Get_address(foo%ijkcell, disp(6))
+        CALL MPI_Get_address(foo%x, disp(7))
+        CALL MPI_Get_address(foo%y, disp(8))
+        CALL MPI_Get_address(foo%z, disp(9))
 
         types(1) = mglet_mpi_int    ! state
         types(2) = mglet_mpi_int    ! ipart
         types(3) = mglet_mpi_int    ! iproc
         types(4) = mglet_mpi_int    ! igrid
-        types(5) = triple_int_mpi_type  ! ijkcell(3)
-        types(6) = mglet_mpi_real    ! x
-        types(7) = mglet_mpi_real    ! y
-        types(8) = mglet_mpi_real    ! z
+        types(5) = mglet_mpi_int    ! itstep
+        types(6) = triple_int_mpi_type  ! ijkcell(3)
+        types(7) = mglet_mpi_real    ! x
+        types(8) = mglet_mpi_real    ! y
+        types(9) = mglet_mpi_real    ! z
 
         ! computing the displacements in byte
         base = disp(1)

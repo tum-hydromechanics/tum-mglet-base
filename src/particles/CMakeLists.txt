@@ -7,6 +7,7 @@ add_library(particles STATIC
     particle_snapshot_mod.F90
     particle_obstacles_mod.F90
     particle_boundaries_mod.F90
+    particle_gridstat_mod.F90
     particle_exchange_mod.F90
     particle_interpolation_mod.F90
     particle_timeintegration_mod.F90

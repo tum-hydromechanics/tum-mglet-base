@@ -195,6 +195,9 @@ CONTAINS
         END IF
         CALL stop_timer(900)
 
+        ! Initialize Grid Partile Statistics
+        CALL init_gridstat_collection(mtstep) ! <------------------------------------particles
+
     END SUBROUTINE init_timeloop
 
 
@@ -210,8 +213,10 @@ CONTAINS
             ncellstot)
 
         IF (dsim_particles .AND. dwrite_particles) THEN
-            CALL write_psnapshot_timeinfo()
+            CALL write_psnapshot_timeinfo() ! <------------------------------------particles
         END IF
+
+        CALL write_gridstat()
 
         CALL finish_statistics()
     END SUBROUTINE finish_timeloop
@@ -243,10 +248,12 @@ CONTAINS
 
         timeintegration: DO itstep = 1, mtstep
 
+            ! for gridstat
+            CALL advance_np_counter(itstep) ! <------------------------------------particles
             ! Timeintegrate particles
             CALL start_timer(900)
             IF (dsim_particles) THEN
-                CALL timeintegrate_particles(dt) ! <------------------------------------particles
+                CALL timeintegrate_particles(itstep, dt) ! <------------------------------------particles
             END IF
             CALL stop_timer(900)
 

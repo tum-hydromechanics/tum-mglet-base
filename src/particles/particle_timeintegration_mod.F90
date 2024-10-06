@@ -9,9 +9,10 @@ MODULE particle_timeintegration_mod
 
 CONTAINS
 
-    SUBROUTINE timeintegrate_particles(dt)
+    SUBROUTINE timeintegrate_particles(itstep, dt)
 
         ! subroutine arguments
+        INTEGER(intk), INTENT(in) :: itstep
         REAL(realk), INTENT(in) :: dt
 
         ! local variables
@@ -183,7 +184,7 @@ CONTAINS
 
         ! migration of particles between grids
         ! and also across MPI ranks (processes)
-        CALL exchange_particles(my_particle_list)
+        CALL exchange_particles(my_particle_list, itstep)
 
         CALL stop_timer(910)
 

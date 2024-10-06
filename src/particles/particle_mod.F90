@@ -4,9 +4,9 @@ MODULE particle_mod
     ! Initialization of the particle simulation.
     ! Finishing of the particle simulation.
 
-
     USE particle_timeintegration_mod
     USE particle_snapshot_mod
+    USE particle_gridstat_mod
 
     IMPLICIT NONE(type, external)
 

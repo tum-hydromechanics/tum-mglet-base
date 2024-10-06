@@ -12,7 +12,7 @@ MODULE particle_core_mod
 
     IMPLICIT NONE
 
-    INTEGER(c_intk), PARAMETER :: particle_mpi_elems = 8
+    INTEGER(c_intk), PARAMETER :: particle_mpi_elems = 9
 
     ! C binding for MPI compatability!
     TYPE, BIND(C) :: baseparticle_t
@@ -29,6 +29,9 @@ MODULE particle_core_mod
         INTEGER(c_intk) :: iproc = -1
         INTEGER(c_intk) :: igrid = -1
 
+        !itstep is the timestep at which a particle entered its current grid (for residence time tracking)
+        INTEGER(c_intk) :: itstep = 0
+
         INTEGER(c_intk) :: ijkcell(3)
 
         REAL(c_realk) :: x = 0.0
@@ -42,7 +45,7 @@ MODULE particle_core_mod
 
 CONTAINS    !===================================
 
-    SUBROUTINE set_particle(particle, ipart, x, y, z, iproc, igrid, ijkcell)
+    SUBROUTINE set_particle(particle, ipart, x, y, z, iproc, igrid, ijkcell, itstep)
 
         ! subroutine arguments
         TYPE(baseparticle_t), INTENT(inout) :: particle
@@ -51,6 +54,7 @@ CONTAINS    !===================================
         INTEGER(intk), INTENT(in), OPTIONAL :: iproc
         INTEGER(intk), INTENT(in), OPTIONAL :: igrid
         INTEGER(intk), INTENT(in), OPTIONAL :: ijkcell(3)
+        INTEGER(intk), INTENT(in), OPTIONAL :: itstep
 
         particle%state = 1
         particle%ipart = ipart
@@ -75,6 +79,12 @@ CONTAINS    !===================================
             particle%ijkcell = ijkcell
         ELSEIF (particle%state >= 1) THEN
             CALL set_particle_cell(particle)
+        END IF
+
+        IF (PRESENT(itstep)) THEN
+            particle%itstep = itstep
+        ELSE
+            particle%itstep = 0
         END IF
 
     END SUBROUTINE set_particle
