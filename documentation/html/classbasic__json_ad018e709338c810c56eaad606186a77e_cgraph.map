@@ -1,0 +1,19 @@
+<map id="basic_json::sax_parse" name="basic_json::sax_parse">
+<area shape="rect" id="Node000001" title="generate SAX events" alt="" coords="5,35,157,60"/>
+<area shape="rect" id="Node000002" href="$classdetail_1_1binary__reader.html#a8e1b5452ae426e1d7b48761859e7f52d" title=" " alt="" coords="205,27,345,67"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="158,45,191,45,191,50,158,50"/>
+<area shape="rect" id="Node000003" href="$namespacedetail.html#a266fb3d4bf633ad6c506434cc91164da" title=" " alt="" coords="772,31,872,56"/>
+<area shape="poly" id="edge2_Node000002_Node000003" title=" " alt="" coords="346,42,393,41,559,37,724,38,758,39,758,44,724,43,559,43,393,46,346,47"/>
+<area shape="rect" id="Node000006" href="$classdetail_1_1parse__error.html#a07046ea9f33d28f120af188ed674d6df" title="create a parse error exception" alt="" coords="393,55,520,95"/>
+<area shape="poly" id="edge5_Node000002_Node000006" title=" " alt="" coords="346,56,380,61,379,66,345,61"/>
+<area shape="rect" id="Node000004" href="$namespacedetail.html#a89f967b745cf8df11ba9d59f93d97753" title=" " alt="" coords="927,5,1055,31"/>
+<area shape="poly" id="edge3_Node000003_Node000004" title=" " alt="" coords="872,33,913,27,914,32,873,39"/>
+<area shape="rect" id="Node000005" href="$namespacedetail.html#ac185140ed8c8fcc07a302a890b714b0d" title=" " alt="" coords="920,55,1063,80"/>
+<area shape="poly" id="edge4_Node000003_Node000005" title=" " alt="" coords="873,48,907,53,906,58,872,53"/>
+<area shape="poly" id="edge6_Node000006_Node000003" title=" " alt="" coords="520,67,758,46,759,51,521,72"/>
+<area shape="rect" id="Node000007" href="$classdetail_1_1exception.html#a6b4a786b5c1c25dd3edaceb1bf2d5120" title=" " alt="" coords="584,81,708,121"/>
+<area shape="poly" id="edge7_Node000006_Node000007" title=" " alt="" coords="521,81,570,88,569,93,520,86"/>
+<area shape="rect" id="Node000008" href="$classdetail_1_1exception.html#a8f1eb56b9964c8dd84d89d0da98d883b" title=" " alt="" coords="568,145,724,171"/>
+<area shape="poly" id="edge8_Node000006_Node000008" title=" " alt="" coords="494,93,569,130,590,138,588,143,567,135,492,98"/>
+<area shape="poly" id="edge9_Node000008_Node000003" title=" " alt="" coords="695,143,723,130,765,98,799,64,803,68,769,102,725,135,698,148"/>
+</map>

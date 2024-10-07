@@ -1,0 +1,7 @@
+<map id="freekante_mod::freekante" name="freekante_mod::freekante">
+<area shape="rect" id="Node000001" title=" " alt="" coords="5,13,176,38"/>
+<area shape="rect" id="Node000002" href="$namespacepunktekoordinaten__mod.html#a90249bf2c641f9907961d37441b3b0fb" title=" " alt="" coords="224,5,383,45"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="176,23,210,23,210,28,176,28"/>
+<area shape="rect" id="Node000003" href="$namespacecutcorner__mod.html#aaf052dd84ef63a987f684310bfe44ae0" title=" " alt="" coords="431,13,585,38"/>
+<area shape="poly" id="edge2_Node000002_Node000003" title=" " alt="" coords="383,23,417,23,417,28,383,28"/>
+</map>

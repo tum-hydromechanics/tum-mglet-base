@@ -1,0 +1,15 @@
+<map id="calcnormals_mod::calcnormals" name="calcnormals_mod::calcnormals">
+<area shape="rect" id="Node000001" title=" " alt="" coords="5,84,208,109"/>
+<area shape="rect" id="Node000002" href="$namespaceblockcheck__mod.html#a092c3e94c9276aa19b9fec02d6ee9895" title=" " alt="" coords="256,5,479,31"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="138,81,255,39,287,31,288,36,257,45,140,86"/>
+<area shape="rect" id="Node000003" href="$namespaceflzelle__mod.html#a524a83108c47f99f8c6999e53aea702f" title=" " alt="" coords="302,55,433,80"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="208,83,288,74,289,79,208,88"/>
+<area shape="rect" id="Node000004" href="$namespaceknotenundkanten__mod.html#a656e11fb3b418f267b1a0032cf5b2fbc" title=" " alt="" coords="291,105,444,145"/>
+<area shape="poly" id="edge3_Node000001_Node000004" title=" " alt="" coords="208,105,277,112,277,118,208,110"/>
+<area shape="rect" id="Node000005" href="$namespacepunktekoordinaten__mod.html#a24e67dd6e6c55aa974208c087c47bc11" title=" " alt="" coords="288,169,447,209"/>
+<area shape="poly" id="edge4_Node000001_Node000005" title=" " alt="" coords="138,107,257,154,281,162,279,167,255,159,136,112"/>
+<area shape="rect" id="Node000006" href="$namespacepunktekoordinaten__mod.html#a37275b5f3d5aef01c67a8d7691b8eb43" title=" " alt="" coords="527,169,685,209"/>
+<area shape="poly" id="edge5_Node000005_Node000006" title=" " alt="" coords="447,186,513,186,513,191,447,191"/>
+<area shape="rect" id="Node000007" href="$namespacecutcorner__mod.html#aaf052dd84ef63a987f684310bfe44ae0" title=" " alt="" coords="733,176,888,201"/>
+<area shape="poly" id="edge6_Node000006_Node000007" title=" " alt="" coords="685,186,719,186,719,191,685,191"/>
+</map>

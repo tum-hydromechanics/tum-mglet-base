@@ -1,0 +1,21 @@
+<map id="timer_mod::stop_timer" name="timer_mod::stop_timer">
+<area shape="rect" id="Node000001" title=" " alt="" coords="331,209,483,234"/>
+<area shape="rect" id="Node000002" href="$namespaceplugins__mod.html#a05b1786b60f00487ed04edb70a1c62f4" title=" " alt="" coords="110,5,277,45"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="390,198,347,129,317,92,281,59,261,48,264,43,284,55,321,88,352,126,395,195"/>
+<area shape="rect" id="Node000003" href="$namespaceconnect2__mod.html#aea2e84a84c92eb63011009d05f52be68" title=" " alt="" coords="113,70,274,95"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="385,200,341,153,312,129,281,109,255,98,257,93,284,104,315,125,344,150,389,196"/>
+<area shape="rect" id="Node000004" href="$namespacecore__mod.html#ada519aae8b6ca2a483d0a3416112f87b" title=" " alt="" coords="118,119,269,145"/>
+<area shape="poly" id="edge3_Node000001_Node000004" title=" " alt="" coords="371,204,329,182,282,160,245,147,246,142,284,155,332,177,374,200"/>
+<area shape="rect" id="Node000006" href="$namespaceplugins__mod.html#a2e3f840e5b29e042ce9aefbdc8537c91" title=" " alt="" coords="128,169,259,209"/>
+<area shape="poly" id="edge5_Node000001_Node000006" title=" " alt="" coords="317,211,258,202,259,196,317,205"/>
+<area shape="rect" id="Node000007" href="$namespaceplugins__mod.html#a26d1c74a54c212b1648c6b3b76fade59" title=" " alt="" coords="106,233,281,273"/>
+<area shape="poly" id="edge6_Node000001_Node000007" title=" " alt="" coords="317,237,281,243,280,238,317,232"/>
+<area shape="rect" id="Node000008" href="$namespacestatistics__mod.html#a8025cc9911d8290d9871cef5ab6e6ae4" title=" " alt="" coords="115,297,272,337"/>
+<area shape="poly" id="edge7_Node000001_Node000008" title=" " alt="" coords="373,243,284,288,254,300,252,295,282,283,370,238"/>
+<area shape="rect" id="Node000009" href="$namespacetimer__mod.html#a3d8defbb261a0f2ad8bf5f67a08ceae3" title=" " alt="" coords="125,362,261,387"/>
+<area shape="poly" id="edge8_Node000001_Node000009" title=" " alt="" coords="391,247,346,300,317,328,284,352,256,364,254,359,281,347,313,324,342,296,386,244"/>
+<area shape="rect" id="Node000010" href="$namespaceplugins__mod.html#ad8de54f4875e61c6164bf67ffc2a502f" title=" " alt="" coords="104,412,283,452"/>
+<area shape="poly" id="edge9_Node000001_Node000010" title=" " alt="" coords="396,248,354,322,322,364,284,401,262,414,260,410,281,397,318,361,350,319,392,245"/>
+<area shape="rect" id="Node000005" href="$mglet_8F90.html#a8ec2266d83cd6c0b762cbcbc92c0af3d" title=" " alt="" coords="5,119,56,145"/>
+<area shape="poly" id="edge4_Node000004_Node000005" title=" " alt="" coords="104,135,56,135,56,129,104,129"/>
+</map>

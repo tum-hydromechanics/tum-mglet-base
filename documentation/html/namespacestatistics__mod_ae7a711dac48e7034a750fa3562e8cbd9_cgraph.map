@@ -1,0 +1,15 @@
+<map id="statistics_mod::init_statistics" name="statistics_mod::init_statistics">
+<area shape="rect" id="Node000001" title=" " alt="" coords="5,47,137,87"/>
+<area shape="rect" id="Node000002" href="$namespacefields__mod.html#a2189e0568c380146e6a3ca94e0ed8d22" title=" " alt="" coords="187,29,329,55"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="137,56,172,51,173,56,138,61"/>
+<area shape="rect" id="Node000007" href="$namespacetimer__mod.html#a68283e408ca67e6521d67accf6b6dd7a" title=" " alt="" coords="185,79,331,104"/>
+<area shape="poly" id="edge6_Node000001_Node000007" title=" " alt="" coords="138,73,172,78,171,83,137,78"/>
+<area shape="rect" id="Node000003" href="$namespaceerr__mod.html#a575d306a61e0e9e1a3ca12b7bebfe8c3" title=" " alt="" coords="415,5,511,31"/>
+<area shape="poly" id="edge2_Node000002_Node000003" title=" " alt="" coords="329,31,401,23,401,28,330,36"/>
+<area shape="rect" id="Node000006" href="$namespacefieldio2__mod.html#a0f5ea56293b9cc55e9b59a02918ad63d" title=" " alt="" coords="379,55,548,80"/>
+<area shape="poly" id="edge5_Node000002_Node000006" title=" " alt="" coords="330,48,365,53,365,58,329,53"/>
+<area shape="rect" id="Node000004" href="$namespaceerr__mod.html#ad8a9a7eb3a777692a3b96adbd2f39024" title=" " alt="" coords="596,5,725,31"/>
+<area shape="poly" id="edge3_Node000003_Node000004" title=" " alt="" coords="512,15,582,15,582,21,512,21"/>
+<area shape="rect" id="Node000005" href="$namespaceerr__mod.html#a56cb71938839d9aa89504776225313d6" title=" " alt="" coords="773,5,897,31"/>
+<area shape="poly" id="edge4_Node000004_Node000005" title=" " alt="" coords="726,15,759,15,759,21,726,21"/>
+</map>

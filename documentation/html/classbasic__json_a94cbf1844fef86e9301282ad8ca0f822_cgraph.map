@@ -1,0 +1,21 @@
+<map id="basic_json::sax_parse" name="basic_json::sax_parse">
+<area shape="rect" id="Node000001" title="generate SAX events" alt="" coords="5,35,157,60"/>
+<area shape="rect" id="Node000002" href="$namespacedetail.html#aada1510d1b55ad2faf4a71c70cffb374" title=" " alt="" coords="206,5,345,31"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="157,33,192,28,193,33,158,38"/>
+<area shape="rect" id="Node000003" href="$classdetail_1_1binary__reader.html#a8e1b5452ae426e1d7b48761859e7f52d" title=" " alt="" coords="205,55,345,95"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="158,56,192,61,191,66,157,61"/>
+<area shape="rect" id="Node000004" href="$namespacedetail.html#a266fb3d4bf633ad6c506434cc91164da" title=" " alt="" coords="772,59,872,84"/>
+<area shape="poly" id="edge3_Node000003_Node000004" title=" " alt="" coords="346,70,393,69,559,65,724,66,758,67,758,72,724,71,559,71,393,74,346,75"/>
+<area shape="rect" id="Node000007" href="$classdetail_1_1parse__error.html#a07046ea9f33d28f120af188ed674d6df" title="create a parse error exception" alt="" coords="393,83,520,123"/>
+<area shape="poly" id="edge6_Node000003_Node000007" title=" " alt="" coords="346,84,380,89,379,94,345,89"/>
+<area shape="rect" id="Node000005" href="$namespacedetail.html#a89f967b745cf8df11ba9d59f93d97753" title=" " alt="" coords="927,33,1055,59"/>
+<area shape="poly" id="edge4_Node000004_Node000005" title=" " alt="" coords="872,61,913,55,914,60,873,67"/>
+<area shape="rect" id="Node000006" href="$namespacedetail.html#ac185140ed8c8fcc07a302a890b714b0d" title=" " alt="" coords="920,83,1063,108"/>
+<area shape="poly" id="edge5_Node000004_Node000006" title=" " alt="" coords="873,76,907,81,906,86,872,81"/>
+<area shape="poly" id="edge7_Node000007_Node000004" title=" " alt="" coords="520,95,758,74,759,79,521,100"/>
+<area shape="rect" id="Node000008" href="$classdetail_1_1exception.html#a6b4a786b5c1c25dd3edaceb1bf2d5120" title=" " alt="" coords="584,109,708,149"/>
+<area shape="poly" id="edge8_Node000007_Node000008" title=" " alt="" coords="521,109,570,116,569,121,520,114"/>
+<area shape="rect" id="Node000009" href="$classdetail_1_1exception.html#a8f1eb56b9964c8dd84d89d0da98d883b" title=" " alt="" coords="568,173,724,199"/>
+<area shape="poly" id="edge9_Node000007_Node000009" title=" " alt="" coords="494,121,569,158,590,166,588,171,567,163,492,126"/>
+<area shape="poly" id="edge10_Node000009_Node000004" title=" " alt="" coords="695,171,723,158,765,126,799,92,803,96,769,130,725,163,698,176"/>
+</map>

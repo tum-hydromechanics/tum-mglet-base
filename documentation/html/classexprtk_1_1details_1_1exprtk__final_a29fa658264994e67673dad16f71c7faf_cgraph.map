@@ -1,0 +1,11 @@
+<map id="exprtk::details::exprtk_final::swap_vecvec_node" name="exprtk::details::exprtk_final::swap_vecvec_node">
+<area shape="rect" id="Node000001" title=" " alt="" coords="5,69,179,109"/>
+<area shape="rect" id="Node000002" href="$namespaceexprtk_1_1details.html#a09fffc07af2f0dd4b57adb8a9461f51d" title=" " alt="" coords="239,5,362,45"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="157,67,226,45,227,51,159,72"/>
+<area shape="rect" id="Node000004" href="$classexprtk_1_1details_1_1vector__interface.html#ad953a4daeda896e28162b07785712cec" title=" " alt="" coords="227,69,375,109"/>
+<area shape="poly" id="edge3_Node000001_Node000004" title=" " alt="" coords="179,87,213,87,213,92,179,92"/>
+<area shape="rect" id="Node000005" href="$classexprtk_1_1details_1_1vector__interface.html#a2cd2f2c665627768e6746dd931b2712a" title=" " alt="" coords="227,133,375,173"/>
+<area shape="poly" id="edge4_Node000001_Node000005" title=" " alt="" coords="159,107,223,127,221,132,157,112"/>
+<area shape="rect" id="Node000003" href="$classexprtk_1_1details_1_1expression__node.html#a105bfb3187351f863fdba3cb305ef734" title=" " alt="" coords="423,5,599,45"/>
+<area shape="poly" id="edge2_Node000002_Node000003" title=" " alt="" coords="363,23,409,23,409,28,363,28"/>
+</map>

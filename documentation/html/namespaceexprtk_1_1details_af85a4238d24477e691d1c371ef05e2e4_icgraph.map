@@ -1,0 +1,9 @@
+<map id="exprtk::details::init_branches" name="exprtk::details::init_branches">
+<area shape="rect" id="Node000001" title=" " alt="" coords="228,69,359,109"/>
+<area shape="rect" id="Node000002" href="$classexprtk_1_1details_1_1binary__node.html#a722cd8da8e81becccf989be19a7e23d7" title=" " alt="" coords="18,5,167,45"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="216,68,155,48,157,43,218,63"/>
+<area shape="rect" id="Node000003" href="$classexprtk_1_1details_1_1quaternary__node.html#a9e7a9b7967325ab5f14f6799d10bce5e" title=" " alt="" coords="5,69,180,109"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="214,92,180,92,180,87,214,87"/>
+<area shape="rect" id="Node000004" href="$classexprtk_1_1details_1_1trinary__node.html#a3afb3ae446497516421d1974cb280f6d" title=" " alt="" coords="17,133,168,173"/>
+<area shape="poly" id="edge3_Node000001_Node000004" title=" " alt="" coords="218,116,157,136,155,131,216,111"/>
+</map>

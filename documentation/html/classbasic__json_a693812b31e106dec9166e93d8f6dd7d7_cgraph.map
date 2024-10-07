@@ -1,0 +1,31 @@
+<map id="basic_json::patch_inplace" name="basic_json::patch_inplace">
+<area shape="rect" id="Node000001" title="applies a JSON patch in&#45;place without copying the object" alt="" coords="5,120,177,145"/>
+<area shape="rect" id="Node000002" href="$classbasic__json.html#a899e4623fe377af5c9ad14c40c64280c" title="access specified array element with bounds checking" alt="" coords="446,44,549,69"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="118,117,167,97,225,79,334,61,432,55,433,60,335,67,226,84,169,102,120,122"/>
+<area shape="rect" id="Node000003" href="$namespacedetail.html#a266fb3d4bf633ad6c506434cc91164da" title=" " alt="" coords="817,69,917,94"/>
+<area shape="poly" id="edge12_Node000001_Node000003" title=" " alt="" coords="108,117,158,83,190,65,224,51,304,27,373,12,436,4,495,3,554,9,617,19,770,50,818,62,816,67,769,55,616,24,553,14,494,9,436,9,374,17,305,32,226,56,193,70,161,88,111,121"/>
+<area shape="rect" id="Node000006" href="$classjson__pointer.html#aba71e63e4032cfc46dd90aeb09e5cb0f" title="return last reference token" alt="" coords="239,94,367,120"/>
+<area shape="poly" id="edge5_Node000001_Node000006" title=" " alt="" coords="177,119,225,114,226,119,178,125"/>
+<area shape="rect" id="Node000010" href="$classjson__pointer.html#a5c3d08bd0a0e99c3377db33600c68a64" title="return whether pointer points to the root document" alt="" coords="429,177,565,202"/>
+<area shape="poly" id="edge13_Node000001_Node000010" title=" " alt="" coords="120,143,169,163,226,179,324,190,416,191,416,197,324,196,225,184,167,168,118,148"/>
+<area shape="rect" id="Node000011" href="$classbasic__json.html#a184ba4a6b47e6da3703af19349bd776f" title="return whether value is an array" alt="" coords="234,245,373,270"/>
+<area shape="poly" id="edge14_Node000001_Node000011" title=" " alt="" coords="110,143,161,181,227,223,255,237,253,242,224,228,157,185,107,147"/>
+<area shape="rect" id="Node000012" href="$classjson__pointer.html#a662118b470c87a1b564946c2602c49ce" title="remove last reference token" alt="" coords="225,144,381,169"/>
+<area shape="poly" id="edge15_Node000001_Node000012" title=" " alt="" coords="178,139,212,143,211,148,178,145"/>
+<area shape="poly" id="edge2_Node000002_Node000003" title=" " alt="" coords="549,57,804,75,803,80,549,62"/>
+<area shape="rect" id="Node000004" href="$namespacedetail.html#a89f967b745cf8df11ba9d59f93d97753" title=" " alt="" coords="973,44,1101,69"/>
+<area shape="poly" id="edge3_Node000003_Node000004" title=" " alt="" coords="917,71,959,65,959,70,918,77"/>
+<area shape="rect" id="Node000005" href="$namespacedetail.html#ac185140ed8c8fcc07a302a890b714b0d" title=" " alt="" coords="965,93,1108,118"/>
+<area shape="poly" id="edge4_Node000003_Node000005" title=" " alt="" coords="918,86,952,91,951,96,917,91"/>
+<area shape="rect" id="Node000007" href="$classdetail_1_1out__of__range.html#a79ea0d3ec02a853629dc827e045ecff5" title=" " alt="" coords="429,112,565,152"/>
+<area shape="poly" id="edge6_Node000006_Node000007" title=" " alt="" coords="368,113,416,119,415,124,367,118"/>
+<area shape="poly" id="edge11_Node000006_Node000010" title=" " alt="" coords="354,117,383,129,407,145,431,162,446,169,444,174,428,167,404,149,380,133,352,122"/>
+<area shape="poly" id="edge7_Node000007_Node000003" title=" " alt="" coords="565,120,803,88,804,93,566,126"/>
+<area shape="rect" id="Node000008" href="$classdetail_1_1exception.html#a6b4a786b5c1c25dd3edaceb1bf2d5120" title=" " alt="" coords="629,144,753,184"/>
+<area shape="poly" id="edge8_Node000007_Node000008" title=" " alt="" coords="566,141,616,149,615,154,565,146"/>
+<area shape="rect" id="Node000009" href="$classdetail_1_1exception.html#a8f1eb56b9964c8dd84d89d0da98d883b" title=" " alt="" coords="613,209,769,234"/>
+<area shape="poly" id="edge9_Node000007_Node000009" title=" " alt="" coords="542,150,567,163,590,179,615,194,634,202,631,207,612,199,588,184,564,168,539,155"/>
+<area shape="poly" id="edge10_Node000009_Node000003" title=" " alt="" coords="743,206,768,194,793,174,815,150,849,104,853,108,819,154,797,178,771,198,746,211"/>
+<area shape="poly" id="edge16_Node000012_Node000007" title=" " alt="" coords="381,144,416,140,416,145,382,149"/>
+<area shape="poly" id="edge17_Node000012_Node000010" title=" " alt="" coords="378,166,416,173,415,178,377,172"/>
+</map>

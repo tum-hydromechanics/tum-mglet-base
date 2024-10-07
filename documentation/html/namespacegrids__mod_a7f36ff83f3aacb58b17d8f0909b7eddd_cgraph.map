@@ -1,0 +1,9 @@
+<map id="grids_mod::get_bc_ctyp" name="grids_mod::get_bc_ctyp">
+<area shape="rect" id="Node000001" title=" " alt="" coords="5,5,167,31"/>
+<area shape="rect" id="Node000002" href="$namespaceerr__mod.html#a575d306a61e0e9e1a3ca12b7bebfe8c3" title=" " alt="" coords="215,5,311,31"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="167,15,201,15,201,21,167,21"/>
+<area shape="rect" id="Node000003" href="$namespaceerr__mod.html#ad8a9a7eb3a777692a3b96adbd2f39024" title=" " alt="" coords="359,5,488,31"/>
+<area shape="poly" id="edge2_Node000002_Node000003" title=" " alt="" coords="311,15,345,15,345,21,311,21"/>
+<area shape="rect" id="Node000004" href="$namespaceerr__mod.html#a56cb71938839d9aa89504776225313d6" title=" " alt="" coords="536,5,660,31"/>
+<area shape="poly" id="edge3_Node000003_Node000004" title=" " alt="" coords="488,15,522,15,522,21,488,21"/>
+</map>

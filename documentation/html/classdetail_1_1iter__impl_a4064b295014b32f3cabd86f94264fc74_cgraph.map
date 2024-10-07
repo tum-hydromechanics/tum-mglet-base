@@ -1,0 +1,16 @@
+<map id="detail::iter_impl::key" name="detail::iter_impl::key">
+<area shape="rect" id="Node000001" title="return the key of an object iterator" alt="" coords="5,32,144,58"/>
+<area shape="rect" id="Node000002" href="$classdetail_1_1invalid__iterator.html#a35d0b713b151188622791891314949f9" title=" " alt="" coords="192,25,336,65"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="144,42,178,42,178,48,144,48"/>
+<area shape="rect" id="Node000003" href="$namespacedetail.html#a266fb3d4bf633ad6c506434cc91164da" title=" " alt="" coords="588,32,688,58"/>
+<area shape="poly" id="edge2_Node000002_Node000003" title=" " alt="" coords="327,22,384,10,462,3,540,11,594,25,593,30,540,16,462,8,384,16,328,28"/>
+<area shape="rect" id="Node000006" href="$classdetail_1_1exception.html#a6b4a786b5c1c25dd3edaceb1bf2d5120" title=" " alt="" coords="400,25,524,65"/>
+<area shape="poly" id="edge5_Node000002_Node000006" title=" " alt="" coords="336,42,386,42,386,48,336,48"/>
+<area shape="rect" id="Node000007" href="$classdetail_1_1exception.html#a8f1eb56b9964c8dd84d89d0da98d883b" title=" " alt="" coords="384,90,540,115"/>
+<area shape="poly" id="edge6_Node000002_Node000007" title=" " alt="" coords="334,63,405,83,403,88,333,68"/>
+<area shape="rect" id="Node000004" href="$namespacedetail.html#a89f967b745cf8df11ba9d59f93d97753" title=" " alt="" coords="743,7,871,32"/>
+<area shape="poly" id="edge3_Node000003_Node000004" title=" " alt="" coords="688,35,729,29,730,34,689,40"/>
+<area shape="rect" id="Node000005" href="$namespacedetail.html#ac185140ed8c8fcc07a302a890b714b0d" title=" " alt="" coords="736,56,879,82"/>
+<area shape="poly" id="edge4_Node000003_Node000005" title=" " alt="" coords="689,50,723,54,722,60,688,55"/>
+<area shape="poly" id="edge7_Node000007_Node000003" title=" " alt="" coords="501,87,539,75,584,60,586,65,541,80,503,92"/>
+</map>

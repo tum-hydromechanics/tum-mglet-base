@@ -1,0 +1,9 @@
+<map id="basic_json::merge_patch" name="basic_json::merge_patch">
+<area shape="rect" id="Node000001" title="applies a JSON Merge Patch" alt="" coords="5,55,172,80"/>
+<area shape="rect" id="Node000002" href="$classbasic__json.html#a5251a08382864af52c854fca1bdba61c" title="returns an iterator to the first element" alt="" coords="231,5,353,31"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="141,52,225,31,226,37,142,57"/>
+<area shape="rect" id="Node000003" href="$classbasic__json.html#a4dbc83213b31a171aa8ba65ff00fa954" title="returns an iterator to one past the last element" alt="" coords="235,55,349,80"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="172,65,222,65,222,70,172,70"/>
+<area shape="rect" id="Node000004" href="$classbasic__json.html#af355a2b131068acf3d623eb6d80a711c" title="return whether value is an object" alt="" coords="220,104,364,129"/>
+<area shape="poly" id="edge3_Node000001_Node000004" title=" " alt="" coords="142,77,226,98,225,103,141,83"/>
+</map>

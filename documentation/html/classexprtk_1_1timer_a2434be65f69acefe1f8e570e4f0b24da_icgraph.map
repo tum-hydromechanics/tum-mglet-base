@@ -1,0 +1,16 @@
+<map id="exprtk::timer::stop" name="exprtk::timer::stop">
+<area shape="rect" id="Node000001" title=" " alt="" coords="308,95,437,121"/>
+<area shape="rect" id="Node000002" href="$exprtk__benchmark_8cpp.html#a162e871018a922aa96cbef0ef54b53e2" title=" " alt="" coords="115,5,249,45"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="330,92,259,60,231,48,233,43,261,55,333,87"/>
+<area shape="rect" id="Node000004" href="$exprtk__benchmark_8cpp.html#a644b800884534cc72c6162d48ee95394" title=" " alt="" coords="104,70,260,95"/>
+<area shape="poly" id="edge3_Node000001_Node000004" title=" " alt="" coords="294,100,260,96,261,90,295,95"/>
+<area shape="rect" id="Node000005" href="$exprtk__benchmark_8cpp.html#a75d268bcd83db69d66b5f00c9f503994" title=" " alt="" coords="105,119,259,145"/>
+<area shape="poly" id="edge5_Node000001_Node000005" title=" " alt="" coords="295,120,260,125,259,120,294,115"/>
+<area shape="rect" id="Node000006" href="$exprtk__benchmark_8cpp.html#a37efe778bcde9c9d8a7f4dc499c804b2" title=" " alt="" coords="107,169,257,194"/>
+<area shape="poly" id="edge7_Node000001_Node000006" title=" " alt="" coords="332,129,261,158,225,171,223,166,259,154,330,124"/>
+<area shape="rect" id="Node000003" href="$exprtk__benchmark_8cpp.html#a0ddf1224851353fc92bfbff6f499fa97" title=" " alt="" coords="5,95,56,121"/>
+<area shape="poly" id="edge2_Node000002_Node000003" title=" " alt="" coords="117,53,105,60,49,97,46,93,103,55,115,49"/>
+<area shape="poly" id="edge4_Node000004_Node000003" title=" " alt="" coords="93,100,57,106,56,101,92,95"/>
+<area shape="poly" id="edge6_Node000005_Node000003" title=" " alt="" coords="91,120,56,115,56,109,92,115"/>
+<area shape="poly" id="edge8_Node000006_Node000003" title=" " alt="" coords="121,166,103,158,47,123,50,119,105,154,123,161"/>
+</map>

@@ -1,0 +1,17 @@
+<map id="detail::parse_error::create" name="detail::parse_error::create">
+<area shape="rect" id="Node000001" title="create a parse error exception" alt="" coords="393,57,520,97"/>
+<area shape="rect" id="Node000002" href="$classdetail_1_1parser.html#a59f4b745d4aa146bf7a60a30060f592f" title="public parser interface" alt="" coords="207,7,344,32"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="379,55,316,35,317,30,381,50"/>
+<area shape="rect" id="Node000003" href="$classdetail_1_1binary__reader.html#a8e1b5452ae426e1d7b48761859e7f52d" title=" " alt="" coords="205,57,345,97"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="379,79,346,79,346,74,379,74"/>
+<area shape="rect" id="Node000007" href="$classdetail_1_1parser.html#ae9084759356689163fee9ae37e69b050" title=" " alt="" coords="212,129,339,169"/>
+<area shape="poly" id="edge6_Node000001_Node000007" title=" " alt="" coords="394,104,328,131,326,126,392,99"/>
+<area shape="rect" id="Node000004" href="$classbasic__json.html#ad018e709338c810c56eaad606186a77e" title="generate SAX events" alt="" coords="5,5,157,31"/>
+<area shape="poly" id="edge3_Node000003_Node000004" title=" " alt="" coords="195,55,124,33,125,28,196,50"/>
+<area shape="rect" id="Node000005" href="$classbasic__json.html#addedd5e53fa6eff6cd621f1615741c3d" title=" " alt="" coords="5,55,157,80"/>
+<area shape="poly" id="edge4_Node000003_Node000005" title=" " alt="" coords="191,75,157,74,158,68,191,70"/>
+<area shape="rect" id="Node000006" href="$classbasic__json.html#a94cbf1844fef86e9301282ad8ca0f822" title="generate SAX events" alt="" coords="5,104,157,129"/>
+<area shape="poly" id="edge5_Node000003_Node000006" title=" " alt="" coords="192,97,144,107,143,101,191,91"/>
+<area shape="rect" id="Node000008" href="$classdetail_1_1parser.html#ac46da3262cbe66ade670c5b4782451e6" title="public accept interface" alt="" coords="9,153,153,179"/>
+<area shape="poly" id="edge7_Node000007_Node000008" title=" " alt="" coords="199,158,154,162,153,157,198,153"/>
+</map>

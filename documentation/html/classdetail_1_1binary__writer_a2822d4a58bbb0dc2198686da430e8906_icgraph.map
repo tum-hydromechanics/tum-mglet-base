@@ -1,0 +1,14 @@
+<map id="detail::binary_writer::to_char_type" name="detail::binary_writer::to_char_type">
+<area shape="rect" id="Node000001" title=" " alt="" coords="189,123,325,163"/>
+<area shape="rect" id="Node000002" href="$classdetail_1_1serializer.html#a491abc2de2affbc9c3490bde110b7f07" title=" " alt="" coords="5,5,141,31"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="226,115,187,79,140,46,114,33,116,28,143,41,190,75,229,111"/>
+<area shape="rect" id="Node000003" href="$classdetail_1_1binary__writer.html#ae6ab36b61e8ad346e75d9f9abc983d4c" title=" " alt="" coords="5,79,141,119"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="175,126,141,118,142,113,176,121"/>
+<area shape="rect" id="Node000004" href="$classdetail_1_1binary__writer.html#adc3dbefa80134d3530a1b3f1c9629586" title=" " alt="" coords="5,167,141,207"/>
+<area shape="poly" id="edge4_Node000001_Node000004" title=" " alt="" coords="176,165,142,174,141,169,175,160"/>
+<area shape="rect" id="Node000005" href="$classdetail_1_1binary__writer.html#a972bec9688cbc5673bb482bbe9543e2a" title=" " alt="" coords="5,255,141,295"/>
+<area shape="poly" id="edge6_Node000001_Node000005" title=" " alt="" coords="219,174,104,257,101,253,216,169"/>
+<area shape="poly" id="edge3_Node000003_Node000003" title=" " alt="" coords="104,67,93,61,73,58,56,60,45,65,42,71,44,78,38,80,36,70,42,61,54,55,73,53,95,56,107,63"/>
+<area shape="poly" id="edge5_Node000004_Node000004" title=" " alt="" coords="104,155,93,149,73,146,56,148,45,153,42,159,44,166,38,168,36,158,42,149,54,143,73,141,95,144,107,151"/>
+<area shape="poly" id="edge7_Node000005_Node000005" title=" " alt="" coords="104,243,93,237,73,234,56,236,45,241,42,247,44,254,38,256,36,246,42,237,54,231,73,229,95,232,107,239"/>
+</map>

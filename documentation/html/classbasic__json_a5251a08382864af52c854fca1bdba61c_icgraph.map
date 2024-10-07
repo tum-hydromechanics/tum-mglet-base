@@ -1,0 +1,9 @@
+<map id="basic_json::begin" name="basic_json::begin">
+<area shape="rect" id="Node000001" title="returns an iterator to the first element" alt="" coords="220,55,343,80"/>
+<area shape="rect" id="Node000002" href="$classbasic__json.html#a699ef418df577e75f28dfce6b04d6c2f" title="creates a diff as a JSON patch" alt="" coords="33,5,144,31"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="217,54,139,33,140,28,219,49"/>
+<area shape="rect" id="Node000003" href="$classbasic__json.html#a8676ac2433fe299b8d420f00a0741395" title="applies a JSON Merge Patch" alt="" coords="5,55,172,80"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="206,70,172,70,172,65,206,65"/>
+<area shape="rect" id="Node000004" href="$classbasic__json.html#a3819f393e82396782ccc22785575b01d" title="updates a JSON object from another object, overwriting existing keys" alt="" coords="23,104,154,129"/>
+<area shape="poly" id="edge3_Node000001_Node000004" title=" " alt="" coords="219,86,140,106,139,101,217,81"/>
+</map>

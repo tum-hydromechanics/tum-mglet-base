@@ -1,0 +1,12 @@
+<map id="punktekoordinaten_mod::punkteeinekante" name="punktekoordinaten_mod::punkteeinekante">
+<area shape="rect" id="Node000001" title=" " alt="" coords="684,23,843,63"/>
+<area shape="rect" id="Node000002" href="$namespacepunktekoordinaten__mod.html#a24e67dd6e6c55aa974208c087c47bc11" title=" " alt="" coords="477,23,636,63"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="670,46,636,46,636,41,670,41"/>
+<area shape="rect" id="Node000003" href="$namespacecalcauavaw__mod.html#a42eb4bbd5f3ddbecdcbd2c04497584db" title=" " alt="" coords="229,5,427,31"/>
+<area shape="poly" id="edge2_Node000002_Node000003" title=" " alt="" coords="463,36,427,32,428,26,464,30"/>
+<area shape="rect" id="Node000005" href="$namespacecalcnormals__mod.html#ac419aa25f9e1bea292861f86338f7d3f" title=" " alt="" coords="227,55,429,80"/>
+<area shape="poly" id="edge4_Node000002_Node000005" title=" " alt="" coords="464,56,430,59,429,54,463,50"/>
+<area shape="rect" id="Node000004" href="$namespacegc__blockbp__mod.html#a214290193fb0b6777e1ac7c291c1152d" title=" " alt="" coords="5,31,179,56"/>
+<area shape="poly" id="edge3_Node000003_Node000004" title=" " alt="" coords="215,33,179,37,179,31,215,27"/>
+<area shape="poly" id="edge5_Node000005_Node000004" title=" " alt="" coords="213,58,179,55,179,49,213,53"/>
+</map>

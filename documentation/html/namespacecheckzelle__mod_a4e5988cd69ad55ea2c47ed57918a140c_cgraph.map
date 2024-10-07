@@ -1,0 +1,9 @@
+<map id="checkzelle_mod::checkzelle_grid" name="checkzelle_mod::checkzelle_grid">
+<area shape="rect" id="Node000001" title=" " alt="" coords="5,35,220,60"/>
+<area shape="rect" id="Node000002" href="$namespaceblockcheck__mod.html#a092c3e94c9276aa19b9fec02d6ee9895" title=" " alt="" coords="268,5,491,31"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="220,33,254,29,255,34,221,38"/>
+<area shape="rect" id="Node000003" href="$namespacepunktekoordinaten__mod.html#a90249bf2c641f9907961d37441b3b0fb" title=" " alt="" coords="300,55,459,95"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="221,56,287,63,286,68,220,61"/>
+<area shape="rect" id="Node000004" href="$namespacecutcorner__mod.html#aaf052dd84ef63a987f684310bfe44ae0" title=" " alt="" coords="539,63,693,88"/>
+<area shape="poly" id="edge3_Node000003_Node000004" title=" " alt="" coords="459,73,524,73,524,78,459,78"/>
+</map>

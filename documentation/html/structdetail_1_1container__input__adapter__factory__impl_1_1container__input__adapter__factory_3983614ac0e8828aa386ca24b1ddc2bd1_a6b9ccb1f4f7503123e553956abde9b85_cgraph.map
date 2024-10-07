@@ -1,0 +1,5 @@
+<map id="detail::container_input_adapter_factory_impl::container_input_adapter_factory&lt; ContainerType, void_t&lt; decltype(begin(std::declval&lt; ContainerType &gt;()), end(std::declval&lt; ContainerType &gt;()))&gt; &gt;::create" name="detail::container_input_adapter_factory_impl::container_input_adapter_factory&lt; ContainerType, void_t&lt; decltype(begin(std::declval&lt; ContainerType &gt;()), end(std::declval&lt; ContainerType &gt;()))&gt; &gt;::create">
+<area shape="rect" id="Node000001" title=" " alt="" coords="5,5,227,133"/>
+<area shape="rect" id="Node000002" href="$namespacedetail.html#aada1510d1b55ad2faf4a71c70cffb374" title=" " alt="" coords="275,57,413,82"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="227,67,260,67,260,72,227,72"/>
+</map>

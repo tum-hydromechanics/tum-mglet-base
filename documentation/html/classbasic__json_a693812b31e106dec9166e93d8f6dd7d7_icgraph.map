@@ -1,0 +1,5 @@
+<map id="basic_json::patch_inplace" name="basic_json::patch_inplace">
+<area shape="rect" id="Node000001" title="applies a JSON patch in&#45;place without copying the object" alt="" coords="177,5,349,31"/>
+<area shape="rect" id="Node000002" href="$classbasic__json.html#a145a004c0a2fa5be84b260ecc98ab5d9" title="applies a JSON patch to a copy of the current object" alt="" coords="5,5,129,31"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="164,21,130,21,130,15,164,15"/>
+</map>

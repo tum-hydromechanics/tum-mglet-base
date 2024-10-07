@@ -1,0 +1,9 @@
+<map id="native::clamp" name="native::clamp">
+<area shape="rect" id="Node000001" title=" " alt="" coords="389,5,488,31"/>
+<area shape="rect" id="Node000002" href="$structnative.html#aef5bf707dc9f7e3554cfc70b776a3f38" title=" " alt="" coords="239,5,341,31"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="376,21,341,21,341,15,376,15"/>
+<area shape="rect" id="Node000003" href="$exprtk__benchmark_8cpp.html#afd7ca942599eb3c72f32b554806b8dd9" title=" " alt="" coords="104,5,191,31"/>
+<area shape="poly" id="edge2_Node000002_Node000003" title=" " alt="" coords="225,21,191,21,191,15,225,15"/>
+<area shape="rect" id="Node000004" href="$exprtk__benchmark_8cpp.html#a0ddf1224851353fc92bfbff6f499fa97" title=" " alt="" coords="5,5,56,31"/>
+<area shape="poly" id="edge3_Node000003_Node000004" title=" " alt="" coords="90,21,56,21,56,15,90,15"/>
+</map>

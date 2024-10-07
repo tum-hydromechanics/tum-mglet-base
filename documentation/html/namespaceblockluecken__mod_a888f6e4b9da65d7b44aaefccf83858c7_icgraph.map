@@ -1,0 +1,12 @@
+<map id="blockluecken_mod::blockluecken_grid" name="blockluecken_mod::blockluecken_grid">
+<area shape="rect" id="Node000001" title=" " alt="" coords="737,35,977,60"/>
+<area shape="rect" id="Node000002" href="$namespaceblockluecken__mod.html#a406771b9c47349f1c6a594b4ef0a1d03" title=" " alt="" coords="477,9,689,35"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="723,38,689,34,690,29,724,32"/>
+<area shape="rect" id="Node000003" href="$namespacegc__blockbp__mod.html#a3b6a4cdde2544927951cd7ef5d90ca5d" title=" " alt="" coords="227,27,429,67"/>
+<area shape="poly" id="edge5_Node000001_Node000003" title=" " alt="" coords="723,50,430,50,430,45,723,45"/>
+<area shape="poly" id="edge2_Node000002_Node000003" title=" " alt="" coords="464,37,430,40,429,35,463,31"/>
+<area shape="rect" id="Node000004" href="$namespacegc__blockbp__mod.html#a214290193fb0b6777e1ac7c291c1152d" title=" " alt="" coords="5,5,179,31"/>
+<area shape="poly" id="edge3_Node000003_Node000004" title=" " alt="" coords="213,36,179,31,179,26,213,30"/>
+<area shape="rect" id="Node000005" href="$structgc__blockbp__mod_1_1gc__blockbp__t.html#aa22f528fbb6323181e5f37883ebd4158" title=" " alt="" coords="21,55,163,95"/>
+<area shape="poly" id="edge4_Node000003_Node000005" title=" " alt="" coords="213,64,164,70,163,64,213,58"/>
+</map>

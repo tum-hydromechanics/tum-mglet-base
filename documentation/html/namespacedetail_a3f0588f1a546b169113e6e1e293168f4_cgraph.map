@@ -1,0 +1,21 @@
+<map id="detail::to_chars" name="detail::to_chars">
+<area shape="rect" id="Node000001" title="generates a decimal representation of the floating&#45;point number value in [first, last)." alt="" coords="5,89,116,114"/>
+<area shape="rect" id="Node000002" href="$namespacedetail_1_1dtoa__impl.html#afab91abfdd1cdf43cc2fcd5b9c4a7456" title="prettify v = buf * 10^decimal_exponent" alt="" coords="164,28,289,68"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="100,86,150,70,151,75,102,91"/>
+<area shape="rect" id="Node000004" href="$namespacedetail_1_1dtoa__impl.html#ad549352ed1a9676a092d143a2daa3dee" title=" " alt="" coords="164,113,289,153"/>
+<area shape="poly" id="edge3_Node000001_Node000004" title=" " alt="" coords="117,109,151,116,150,121,116,115"/>
+<area shape="rect" id="Node000003" href="$namespacedetail_1_1dtoa__impl.html#aec9f6655c3b629aeb0e8c887aea5da87" title="appends a decimal representation of e to buf" alt="" coords="351,5,476,45"/>
+<area shape="poly" id="edge2_Node000002_Node000003" title=" " alt="" coords="289,38,336,32,337,37,290,43"/>
+<area shape="rect" id="Node000005" href="$namespacedetail_1_1dtoa__impl.html#a29ae6574f6be09a5c8ab08da9a3f71b4" title=" " alt="" coords="337,70,489,125"/>
+<area shape="poly" id="edge4_Node000004_Node000005" title=" " alt="" coords="289,119,323,112,324,117,290,124"/>
+<area shape="rect" id="Node000006" href="$namespacedetail_1_1dtoa__impl.html#ae877aa13ab872c99a1c614e5e1524807" title=" " alt="" coords="351,149,476,189"/>
+<area shape="poly" id="edge5_Node000004_Node000006" title=" " alt="" coords="290,143,337,152,336,157,289,148"/>
+<area shape="rect" id="Node000010" href="$structdetail_1_1dtoa__impl_1_1diyfp.html#a046c61f2c13411677eedfb5b9b7a8226" title="returns x * y" alt="" coords="351,213,476,253"/>
+<area shape="poly" id="edge9_Node000004_Node000010" title=" " alt="" coords="259,151,339,199,351,205,349,210,336,204,256,156"/>
+<area shape="rect" id="Node000007" href="$namespacedetail_1_1dtoa__impl.html#a04eb234a28617519974fc962cd4da666" title=" " alt="" coords="537,85,672,125"/>
+<area shape="poly" id="edge6_Node000006_Node000007" title=" " alt="" coords="473,147,531,127,532,132,475,152"/>
+<area shape="rect" id="Node000008" href="$namespacedetail_1_1dtoa__impl.html#a73a15efcb5c2157ea0e1375b98ef0e83" title=" " alt="" coords="542,149,667,189"/>
+<area shape="poly" id="edge7_Node000006_Node000008" title=" " alt="" coords="476,167,528,167,528,172,476,172"/>
+<area shape="rect" id="Node000009" href="$structdetail_1_1dtoa__impl_1_1diyfp.html#a75142bace0b78b1e1433b1d35a7ff252" title="returns x &#45; y" alt="" coords="542,213,667,253"/>
+<area shape="poly" id="edge8_Node000006_Node000009" title=" " alt="" coords="475,187,532,206,531,211,473,192"/>
+</map>

@@ -1,0 +1,25 @@
+<map id="detail::dtoa_impl::grisu2" name="detail::dtoa_impl::grisu2">
+<area shape="rect" id="Node000001" title=" " alt="" coords="5,205,131,245"/>
+<area shape="rect" id="Node000002" href="$namespacedetail_1_1dtoa__impl.html#a6a5ccf11847aab7a0f42f587b33935df" title=" " alt="" coords="179,101,321,141"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="103,203,201,146,203,151,105,208"/>
+<area shape="rect" id="Node000006" href="$namespacedetail_1_1dtoa__impl.html#ad549352ed1a9676a092d143a2daa3dee" title=" " alt="" coords="187,241,313,281"/>
+<area shape="poly" id="edge5_Node000001_Node000006" title=" " alt="" coords="132,235,174,244,173,249,131,240"/>
+<area shape="rect" id="Node000003" href="$structdetail_1_1dtoa__impl_1_1diyfp.html#a5bad735c2cb50b194938a8a89b82f6ed" title="normalize x such that the significand is &gt;= 2^(q&#45;1)" alt="" coords="383,5,508,45"/>
+<area shape="poly" id="edge2_Node000002_Node000003" title=" " alt="" coords="285,99,368,55,382,48,384,53,371,60,288,104"/>
+<area shape="rect" id="Node000004" href="$structdetail_1_1dtoa__impl_1_1diyfp.html#a5a9ce83c6c1663c9aaac7ffd9009b971" title="normalize x such that the result has the exponent E" alt="" coords="379,69,511,109"/>
+<area shape="poly" id="edge3_Node000002_Node000004" title=" " alt="" coords="321,107,365,100,366,105,322,112"/>
+<area shape="rect" id="Node000005" href="$namespacedetail_1_1dtoa__impl.html#a3c879bf97b806cacbcbb2da07a5ff5c8" title=" " alt="" coords="383,133,508,173"/>
+<area shape="poly" id="edge4_Node000002_Node000005" title=" " alt="" coords="322,130,369,138,369,144,321,136"/>
+<area shape="rect" id="Node000007" href="$namespacedetail_1_1dtoa__impl.html#a29ae6574f6be09a5c8ab08da9a3f71b4" title=" " alt="" coords="369,198,521,253"/>
+<area shape="poly" id="edge6_Node000006_Node000007" title=" " alt="" coords="312,247,355,239,356,244,313,252"/>
+<area shape="rect" id="Node000008" href="$namespacedetail_1_1dtoa__impl.html#ae877aa13ab872c99a1c614e5e1524807" title=" " alt="" coords="383,277,508,317"/>
+<area shape="poly" id="edge7_Node000006_Node000008" title=" " alt="" coords="313,270,370,281,369,286,312,275"/>
+<area shape="rect" id="Node000012" href="$structdetail_1_1dtoa__impl_1_1diyfp.html#a046c61f2c13411677eedfb5b9b7a8226" title="returns x * y" alt="" coords="383,341,508,381"/>
+<area shape="poly" id="edge11_Node000006_Node000012" title=" " alt="" coords="285,279,371,327,384,333,382,338,368,332,283,284"/>
+<area shape="rect" id="Node000009" href="$namespacedetail_1_1dtoa__impl.html#a04eb234a28617519974fc962cd4da666" title=" " alt="" coords="569,213,704,253"/>
+<area shape="poly" id="edge8_Node000008_Node000009" title=" " alt="" coords="505,275,563,255,564,260,507,280"/>
+<area shape="rect" id="Node000010" href="$namespacedetail_1_1dtoa__impl.html#a73a15efcb5c2157ea0e1375b98ef0e83" title=" " alt="" coords="574,277,699,317"/>
+<area shape="poly" id="edge9_Node000008_Node000010" title=" " alt="" coords="508,295,560,295,560,300,508,300"/>
+<area shape="rect" id="Node000011" href="$structdetail_1_1dtoa__impl_1_1diyfp.html#a75142bace0b78b1e1433b1d35a7ff252" title="returns x &#45; y" alt="" coords="574,341,699,381"/>
+<area shape="poly" id="edge10_Node000008_Node000011" title=" " alt="" coords="507,315,564,334,563,339,505,320"/>
+</map>

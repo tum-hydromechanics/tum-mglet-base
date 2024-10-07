@@ -1,0 +1,10 @@
+<map id="exprtk::details::free_node" name="exprtk::details::free_node">
+<area shape="rect" id="Node000001" title=" " alt="" coords="5,45,176,70"/>
+<area shape="rect" id="Node000002" href="$namespaceexprtk_1_1details.html#a6c7f082c203b5e3fb3bc377109fe3abb" title=" " alt="" coords="224,5,347,45"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="168,42,210,35,211,40,169,47"/>
+<area shape="rect" id="Node000004" href="$namespaceexprtk_1_1details.html#aa27674d0ab890dd002c455fd44cabddb" title=" " alt="" coords="224,69,347,109"/>
+<area shape="poly" id="edge3_Node000001_Node000004" title=" " alt="" coords="169,67,211,74,210,80,168,73"/>
+<area shape="rect" id="Node000003" href="$classexprtk_1_1details_1_1expression__node.html#a105bfb3187351f863fdba3cb305ef734" title=" " alt="" coords="395,37,571,77"/>
+<area shape="poly" id="edge2_Node000002_Node000003" title=" " alt="" coords="348,33,381,38,380,43,347,38"/>
+<area shape="poly" id="edge4_Node000004_Node000003" title=" " alt="" coords="347,77,380,71,381,76,348,82"/>
+</map>

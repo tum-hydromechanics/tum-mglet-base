@@ -1,0 +1,21 @@
+<map id="json_pointer::parent_pointer" name="json_pointer::parent_pointer">
+<area shape="rect" id="Node000001" title="returns the parent of this JSON pointer" alt="" coords="5,23,141,63"/>
+<area shape="rect" id="Node000002" href="$classjson__pointer.html#a5c3d08bd0a0e99c3377db33600c68a64" title="return whether pointer points to the root document" alt="" coords="393,5,529,31"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="141,36,379,21,379,26,142,42"/>
+<area shape="rect" id="Node000003" href="$classjson__pointer.html#a662118b470c87a1b564946c2602c49ce" title="remove last reference token" alt="" coords="189,56,345,81"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="142,50,176,54,175,59,141,55"/>
+<area shape="poly" id="edge10_Node000003_Node000002" title=" " alt="" coords="316,53,398,32,399,37,318,58"/>
+<area shape="rect" id="Node000004" href="$classdetail_1_1out__of__range.html#a79ea0d3ec02a853629dc827e045ecff5" title=" " alt="" coords="393,55,529,95"/>
+<area shape="poly" id="edge3_Node000003_Node000004" title=" " alt="" coords="345,69,380,70,379,75,345,74"/>
+<area shape="rect" id="Node000005" href="$namespacedetail.html#a266fb3d4bf633ad6c506434cc91164da" title=" " alt="" coords="781,63,881,88"/>
+<area shape="poly" id="edge4_Node000004_Node000005" title=" " alt="" coords="522,53,577,41,655,33,734,41,788,55,786,60,733,46,655,38,578,46,523,58"/>
+<area shape="rect" id="Node000008" href="$classdetail_1_1exception.html#a6b4a786b5c1c25dd3edaceb1bf2d5120" title=" " alt="" coords="593,55,717,95"/>
+<area shape="poly" id="edge7_Node000004_Node000008" title=" " alt="" coords="530,73,580,73,580,78,530,78"/>
+<area shape="rect" id="Node000009" href="$classdetail_1_1exception.html#a8f1eb56b9964c8dd84d89d0da98d883b" title=" " alt="" coords="577,120,733,145"/>
+<area shape="poly" id="edge8_Node000004_Node000009" title=" " alt="" coords="530,93,599,113,598,119,529,98"/>
+<area shape="rect" id="Node000006" href="$namespacedetail.html#a89f967b745cf8df11ba9d59f93d97753" title=" " alt="" coords="937,37,1065,63"/>
+<area shape="poly" id="edge5_Node000005_Node000006" title=" " alt="" coords="881,65,923,59,923,64,882,71"/>
+<area shape="rect" id="Node000007" href="$namespacedetail.html#ac185140ed8c8fcc07a302a890b714b0d" title=" " alt="" coords="929,87,1072,112"/>
+<area shape="poly" id="edge6_Node000005_Node000007" title=" " alt="" coords="882,80,916,85,915,90,881,85"/>
+<area shape="poly" id="edge9_Node000009_Node000005" title=" " alt="" coords="694,117,732,105,778,90,779,95,734,110,696,122"/>
+</map>

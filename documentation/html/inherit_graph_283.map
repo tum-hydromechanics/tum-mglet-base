@@ -1,0 +1,7 @@
+<map id="Graphical Class Hierarchy" name="Graphical Class Hierarchy">
+<area shape="rect" id="Node000000" href="$structibmodel__mod_1_1ibmodel__t.html" title=" " alt="" coords="5,5,168,31"/>
+<area shape="rect" id="Node000001" href="$structnoib__mod_1_1noib__t.html" title=" " alt="" coords="216,5,337,31"/>
+<area shape="poly" id="edge162_Node000000_Node000001" title=" " alt="" coords="182,15,216,15,216,21,182,21"/>
+<area shape="rect" id="Node000002" href="$structgc__mod_1_1gc__t.html" title=" " alt="" coords="385,5,487,31"/>
+<area shape="poly" id="edge163_Node000001_Node000002" title=" " alt="" coords="351,15,385,15,385,21,351,21"/>
+</map>

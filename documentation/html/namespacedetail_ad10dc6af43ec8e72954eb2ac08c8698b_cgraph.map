@@ -1,0 +1,17 @@
+<map id="detail::get_arithmetic_value" name="detail::get_arithmetic_value">
+<area shape="rect" id="Node000001" title=" " alt="" coords="5,27,148,67"/>
+<area shape="rect" id="Node000002" href="$namespacedetail.html#a266fb3d4bf633ad6c506434cc91164da" title=" " alt="" coords="567,31,667,56"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="148,42,196,41,357,37,519,38,553,39,553,44,519,43,357,43,196,46,149,47"/>
+<area shape="rect" id="Node000005" href="$classdetail_1_1type__error.html#a2d25372628cf1e09ec67718f4bc42762" title=" " alt="" coords="196,55,315,95"/>
+<area shape="poly" id="edge4_Node000001_Node000005" title=" " alt="" coords="148,56,182,61,182,67,148,61"/>
+<area shape="rect" id="Node000003" href="$namespacedetail.html#a89f967b745cf8df11ba9d59f93d97753" title=" " alt="" coords="722,5,850,31"/>
+<area shape="poly" id="edge2_Node000002_Node000003" title=" " alt="" coords="667,33,708,27,709,32,668,39"/>
+<area shape="rect" id="Node000004" href="$namespacedetail.html#ac185140ed8c8fcc07a302a890b714b0d" title=" " alt="" coords="715,55,857,80"/>
+<area shape="poly" id="edge3_Node000002_Node000004" title=" " alt="" coords="667,48,701,53,700,58,667,53"/>
+<area shape="poly" id="edge5_Node000005_Node000002" title=" " alt="" coords="314,68,553,46,553,52,315,73"/>
+<area shape="rect" id="Node000006" href="$classdetail_1_1exception.html#a6b4a786b5c1c25dd3edaceb1bf2d5120" title=" " alt="" coords="379,81,503,121"/>
+<area shape="poly" id="edge6_Node000005_Node000006" title=" " alt="" coords="315,81,366,88,365,93,315,86"/>
+<area shape="rect" id="Node000007" href="$classdetail_1_1exception.html#a8f1eb56b9964c8dd84d89d0da98d883b" title=" " alt="" coords="363,145,519,171"/>
+<area shape="poly" id="edge7_Node000005_Node000007" title=" " alt="" coords="291,93,364,130,385,138,383,143,362,135,289,98"/>
+<area shape="poly" id="edge8_Node000007_Node000002" title=" " alt="" coords="490,143,517,130,560,98,594,64,598,68,564,102,520,135,492,148"/>
+</map>

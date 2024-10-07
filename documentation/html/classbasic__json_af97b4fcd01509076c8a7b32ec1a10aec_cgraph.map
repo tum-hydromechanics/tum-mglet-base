@@ -1,0 +1,17 @@
+<map id="basic_json::basic_json" name="basic_json::basic_json">
+<area shape="rect" id="Node000001" title="construct a JSON container given an iterator range" alt="" coords="5,35,160,60"/>
+<area shape="rect" id="Node000002" href="$namespacedetail.html#a266fb3d4bf633ad6c506434cc91164da" title=" " alt="" coords="604,31,704,56"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="160,42,208,41,382,37,556,38,590,39,590,44,556,43,382,43,208,46,160,47"/>
+<area shape="rect" id="Node000005" href="$classdetail_1_1invalid__iterator.html#a35d0b713b151188622791891314949f9" title=" " alt="" coords="208,55,352,95"/>
+<area shape="poly" id="edge4_Node000001_Node000005" title=" " alt="" coords="161,56,194,61,194,66,160,61"/>
+<area shape="rect" id="Node000003" href="$namespacedetail.html#a89f967b745cf8df11ba9d59f93d97753" title=" " alt="" coords="759,5,887,31"/>
+<area shape="poly" id="edge2_Node000002_Node000003" title=" " alt="" coords="704,33,745,27,746,32,705,39"/>
+<area shape="rect" id="Node000004" href="$namespacedetail.html#ac185140ed8c8fcc07a302a890b714b0d" title=" " alt="" coords="752,55,895,80"/>
+<area shape="poly" id="edge3_Node000002_Node000004" title=" " alt="" coords="705,48,739,53,738,58,704,53"/>
+<area shape="poly" id="edge5_Node000005_Node000002" title=" " alt="" coords="352,67,590,46,590,51,352,72"/>
+<area shape="rect" id="Node000006" href="$classdetail_1_1exception.html#a6b4a786b5c1c25dd3edaceb1bf2d5120" title=" " alt="" coords="416,81,540,121"/>
+<area shape="poly" id="edge6_Node000005_Node000006" title=" " alt="" coords="353,82,403,88,402,94,352,87"/>
+<area shape="rect" id="Node000007" href="$classdetail_1_1exception.html#a8f1eb56b9964c8dd84d89d0da98d883b" title=" " alt="" coords="400,145,556,171"/>
+<area shape="poly" id="edge7_Node000005_Node000007" title=" " alt="" coords="321,93,401,130,423,138,421,143,399,135,319,98"/>
+<area shape="poly" id="edge8_Node000007_Node000002" title=" " alt="" coords="527,143,555,130,597,98,631,64,635,68,601,102,557,135,530,148"/>
+</map>

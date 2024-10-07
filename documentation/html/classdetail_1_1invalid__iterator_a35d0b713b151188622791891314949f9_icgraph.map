@@ -1,0 +1,29 @@
+<map id="detail::invalid_iterator::create" name="detail::invalid_iterator::create">
+<area shape="rect" id="Node000001" title=" " alt="" coords="375,233,519,273"/>
+<area shape="rect" id="Node000002" href="$classbasic__json.html#af97b4fcd01509076c8a7b32ec1a10aec" title="construct a JSON container given an iterator range" alt="" coords="172,5,327,31"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="433,220,417,180,395,132,364,85,325,44,307,33,309,29,328,40,368,81,399,130,422,178,438,218"/>
+<area shape="rect" id="Node000003" href="$classdetail_1_1iter__impl.html#a4064b295014b32f3cabd86f94264fc74" title="return the key of an object iterator" alt="" coords="180,55,319,80"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="427,222,386,157,358,124,325,95,302,82,304,78,328,90,361,120,390,154,431,219"/>
+<area shape="rect" id="Node000004" href="$classdetail_1_1iter__impl.html#abbef7d5bdb2c45980a34e907610c32b2" title="return a reference to the value pointed to by the iterator" alt="" coords="190,105,309,145"/>
+<area shape="poly" id="edge3_Node000001_Node000004" title=" " alt="" coords="412,225,372,191,325,159,303,147,305,142,328,154,375,187,416,221"/>
+<area shape="rect" id="Node000006" href="$classdetail_1_1iter__impl.html#a5e2dd333526ae85044fe78f65aac9b52" title="add to iterator" alt="" coords="190,169,309,209"/>
+<area shape="poly" id="edge5_Node000001_Node000006" title=" " alt="" coords="371,231,308,210,310,205,372,226"/>
+<area shape="rect" id="Node000008" href="$classdetail_1_1iter__impl.html#a848837b8db99998c90d7bd71492d0dee" title="return difference" alt="" coords="190,233,309,273"/>
+<area shape="poly" id="edge7_Node000001_Node000008" title=" " alt="" coords="361,255,309,255,309,250,361,250"/>
+<area shape="rect" id="Node000009" href="$classdetail_1_1iter__impl.html#a72314a87e67ba523f1be2f014f4eab56" title="dereference the iterator" alt="" coords="190,297,309,337"/>
+<area shape="poly" id="edge8_Node000001_Node000009" title=" " alt="" coords="372,279,310,300,308,295,371,274"/>
+<area shape="rect" id="Node000010" href="$classdetail_1_1iter__impl.html#a339df296df7f5d014d5c7cedf40497da" title="comparison: smaller" alt="" coords="190,361,309,401"/>
+<area shape="poly" id="edge9_Node000001_Node000010" title=" " alt="" coords="416,284,375,318,328,351,305,363,303,358,325,346,372,314,412,280"/>
+<area shape="rect" id="Node000012" href="$classdetail_1_1iter__impl.html#a57b4e1eee4a3cdb3c0683cf64979da8d" title="comparison: equal" alt="" coords="190,425,309,465"/>
+<area shape="poly" id="edge11_Node000001_Node000012" title=" " alt="" coords="431,287,389,351,361,385,328,415,309,427,306,422,325,411,357,381,385,347,426,284"/>
+<area shape="rect" id="Node000014" href="$classdetail_1_1iter__impl.html#a5e557e30103e2af36cd8173c88eb586c" title="access to successor" alt="" coords="190,489,309,529"/>
+<area shape="poly" id="edge13_Node000001_Node000014" title=" " alt="" coords="438,287,423,329,400,380,368,433,328,479,310,491,307,487,325,475,364,429,395,378,418,327,433,285"/>
+<area shape="rect" id="Node000005" href="$classdetail_1_1iter__impl.html#a96557c87bc9b3adf6aa0b1a6b6209525" title="return the value of an iterator" alt="" coords="5,105,124,145"/>
+<area shape="poly" id="edge4_Node000004_Node000005" title=" " alt="" coords="176,127,124,127,124,122,176,122"/>
+<area shape="rect" id="Node000007" href="$classdetail_1_1iter__impl.html#a3b48ed5856ca2011e8463d868fda3d0b" title="subtract from iterator" alt="" coords="5,169,124,209"/>
+<area shape="poly" id="edge6_Node000006_Node000007" title=" " alt="" coords="176,191,124,191,124,186,176,186"/>
+<area shape="rect" id="Node000011" href="$classdetail_1_1iter__impl.html#a25a3a8e85eb37727487f210f5304a48e" title="comparison: greater than or equal" alt="" coords="5,361,124,401"/>
+<area shape="poly" id="edge10_Node000010_Node000011" title=" " alt="" coords="176,383,124,383,124,378,176,378"/>
+<area shape="rect" id="Node000013" href="$classdetail_1_1iter__impl.html#ae52db5f16f00edc13c848fe99e4c521b" title="comparison: not equal" alt="" coords="5,425,124,465"/>
+<area shape="poly" id="edge12_Node000012_Node000013" title=" " alt="" coords="176,447,124,447,124,442,176,442"/>
+</map>

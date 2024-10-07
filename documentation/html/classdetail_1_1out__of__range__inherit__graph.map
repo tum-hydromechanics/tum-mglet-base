@@ -1,0 +1,9 @@
+<map id="detail::out_of_range" name="detail::out_of_range">
+<area shape="rect" id="Node000001" title="exception indicating access out of the defined range" alt="" coords="5,152,141,177"/>
+<area shape="rect" id="Node000002" href="$classdetail_1_1exception.html" title="general exception of the basic_json class" alt="" coords="15,79,131,104"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="67,118,69,152,64,152,62,118"/>
+<area shape="poly" id="edge4_Node000001_Node000002" title=" " alt="" coords="85,118,83,152,78,152,79,118"/>
+<area shape="rect" id="Node000003" title=" " alt="" coords="22,5,125,31"/>
+<area shape="poly" id="edge2_Node000002_Node000003" title=" " alt="" coords="67,44,69,78,64,79,62,45"/>
+<area shape="poly" id="edge3_Node000002_Node000003" title=" " alt="" coords="85,45,83,79,78,78,79,44"/>
+</map>

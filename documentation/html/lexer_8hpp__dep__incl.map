@@ -1,0 +1,17 @@
+<map id="/home/pott/tum&#45;mglet&#45;base/build/_deps/json&#45;src/include/nlohmann/detail/input/lexer.hpp" name="/home/pott/tum&#45;mglet&#45;base/build/_deps/json&#45;src/include/nlohmann/detail/input/lexer.hpp">
+<area shape="rect" id="Node000001" title=" " alt="" coords="236,5,420,75"/>
+<area shape="rect" id="Node000002" href="$binary__reader_8hpp.html" title=" " alt="" coords="107,123,291,192"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="282,86,238,124,235,120,278,82"/>
+<area shape="rect" id="Node000005" href="$include_2nlohmann_2json_8hpp.html" title=" " alt="" coords="176,475,379,529"/>
+<area shape="poly" id="edge9_Node000001_Node000005" title=" " alt="" coords="329,89,320,240,312,333,299,427,288,475,282,474,293,426,306,333,315,240,324,89"/>
+<area shape="rect" id="Node000006" href="$parser_8hpp.html" title=" " alt="" coords="365,240,549,309"/>
+<area shape="poly" id="edge7_Node000001_Node000006" title=" " alt="" coords="356,86,441,239,436,241,351,88"/>
+<area shape="rect" id="Node000003" href="$binary__writer_8hpp.html" title=" " alt="" coords="56,240,240,309"/>
+<area shape="poly" id="edge2_Node000002_Node000003" title=" " alt="" coords="181,206,165,241,160,239,176,204"/>
+<area shape="poly" id="edge6_Node000002_Node000005" title=" " alt="" coords="236,202,254,239,271,304,280,370,282,475,276,475,274,370,266,305,250,241,231,205"/>
+<area shape="rect" id="Node000004" href="$serializer_8hpp.html" title=" " alt="" coords="5,357,189,427"/>
+<area shape="poly" id="edge3_Node000003_Node000004" title=" " alt="" coords="130,323,115,358,110,356,125,321"/>
+<area shape="poly" id="edge5_Node000003_Node000005" title=" " alt="" coords="181,319,204,356,267,473,262,476,199,359,176,322"/>
+<area shape="poly" id="edge4_Node000004_Node000005" title=" " alt="" coords="166,431,235,472,232,477,164,436"/>
+<area shape="poly" id="edge8_Node000006_Node000005" title=" " alt="" coords="429,323,349,428,305,476,301,473,345,425,424,319"/>
+</map>

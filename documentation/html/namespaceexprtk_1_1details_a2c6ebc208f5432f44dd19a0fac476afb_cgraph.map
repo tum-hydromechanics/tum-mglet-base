@@ -1,0 +1,12 @@
+<map id="exprtk::details::construct_branch_pair" name="exprtk::details::construct_branch_pair">
+<area shape="rect" id="Node000001" title=" " alt="" coords="5,37,172,77"/>
+<area shape="rect" id="Node000002" href="$namespaceexprtk_1_1details.html#aeab8500b5e79f2da9c23f824bfc453dc" title=" " alt="" coords="220,37,372,77"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="172,55,206,55,206,60,172,60"/>
+<area shape="rect" id="Node000003" href="$namespaceexprtk_1_1details.html#a6c7f082c203b5e3fb3bc377109fe3abb" title=" " alt="" coords="420,5,543,45"/>
+<area shape="poly" id="edge2_Node000002_Node000003" title=" " alt="" coords="372,42,406,36,407,41,373,47"/>
+<area shape="rect" id="Node000005" href="$namespaceexprtk_1_1details.html#aa27674d0ab890dd002c455fd44cabddb" title=" " alt="" coords="420,69,543,109"/>
+<area shape="poly" id="edge4_Node000002_Node000005" title=" " alt="" coords="373,68,407,74,406,79,372,73"/>
+<area shape="rect" id="Node000004" href="$classexprtk_1_1details_1_1expression__node.html#a105bfb3187351f863fdba3cb305ef734" title=" " alt="" coords="591,37,767,77"/>
+<area shape="poly" id="edge3_Node000003_Node000004" title=" " alt="" coords="544,33,577,38,576,43,543,38"/>
+<area shape="poly" id="edge5_Node000005_Node000004" title=" " alt="" coords="543,77,576,71,577,76,544,82"/>
+</map>

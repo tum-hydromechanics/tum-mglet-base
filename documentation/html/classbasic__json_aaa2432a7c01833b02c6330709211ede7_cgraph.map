@@ -1,0 +1,9 @@
+<map id="basic_json::get_binary" name="basic_json::get_binary">
+<area shape="rect" id="Node000001" title="get a binary value" alt="" coords="5,31,159,56"/>
+<area shape="rect" id="Node000002" href="$namespacedetail.html#a266fb3d4bf633ad6c506434cc91164da" title=" " alt="" coords="207,31,307,56"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="159,41,193,41,193,46,159,46"/>
+<area shape="rect" id="Node000003" href="$namespacedetail.html#a89f967b745cf8df11ba9d59f93d97753" title=" " alt="" coords="362,5,490,31"/>
+<area shape="poly" id="edge2_Node000002_Node000003" title=" " alt="" coords="307,33,348,27,349,32,308,39"/>
+<area shape="rect" id="Node000004" href="$namespacedetail.html#ac185140ed8c8fcc07a302a890b714b0d" title=" " alt="" coords="355,55,497,80"/>
+<area shape="poly" id="edge3_Node000002_Node000004" title=" " alt="" coords="307,48,341,53,340,58,307,53"/>
+</map>

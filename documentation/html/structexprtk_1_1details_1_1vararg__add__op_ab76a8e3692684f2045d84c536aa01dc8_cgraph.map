@@ -1,0 +1,22 @@
+<map id="exprtk::details::vararg_add_op::process" name="exprtk::details::vararg_add_op::process">
+<area shape="rect" id="Node000001" title=" " alt="" coords="5,152,153,192"/>
+<area shape="rect" id="Node000002" href="$structexprtk_1_1details_1_1vararg__add__op.html#a18ab46b276313208341c968b7f5e0949" title=" " alt="" coords="201,5,349,45"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="98,150,143,107,200,62,219,50,222,54,203,66,147,111,102,154"/>
+<area shape="rect" id="Node000003" href="$namespaceexprtk_1_1details.html#a6f82a5d5d177f717db648d56438fd693" title=" " alt="" coords="397,159,540,185"/>
+<area shape="poly" id="edge12_Node000001_Node000003" title=" " alt="" coords="107,150,150,125,201,105,242,96,275,93,309,96,350,105,399,125,440,149,438,154,397,129,349,111,308,102,275,99,243,102,202,111,152,130,110,154"/>
+<area shape="rect" id="Node000005" href="$structexprtk_1_1details_1_1vararg__add__op.html#a59870bb46f9d8a36f3d7d7a47306e4bc" title=" " alt="" coords="201,120,349,160"/>
+<area shape="poly" id="edge4_Node000001_Node000005" title=" " alt="" coords="153,157,187,152,188,157,154,163"/>
+<area shape="rect" id="Node000006" href="$structexprtk_1_1details_1_1vararg__add__op.html#a5949d108df0a5925d8847c265bf2ca54" title=" " alt="" coords="201,184,349,224"/>
+<area shape="poly" id="edge6_Node000001_Node000006" title=" " alt="" coords="154,181,188,187,187,192,153,187"/>
+<area shape="rect" id="Node000007" href="$structexprtk_1_1details_1_1vararg__add__op.html#a914e65356c5b0a4ed3680ff4b2c7a9a9" title=" " alt="" coords="201,248,349,288"/>
+<area shape="poly" id="edge8_Node000001_Node000007" title=" " alt="" coords="118,190,203,234,216,240,213,245,200,238,116,194"/>
+<area shape="rect" id="Node000008" href="$structexprtk_1_1details_1_1vararg__add__op.html#a134709767eb9b365bc333dfe8c5fc737" title=" " alt="" coords="201,312,349,352"/>
+<area shape="poly" id="edge10_Node000001_Node000008" title=" " alt="" coords="97,190,142,243,171,272,203,298,211,303,208,307,200,302,167,276,138,246,93,194"/>
+<area shape="poly" id="edge2_Node000002_Node000003" title=" " alt="" coords="320,43,351,62,405,106,448,148,444,151,401,110,348,66,317,48"/>
+<area shape="rect" id="Node000004" href="$classexprtk_1_1details_1_1expression__node.html#a0569d2aa1a68cbf06e69ff5564a92392" title=" " alt="" coords="588,152,764,192"/>
+<area shape="poly" id="edge3_Node000003_Node000004" title=" " alt="" coords="540,169,574,169,574,175,540,175"/>
+<area shape="poly" id="edge5_Node000005_Node000003" title=" " alt="" coords="350,150,384,155,384,161,349,155"/>
+<area shape="poly" id="edge7_Node000006_Node000003" title=" " alt="" coords="349,189,384,183,384,189,350,194"/>
+<area shape="poly" id="edge9_Node000007_Node000003" title=" " alt="" coords="323,245,348,234,432,189,434,194,351,238,325,250"/>
+<area shape="poly" id="edge11_Node000008_Node000003" title=" " alt="" coords="328,310,348,298,378,273,406,245,448,194,452,197,410,249,382,277,351,302,331,314"/>
+</map>

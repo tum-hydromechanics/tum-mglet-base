@@ -1,0 +1,16 @@
+<map id="json_pointer::empty" name="json_pointer::empty">
+<area shape="rect" id="Node000001" title="return whether pointer points to the root document" alt="" coords="601,81,737,107"/>
+<area shape="rect" id="Node000002" href="$classjson__pointer.html#aba71e63e4032cfc46dd90aeb09e5cb0f" title="return last reference token" alt="" coords="411,5,539,31"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="622,79,508,33,510,28,624,74"/>
+<area shape="rect" id="Node000003" href="$classbasic__json.html#a693812b31e106dec9166e93d8f6dd7d7" title="applies a JSON patch in&#45;place without copying the object" alt="" coords="177,56,349,81"/>
+<area shape="poly" id="edge5_Node000001_Node000003" title=" " alt="" coords="587,92,349,77,350,71,588,86"/>
+<area shape="rect" id="Node000005" href="$classjson__pointer.html#aa03c0c1206e171342d27a4583258858b" title="returns the parent of this JSON pointer" alt="" coords="195,127,331,167"/>
+<area shape="poly" id="edge4_Node000001_Node000005" title=" " alt="" coords="636,116,597,133,554,147,496,156,437,160,331,157,332,152,436,154,495,151,553,142,595,128,633,111"/>
+<area shape="rect" id="Node000006" href="$classjson__pointer.html#a662118b470c87a1b564946c2602c49ce" title="remove last reference token" alt="" coords="397,107,553,132"/>
+<area shape="poly" id="edge6_Node000001_Node000006" title=" " alt="" coords="588,107,554,112,553,106,587,102"/>
+<area shape="poly" id="edge2_Node000002_Node000003" title=" " alt="" coords="409,37,318,59,316,53,407,31"/>
+<area shape="rect" id="Node000004" href="$classbasic__json.html#a145a004c0a2fa5be84b260ecc98ab5d9" title="applies a JSON patch to a copy of the current object" alt="" coords="5,56,129,81"/>
+<area shape="poly" id="edge3_Node000003_Node000004" title=" " alt="" coords="164,71,130,71,130,66,164,66"/>
+<area shape="poly" id="edge8_Node000006_Node000003" title=" " alt="" coords="407,106,316,84,318,79,409,101"/>
+<area shape="poly" id="edge7_Node000006_Node000005" title=" " alt="" coords="384,134,332,141,331,136,384,129"/>
+</map>

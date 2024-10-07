@@ -1,0 +1,11 @@
+<map id="checkzelle_mod::checkzelle" name="checkzelle_mod::checkzelle">
+<area shape="rect" id="Node000001" title=" " alt="" coords="5,35,192,60"/>
+<area shape="rect" id="Node000002" href="$namespacecheckzelle__mod.html#a4e5988cd69ad55ea2c47ed57918a140c" title=" " alt="" coords="240,35,455,60"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="192,45,226,45,226,50,192,50"/>
+<area shape="rect" id="Node000003" href="$namespaceblockcheck__mod.html#a092c3e94c9276aa19b9fec02d6ee9895" title=" " alt="" coords="503,5,725,31"/>
+<area shape="poly" id="edge2_Node000002_Node000003" title=" " alt="" coords="455,33,489,29,489,34,455,38"/>
+<area shape="rect" id="Node000004" href="$namespacepunktekoordinaten__mod.html#a90249bf2c641f9907961d37441b3b0fb" title=" " alt="" coords="535,55,693,95"/>
+<area shape="poly" id="edge3_Node000002_Node000004" title=" " alt="" coords="455,56,521,63,521,68,455,61"/>
+<area shape="rect" id="Node000005" href="$namespacecutcorner__mod.html#aaf052dd84ef63a987f684310bfe44ae0" title=" " alt="" coords="773,63,928,88"/>
+<area shape="poly" id="edge4_Node000004_Node000005" title=" " alt="" coords="694,73,759,73,759,78,694,78"/>
+</map>

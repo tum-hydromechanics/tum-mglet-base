@@ -1,0 +1,13 @@
+<map id="json_get_number" name="json_get_number">
+<area shape="rect" id="Node000001" title=" " alt="" coords="5,56,127,81"/>
+<area shape="rect" id="Node000002" href="$classbasic__json.html#a899e4623fe377af5c9ad14c40c64280c" title="access specified array element with bounds checking" alt="" coords="199,31,302,56"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="127,58,185,50,186,55,127,63"/>
+<area shape="rect" id="Node000006" href="$classdetail_1_1exception.html#ae75d7315f5f2d85958da6d961375caf0" title="returns the explanatory string" alt="" coords="175,80,327,105"/>
+<area shape="poly" id="edge5_Node000001_Node000006" title=" " alt="" coords="127,74,161,78,161,84,127,79"/>
+<area shape="rect" id="Node000003" href="$namespacedetail.html#a266fb3d4bf633ad6c506434cc91164da" title=" " alt="" coords="375,31,475,56"/>
+<area shape="poly" id="edge2_Node000002_Node000003" title=" " alt="" coords="302,41,360,41,360,46,302,46"/>
+<area shape="rect" id="Node000004" href="$namespacedetail.html#a89f967b745cf8df11ba9d59f93d97753" title=" " alt="" coords="530,5,658,31"/>
+<area shape="poly" id="edge3_Node000003_Node000004" title=" " alt="" coords="475,33,516,27,517,32,476,39"/>
+<area shape="rect" id="Node000005" href="$namespacedetail.html#ac185140ed8c8fcc07a302a890b714b0d" title=" " alt="" coords="523,55,665,80"/>
+<area shape="poly" id="edge4_Node000003_Node000005" title=" " alt="" coords="475,48,509,53,508,58,475,53"/>
+</map>
