@@ -6,8 +6,6 @@ MODULE offload_helper_mod
 
     INTEGER(intk), PARAMETER :: N_DIMS = 3
     INTEGER(intk), PARAMETER :: N_BASB = 6
-    REAL(realk), PARAMETER :: e = 2.71828182846
-
 
     INTEGER(intk), POINTER, CONTIGUOUS :: ip3d_offload(:), ip1d_offload(:)
     INTEGER(intk), POINTER, CONTIGUOUS :: mgdims_offload(:), mgbasb_offload(:)
@@ -102,13 +100,13 @@ CONTAINS
 
         !$omp target enter data map(to: ip3d_offload, ip1d_offload, mgdims_offload, mgbasb_offload, &
         !$omp& rddx_offload, rddy_offload, rddz_offload, ddx_offload, ddy_offload, ddz_offload, &
-        !$omp& rdx_offload, rdy_offload, rdz_offload)
+        !$omp& rdx_offload, rdy_offload, rdz_offload, bt_offload)
     END SUBROUTINE offload_constants
 
     SUBROUTINE finish_offload_constants()
         !$omp target exit data map(delete: ip3d_offload, ip1d_offload, mgdims_offload, mgbasb_offload, &
         !$omp& rddx_offload, rddy_offload, rddz_offload, ddx_offload, ddy_offload, ddz_offload, &
-        !$omp& rdx_offload, rdy_offload, rdz_offload)
+        !$omp& rdx_offload, rdy_offload, rdz_offload, bt_offload)
 
         DEALLOCATE(ip3d_offload)
         DEALLOCATE(ip1d_offload)

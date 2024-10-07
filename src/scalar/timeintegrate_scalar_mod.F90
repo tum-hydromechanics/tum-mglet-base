@@ -197,8 +197,8 @@ CONTAINS
         prmol_offload = sca%prmol
         prturb_offload = prturb
         kayscrawford_offload = sca%kayscrawford
-
-        !$omp target data map(to: t_a, u_a, v_a, w_a, g_a) map(tofrom: qtu_a, qtv_a, qtw_a)
+        
+        !$omp target data map(to: t_a, u_a, v_a, w_a, g_a) map(from: qtu_a, qtv_a, qtw_a)
         !$omp target teams distribute
         DO igrid = 1, nmygrids
             BLOCK
