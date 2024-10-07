@@ -247,9 +247,9 @@ CONTAINS
         !$omp declare target
         ! Subroutine arguments
         INTEGER(intk), INTENT(IN) :: kk, jj, ii
-        REAL(realk), INTENT(OUT), DIMENSION(kk, jj, ii) :: qtu, qtv, qtw
-        REAL(realk), INTENT(IN), DIMENSION(kk, jj, ii) :: t, u, v, w, g, bt
-        REAL(realk), INTENT(IN) :: ddx(ii), ddy(jj), ddz(kk), rdx(ii), rdy(jj), rdz(kk)
+        REAL(realk), INTENT(OUT), POINTER, CONTIGUOUS, DIMENSION(:, :, :) :: qtu, qtv, qtw
+        REAL(realk), INTENT(IN), POINTER, CONTIGUOUS, DIMENSION(:, :, :) :: t, u, v, w, g, bt
+        REAL(realk), INTENT(IN), POINTER, CONTIGUOUS, DIMENSION(:) :: ddx, ddy, ddz, rdx, rdy, rdz
         REAL(realk), INTENT(in) :: sca_prmol, sca_prturb
         INTEGER(intk), INTENT(IN) :: sca_kayscrawford
         INTEGER(intk), INTENT(IN) :: nfro, nbac, nrgt, nlft, nbot, ntop
@@ -329,9 +329,10 @@ CONTAINS
             END DO
             !$omp end parallel do
         ELSE
-            !$omp parallel do simd collapse(3)
+            !$omp parallel do collapse(2)
             DO i = 3-nfu, ii-3+nbu
                 DO j = 3, jj-2
+                    !$omp simd
                     DO k = 3, kk-2
                         gsca(k) = gmol_offload/rho_offload/sca_prmol
 
@@ -350,9 +351,10 @@ CONTAINS
                         ! Final result
                         qtu(k, j, i) = adv + diff                        
                     END DO
+                    !$omp end simd
                 END DO
             END DO
-            !$omp end parallel do simd
+            !$omp end parallel do
         END IF
 
         ! Y direction
@@ -393,10 +395,11 @@ CONTAINS
             END DO
             !$omp end parallel do
         ELSE
-            !$omp parallel do simd collapse(3)
+            !$omp parallel do collapse(2)
             DO i = 3, ii-2
                 DO j = 3-nrv, jj-3+nlv
                     ! Scalar diffusivity LES/DNS computation
+                    !$omp simd
                     DO k = 3, kk-2
                         gsca(k) = gmol_offload/rho_offload/sca_prmol
 
@@ -415,9 +418,10 @@ CONTAINS
                         ! Final result
                         qtv(k, j, i) = adv + diff
                     END DO
+                    !$omp end simd
                 END DO
             END DO
-            !$omp end parallel do simd
+            !$omp end parallel do
         END IF
 
 
@@ -459,9 +463,10 @@ CONTAINS
             END DO
             !$omp end parallel do
         ELSE
-            !$omp parallel do simd collapse(3)
+            !$omp parallel do collapse(2)
             DO i = 3, ii-2
                 DO j = 3, jj-2
+                    !$omp simd
                     DO k = 3-nbw, kk-3+ntw
                         gsca(k) = gmol_offload/rho_offload/sca_prmol
 
@@ -480,9 +485,10 @@ CONTAINS
                         ! Final result
                         qtw(k, j, i) = adv + diff
                     END DO
+                    !$omp end simd
                 END DO
             END DO
-            !$omp end parallel do simd
+            !$omp end parallel do
         END IF
 
         ! These loops are not used in our basic scalar test
@@ -628,9 +634,9 @@ CONTAINS
         !$omp declare target
         ! Subroutine arguments
         INTEGER(intk), INTENT(IN) :: kk, jj, ii
-        REAL(realk), INTENT(OUT), DIMENSION(kk, jj, ii) :: qtt
-        REAL(realk), INTENT(IN), DIMENSION(kk, jj, ii) :: qtu, qtv, qtw
-        REAL(realk), INTENT(IN) :: rddx(ii), rddy(jj), rddz(kk)
+        REAL(realk), INTENT(OUT), POINTER, CONTIGUOUS, DIMENSION(:, :, :) :: qtt
+        REAL(realk), INTENT(IN), POINTER, CONTIGUOUS, DIMENSION(:, :, :) :: qtu, qtv, qtw
+        REAL(realk), INTENT(IN), POINTER, CONTIGUOUS, DIMENSION(:) :: rddx, rddy, rddz
 
         ! Local variables
         INTEGER(intk) :: i, j, k
@@ -639,9 +645,10 @@ CONTAINS
         ! Set INTENT(out) to zero
         qtt = 0.0
 
-        !$omp parallel do simd collapse(3)
+        !$omp parallel do collapse(2)
         DO i = 3, ii-2
             DO j = 3, jj-2
+                !$omp simd
                 DO k = 3, kk-2
                     ! Computing netflux resulting from exchange with neighbors
                     netflux = qtu(k, j, i-1) - qtu(k, j, i) + qtv(k, j-1, i) &
@@ -649,9 +656,10 @@ CONTAINS
 
                     qtt(k, j, i) = rddz(k)*rddy(j)*rddx(i)*netflux
                 END DO
+                !$omp end simd
             END DO
         END DO
-        !$omp end parallel do simd
+        !$omp end parallel do
     END SUBROUTINE fluxbalance_grid
 
     SUBROUTINE comp_tmean(tmean, tmeansqr, kk, jj, ii, t, ddx, ddy, ddz)
