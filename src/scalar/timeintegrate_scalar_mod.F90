@@ -260,7 +260,8 @@ CONTAINS
         INTEGER(intk) :: i, j, k
         INTEGER(intk) :: nfu, nbu, nrv, nlv, nbw, ntw
         INTEGER(intk) :: iles
-        REAL(realk) :: gsca(kk)
+        ! Now we need 3 independent arrays due to nowait, else we might run into race conditions
+        REAL(realk) :: gsca_u(ii), gsca_v(jj), gsca_w(kk)
         REAL(realk) :: adv, diff, area
         REAL(realk) :: gscamol, gtgmolp, gtgmoln
 
@@ -290,206 +291,160 @@ CONTAINS
         IF (ilesmodel_offlad == 0) iles = 0
 
         ! X direction
-        IF (iles == 1) THEN
-            ! Scalar diffusivity LES/DNS computation
-            ! SIMD is not possible here due to the sca_prt function.
-            !$omp parallel do collapse(3)
-            DO i = 3-nfu, ii-3+nbu
-                DO j = 3, jj-2
+        !$omp parallel
+        !$omp do collapse(2)
+        DO i = 3-nfu, ii-3+nbu
+            DO j = 3, jj-2
+                ! Scalar diffusivity LES/DNS computation
+                IF (iles == 1) THEN
                     DO k = 3, kk-2
                         gscamol = gmol_offload/rho_offload/sca_prmol
                         gtgmolp = (g(k, j, i) - gmol_offload)/gmol_offload
                         gtgmoln = (g(k, j, i+1) - gmol_offload)/gmol_offload
 
                         ! 1/Re * 1/Pr + 1/Re_t * 1/Pr_t:
-                        gsca(k) = gscamol &
+                        gsca_u(k) = gscamol &
                             + (g(k, j, i+1) + g(k, j, i) - 2.0*gmol_offload) / rho_offload &
                             / (sca_prt(sca_prmol, sca_kayscrawford, sca_prturb, gtgmoln) + sca_prt(sca_prmol, sca_kayscrawford, sca_prturb, gtgmolp))
-                            
 
                         ! Limit gsca here MAX(...,0): no negative diffusion!
-                        gsca(k) = MAX(gscamol, gsca(k))
-
-                        ! Convective fluxes
-                        ! It is assumed that the velocity field is already masked
-                        ! with BU, BV, BW = no new masking necessary (!)
-                        adv = (ddy(j)*ddz(k)) * u(k, j, i) &
-                            * 0.5 * (t(k, j, i) + t(k, j, i+1))
-    
-                        ! Depending on the knowledge about the the cell and its
-                        ! neighbours it is determined if faces are blocked (=0)
-                        ! or open (=1)
-                        area = bt(k, j, i)*bt(k, j, i+1)*(ddy(j)*ddz(k))
-                        diff = -gsca(k)*rdx(i)*(t(k, j, i+1) - t(k, j, i))*area
-    
-                        ! Final result
-                        qtu(k, j, i) = adv + diff
+                        gsca_u(k) = MAX(gscamol, gsca_u(k))
                     END DO
-                END DO
-            END DO
-            !$omp end parallel do
-        ELSE
-            !$omp parallel do collapse(2)
-            DO i = 3-nfu, ii-3+nbu
-                DO j = 3, jj-2
+                ELSE
                     !$omp simd
                     DO k = 3, kk-2
-                        gsca(k) = gmol_offload/rho_offload/sca_prmol
-
-                        ! Convective fluxes
-                        ! It is assumed that the velocity field is already masked
-                        ! with BU, BV, BW = no new masking necessary (!)
-                        adv = (ddy(j)*ddz(k)) * u(k, j, i) &
-                            * 0.5 * (t(k, j, i) + t(k, j, i+1))
-    
-                        ! Depending on the knowledge about the the cell and its
-                        ! neighbours it is determined if faces are blocked (=0)
-                        ! or open (=1)
-                        area = bt(k, j, i)*bt(k, j, i+1)*(ddy(j)*ddz(k))
-                        diff = -gsca(k)*rdx(i)*(t(k, j, i+1) - t(k, j, i))*area
-    
-                        ! Final result
-                        qtu(k, j, i) = adv + diff                        
+                        gsca_u(k) = gmol_offload/rho_offload/sca_prmol
                     END DO
                     !$omp end simd
+                END IF
+
+                ! Final asembly
+                !$omp simd
+                DO k = 3, kk-2
+                    ! Convective fluxes
+                    ! It is assumed that the velocity field is already masked
+                    ! with BU, BV, BW = no new masking necessary (!)
+                    adv = (ddy(j)*ddz(k)) * u(k, j, i) &
+                        * 0.5 * (t(k, j, i) + t(k, j, i+1))
+
+                    ! Depending on the knowledge about the the cell and its
+                    ! neighbours it is determined if faces are blocked (=0)
+                    ! or open (=1)
+                    area = bt(k, j, i)*bt(k, j, i+1)*(ddy(j)*ddz(k))
+                    diff = -gsca_u(k)*rdx(i)*(t(k, j, i+1) - t(k, j, i))*area
+
+                    ! Final result
+                    qtu(k, j, i) = adv + diff
                 END DO
+                !$omp end simd
             END DO
-            !$omp end parallel do
-        END IF
+        END DO
+        !$omp end do nowait
+        !$omp end parallel
 
         ! Y direction
-        IF (iles == 1) THEN
-            ! Scalar diffusivity LES/DNS computation
-            !$omp parallel do collapse(3)
-            DO i = 3, ii-2
-                DO j = 3-nrv, jj-3+nlv
+        !$omp parallel
+        !$omp do collapse(2)
+        DO i = 3, ii-2
+            DO j = 3-nrv, jj-3+nlv
+                ! Scalar diffusivity LES/DNS computation
+                IF (iles == 1) THEN
                     DO k = 3, kk-2
                         gscamol = gmol_offload/rho_offload/sca_prmol
                         gtgmolp = (g(k, j, i) - gmol_offload)/gmol_offload
-                        gtgmoln = (g(k, j, i+1) - gmol_offload)/gmol_offload
+                        gtgmoln = (g(k, j+1, i) - gmol_offload)/gmol_offload
 
                         ! 1/Re * 1/Pr + 1/Re_t * 1/Pr_t:
-                        gsca(k) = gscamol &
-                            + (g(k, j, i+1) + g(k, j, i) - 2.0*gmol_offload) / rho_offload &
+                        gsca_v(k) = gscamol &
+                            + (g(k, j+1, i) + g(k, j, i) - 2.0*gmol_offload) / rho_offload &
                             / (sca_prt(sca_prmol, sca_kayscrawford, sca_prturb, gtgmoln) + sca_prt(sca_prmol, sca_kayscrawford, sca_prturb, gtgmolp))
 
                         ! Limit gsca here MAX(...,0): no negative diffusion!
-                        gsca(k) = MAX(gscamol, gsca(k))
-
-                        ! Convective fluxes
-                        ! It is assumed that the velocity field is already masked
-                        ! with BU, BV, BW = no new masking necessary (!)
-                        adv = (ddx(i)*ddz(k)) * v(k, j, i) &
-                        * 0.5 * (t(k, j, i) + t(k, j+1, i))
-
-                        ! Depending on the knowledge about the the cell and its
-                        ! neighbours it is determined if faces are blocked (=0)
-                        ! or open (=1)
-                        area = bt(k, j, i)*bt(k, j+1, i)*(ddx(i)*ddz(k))
-                        diff = -gsca(k)*rdy(j)*(t(k, j+1, i) - t(k, j, i))*area
-
-                        ! Final result
-                        qtv(k, j, i) = adv + diff
+                        gsca_v(k) = MAX(gscamol, gsca_v(k))
                     END DO
-                END DO
-            END DO
-            !$omp end parallel do
-        ELSE
-            !$omp parallel do collapse(2)
-            DO i = 3, ii-2
-                DO j = 3-nrv, jj-3+nlv
-                    ! Scalar diffusivity LES/DNS computation
+                ELSE
                     !$omp simd
                     DO k = 3, kk-2
-                        gsca(k) = gmol_offload/rho_offload/sca_prmol
-
-                        ! Convective fluxes
-                        ! It is assumed that the velocity field is already masked
-                        ! with BU, BV, BW = no new masking necessary (!)
-                        adv = (ddx(i)*ddz(k)) * v(k, j, i) &
-                        * 0.5 * (t(k, j, i) + t(k, j+1, i))
-
-                        ! Depending on the knowledge about the the cell and its
-                        ! neighbours it is determined if faces are blocked (=0)
-                        ! or open (=1)
-                        area = bt(k, j, i)*bt(k, j+1, i)*(ddx(i)*ddz(k))
-                        diff = -gsca(k)*rdy(j)*(t(k, j+1, i) - t(k, j, i))*area
-
-                        ! Final result
-                        qtv(k, j, i) = adv + diff
+                        gsca_v(k) = gmol_offload/rho_offload/sca_prmol
                     END DO
                     !$omp end simd
-                END DO
-            END DO
-            !$omp end parallel do
-        END IF
+                END IF
 
+                ! Final asembly
+                !$omp simd
+                DO k = 3, kk-2
+                    ! Convective fluxes
+                    ! It is assumed that the velocity field is already masked
+                    ! with BU, BV, BW = no new masking necessary (!)
+                    adv = (ddx(i)*ddz(k)) * v(k, j, i) &
+                        * 0.5 * (t(k, j, i) + t(k, j+1, i))
+
+                    ! Depending on the knowledge about the the cell and its
+                    ! neighbours it is determined if faces are blocked (=0)
+                    ! or open (=1)
+                    area = bt(k, j, i)*bt(k, j+1, i)*(ddx(i)*ddz(k))
+                    diff = -gsca_v(k)*rdy(j)*(t(k, j+1, i) - t(k, j, i))*area
+
+                    ! Final result
+                    qtv(k, j, i) = adv + diff
+                END DO
+                !$omp end simd
+            END DO
+        END DO
+        !$omp end do nowait
+        !$omp end parallel
 
         ! Z direction
-        IF (iles == 1) THEN
-            ! Scalar diffusivity LES/DNS computation
-            !$omp parallel do collapse(3)
-            DO i = 3, ii-2
-                DO j = 3, jj-2
+        !$omp parallel
+        !$omp do collapse(2)
+        DO i = 3, ii-2
+            DO j = 3, jj-2
+                ! Scalar diffusivity LES/DNS computation
+                IF (iles == 1) THEN
                     DO k = 3-nbw, kk-3+ntw
                         gscamol = gmol_offload/rho_offload/sca_prmol
                         gtgmolp = (g(k, j, i) - gmol_offload)/gmol_offload
                         gtgmoln = (g(k+1, j, i) - gmol_offload)/gmol_offload
 
                         ! 1/Re * 1/Pr + 1/Re_t * 1/Pr_t:
-                        gsca(k) = gscamol &
+                        gsca_w(k) = gscamol &
                             + (g(k+1, j, i) + g(k, j, i) - 2.0*gmol_offload) / rho_offload &
                             / (sca_prt(sca_prmol, sca_kayscrawford, sca_prturb, gtgmoln) + sca_prt(sca_prmol, sca_kayscrawford, sca_prturb, gtgmolp))
 
                         ! Limit gsca here MAX(...,0): no negative diffusion!
-                        gsca(k) = MAX(gscamol, gsca(k))
-
-                            ! Convective fluxes
-                        ! It is assumed that the velocity field is already masked
-                        ! with BU, BV, BW = no new masking necessary (!)
-                        adv = (ddx(i)*ddy(j)) * w(k, j, i) &
-                        * 0.5 * (t(k, j, i) + t(k+1, j, i))
-
-                        ! Depending on the knowledge about the the cell and its
-                        ! neighbours it is determined if faces are blocked (=0)
-                        ! or open (=1)
-                        area = bt(k, j, i)*bt(k+1, j, i)*(ddx(i)*ddy(j))
-                        diff = -gsca(k)*rdy(j)*(t(k+1, j, i) - t(k, j, i))*area
-
-                        ! Final result
-                        qtw(k, j, i) = adv + diff
+                        gsca_w(k) = MAX(gscamol, gsca_w(k))
                     END DO
-                END DO
-            END DO
-            !$omp end parallel do
-        ELSE
-            !$omp parallel do collapse(2)
-            DO i = 3, ii-2
-                DO j = 3, jj-2
+                ELSE
                     !$omp simd
                     DO k = 3-nbw, kk-3+ntw
-                        gsca(k) = gmol_offload/rho_offload/sca_prmol
-
-                        ! Convective fluxes
-                        ! It is assumed that the velocity field is already masked
-                        ! with BU, BV, BW = no new masking necessary (!)
-                        adv = (ddx(i)*ddy(j)) * w(k, j, i) &
-                            * 0.5 * (t(k, j, i) + t(k+1, j, i))
-    
-                        ! Depending on the knowledge about the the cell and its
-                        ! neighbours it is determined if faces are blocked (=0)
-                        ! or open (=1)
-                        area = bt(k, j, i)*bt(k+1, j, i)*(ddx(i)*ddy(j))
-                        diff = -gsca(k)*rdy(j)*(t(k+1, j, i) - t(k, j, i))*area
-    
-                        ! Final result
-                        qtw(k, j, i) = adv + diff
+                        gsca_w(k) = gmol_offload/rho_offload/sca_prmol
                     END DO
                     !$omp end simd
+                END IF
+
+                ! Final asembly
+                !$omp simd
+                DO k = 3-nbw, kk-3+ntw
+                    ! Convective fluxes
+                    ! It is assumed that the velocity field is already masked
+                    ! with BU, BV, BW = no new masking necessary (!)
+                    adv = (ddx(i)*ddy(j)) * w(k, j, i) &
+                        * 0.5 * (t(k, j, i) + t(k+1, j, i))
+
+                    ! Depending on the knowledge about the the cell and its
+                    ! neighbours it is determined if faces are blocked (=0)
+                    ! or open (=1)
+                    area = bt(k, j, i)*bt(k+1, j, i)*(ddx(i)*ddy(j))
+                    diff = -gsca_w(k)*rdy(j)*(t(k+1, j, i) - t(k, j, i))*area
+
+                    ! Final result
+                    qtw(k, j, i) = adv + diff
                 END DO
+                !$omp end simd
             END DO
-            !$omp end parallel do
-        END IF
+        END DO
+        !$omp end do nowait
+        !$omp end parallel
 
         ! These loops are not used in our basic scalar test
         ! ------------------------------------------------------------------------------------------------------------
