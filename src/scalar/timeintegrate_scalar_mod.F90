@@ -339,11 +339,9 @@ CONTAINS
                 !$omp end simd
             END DO
         END DO
-        !$omp end do nowait
-        !$omp end parallel
+        !$omp end do
 
         ! Y direction
-        !$omp parallel
         !$omp do collapse(2)
         DO i = 3, ii-2
             DO j = 3-nrv, jj-3+nlv
@@ -391,11 +389,9 @@ CONTAINS
                 !$omp end simd
             END DO
         END DO
-        !$omp end do nowait
-        !$omp end parallel
+        !$omp end do
 
         ! Z direction
-        !$omp parallel
         !$omp do collapse(2)
         DO i = 3, ii-2
             DO j = 3, jj-2
@@ -443,8 +439,9 @@ CONTAINS
                 !$omp end simd
             END DO
         END DO
-        !$omp end do nowait
+        !$omp end do
         !$omp end parallel
+
 
         ! These loops are not used in our basic scalar test
         ! ------------------------------------------------------------------------------------------------------------
