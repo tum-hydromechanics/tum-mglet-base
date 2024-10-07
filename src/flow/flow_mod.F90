@@ -146,7 +146,7 @@ CONTAINS
         IF (uinf_is_expr) THEN
             CALL init_uvw_expr(u, v, w)
         ELSE
-            CALL init_uvw_uinf(u, v, w)
+        CALL init_uvw_uinf(u, v, w)
         END IF
         p = 0.0_realk
 
@@ -183,6 +183,11 @@ CONTAINS
         ! Local variables
         REAL(realk) :: uinf_mag
 
+        ! Confirm subroutine call:
+        PRINT *, "init_uvw_inf() subroutine called. Random flow field should be initialized."
+        PRINT *, "uinf = ", uinf(1), uinf(2), uinf(3)
+        PRINT *, "tu_level = ", tu_level
+
         ! Initialize fields - random noise between 0.0 .. 1.0
         CALL RANDOM_NUMBER(u_f%arr)
         CALL RANDOM_NUMBER(v_f%arr)
@@ -213,6 +218,8 @@ CONTAINS
         REAL(realk), POINTER, CONTIGUOUS :: dx(:), dy(:), dz(:)
         REAL(realk), POINTER, CONTIGUOUS :: ddx(:), ddy(:), ddz(:)
         REAL(realk), POINTER, CONTIGUOUS :: xstag(:), ystag(:), zstag(:)
+
+        PRINT *, "init_uvw_expr() subroutine called."
 
         DO i = 1, nmygrids
             igrid = mygrids(i)
