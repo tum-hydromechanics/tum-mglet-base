@@ -47,7 +47,8 @@ CONTAINS
         INTEGER(intk) :: i
         LOGICAL :: snapshots_exist
 
-        CALL start_timer(920)
+        CALL start_timer(900)
+        CALL start_timer(950)
 
         INQUIRE(file = 'Particle_Snapshots/snapshot0.pvtp', exist = snapshots_exist)
 
@@ -126,7 +127,8 @@ CONTAINS
             WRITE(*,*) ' '
         END IF
 
-        CALL stop_timer(920)
+        CALL stop_timer(950)
+        CALL stop_timer(900)
 
     END SUBROUTINE init_psnapshots
 
@@ -138,7 +140,8 @@ CONTAINS
         INTEGER(intk), INTENT(in) :: itstep
         REAL(realk), INTENT(in) :: timeph
 
-        CALL start_timer(920)
+        CALL start_timer(900)
+        CALL start_timer(950)
 
         IF (psnapshot_info%timesteps(psnapshot_info%counter + 1) == itstep) THEN
 
@@ -153,7 +156,8 @@ CONTAINS
 
         END IF
 
-        CALL stop_timer(920)
+        CALL stop_timer(950)
+        CALL stop_timer(900)
 
     END SUBROUTINE write_psnapshot
 
@@ -304,7 +308,8 @@ CONTAINS
         INTEGER(intk) :: i, unit = 164
         CHARACTER(len = mglet_filename_max) :: filename
 
-        CALL start_timer(920)
+        CALL start_timer(900)
+        CALL start_timer(950)
 
         IF (myid == 0) THEN
 
@@ -325,12 +330,9 @@ CONTAINS
 
         END IF
 
-        CALL stop_timer(920)
+        CALL stop_timer(950)
+        CALL stop_timer(900)
 
     END SUBROUTINE write_psnapshot_timeinfo
-
-    !------------------------------
-
-    ! TODO: particle trajectories ?
 
 END MODULE particle_snapshot_mod

@@ -188,12 +188,10 @@ CONTAINS
         CALL init_statistics()
 
         ! Initialize particle snapshots
-        CALL start_timer(900)
         IF (dsim_particles .AND. dwrite_particles) THEN
             CALL init_psnapshots(mtstep, dt) ! <------------------------------------particles
             CALL write_psnapshot(0_intk, 0.0_realk)
         END IF
-        CALL stop_timer(900)
 
         ! Initialize Grid Partile Statistics
         CALL init_gridstat_collection(mtstep) ! <------------------------------------particles
@@ -250,12 +248,14 @@ CONTAINS
 
             ! for gridstat
             CALL advance_np_counter(itstep) ! <------------------------------------particles
+
+            ! update backup field for particke rk timeintegration
+            CALL update_backup_fields() ! <------------------------------------particles
+
             ! Timeintegrate particles
-            CALL start_timer(900)
             IF (dsim_particles) THEN
                 CALL timeintegrate_particles(itstep, dt) ! <------------------------------------particles
             END IF
-            CALL stop_timer(900)
 
             ! Global RK loop for tightly coupled quantities like flow and
             ! scalar transport
@@ -275,11 +275,10 @@ CONTAINS
             CALL timekeeper%get_time(timeph)
 
             ! Particle Snapshots
-            CALL start_timer(900)
             IF (dsim_particles .AND. dwrite_particles) THEN
                 CALL write_psnapshot(itstep, timeph) ! <------------------------------------particles
             END IF
-            CALL stop_timer(900)
+
 
             ! Print to terminal (itinfo frequency)
             !

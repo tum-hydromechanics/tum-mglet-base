@@ -45,6 +45,9 @@ CONTAINS    !===================================
         INTEGER(intk), ALLOCATABLE :: ipart_arr(:), p_igrid_arr(:)
         REAL(realk), ALLOCATABLE :: x(:), y(:), z(:)
 
+        CALL start_timer(900)
+        CALL start_timer(910)
+
         my_particle_list%iproc = myid
         my_particle_list%max_np = plist_len
 
@@ -192,6 +195,9 @@ CONTAINS    !===================================
                     WRITE(*, '()')
             END SELECT
         END IF
+
+        CALL stop_timer(910)
+        CALL stop_timer(900)
 
     END SUBROUTINE init_particle_list
 

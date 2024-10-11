@@ -34,6 +34,9 @@ CONTAINS
         INTEGER(intk) :: igrid, i, j
         REAL(realk) :: minx, maxx, miny, maxy, minz, maxz
 
+        CALL start_timer(900)
+        CALL start_timer(940)
+
         ! allocate collector list
         ALLOCATE(my_collector_list(nmygrids))
 
@@ -67,6 +70,9 @@ CONTAINS
 
         END DO
 
+        CALL stop_timer(940)
+        CALL stop_timer(900)
+
     END SUBROUTINE init_gridstat_collection
 
     SUBROUTINE advance_np_counter(itstep)
@@ -77,11 +83,17 @@ CONTAINS
         ! local variables
         INTEGER(intk) :: i
 
+        CALL start_timer(900)
+        CALL start_timer(940)
+
         DO i = 1, nmygrids
 
             my_collector_list(i)%np_counter(itstep + 1) = my_collector_list(i)%np_counter(itstep)
 
         END DO
+
+        CALL stop_timer(940)
+        CALL stop_timer(900)
 
     END SUBROUTINE advance_np_counter
 
@@ -93,6 +105,8 @@ CONTAINS
 
         ! local variables
         INTEGER(intk) :: igrid, i, irt
+
+        CALL start_timer(940)
 
         DO i = 1, nmygrids
 
@@ -112,6 +126,8 @@ CONTAINS
 
         particle%itstep = itstep
 
+        CALL stop_timer(940)
+
     END SUBROUTINE deregister_particle
 
     SUBROUTINE register_particle(particle, itstep)
@@ -122,6 +138,8 @@ CONTAINS
 
         ! local variables
         INTEGER(intk) :: igrid, i
+
+        CALL start_timer(940)
 
         DO i = 1, nmygrids
 
@@ -135,13 +153,21 @@ CONTAINS
 
         END DO
 
+        CALL stop_timer(940)
+
     END SUBROUTINE register_particle
 
     SUBROUTINE write_gridstat()
 
+        CALL start_timer(900)
+        CALL start_timer(940)
+
         CALL write_gridstat_folder()
 
         CALL write_gridstat_files()
+
+        CALL stop_timer(940)
+        CALL stop_timer(900)
 
     END SUBROUTINE write_gridstat
 

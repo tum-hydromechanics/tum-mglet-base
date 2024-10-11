@@ -60,6 +60,9 @@ MODULE particle_boundaries_mod
         CHARACTER(len=8) :: ctyp
         LOGICAL :: found
 
+        CALL start_timer(900)
+        CALL start_timer(910)
+
         ALLOCATE(particle_boundaries%face_normals(3, 26, ngrid))
         particle_boundaries%face_normals = 0.0
 
@@ -199,6 +202,9 @@ MODULE particle_boundaries_mod
 
         CALL read_obstacles()
 
+        CALL stop_timer(910)
+        CALL stop_timer(900)
+
     END SUBROUTINE init_particle_boundaries
 
     !-----------------------------------
@@ -229,6 +235,8 @@ MODULE particle_boundaries_mod
         REAL(realk) :: dx_eff, dy_eff, dz_eff
         REAL(realk) :: epsilon
         REAL(realk) :: n1, n2, n3
+
+        CALL start_timer(924)
 
         IF (SQRT(dx**(2) + dy**(2) + dz**(2)) == 0) THEN
             RETURN
@@ -349,6 +357,8 @@ MODULE particle_boundaries_mod
                 WRITE(*, *) "MOVE PARTICLE: -----------------------END------------------------"
                 WRITE(*, '()')
         END SELECT
+
+        CALL stop_timer(924)
 
     END SUBROUTINE move_particle
 

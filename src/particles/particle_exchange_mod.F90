@@ -132,6 +132,9 @@ CONTAINS
         INTEGER(intk), ALLOCATABLE :: ndisprecv(:)
         INTEGER(intk), ALLOCATABLE :: sendind(:)
 
+        CALL start_timer(900)
+        CALL start_timer(930)
+
         ! ALLOCATE(npsend(iSend))
         ! npsend = 0
 
@@ -171,7 +174,9 @@ CONTAINS
             ELSE
 
                 ! for gridstat
+                CALL stop_timer(930)
                 CALL deregister_particle(particle_list%particles(i), itstep)
+                CALL start_timer(930)
 
                 ! particle changes the grid
                 IF ( destproc == myid ) THEN
@@ -181,7 +186,9 @@ CONTAINS
                     CALL set_particle_cell(particle_list%particles(i))
 
                     ! for gridstat
+                    CALL stop_timer(930)
                     CALL register_particle(particle_list%particles(i), itstep)
+                    CALL start_timer(930)
 
                 ELSE
 
@@ -403,7 +410,9 @@ CONTAINS
                 CALL set_particle_cell(recvBufParticle(i))
 
                 ! for gridstat
+                CALL stop_timer(930)
                 CALL register_particle(recvBufParticle(i), itstep)
+                CALL start_timer(930)
 
             END DO
         END IF
@@ -479,10 +488,15 @@ CONTAINS
         ! BARRIER ONLY FOR DEGUGGING -- TEMPORARY <----------------------------------------------- TODO : remove
         CALL MPI_Barrier(MPI_COMM_WORLD)
 
+        CALL stop_timer(930)
+        CALL stop_timer(900)
+
     END SUBROUTINE exchange_particles
 
 
     SUBROUTINE init_particle_exchange()
+
+        ! local variables
         INTEGER(intk) :: i, iface, igrid
         INTEGER(intk) :: iface1, iface2, iface3
         INTEGER(intk) :: itypbc1, itypbc2, itypbc3
@@ -494,6 +508,9 @@ CONTAINS
 
         INTEGER(intk) :: neighbours(26)
         INTEGER :: iexchange
+
+        CALL start_timer(900)
+        CALL start_timer(910)
 
         ! Maximum number of connections for "simple" cases is number
         ! of grids*26. However, due to the possible prescence of
@@ -739,6 +756,9 @@ CONTAINS
         CALL create_particle_mpitype(particle_mpitype)
         isInit = .TRUE.
 
+        CALL stop_timer(910)
+        CALL stop_timer(900)
+
     END SUBROUTINE init_particle_exchange
 
     SUBROUTINE finish_particle_exchange()
@@ -754,8 +774,6 @@ CONTAINS
         DEALLOCATE(recvReqs)
 
     END SUBROUTINE finish_particle_exchange
-
-
 
     SUBROUTINE sort_conns_unique(list)
         ! Input array to be sorted
