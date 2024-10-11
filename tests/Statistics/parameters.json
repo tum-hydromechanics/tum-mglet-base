@@ -64,6 +64,7 @@
         "SCA_AVG", "SCASCA_AVG",
         "SCAxSCAx_AVG", "SCAySCAy_AVG", "SCAzSCAz_AVG",
         "USCA_AVG", "VSCA_AVG", "WSCA_AVG",
-        "USCASCA_AVG", "VSCASCA_AVG", "WSCASCA_AVG"
+        "USCASCA_AVG", "VSCASCA_AVG", "WSCASCA_AVG",
+        "VORxVORx_AVG", "VORyVORy_AVG", "VORzVORz_AVG"
     ]
 }

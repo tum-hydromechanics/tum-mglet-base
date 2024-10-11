@@ -943,9 +943,9 @@ CONTAINS
         CASE ("VORzVORz_AVG")
             CALL get_field(u_f, "V")
             CALL get_field(v_f, "U")
-            istag = 0
+            istag = 1
             jstag = 1
-            kstag = 1
+            kstag = 0
             name_uy = 'VX'
             name_vx = 'UY'
             ivar1 = 'DXS'
