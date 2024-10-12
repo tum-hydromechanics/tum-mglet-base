@@ -62,9 +62,9 @@ CONTAINS
             CALL set_timer(930, 'PARTICLE_EXCHANGE')
 
             ! PARTICLE STATISTICS
-            ! init_gridstat_collection (initialization of particle grid statistics)
+            ! init_particle_gridstat (initialization of particle grid statistics)
             ! advance_np_counter (copy the number of particles of each grid from last timestep)
-            ! init_gridstat_collection (initialization of particle grid statistics)
+            ! init_particle_gridstat (initialization of particle grid statistics)
             ! register_particle/ deregister_particle (register/ deregister particle on grid)
             CALL set_timer(940, 'PARTICLE_STATISTICS')
 
@@ -100,7 +100,15 @@ CONTAINS
 
         CALL start_timer(900)
 
-        ! TODO: DEALLOCATIONS ETC. ...
+        CALL finish_particle_snapshots()
+
+        CALL finish_particle_gridstat()
+
+        CALL finish_particle_exchange()
+
+        CALL finish_particle_boundaries()
+
+        CALL finish_particle_list()
 
         IF (myid == 0) THEN
             WRITE(*,*) "PARTICLE SIMULATION COMPLETED."

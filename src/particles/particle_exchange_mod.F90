@@ -53,8 +53,12 @@ MODULE particle_exchange_mod
     ! Number of send and receive connections
     INTEGER(intk) :: iSend = 0, iRecv = 0
 
-    ! ...
+    ! we use "intk" instead of "ifk" (limits numbers)
+    ! INTEGER(intk), ALLOCATABLE :: npsend(:)
+    INTEGER(intk), ALLOCATABLE :: nprecv(:)
     INTEGER(intk), ALLOCATABLE :: npsend(:)
+    INTEGER(intk), ALLOCATABLE :: ndispsend(:)
+    INTEGER(intk), ALLOCATABLE :: ndisprecv(:)
 
     ! Variable to indicate if the connection information has
     ! been created.
@@ -127,18 +131,12 @@ CONTAINS
 
         ! we use "intk" instead of "ifk" (limits numbers)
         ! INTEGER(intk), ALLOCATABLE :: npsend(:)
-        INTEGER(intk), ALLOCATABLE :: nprecv(:)
-        INTEGER(intk), ALLOCATABLE :: ndispsend(:)
-        INTEGER(intk), ALLOCATABLE :: ndisprecv(:)
         INTEGER(intk), ALLOCATABLE :: sendind(:)
 
         CALL start_timer(900)
         CALL start_timer(930)
 
-        ! ALLOCATE(npsend(iSend))
-        ! npsend = 0
-
-        IF ( .NOT. isInit ) THEN
+        IF (.NOT. isInit) THEN
             WRITE(*,*) 'Particle connect not initialized'
             CALL errr(__FILE__, __LINE__)
         END IF
@@ -148,7 +146,7 @@ CONTAINS
         DO i = 1, particle_list%ifinal
 
             ! jumping inactive particles
-            IF ( particle_list%particles(i)%state < 1 ) THEN
+            IF (particle_list%particles(i)%state < 1) THEN
                 CYCLE
             END IF
 
@@ -156,7 +154,7 @@ CONTAINS
             CALL get_target_grid(particle_list%particles(i), destgrid, destproc, iface)
 
 
-            IF ( destproc > numprocs .OR. destproc < 0 ) THEN
+            IF (destproc > numprocs .OR. destproc < 0) THEN
                 WRITE(*,*) 'Obviously ill-addressed particle to proc', destproc
                 CALL errr(__FILE__, __LINE__)
             END IF
@@ -179,7 +177,7 @@ CONTAINS
                 CALL start_timer(930)
 
                 ! particle changes the grid
-                IF ( destproc == myid ) THEN
+                IF (destproc == myid) THEN
 
                     ! particle remains on process
                     particle_list%particles(i)%igrid = destgrid
@@ -211,7 +209,6 @@ CONTAINS
         ! --- step 1: The marking is done (grid and proc indicate destination). Done.
         ! --- step 2: The counting is done. Done.
 
-        ALLOCATE( nprecv(iRecv) )
         nprecv = -1
 
         ! posting non-blocking (!) receives
@@ -237,7 +234,6 @@ CONTAINS
         ! --- step 3: The communication has been launched (not finished!). Open.
 
         ! displacements for start of section for one destination
-        ALLOCATE( ndispsend(iSend) )
         ndispsend = -1; ndispsend(1) = 1
         DO i = 2, iSend
             IF ( npsend(i-1) < 0 ) THEN
@@ -326,7 +322,6 @@ CONTAINS
 
 
         ! displacements for start of section for one source
-        ALLOCATE( ndisprecv(iRecv) )
         ndisprecv = -1; ndisprecv(1) = 1
         DO i = 2, iRecv
             IF ( nprecv(i-1) < 0 ) THEN
@@ -337,7 +332,7 @@ CONTAINS
         END DO
 
         sizeRecvBuf = SUM(nprecv)
-        ALLOCATE( recvBufParticle(sizeRecvBuf) )
+        ALLOCATE(recvBufParticle(sizeRecvBuf))
 
         ! TO DO: Ab jetzt kann gestestet werden, ob all ankommenden Partikel in die Liste passen!
         ! Entsprechend kann die List erweitert oder sogar gekürzt werden, während MPI für Partciel läuft.
@@ -476,12 +471,9 @@ CONTAINS
 
         ! --- step 9: Received particles have been copied into list. Done.
 
-        DEALLOCATE( nprecv )
-        DEALLOCATE( ndispsend )
-        DEALLOCATE( sendBufParticle )
-        DEALLOCATE( ndisprecv )
-        DEALLOCATE( recvBufParticle )
-        DEALLOCATE( sendind )
+        DEALLOCATE(sendBufParticle)
+        DEALLOCATE(recvBufParticle)
+        DEALLOCATE(sendind)
 
         ! --- step 10: Clearing the buffers. Done.
 
@@ -752,9 +744,24 @@ CONTAINS
         ALLOCATE(npsend(iSend))
         npsend = 0
 
+        ALLOCATE(ndispsend(iSend))
+        ndispsend = 0
+
+        ALLOCATE(nprecv(iRecv))
+        nprecv = 0
+
+        ALLOCATE(ndisprecv(iRecv))
+        ndisprecv = 0
+
         ! creating the MPI data type
         CALL create_particle_mpitype(particle_mpitype)
         isInit = .TRUE.
+
+        DEALLOCATE(maxTag)
+        DEALLOCATE(sendcounts)
+        DEALLOCATE(sdispls)
+        DEALLOCATE(recvcounts)
+        DEALLOCATE(rdispls)
 
         CALL stop_timer(910)
         CALL stop_timer(900)
@@ -762,16 +769,20 @@ CONTAINS
     END SUBROUTINE init_particle_exchange
 
     SUBROUTINE finish_particle_exchange()
+
         isInit = .FALSE.
 
         DEALLOCATE(sendConns)
         DEALLOCATE(recvConns)
-
         DEALLOCATE(recvIdxList)
         DEALLOCATE(sendList)
         DEALLOCATE(recvList)
         DEALLOCATE(sendReqs)
         DEALLOCATE(recvReqs)
+        DEALLOCATE(npsend)
+        DEALLOCATE(ndispsend)
+        DEALLOCATE(nprecv)
+        DEALLOCATE(ndisprecv)
 
     END SUBROUTINE finish_particle_exchange
 

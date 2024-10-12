@@ -50,26 +50,26 @@ CONTAINS
         CALL start_timer(900)
         CALL start_timer(950)
 
-        INQUIRE(file = 'Particle_Snapshots/snapshot0.pvtp', exist = snapshots_exist)
+       !INQUIRE(directory = './Particle_Snapshots', exist = snapshots_exist)
 
-        IF (snapshots_exist) THEN
+       !IF (snapshots_exist) THEN
 
-            IF (myid == 0) THEN
-                SELECT CASE (TRIM(particle_terminal))
-                    CASE ("none")
-                        CONTINUE
-                    CASE ("normal")
-                        WRITE(*, *) ' '
-                        WRITE(*, *) "ERROR: Directory Particle_Snaphots already exists. Terminating Process!"
-                    CASE ("verbose")
-                        WRITE(*, *) ' '
-                        WRITE(*, *) "ERROR: Directory Particle_Snaphots already exists. Terminating Process!"
-                END SELECT
-            END IF
+       !    IF (myid == 0) THEN
+       !        SELECT CASE (TRIM(particle_terminal))
+       !            CASE ("none")
+       !                CONTINUE
+       !            CASE ("normal")
+       !                WRITE(*, *) ' '
+       !                WRITE(*, *) "ERROR: Directory Particle_Snaphots already exists. Terminating Process!"
+       !            CASE ("verbose")
+       !                WRITE(*, *) ' '
+       !                WRITE(*, *) "ERROR: Directory Particle_Snaphots already exists. Terminating Process!"
+       !        END SELECT
+       !    END IF
 
-            CALL errr(__FILE__, __LINE__)
+       !    CALL errr(__FILE__, __LINE__)
 
-        END IF
+       !END IF
 
         IF (myid == 0) THEN
             CALL create_directory("Particle_Snapshots") ! ! ! realtive to working directory ! ! !
@@ -334,5 +334,13 @@ CONTAINS
         CALL stop_timer(900)
 
     END SUBROUTINE write_psnapshot_timeinfo
+
+    SUBROUTINE finish_particle_snapshots()
+
+        DEALLOCATE(psnapshot_info%nparticles)
+        DEALLOCATE(psnapshot_info%timesteps)
+        DEALLOCATE(psnapshot_info%times)
+
+    END SUBROUTINE finish_particle_snapshots
 
 END MODULE particle_snapshot_mod

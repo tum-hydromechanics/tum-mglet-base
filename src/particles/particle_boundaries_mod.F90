@@ -211,9 +211,10 @@ MODULE particle_boundaries_mod
 
     SUBROUTINE finish_particle_boundaries()
 
+        CALL finish_obstacles()
+
         DEALLOCATE(particle_boundaries%face_normals)
         DEALLOCATE(particle_boundaries%face_neighbours)
-        DEALLOCATE(obstacles)
 
     END SUBROUTINE finish_particle_boundaries
 

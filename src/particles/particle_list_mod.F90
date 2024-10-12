@@ -232,6 +232,8 @@ CONTAINS    !===================================
 
         CALL MOVE_ALLOC(particles_tmp, particle_list%particles)
 
+        DEALLOCATE(particles_tmp)
+
         SELECT CASE (TRIM(particle_terminal))
             CASE ("none")
                 CONTINUE
@@ -358,5 +360,11 @@ CONTAINS    !===================================
         END IF
 
     END SUBROUTINE print_list_status
+
+    SUBROUTINE finish_particle_list()
+
+        DEALLOCATE(my_particle_list%particles)
+
+    END SUBROUTINE finish_particle_list
 
 END MODULE

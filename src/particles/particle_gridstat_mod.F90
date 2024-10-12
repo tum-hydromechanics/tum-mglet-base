@@ -25,7 +25,7 @@ MODULE particle_gridstat_mod
 
 CONTAINS
 
-    SUBROUTINE init_gridstat_collection(mtstep)
+    SUBROUTINE init_particle_gridstat(mtstep)
 
         ! subroutine arguments
         INTEGER(intk), INTENT(in) :: mtstep
@@ -33,9 +33,31 @@ CONTAINS
         ! local variables
         INTEGER(intk) :: igrid, i, j
         REAL(realk) :: minx, maxx, miny, maxy, minz, maxz
+        LOGICAL :: gridstat_exists
 
         CALL start_timer(900)
         CALL start_timer(940)
+
+        !INQUIRE(directory = './Particle_Statistics', exist = gridstat_exists)
+!
+        !IF (gridstat_exists) THEN
+!
+        !    IF (myid == 0) THEN
+        !        SELECT CASE (TRIM(particle_terminal))
+        !            CASE ("none")
+        !                CONTINUE
+        !            CASE ("normal")
+        !                WRITE(*, *) ' '
+        !                WRITE(*, *) "ERROR: Directory Particle_Statistics already exists. Terminating Process!"
+        !            CASE ("verbose")
+        !                WRITE(*, *) ' '
+        !                WRITE(*, *) "ERROR: Directory Particle_Statistics already exists. Terminating Process!"
+        !        END SELECT
+        !    END IF
+!
+        !    CALL errr(__FILE__, __LINE__)
+!
+        !END IF
 
         ! allocate collector list
         ALLOCATE(my_collector_list(nmygrids))
@@ -73,7 +95,7 @@ CONTAINS
         CALL stop_timer(940)
         CALL stop_timer(900)
 
-    END SUBROUTINE init_gridstat_collection
+    END SUBROUTINE init_particle_gridstat
 
     SUBROUTINE advance_np_counter(itstep)
 
@@ -223,5 +245,20 @@ CONTAINS
         END DO
 
     END SUBROUTINE write_gridstat_files
+
+    SUBROUTINE finish_particle_gridstat()
+
+        ! local variables
+
+        INTEGER(intk) :: i
+
+        DO i = 1, nmygrids
+            DEALLOCATE(my_collector_list(i)%np_counter)
+            DEALLOCATE(my_collector_list(i)%rt_counter)
+        END DO
+
+        DEALLOCATE(my_collector_list)
+
+    END SUBROUTINE finish_particle_gridstat
 
 END MODULE particle_gridstat_mod

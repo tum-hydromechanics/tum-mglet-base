@@ -194,7 +194,7 @@ CONTAINS
         END IF
 
         ! Initialize Grid Partile Statistics
-        CALL init_gridstat_collection(mtstep) ! <------------------------------------particles
+        CALL init_particle_gridstat(mtstep) ! <------------------------------------particles
 
     END SUBROUTINE init_timeloop
 

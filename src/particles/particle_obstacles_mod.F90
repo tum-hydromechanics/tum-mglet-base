@@ -31,9 +31,7 @@ CONTAINS    !===================================
         INQUIRE(file = 'ObstaclesDict.txt', exist = dread_obstacles)
 
         IF (.NOT. dread_obstacles) THEN
-
             ALLOCATE(obstacles(0))
-
             IF (myid == 0) THEN
                 SELECT CASE (TRIM(particle_terminal))
                     CASE ("none")
@@ -106,5 +104,11 @@ CONTAINS    !===================================
         END IF
 
     END SUBROUTINE read_obstacles
+
+    SUBROUTINE finish_obstacles()
+
+        DEALLOCATE(obstacles)
+
+    END SUBROUTINE finish_obstacles
 
 END MODULE particle_obstacles_mod
