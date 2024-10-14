@@ -45,6 +45,9 @@ CONTAINS
         CALL qtw%init_buffers()
         CALL stop_timer(401)
 
+        !Update u, v and w on the device for next scalar timestep
+        !$omp target update to(u_offload, v_offload, w_offload)
+
         CALL start_timer(402)
         DO l = 1, nsca
             ! Fetch fields
@@ -170,35 +173,29 @@ CONTAINS
 
         ! Local variables
         INTEGER(intk) :: igrid
-        TYPE(field_t), POINTER :: u_f, v_f, w_f, g_f
+        TYPE(field_t), POINTER :: g_f
 
         REAL(realk) :: prmol_offload, prturb_offload
         INTEGER(intk) :: kayscrawford_offload
 
         ! Expensive data to offload
-        REAL(realk), POINTER, CONTIGUOUS, DIMENSION(:) :: qtu_a, qtv_a, qtw_a, t_a, u_a, v_a, w_a, g_a
+        REAL(realk), POINTER, CONTIGUOUS, DIMENSION(:) :: qtu_a, qtv_a, qtw_a, t_a, g_a
 
         CALL start_timer(410)
 
-        CALL get_field(u_f, "U")
-        CALL get_field(v_f, "V")
-        CALL get_field(w_f, "W")
         CALL get_field(g_f, "G")
 
         CALL qtu_f%get_arr_ptr(qtu_a)
         CALL qtv_f%get_arr_ptr(qtv_a)
         CALL qtw_f%get_arr_ptr(qtw_a)
         CALL t_f%get_arr_ptr(t_a)
-        CALL u_f%get_arr_ptr(u_a)
-        CALL v_f%get_arr_ptr(v_a)
-        CALL w_f%get_arr_ptr(w_a)
         CALL g_f%get_arr_ptr(g_a)
 
         prmol_offload = sca%prmol
         prturb_offload = prturb
         kayscrawford_offload = sca%kayscrawford
         
-        !$omp target data map(to: t_a, u_a, v_a, w_a, g_a) map(from: qtu_a, qtv_a, qtw_a)
+        !$omp target data map(to: t_a, g_a) map(from: qtu_a, qtv_a, qtw_a)
         !$omp target teams distribute
         DO igrid = 1, nmygrids
             BLOCK
@@ -214,9 +211,9 @@ CONTAINS
                 CALL ptr_to_grid3(qtv_a, igrid, qtv)
                 CALL ptr_to_grid3(qtw_a, igrid, qtw)
                 CALL ptr_to_grid3(t_a, igrid, t)
-                CALL ptr_to_grid3(u_a, igrid, u)
-                CALL ptr_to_grid3(v_a, igrid, v)
-                CALL ptr_to_grid3(w_a, igrid, w)
+                CALL ptr_to_grid3(u_offload, igrid, u)
+                CALL ptr_to_grid3(v_offload, igrid, v)
+                CALL ptr_to_grid3(w_offload, igrid, w)
                 CALL ptr_to_grid3(g_a, igrid, g)
 
                 CALL ptr_to_grid3(bt_offload, igrid, bt)
