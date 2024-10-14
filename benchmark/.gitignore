@@ -1,9 +1,0 @@
-# Ignore generated files from runs
-*
-
-# Keep script and testcase parameters
-!.gitignore
-!run.sh
-!grids.h5
-!parameters.json
-!*/
