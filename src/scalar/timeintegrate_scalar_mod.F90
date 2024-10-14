@@ -45,7 +45,7 @@ CONTAINS
         CALL qtw%init_buffers()
         CALL stop_timer(401)
 
-        !Update u, v and w on the device for next scalar timestep
+        ! Update u, v and w on the device for next scalar timestep
         !$omp target update to(u_offload, v_offload, w_offload)
 
         CALL start_timer(402)
@@ -61,12 +61,14 @@ CONTAINS
             ! TSTSCA4 zeroize qtu, qtv, qtw before use internally
             CALL tstsca4(qtu, qtv, qtw, t, scalar(l))
 
+            ! ---------- Scalar offloading only handles grids on the same level for now ----------
             ! This operation apply boundary conditions to qtu, qtv, qtw ONLY!
             ! Does not modify t-field at all!
             DO ilevel = minlevel, maxlevel
-                CALL parent(ilevel, qtu, qtv, qtw)
+                ! CALL parent(ilevel, qtu, qtv, qtw)
                 CALL bound_scaflux%bound(ilevel, qtu, qtv, qtw, t)
             END DO
+
 
             ! fluxbalance zeroize qtt before use internally
             CALL fluxbalance(qtt, qtu, qtv, qtw)
@@ -257,8 +259,7 @@ CONTAINS
         INTEGER(intk) :: i, j, k
         INTEGER(intk) :: nfu, nbu, nrv, nlv, nbw, ntw
         INTEGER(intk) :: iles
-        ! Now we need 3 independent arrays due to nowait, else we might run into race conditions
-        REAL(realk) :: gsca_u(ii), gsca_v(jj), gsca_w(kk)
+        REAL(realk) :: gsca(ii)
         REAL(realk) :: adv, diff, area
         REAL(realk) :: gscamol, gtgmolp, gtgmoln
 
@@ -300,17 +301,17 @@ CONTAINS
                         gtgmoln = (g(k, j, i+1) - gmol_offload)/gmol_offload
 
                         ! 1/Re * 1/Pr + 1/Re_t * 1/Pr_t:
-                        gsca_u(k) = gscamol &
+                        gsca(k) = gscamol &
                             + (g(k, j, i+1) + g(k, j, i) - 2.0*gmol_offload) / rho_offload &
                             / (sca_prt(sca_prmol, sca_kayscrawford, sca_prturb, gtgmoln) + sca_prt(sca_prmol, sca_kayscrawford, sca_prturb, gtgmolp))
 
                         ! Limit gsca here MAX(...,0): no negative diffusion!
-                        gsca_u(k) = MAX(gscamol, gsca_u(k))
+                        gsca(k) = MAX(gscamol, gsca(k))
                     END DO
                 ELSE
                     !$omp simd
                     DO k = 3, kk-2
-                        gsca_u(k) = gmol_offload/rho_offload/sca_prmol
+                        gsca(k) = gmol_offload/rho_offload/sca_prmol
                     END DO
                     !$omp end simd
                 END IF
@@ -328,7 +329,7 @@ CONTAINS
                     ! neighbours it is determined if faces are blocked (=0)
                     ! or open (=1)
                     area = bt(k, j, i)*bt(k, j, i+1)*(ddy(j)*ddz(k))
-                    diff = -gsca_u(k)*rdx(i)*(t(k, j, i+1) - t(k, j, i))*area
+                    diff = -gsca(k)*rdx(i)*(t(k, j, i+1) - t(k, j, i))*area
 
                     ! Final result
                     qtu(k, j, i) = adv + diff
@@ -350,17 +351,17 @@ CONTAINS
                         gtgmoln = (g(k, j+1, i) - gmol_offload)/gmol_offload
 
                         ! 1/Re * 1/Pr + 1/Re_t * 1/Pr_t:
-                        gsca_v(k) = gscamol &
+                        gsca(k) = gscamol &
                             + (g(k, j+1, i) + g(k, j, i) - 2.0*gmol_offload) / rho_offload &
                             / (sca_prt(sca_prmol, sca_kayscrawford, sca_prturb, gtgmoln) + sca_prt(sca_prmol, sca_kayscrawford, sca_prturb, gtgmolp))
 
                         ! Limit gsca here MAX(...,0): no negative diffusion!
-                        gsca_v(k) = MAX(gscamol, gsca_v(k))
+                        gsca(k) = MAX(gscamol, gsca(k))
                     END DO
                 ELSE
                     !$omp simd
                     DO k = 3, kk-2
-                        gsca_v(k) = gmol_offload/rho_offload/sca_prmol
+                        gsca(k) = gmol_offload/rho_offload/sca_prmol
                     END DO
                     !$omp end simd
                 END IF
@@ -378,7 +379,7 @@ CONTAINS
                     ! neighbours it is determined if faces are blocked (=0)
                     ! or open (=1)
                     area = bt(k, j, i)*bt(k, j+1, i)*(ddx(i)*ddz(k))
-                    diff = -gsca_v(k)*rdy(j)*(t(k, j+1, i) - t(k, j, i))*area
+                    diff = -gsca(k)*rdy(j)*(t(k, j+1, i) - t(k, j, i))*area
 
                     ! Final result
                     qtv(k, j, i) = adv + diff
@@ -400,17 +401,17 @@ CONTAINS
                         gtgmoln = (g(k+1, j, i) - gmol_offload)/gmol_offload
 
                         ! 1/Re * 1/Pr + 1/Re_t * 1/Pr_t:
-                        gsca_w(k) = gscamol &
+                        gsca(k) = gscamol &
                             + (g(k+1, j, i) + g(k, j, i) - 2.0*gmol_offload) / rho_offload &
                             / (sca_prt(sca_prmol, sca_kayscrawford, sca_prturb, gtgmoln) + sca_prt(sca_prmol, sca_kayscrawford, sca_prturb, gtgmolp))
 
                         ! Limit gsca here MAX(...,0): no negative diffusion!
-                        gsca_w(k) = MAX(gscamol, gsca_w(k))
+                        gsca(k) = MAX(gscamol, gsca(k))
                     END DO
                 ELSE
                     !$omp simd
                     DO k = 3-nbw, kk-3+ntw
-                        gsca_w(k) = gmol_offload/rho_offload/sca_prmol
+                        gsca(k) = gmol_offload/rho_offload/sca_prmol
                     END DO
                     !$omp end simd
                 END IF
@@ -428,7 +429,7 @@ CONTAINS
                     ! neighbours it is determined if faces are blocked (=0)
                     ! or open (=1)
                     area = bt(k, j, i)*bt(k+1, j, i)*(ddx(i)*ddy(j))
-                    diff = -gsca_w(k)*rdy(j)*(t(k+1, j, i) - t(k, j, i))*area
+                    diff = -gsca(k)*rdy(j)*(t(k+1, j, i) - t(k, j, i))*area
 
                     ! Final result
                     qtw(k, j, i) = adv + diff
