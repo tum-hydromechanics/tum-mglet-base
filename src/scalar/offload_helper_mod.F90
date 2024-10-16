@@ -6,39 +6,52 @@ MODULE offload_helper_mod
 
     INTEGER(intk), PARAMETER :: N_DIMS = 3
     INTEGER(intk), PARAMETER :: N_BASB = 6
+    INTEGER(intk), PARAMETER :: N_FACES = 6
+    INTEGER(intk), PARAMETER :: N_BC_RANGE = 2
 
     INTEGER(intk), POINTER, CONTIGUOUS :: ip3d_offload(:), ip1d_offload(:)
     INTEGER(intk), POINTER, CONTIGUOUS :: mgdims_offload(:), mgbasb_offload(:)
+    INTEGER(intk), POINTER, CONTIGUOUS, DIMENSION(:, :) :: nboconds_offload
 
+    INTEGER(intk), POINTER, CONTIGUOUS, DIMENSION(:, :, :) :: gp_bc_ctyp_offload
+    INTEGER(intk), POINTER, CONTIGUOUS, DIMENSION(:) :: encoded_bc_ctyp_offload
+ 
     REAL(realk), POINTER, CONTIGUOUS :: rddx_offload(:), rddy_offload(:), rddz_offload(:)
     REAL(realk), POINTER, CONTIGUOUS :: ddx_offload(:), ddy_offload(:), ddz_offload(:)
     REAL(realk), POINTER, CONTIGUOUS :: rdx_offload(:), rdy_offload(:), rdz_offload(:)
     REAL(realk), POINTER, CONTIGUOUS :: bt_offload(:)
     REAL(realk), POINTER, CONTIGUOUS :: dx_offload(:), dy_offload(:), dz_offload(:)
 
-    REAL(realk), POINTER, CONTIGUOUS, DIMENSION(:) :: u_offload, v_offload, w_offload
+    REAL(realk), POINTER, CONTIGUOUS, DIMENSION(:) :: u_offload, v_offload, w_offload, t_offload
     REAL(realk), POINTER, CONTIGUOUS, DIMENSION(:) :: qtu_offload, qtv_offload, qtw_offload
 
+    ! ┌────────────────────────────────────────────────────────────────────────────┐
+    ! | Keeps a copy of the data that is required on the target device             |
+    ! | This is done so that omp directives are not scattered across the code      |
+    ! | and interferes with the core flow implementation                           |
+    ! └────────────────────────────────────────────────────────────────────────────┘
     !$omp declare target(ip3d_offload, ip1d_offload, mgdims_offload, mgbasb_offload, &
     !$omp& rddx_offload, rddy_offload, rddz_offload, rdx_offload, rdy_offload, rdz_offload, &
-    !$omp& ddx_offload, ddy_offload, ddz_offload, bt_offload, u_offload, v_offload, w_offload, &
-    !$omp& dx_offload, dy_offload, dz_offload, qtu_offload, qtv_offload, qtw_offload)
-
+    !$omp& ddx_offload, ddy_offload, ddz_offload, bt_offload, u_offload, v_offload, w_offload, t_offload, &
+    !$omp& dx_offload, dy_offload, dz_offload, qtu_offload, qtv_offload, qtw_offload, gp_bc_ctyp_offload, encoded_bc_ctyp_offload, nboconds_offload)
+    
     PUBLIC :: ptr_to_grid_x, ptr_to_grid_y, ptr_to_grid_z, ptr_to_grid3, &
         offload_constants, finish_offload_constants, get_mgdims_target, get_mgbasb_target, &
         ddx_offload, ddy_offload, ddz_offload, rdx_offload, rdy_offload, rdz_offload, rddx_offload, rddy_offload, rddz_offload, &
-        bt_offload, u_offload, v_offload, w_offload, dx_offload, dy_offload, dz_offload, qtu_offload, qtv_offload, qtw_offload
+        bt_offload, u_offload, v_offload, w_offload, t_offload, dx_offload, dy_offload, dz_offload, qtu_offload, qtv_offload, qtw_offload, gp_bc_ctyp_offload, encoded_bc_ctyp_offload, nboconds_offload
 CONTAINS
     SUBROUTINE offload_constants()
         USE pointers_mod, ONLY: ip3d, ip1d
-        USE grids_mod, ONLY: nmygrids, get_mgdims, get_mgbasb
+        USE grids_mod, ONLY: nmygrids, get_mgdims, get_mgbasb, nboconds, get_bc_ctyp !front, back, right, left, bottom, top
         USE fields_mod
         USE realfield_mod
+        USE scacore_mod
 
         ! Local variablees
-        INTEGER(intk) :: igrid, i, mgdims_arr_size, kk, jj, ii, nfro, nbac, nrgt, nlft, nbot, ntop
-        TYPE(field_t), POINTER :: rddx_f, rddy_f, rddz_f, bt_f, ddx_f, ddy_f, ddz_f, rdx_f, rdy_f, rdz_f, dx_f, dy_f, dz_f
+        INTEGER(intk) :: igrid, iface, i, mgdims_arr_size, kk, jj, ii, nfro, nbac, nrgt, nlft, nbot, ntop, bc_counter, n_bo_conds, ibocd
+        TYPE(field_t), POINTER :: rddx_f, rddy_f, rddz_f, bt_f, ddx_f, ddy_f, ddz_f, rdx_f, rdy_f, rdz_f, dx_f, dy_f, dz_f, sca_f
         TYPE(field_t), POINTER :: u_f, v_f, w_f
+        CHARACTER(len=8) :: ctyp
 
         ! Create grids_mod copy to offload
         mgdims_arr_size = N_DIMS * nmygrids
@@ -52,10 +65,8 @@ CONTAINS
         END DO
 
         ! Create pointers_mod copy to offload
-        ALLOCATE(ip3d_offload(SIZE(ip3d)))
-        ALLOCATE(ip1d_offload(SIZE(ip1d)))
-        ip3d_offload = ip3d
-        ip1d_offload = ip1d
+        ALLOCATE(ip3d_offload, source=ip3d)
+        ALLOCATE(ip1d_offload, source=ip1d)
 
         ! Create copy for grid constants
         CALL get_field(bt_f, "BT")
@@ -72,32 +83,19 @@ CONTAINS
         CALL get_field(dy_f, "DY")
         CALL get_field(dz_f, "DZ")
 
-        ALLOCATE(bt_offload(SIZE(bt_f%arr)))
-        ALLOCATE(ddx_offload(SIZE(ddx_f%arr)))
-        ALLOCATE(ddy_offload(SIZE(ddy_f%arr)))
-        ALLOCATE(ddz_offload(SIZE(ddz_f%arr)))
-        ALLOCATE(rdx_offload(SIZE(rdx_f%arr)))
-        ALLOCATE(rdy_offload(SIZE(rdy_f%arr)))
-        ALLOCATE(rdz_offload(SIZE(rdz_f%arr)))
-        ALLOCATE(rddx_offload(SIZE(rddx_f%arr)))
-        ALLOCATE(rddy_offload(SIZE(rddy_f%arr)))
-        ALLOCATE(rddz_offload(SIZE(rddz_f%arr)))
-        ALLOCATE(dx_offload(SIZE(dx_f%arr)))
-        ALLOCATE(dy_offload(SIZE(dy_f%arr)))
-        ALLOCATE(dz_offload(SIZE(dz_f%arr)))
-        bt_offload = bt_f%arr
-        ddx_offload = ddx_f%arr
-        ddy_offload = ddy_f%arr
-        ddz_offload = ddz_f%arr
-        rdx_offload = rdx_f%arr
-        rdy_offload = rdy_f%arr
-        rdz_offload = rdz_f%arr
-        rddx_offload = rddx_f%arr
-        rddy_offload = rddy_f%arr
-        rddz_offload = rddz_f%arr
-        dx_offload = dx_f%arr
-        dy_offload = dy_f%arr
-        dz_offload = dz_f%arr
+        ALLOCATE(bt_offload, source=bt_f%arr)
+        ALLOCATE(ddx_offload, source=ddx_f%arr)
+        ALLOCATE(ddy_offload, source=ddy_f%arr)
+        ALLOCATE(ddz_offload, source=ddz_f%arr)
+        ALLOCATE(rdx_offload, source=rdx_f%arr)
+        ALLOCATE(rdy_offload, source=rdy_f%arr)
+        ALLOCATE(rdz_offload, source=rdz_f%arr)
+        ALLOCATE(rddx_offload, source=rddx_f%arr)
+        ALLOCATE(rddy_offload, source=rddy_f%arr)
+        ALLOCATE(rddz_offload, source=rddz_f%arr)
+        ALLOCATE(dx_offload, source=dx_f%arr)
+        ALLOCATE(dy_offload, source=dy_f%arr)
+        ALLOCATE(dz_offload, source=dz_f%arr)
 
         ! Precompute boundary conditions
         ALLOCATE(mgbasb_offload(N_BASB * nmygrids))
@@ -115,31 +113,64 @@ CONTAINS
         CALL get_field(u_f, "U")
         CALL get_field(v_f, "V")
         CALL get_field(w_f, "W")
-        ALLOCATE(u_offload(SIZE(u_f%arr)))
-        ALLOCATE(v_offload(SIZE(v_f%arr)))
-        ALLOCATE(w_offload(SIZE(w_f%arr)))
-        u_offload = u_f%arr
-        v_offload = v_f%arr
-        w_offload = w_f%arr
+        CALL get_field(sca_f, scalar(1)%name)
+        ALLOCATE(u_offload, source=u_f%arr)
+        ALLOCATE(v_offload, source=v_f%arr)
+        ALLOCATE(w_offload, source=w_f%arr)
+        ALLOCATE(qtu_offload, source=u_f%arr)
+        ALLOCATE(qtv_offload, source=v_f%arr)
+        ALLOCATE(qtw_offload, source=w_f%arr)
+        ALLOCATE(t_offload, source=sca_f%arr)
+        ALLOCATE(nboconds_offload, source=nboconds)
 
-        ALLOCATE(qtu_offload(SIZE(u_f%arr)))
-        ALLOCATE(qtv_offload(SIZE(v_f%arr)))
-        ALLOCATE(qtw_offload(SIZE(w_f%arr)))
-        qtu_offload = 0
-        qtv_offload = 0
-        qtw_offload = 0
+        ALLOCATE(gp_bc_ctyp_offload(N_BC_RANGE, N_FACES, nmygrids))
+        gp_bc_ctyp_offload = 0
+        bc_counter = 1
+        DO igrid = 1, nmygrids
+            DO iface = 1, N_FACES
+                n_bo_conds = nboconds(iface, igrid)
+                gp_bc_ctyp_offload(1, iface, igrid) = bc_counter
+                bc_counter = bc_counter + n_bo_conds
+                gp_bc_ctyp_offload(2, iface, igrid) = bc_counter
+
+                DO ibocd = 1, n_bo_conds
+                    SELECT CASE(iface)
+                    CASE(1) ! Front
+                        CALL get_bc_ctyp(ctyp, ibocd, iface, igrid)
+                        print *, igrid, iface, ibocd, ctyp
+                    CASE(2) ! Back
+                        CALL get_bc_ctyp(ctyp, ibocd, iface, igrid)
+                        print *, igrid, iface, ibocd, ctyp
+                    CASE(3) ! Right
+                        CALL get_bc_ctyp(ctyp, ibocd, iface, igrid)
+                        print *, igrid, iface, ibocd, ctyp
+                    CASE(4) ! Left
+                        CALL get_bc_ctyp(ctyp, ibocd, iface, igrid)
+                        print *, igrid, iface, ibocd, ctyp
+                    CASE(5) ! Bottom
+                        CALL get_bc_ctyp(ctyp, ibocd, iface, igrid)
+                        print *, igrid, iface, ibocd, ctyp
+                    CASE(6) ! Top
+                        CALL get_bc_ctyp(ctyp, ibocd, iface, igrid)
+                        print *, igrid, iface, ibocd, ctyp
+                    END SELECT
+                END DO
+            END DO
+        END DO
+
+        print *, "-----------------------------------"
 
         !$omp target enter data map(to: ip3d_offload, ip1d_offload, mgdims_offload, mgbasb_offload, &
         !$omp& rddx_offload, rddy_offload, rddz_offload, ddx_offload, ddy_offload, ddz_offload, &
-        !$omp& rdx_offload, rdy_offload, rdz_offload, bt_offload, u_offload, v_offload, w_offload, &
-        !$omp& dx_offload, dy_offload, dz_offload, qtu_offload, qtv_offload, qtw_offload)
+        !$omp& rdx_offload, rdy_offload, rdz_offload, bt_offload, u_offload, v_offload, w_offload, t_offload, &
+        !$omp& dx_offload, dy_offload, dz_offload, qtu_offload, qtv_offload, qtw_offload, gp_bc_ctyp_offload, encoded_bc_ctyp_offload, nboconds_offload)
     END SUBROUTINE offload_constants
 
     SUBROUTINE finish_offload_constants()
         !$omp target exit data map(delete: ip3d_offload, ip1d_offload, mgdims_offload, mgbasb_offload, &
         !$omp& rddx_offload, rddy_offload, rddz_offload, ddx_offload, ddy_offload, ddz_offload, &
-        !$omp& rdx_offload, rdy_offload, rdz_offload, bt_offload, u_offload, v_offload, w_offload, &
-        !$omp& dx_offload, dy_offload, dz_offload, qtu_offload, qtv_offload, qtw_offload)
+        !$omp& rdx_offload, rdy_offload, rdz_offload, bt_offload, u_offload, v_offload, w_offload, t_offload, &
+        !$omp& dx_offload, dy_offload, dz_offload, qtu_offload, qtv_offload, qtw_offload, gp_bc_ctyp_offload, encoded_bc_ctyp_offload, nboconds_offload)
 
         DEALLOCATE(ip3d_offload)
         DEALLOCATE(ip1d_offload)
@@ -160,6 +191,8 @@ CONTAINS
         DEALLOCATE(qtu_offload)
         DEALLOCATE(qtv_offload)
         DEALLOCATE(qtw_offload)
+        DEALLOCATE(t_offload)
+        DEALLOCATE(nboconds_offload)
 
         DEALLOCATE(mgbasb_offload)
     END SUBROUTINE finish_offload_constants

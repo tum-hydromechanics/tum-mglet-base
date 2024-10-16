@@ -25,94 +25,95 @@ CONTAINS
         TYPE(rk_2n_t), INTENT(in) :: rkscheme
 
         ! Local variables
-        INTEGER(intk) :: ilevel, l
+        INTEGER(intk) :: ilevel, sca_field_index
         REAL(realk) :: frhs, fu, dtrk, dtrki
         TYPE(field_t), POINTER :: t, told, dt_f
-        TYPE(field_t) :: qtt, qtu, qtv, qtw
+        TYPE(field_t) :: qtt
+        REAL(realk) :: sca_prmol
 
         IF (.NOT. solve_scalar) RETURN
         CALL start_timer(400)
-        CALL start_timer(401)
 
+        ! Scalar buffer allocation
+        CALL start_timer(401)
         ! Local temporary storage ("scrap")
         CALL qtt%init("QTT")
-        CALL qtu%init("QTU", istag=1)
-        CALL qtv%init("QTV", jstag=1)
-        CALL qtw%init("QTW", kstag=1)
-
-        CALL qtu%init_buffers()
-        CALL qtv%init_buffers()
-        CALL qtw%init_buffers()
         CALL stop_timer(401)
 
         ! Update u, v and w on the device for next scalar timestep
         !$omp target update to(u_offload, v_offload, w_offload)
 
+        ! Perform actual time integration
+        ! ┌────────────────────────────────────────────────────────────────────────────┐
+        ! | SIMPLIFICATION: Only one scalar field                                      |
+        ! | *Removed loop over multiple scalar fields*                                 |
+        ! └────────────────────────────────────────────────────────────────────────────┘
         CALL start_timer(402)
-        DO l = 1, nsca
-            ! Fetch fields
-            CALL get_field(t, scalar(l)%name)
-            CALL get_field(dt_f, "D"//TRIM(scalar(l)%name))
-            CALL get_field(told, TRIM(scalar(l)%name)//"_OLD")
+        ! Fetch scalar field
+        sca_field_index = 1
+        CALL get_field(t, scalar(sca_field_index)%name)
+        CALL get_field(dt_f, "D"//TRIM(scalar(sca_field_index)%name))
+        CALL get_field(told, TRIM(scalar(sca_field_index)%name)//"_OLD")
+        ! Copy to "T_OLD"
+        told%arr = t%arr
 
-            ! Copy to "T_OLD"
-            told%arr = t%arr
+        ! TSTSCA4 zeroize qtu, qtv, qtw before use internally
+        CALL tstsca4(t, scalar(sca_field_index))
 
-            ! TSTSCA4 zeroize qtu, qtv, qtw before use internally
-            CALL tstsca4(qtu, qtv, qtw, t, scalar(l))
+        !$omp target update from(qtu_offload, qtv_offload, qtw_offload)
 
-            ! ---------- Scalar offloading only handles grids on the same level for now ----------
-            ! This operation apply boundary conditions to qtu, qtv, qtw ONLY!
-            ! Does not modify t-field at all!
-            !DO ilevel = minlevel, maxlevel
-            !    ! CALL parent(ilevel, qtu, qtv, qtw)
-            CALL bound_scaflux%bound(ilevel, qtu, qtv, qtw, t)
-            !END DO
-            print *, ".------"
-            print *, MAXVAL(qtu%arr)
-            print *, MAXVAL(qtv%arr)
-            print *, MAXVAL(qtw%arr)
+        ! This operation apply boundary conditions to qtu, qtv, qtw ONLY!
+        ! Does not modify t-field at all!
+        ! ┌────────────────────────────────────────────────────────────────────────────┐
+        ! | SIMPLIFICATION: Only grids on the same level                               |
+        ! | *Removed loop over all grid levels*                                        |
+        ! └────────────────────────────────────────────────────────────────────────────┘
+        sca_prmol = scalar(sca_field_index)%prmol
+        CALL bound_sca(ilevel, t, sca_prmol)
+        print *, ".------"
+        print *, MAXVAL(qtu_offload)
+        print *, MAXVAL(qtv_offload)
+        print *, MAXVAL(qtw_offload)
 
-            ! fluxbalance zeroize qtt before use internally
-            CALL fluxbalance(qtt, qtu, qtv, qtw)
+        !$omp target update to(qtu_offload, qtv_offload, qtw_offload)
 
-            ! Ghost cell "flux" boundary condition applied to qtt field
-            IF (ib%type == "GHOSTCELL") THEN
-                CALL set_scastencils("P", scalar(l), qtt=qtt)
-            END IF
+        ! fluxbalance zeroize qtt before use internally
+        CALL fluxbalance(qtt)
 
-            ! In IRK 1, FRHS is zero, therefore we do not need to zeroize
-            ! the dt field before each step
-            CALL rkscheme%get_coeffs(frhs, fu, dtrk, dtrki, irk)
+        ! Ghost cell "flux" boundary condition applied to qtt field
+        IF (ib%type == "GHOSTCELL") THEN
+            CALL set_scastencils("P", scalar(sca_field_index), qtt=qtt)
+        END IF
 
-            ! dT_j = A_j*dT_(j-1) + QTT
-            ! T_j = T_(j-1) + B_j*dT_j
-            CALL rkstep(t%arr, dt_f%arr, qtt%arr, frhs, dt*fu)
+        ! In IRK 1, FRHS is zero, therefore we do not need to zeroize
+        ! the dt field before each step
+        CALL rkscheme%get_coeffs(frhs, fu, dtrk, dtrki, irk)
 
-            ! Mask blocked cells
-            CALL maskbt(t)
+        ! dT_j = A_j*dT_(j-1) + QTT
+        ! T_j = T_(j-1) + B_j*dT_j
+        CALL rkstep(t%arr, dt_f%arr, qtt%arr, frhs, dt*fu)
 
-            ! Ghost cell "value" boundary condition applied to t field
-            IF (ib%type == "GHOSTCELL") THEN
-                CALL connect(layers=2, s1=t, corners=.TRUE.)
-                CALL set_scastencils("P", scalar(l), t=t)
-            END IF
+        ! Mask blocked cells
+        CALL maskbt(t)
 
-            DO ilevel = maxlevel, minlevel+1, -1
-                CALL ftoc(ilevel, t%arr, t%arr, 'T')
-            END DO
-
+        ! Ghost cell "value" boundary condition applied to t field
+        IF (ib%type == "GHOSTCELL") THEN
             CALL connect(layers=2, s1=t, corners=.TRUE.)
+            CALL set_scastencils("P", scalar(sca_field_index), t=t)
+        END IF
 
-            ! TODO: Fill ghost layers of T (maybe only at last IRK?)
+        DO ilevel = maxlevel, minlevel+1, -1
+            CALL ftoc(ilevel, t%arr, t%arr, 'T')
         END DO
+
+        CALL connect(layers=2, s1=t, corners=.TRUE.)
+
+
+        ! TODO: Fill ghost layers of T (maybe only at last IRK?)
         CALL stop_timer(402)
 
         CALL qtt%finish()
-        CALL qtu%finish()
-        CALL qtv%finish()
-        CALL qtw%finish()
-
+        
         CALL stop_timer(400)
     END SUBROUTINE timeintegrate_scalar
 
@@ -170,9 +171,8 @@ CONTAINS
     END SUBROUTINE itinfo_scalar
 
 
-    SUBROUTINE tstsca4(qtu_f, qtv_f, qtw_f, t_f, sca)
+    SUBROUTINE tstsca4(t_f, sca)
         ! Subroutine arguments
-        TYPE(field_t), INTENT(inout) :: qtu_f, qtv_f, qtw_f
         TYPE(field_t), INTENT(in) :: t_f
         TYPE(scalar_t), INTENT(in) :: sca
 
@@ -184,15 +184,12 @@ CONTAINS
         INTEGER(intk) :: kayscrawford_offload
 
         ! Expensive data to offload
-        REAL(realk), POINTER, CONTIGUOUS, DIMENSION(:) :: qtu_a, qtv_a, qtw_a, t_a, g_a
+        REAL(realk), POINTER, CONTIGUOUS, DIMENSION(:) :: t_a, g_a
 
         CALL start_timer(410)
 
         CALL get_field(g_f, "G")
 
-        CALL qtu_f%get_arr_ptr(qtu_a)
-        CALL qtv_f%get_arr_ptr(qtv_a)
-        CALL qtw_f%get_arr_ptr(qtw_a)
         CALL t_f%get_arr_ptr(t_a)
         CALL g_f%get_arr_ptr(g_a)
 
@@ -200,7 +197,7 @@ CONTAINS
         prturb_offload = prturb
         kayscrawford_offload = sca%kayscrawford
         
-        !$omp target data map(to: t_a, g_a) map(from: qtu_a, qtv_a, qtw_a)
+        !$omp target data map(to: t_a, g_a)
         !$omp target teams distribute
         DO igrid = 1, nmygrids
             BLOCK
@@ -212,9 +209,9 @@ CONTAINS
                 CALL get_mgbasb_target(nfro, nbac, nrgt, nlft, nbot, ntop, igrid)
                 CALL get_mgdims_target(kk, jj, ii, igrid)
 
-                CALL ptr_to_grid3(qtu_a, igrid, qtu)
-                CALL ptr_to_grid3(qtv_a, igrid, qtv)
-                CALL ptr_to_grid3(qtw_a, igrid, qtw)
+                CALL ptr_to_grid3(qtu_offload, igrid, qtu)
+                CALL ptr_to_grid3(qtv_offload, igrid, qtv)
+                CALL ptr_to_grid3(qtw_offload, igrid, qtw)
                 CALL ptr_to_grid3(t_a, igrid, t)
                 CALL ptr_to_grid3(u_offload, igrid, u)
                 CALL ptr_to_grid3(v_offload, igrid, v)
@@ -539,25 +536,21 @@ CONTAINS
         END IF
     END FUNCTION sca_prt
 
-    SUBROUTINE fluxbalance(qtt_f, qtu_f, qtv_f, qtw_f)
+    SUBROUTINE fluxbalance(qtt_f)
         ! Subroutine arguments
         TYPE(field_t), INTENT(inout) :: qtt_f
-        TYPE(field_t), INTENT(in) :: qtu_f, qtv_f, qtw_f
 
         ! Local variables
         INTEGER(intk) :: igrid
 
         ! Expensive data to offload
-        REAL(realk), POINTER, CONTIGUOUS, DIMENSION(:) :: qtt_a, qtu_a, qtv_a, qtw_a
+        REAL(realk), POINTER, CONTIGUOUS, DIMENSION(:) :: qtt_a
 
         CALL start_timer(411)
 
         CALL qtt_f%get_arr_ptr(qtt_a)
-        CALL qtu_f%get_arr_ptr(qtu_a)
-        CALL qtv_f%get_arr_ptr(qtv_a)
-        CALL qtw_f%get_arr_ptr(qtw_a)
 
-        !$omp target data map(to: qtu_a, qtv_a, qtw_a) map(from: qtt_a)
+        !$omp target data map(from: qtt_a)
         !$omp target teams distribute 
         DO igrid = 1, nmygrids
             BLOCK
@@ -566,9 +559,9 @@ CONTAINS
                 INTEGER(intk) :: kk, jj, ii
 
                 CALL ptr_to_grid3(qtt_a, igrid, qtt)
-                CALL ptr_to_grid3(qtu_a, igrid, qtu)
-                CALL ptr_to_grid3(qtv_a, igrid, qtv)
-                CALL ptr_to_grid3(qtw_a, igrid, qtw)
+                CALL ptr_to_grid3(qtu_offload, igrid, qtu)
+                CALL ptr_to_grid3(qtv_offload, igrid, qtv)
+                CALL ptr_to_grid3(qtw_offload, igrid, qtw)
 
                 CALL ptr_to_grid_x(rddx_offload, igrid, rddx)
                 CALL ptr_to_grid_y(rddy_offload, igrid, rddy)

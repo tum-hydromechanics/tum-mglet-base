@@ -48,6 +48,7 @@ CONTAINS
                 nbocd = nboconds(iface, igrid)
                 DO ibocd = 1, nbocd
                     CALL get_bc_ctyp(ctyp, ibocd, iface, igrid)
+                    
                     SELECT CASE(iface)
                     CASE(1)
                         CALL this%front(igrid, iface, ibocd, ctyp, &
