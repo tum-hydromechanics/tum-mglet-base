@@ -14,17 +14,20 @@ MODULE offload_helper_mod
     REAL(realk), POINTER, CONTIGUOUS :: ddx_offload(:), ddy_offload(:), ddz_offload(:)
     REAL(realk), POINTER, CONTIGUOUS :: rdx_offload(:), rdy_offload(:), rdz_offload(:)
     REAL(realk), POINTER, CONTIGUOUS :: bt_offload(:)
+    REAL(realk), POINTER, CONTIGUOUS :: dx_offload(:), dy_offload(:), dz_offload(:)
 
     REAL(realk), POINTER, CONTIGUOUS, DIMENSION(:) :: u_offload, v_offload, w_offload
+    REAL(realk), POINTER, CONTIGUOUS, DIMENSION(:) :: qtu_offload, qtv_offload, qtw_offload
 
     !$omp declare target(ip3d_offload, ip1d_offload, mgdims_offload, mgbasb_offload, &
     !$omp& rddx_offload, rddy_offload, rddz_offload, rdx_offload, rdy_offload, rdz_offload, &
-    !$omp& ddx_offload, ddy_offload, ddz_offload, bt_offload, u_offload, v_offload, w_offload)
+    !$omp& ddx_offload, ddy_offload, ddz_offload, bt_offload, u_offload, v_offload, w_offload, &
+    !$omp& dx_offload, dy_offload, dz_offload, qtu_offload, qtv_offload, qtw_offload)
 
     PUBLIC :: ptr_to_grid_x, ptr_to_grid_y, ptr_to_grid_z, ptr_to_grid3, &
         offload_constants, finish_offload_constants, get_mgdims_target, get_mgbasb_target, &
         ddx_offload, ddy_offload, ddz_offload, rdx_offload, rdy_offload, rdz_offload, rddx_offload, rddy_offload, rddz_offload, &
-        bt_offload, u_offload, v_offload, w_offload
+        bt_offload, u_offload, v_offload, w_offload, dx_offload, dy_offload, dz_offload, qtu_offload, qtv_offload, qtw_offload
 CONTAINS
     SUBROUTINE offload_constants()
         USE pointers_mod, ONLY: ip3d, ip1d
@@ -34,7 +37,7 @@ CONTAINS
 
         ! Local variablees
         INTEGER(intk) :: igrid, i, mgdims_arr_size, kk, jj, ii, nfro, nbac, nrgt, nlft, nbot, ntop
-        TYPE(field_t), POINTER :: rddx_f, rddy_f, rddz_f, bt_f, ddx_f, ddy_f, ddz_f, rdx_f, rdy_f, rdz_f
+        TYPE(field_t), POINTER :: rddx_f, rddy_f, rddz_f, bt_f, ddx_f, ddy_f, ddz_f, rdx_f, rdy_f, rdz_f, dx_f, dy_f, dz_f
         TYPE(field_t), POINTER :: u_f, v_f, w_f
 
         ! Create grids_mod copy to offload
@@ -65,7 +68,10 @@ CONTAINS
         CALL get_field(rddx_f, "RDDX")
         CALL get_field(rddy_f, "RDDY")
         CALL get_field(rddz_f, "RDDZ")
-        
+        CALL get_field(dx_f, "DX")
+        CALL get_field(dy_f, "DY")
+        CALL get_field(dz_f, "DZ")
+
         ALLOCATE(bt_offload(SIZE(bt_f%arr)))
         ALLOCATE(ddx_offload(SIZE(ddx_f%arr)))
         ALLOCATE(ddy_offload(SIZE(ddy_f%arr)))
@@ -76,6 +82,9 @@ CONTAINS
         ALLOCATE(rddx_offload(SIZE(rddx_f%arr)))
         ALLOCATE(rddy_offload(SIZE(rddy_f%arr)))
         ALLOCATE(rddz_offload(SIZE(rddz_f%arr)))
+        ALLOCATE(dx_offload(SIZE(dx_f%arr)))
+        ALLOCATE(dy_offload(SIZE(dy_f%arr)))
+        ALLOCATE(dz_offload(SIZE(dz_f%arr)))
         bt_offload = bt_f%arr
         ddx_offload = ddx_f%arr
         ddy_offload = ddy_f%arr
@@ -86,7 +95,9 @@ CONTAINS
         rddx_offload = rddx_f%arr
         rddy_offload = rddy_f%arr
         rddz_offload = rddz_f%arr
-
+        dx_offload = dx_f%arr
+        dy_offload = dy_f%arr
+        dz_offload = dz_f%arr
 
         ! Precompute boundary conditions
         ALLOCATE(mgbasb_offload(N_BASB * nmygrids))
@@ -111,15 +122,24 @@ CONTAINS
         v_offload = v_f%arr
         w_offload = w_f%arr
 
+        ALLOCATE(qtu_offload(SIZE(u_f%arr)))
+        ALLOCATE(qtv_offload(SIZE(v_f%arr)))
+        ALLOCATE(qtw_offload(SIZE(w_f%arr)))
+        qtu_offload = 0
+        qtv_offload = 0
+        qtw_offload = 0
+
         !$omp target enter data map(to: ip3d_offload, ip1d_offload, mgdims_offload, mgbasb_offload, &
         !$omp& rddx_offload, rddy_offload, rddz_offload, ddx_offload, ddy_offload, ddz_offload, &
-        !$omp& rdx_offload, rdy_offload, rdz_offload, bt_offload, u_offload, v_offload, w_offload)
+        !$omp& rdx_offload, rdy_offload, rdz_offload, bt_offload, u_offload, v_offload, w_offload, &
+        !$omp& dx_offload, dy_offload, dz_offload, qtu_offload, qtv_offload, qtw_offload)
     END SUBROUTINE offload_constants
 
     SUBROUTINE finish_offload_constants()
         !$omp target exit data map(delete: ip3d_offload, ip1d_offload, mgdims_offload, mgbasb_offload, &
         !$omp& rddx_offload, rddy_offload, rddz_offload, ddx_offload, ddy_offload, ddz_offload, &
-        !$omp& rdx_offload, rdy_offload, rdz_offload, bt_offload, u_offload, v_offload, w_offload)
+        !$omp& rdx_offload, rdy_offload, rdz_offload, bt_offload, u_offload, v_offload, w_offload, &
+        !$omp& dx_offload, dy_offload, dz_offload, qtu_offload, qtv_offload, qtw_offload)
 
         DEALLOCATE(ip3d_offload)
         DEALLOCATE(ip1d_offload)
@@ -133,6 +153,14 @@ CONTAINS
         DEALLOCATE(rddx_offload)
         DEALLOCATE(rddy_offload)
         DEALLOCATE(rddz_offload)
+        DEALLOCATE(dx_offload)
+        DEALLOCATE(dy_offload)
+        DEALLOCATE(dz_offload)
+        DEALLOCATE(bt_offload)
+        DEALLOCATE(qtu_offload)
+        DEALLOCATE(qtv_offload)
+        DEALLOCATE(qtw_offload)
+
         DEALLOCATE(mgbasb_offload)
     END SUBROUTINE finish_offload_constants
 

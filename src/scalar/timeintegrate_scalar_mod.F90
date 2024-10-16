@@ -64,11 +64,14 @@ CONTAINS
             ! ---------- Scalar offloading only handles grids on the same level for now ----------
             ! This operation apply boundary conditions to qtu, qtv, qtw ONLY!
             ! Does not modify t-field at all!
-            DO ilevel = minlevel, maxlevel
-                ! CALL parent(ilevel, qtu, qtv, qtw)
-                CALL bound_scaflux%bound(ilevel, qtu, qtv, qtw, t)
-            END DO
-
+            !DO ilevel = minlevel, maxlevel
+            !    ! CALL parent(ilevel, qtu, qtv, qtw)
+            CALL bound_scaflux%bound(ilevel, qtu, qtv, qtw, t)
+            !END DO
+            print *, ".------"
+            print *, MAXVAL(qtu%arr)
+            print *, MAXVAL(qtv%arr)
+            print *, MAXVAL(qtw%arr)
 
             ! fluxbalance zeroize qtt before use internally
             CALL fluxbalance(qtt, qtu, qtv, qtw)

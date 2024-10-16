@@ -2,6 +2,7 @@ MODULE bound_scalar_mod
     USE core_mod
     USE scacore_mod
     USE flow_mod, ONLY: ilesmodel, gmol, rho, qwallfix
+    USE offload_helper_mod
 
     IMPLICIT NONE(type, external)
     PRIVATE
@@ -35,10 +36,11 @@ CONTAINS
         REAL(realk) :: area1, area2, area3, area4, arecvtot, qtot
         REAL(realk) :: area, prmol, adv, diff, gamma, gamma2dx, uquer, tout
         INTEGER(intk) :: idx, scbtype(nsca)
-        REAL(realk), POINTER, CONTIGUOUS :: qtu(:, :, :), t(:, :, :), &
-            bt(:, :, :), u(:, :, :), v(:, :, :), w(:, :, :)
+
+        REAL(realk), POINTER, CONTIGUOUS, DIMENSION(:, :, :) :: qtu, t, bt, u, v, w
+        REAL(realk), POINTER, CONTIGUOUS, DIMENSION(:) :: dx, ddx, ddy, ddz
+
         REAL(realk), POINTER, CONTIGUOUS :: qtubuf(:, :, :), tbuf(:, :, :)
-        REAL(realk), POINTER, CONTIGUOUS :: dx(:), ddx(:), ddy(:), ddz(:)
 
         ! Return early when no action is to be taken
         SELECT CASE (ctyp)
@@ -65,18 +67,18 @@ CONTAINS
         ! CALL f3%buffers%get_buffer(qtwbuf, igrid, iface)
         CALL f4%buffers%get_buffer(tbuf, igrid, iface)
 
-        CALL get_fieldptr(u, "U", igrid)
-        CALL get_fieldptr(v, "V", igrid)
-        CALL get_fieldptr(w, "W", igrid)
+        CALL ptr_to_grid3(u_offload, igrid, u)
+        CALL ptr_to_grid3(v_offload, igrid, v)
+        CALL ptr_to_grid3(w_offload, igrid, w)
+        CALL ptr_to_grid3(bt_offload, igrid, bt)
 
-        CALL get_fieldptr(bt, "BT", igrid)
+        CALL ptr_to_grid_x(ddx_offload, igrid, ddx)
+        CALL ptr_to_grid_y(ddy_offload, igrid, ddy)
+        CALL ptr_to_grid_z(ddz_offload, igrid, ddz)
 
-        CALL get_fieldptr(dx, "DX", igrid)
-        CALL get_fieldptr(ddx, "DDX", igrid)
-        CALL get_fieldptr(ddy, "DDY", igrid)
-        CALL get_fieldptr(ddz, "DDZ", igrid)
+        CALL ptr_to_grid_x(dx_offload, igrid, dx)
 
-        CALL get_mgdims(kk, jj, ii, igrid)
+        CALL get_mgdims_target(kk, jj, ii, igrid)
 
         SELECT CASE (iface)
         CASE (1)
@@ -225,10 +227,9 @@ CONTAINS
         REAL(realk) :: area1, area2, area3, area4, arecvtot, qtot
         REAL(realk) :: area, prmol, adv, diff, gamma, gamma2dx, uquer, tout
         INTEGER(intk) :: idx, scbtype(nsca)
-        REAL(realk), POINTER, CONTIGUOUS :: qtv(:, :, :), t(:, :, :), &
-            bt(:, :, :), u(:, :, :), v(:, :, :), w(:, :, :)
+        REAL(realk), POINTER, CONTIGUOUS, DIMENSION(:, :, :) :: qtv, t, bt, u, v, w
+        REAL(realk), POINTER, CONTIGUOUS, DIMENSION(:) :: dy, ddx, ddy, ddz
         REAL(realk), POINTER, CONTIGUOUS :: qtvbuf(:, :, :), tbuf(:, :, :)
-        REAL(realk), POINTER, CONTIGUOUS :: dy(:), ddx(:), ddy(:), ddz(:)
 
         ! Return early when no action is to be taken
         SELECT CASE (ctyp)
@@ -255,18 +256,18 @@ CONTAINS
         ! CALL f3%buffers%get_buffer(qtwbuf, igrid, iface)
         CALL f4%buffers%get_buffer(tbuf, igrid, iface)
 
-        CALL get_fieldptr(u, "U", igrid)
-        CALL get_fieldptr(v, "V", igrid)
-        CALL get_fieldptr(w, "W", igrid)
+        CALL ptr_to_grid3(u_offload, igrid, u)
+        CALL ptr_to_grid3(v_offload, igrid, v)
+        CALL ptr_to_grid3(w_offload, igrid, w)
+        CALL ptr_to_grid3(bt_offload, igrid, bt)
 
-        CALL get_fieldptr(bt, "BT", igrid)
+        CALL ptr_to_grid_x(ddx_offload, igrid, ddx)
+        CALL ptr_to_grid_y(ddy_offload, igrid, ddy)
+        CALL ptr_to_grid_z(ddz_offload, igrid, ddz)
 
-        CALL get_fieldptr(dy, "DY", igrid)
-        CALL get_fieldptr(ddx, "DDX", igrid)
-        CALL get_fieldptr(ddy, "DDY", igrid)
-        CALL get_fieldptr(ddz, "DDZ", igrid)
+        CALL ptr_to_grid_y(dy_offload, igrid, dy)
 
-        CALL get_mgdims(kk, jj, ii, igrid)
+        CALL get_mgdims_target(kk, jj, ii, igrid)
 
         SELECT CASE (iface)
         CASE (3)
@@ -415,10 +416,9 @@ CONTAINS
         REAL(realk) :: area1, area2, area3, area4, arecvtot, qtot
         REAL(realk) :: area, prmol, adv, diff, gamma, gamma2dx, uquer, tout
         INTEGER(intk) :: idx, scbtype(nsca)
-        REAL(realk), POINTER, CONTIGUOUS :: qtw(:, :, :), t(:, :, :), &
-            bt(:, :, :), u(:, :, :), v(:, :, :), w(:, :, :)
+        REAL(realk), POINTER, CONTIGUOUS, DIMENSION(:, :, :) :: qtw, t, bt, u, v, w
+        REAL(realk), POINTER, CONTIGUOUS, DIMENSION(:) :: dz, ddx, ddy, ddz
         REAL(realk), POINTER, CONTIGUOUS :: qtwbuf(:, :, :), tbuf(:, :, :)
-        REAL(realk), POINTER, CONTIGUOUS :: dz(:), ddx(:), ddy(:), ddz(:)
 
         ! Return early when no action is to be taken
         SELECT CASE (ctyp)
@@ -445,16 +445,18 @@ CONTAINS
         CALL f3%buffers%get_buffer(qtwbuf, igrid, iface)
         CALL f4%buffers%get_buffer(tbuf, igrid, iface)
 
-        CALL get_fieldptr(u, "U", igrid)
-        CALL get_fieldptr(v, "V", igrid)
-        CALL get_fieldptr(w, "W", igrid)
+        CALL ptr_to_grid3(u_offload, igrid, u)
+        CALL ptr_to_grid3(v_offload, igrid, v)
+        CALL ptr_to_grid3(w_offload, igrid, w)
+        CALL ptr_to_grid3(bt_offload, igrid, bt)
 
-        CALL get_fieldptr(bt, "BT", igrid)
+        CALL ptr_to_grid_x(ddx_offload, igrid, ddx)
+        CALL ptr_to_grid_y(ddy_offload, igrid, ddy)
+        CALL ptr_to_grid_z(ddz_offload, igrid, ddz)
 
-        CALL get_fieldptr(dz, "DZ", igrid)
-        CALL get_fieldptr(ddx, "DDX", igrid)
-        CALL get_fieldptr(ddy, "DDY", igrid)
-        CALL get_fieldptr(ddz, "DDZ", igrid)
+        CALL ptr_to_grid_z(dz_offload, igrid, dz)
+
+        CALL get_mgdims_target(kk, jj, ii, igrid)
 
         CALL get_mgdims(kk, jj, ii, igrid)
 
@@ -550,7 +552,7 @@ CONTAINS
         CASE ("SIO")
             CALL get_bcprms(scbtype, igrid, iface, ibocd)
             CALL f4%get_attr(idx, "SCAIDX")
-
+            
             SELECT CASE (scbtype(idx))
             CASE (0)  ! Fixed scalar value (inflow/outflow)
                 CALL f4%get_attr(prmol, "PRMOL")
