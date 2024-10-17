@@ -25,6 +25,8 @@ INTEGER(intk) :: psnapshot_step
 
 REAL(realk) :: D(3) = 0.0_realk
 
+CHARACTER(len=16) :: prkmethod
+
 CONTAINS    !===================================
 
     SUBROUTINE init_particle_config()
@@ -85,6 +87,10 @@ CONTAINS    !===================================
         !- - - - - - - - - - - - - - - - - -
 
         CALL pconf%get_value("/interp", dinterp_particles, .TRUE.)
+
+        !- - - - - - - - - - - - - - - - - -
+
+        CALL pconf%get_value("/prkmethod", prkmethod, "williamson")
 
         !- - - - - - - - - - - - - - - - - -
 

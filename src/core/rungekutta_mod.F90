@@ -43,7 +43,25 @@ MODULE rungekutta_mod
         PROCEDURE, PRIVATE :: comp_c
     END TYPE rk_2n_t
 
-    PUBLIC :: rk_2n_t, rkstep
+    ! rk type for particle timeintegration
+    TYPE, EXTENDS(rk_t) :: particle_rk_t
+
+        ! coefficients represent the common butcher tableau, where
+        ! c: intermediate timesteps
+        ! a: intermediate weights
+        ! b: weights of the final stage
+
+        REAL(realk) :: a(maxnrk, maxnrk) = 0.0
+        REAL(realk) :: b(maxnrk) = 0.0
+
+    CONTAINS
+        PROCEDURE :: init => init_particle_rk
+        PROCEDURE :: get_coeffs => get_prk_coefficients
+
+        PROCEDURE, PRIVATE :: init_williamson_bt
+    END TYPE particle_rk_t
+
+    PUBLIC :: rk_2n_t, particle_rk_t, rkstep
 CONTAINS
 
     SUBROUTINE init_2n(this, ctyp)
@@ -268,4 +286,98 @@ CONTAINS
             p(i) = p(i) + dtfu*dp(i)
         END DO
     END SUBROUTINE rkstep
+
+    ! ----- Particle RK from here.... ------
+
+    SUBROUTINE init_particle_rk(this, ctyp)
+
+        ! subroutine arguments
+        CLASS(particle_rk_t), INTENT(out) :: this
+        CHARACTER(len=*), INTENT(in) :: ctyp
+
+        SELECT CASE(lower(TRIM(ctyp)))
+        CASE ("williamson")
+            CALL this%init_williamson_bt()
+        CASE DEFAULT
+            WRITE(*, *) "Invalid: ", lower(TRIM(ctyp))
+            CALL errr(__FILE__, __LINE__)
+        END SELECT
+
+    END SUBROUTINE init_particle_rk
+
+    SUBROUTINE init_williamson_bt(rk)
+
+        ! Subroutine arguments
+        CLASS(particle_rk_t), INTENT(out) :: rk
+
+        ! local variables
+        INTEGER(intk) :: i, j
+
+        ! Set to zero
+        rk%c = 0.0
+        rk%a = 0.0
+        rk%b = 0.0
+
+        ! Used coefficients
+        ! CAUTION: here, a and b refer to coefficients in the butcher table
+        ! instead of the low stroage coefficients
+        rk%nrk = 3
+        rk%cflmax = oneeps*SQRT(3.0)
+        rk%c(1:rk%nrk) = [0.0, 1.0/3.0, 3.0/4.0]
+        rk%b(1:rk%nrk) = [1.0/6.0, 3.0/10.0, 8.0/15.0]
+
+        rk%a(2,1) = 1.0/3.0
+        rk%a(3,1) = -3.0/16.0
+        rk%a(3,2) = 15.0/16.0
+
+    END SUBROUTINE init_williamson_bt
+
+    SUBROUTINE get_prk_coefficients(this, c, b, a, irk)
+
+        ! subroutine arguments
+        CLASS(particle_rk_t), INTENT(in) :: this
+        REAL(realk), OPTIONAL, ALLOCATABLE, INTENT(out) :: c(:)
+        REAL(realk), OPTIONAL, ALLOCATABLE, INTENT(out) :: b(:)
+        REAL(realk), OPTIONAL, ALLOCATABLE, INTENT(out) :: a(:,:)
+        INTEGER(intk), OPTIONAL, INTENT(in) :: irk
+
+        ! local variables
+        INTEGER(intk) :: i, j
+
+        IF (PRESENT(irk)) THEN
+            IF (PRESENT(c)) THEN
+                c = this%c(irk)
+            END IF
+
+            IF (PRESENT(b)) THEN
+                b = this%b(irk)
+            END IF
+
+            ALLOCATE(a(1, irk-1))
+            IF (PRESENT(a)) THEN
+                IF (SIZE(a, 2) == 0) THEN
+                    CONTINUE
+                ELSE
+                    DO i = 1, irk -1
+                        a(1, i) = this%a(1, i)
+                    END DO
+                END IF
+            END IF
+        ELSE
+            ALLOCATE(c(this%nrk))
+            c = this%c(1:this%nrk)
+
+            ALLOCATE(b(this%nrk))
+            b = this%b(1:this%nrk)
+
+            ALLOCATE(a(this%nrk, this%nrk))
+            DO i = 1, this%nrk
+                DO j = 1, this%nrk
+                    a(i, j) = this%a(i, j)
+                END DO
+            END DO
+        END IF
+
+    END SUBROUTINE get_prk_coefficients
+
 END MODULE rungekutta_mod

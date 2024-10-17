@@ -194,7 +194,9 @@ CONTAINS
         END IF
 
         ! Initialize Grid Partile Statistics
-        CALL init_particle_gridstat(mtstep) ! <------------------------------------particles
+        IF (dsim_particles) THEN ! <------------------------------------particles
+            CALL init_particle_gridstat(mtstep)
+        END IF
 
     END SUBROUTINE init_timeloop
 
@@ -210,11 +212,15 @@ CONTAINS
         CALL write_runinfo(itstep, ittot, timeph, dt, targetcflmax, deltawt, &
             ncellstot)
 
-        IF (dsim_particles .AND. dwrite_particles) THEN
-            CALL write_psnapshot_timeinfo() ! <------------------------------------particles
+        IF (dsim_particles .AND. dwrite_particles) THEN ! <------------------------------------particles
+            CALL write_psnapshot_timeinfo()
+            CALL finish_particle_snapshots()
         END IF
 
-        CALL write_gridstat()
+        IF (dsim_particles) THEN ! <------------------------------------particles
+            CALL write_gridstat()
+            CALL finish_particle_gridstat()
+        END IF
 
         CALL finish_statistics()
     END SUBROUTINE finish_timeloop
@@ -223,7 +229,7 @@ CONTAINS
     SUBROUTINE timeloop()
         ! Local variables
         LOGICAL :: stop_now, allow_checkpoint
-        INTEGER(intk) :: irk, exploded
+        INTEGER(intk) :: irk, pirk, exploded
         REAL(realk) :: cflmax
 
         IF (skip_timeloop) RETURN
@@ -246,15 +252,12 @@ CONTAINS
 
         timeintegration: DO itstep = 1, mtstep
 
-            ! for gridstat
-            CALL advance_np_counter(itstep) ! <------------------------------------particles
-
-            ! update backup field for particke rk timeintegration
-            CALL update_backup_fields() ! <------------------------------------particles
-
-            ! Timeintegrate particles
-            IF (dsim_particles) THEN
-                CALL timeintegrate_particles(itstep, dt) ! <------------------------------------particles
+            ! TODO: put this into particle timeintegration
+            IF (dsim_particles) THEN ! <------------------------------------particles
+                ! particle counter for particle grid statistics
+                CALL advance_np_counter(itstep)
+                ! update backup field for particke rk timeintegration
+                CALL prepare_particle_timeintegration()
             END IF
 
             ! Global RK loop for tightly coupled quantities like flow and
@@ -266,6 +269,14 @@ CONTAINS
                     rkscheme)
             END DO rkloop
 
+            IF (dsim_particles) THEN ! <------------------------------------particles
+                ! Timeintegrate particles
+                CALL timeintegrate_particles(itstep, dt)
+                ! migration of particles between grids
+                ! and also across MPI ranks (processes)
+                CALL exchange_particles(my_particle_list, itstep)
+            END IF
+
             ! Timeintegrate, _before_ time is globally incremented
             CALL timeintegrate_plugins(itstep, ittot, timeph, dt)
 
@@ -275,10 +286,9 @@ CONTAINS
             CALL timekeeper%get_time(timeph)
 
             ! Particle Snapshots
-            IF (dsim_particles .AND. dwrite_particles) THEN
-                CALL write_psnapshot(itstep, timeph) ! <------------------------------------particles
+            IF (dsim_particles .AND. dwrite_particles) THEN ! <------------------------------------particles
+                CALL write_psnapshot(itstep, timeph)
             END IF
-
 
             ! Print to terminal (itinfo frequency)
             !

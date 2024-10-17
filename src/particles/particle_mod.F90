@@ -104,6 +104,8 @@ CONTAINS
 
         CALL finish_particle_gridstat()
 
+        CALL finish_particle_timeintegration()
+
         CALL finish_particle_exchange()
 
         CALL finish_particle_boundaries()

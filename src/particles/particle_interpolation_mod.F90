@@ -255,10 +255,10 @@ CONTAINS    !===================================
 
     END SUBROUTINE interp_trilinear
 
-    SUBROUTINE time_interpolate_field(brk, u_f, v_f, w_f, ubu_f, vbu_f, wbu_f, uli_f, vli_f, wli_f)
+    SUBROUTINE time_interpolate_field(crk, u_f, v_f, w_f, ubu_f, vbu_f, wbu_f, uli_f, vli_f, wli_f)
 
         ! subroutine arguments
-        REAL(realk), INTENT(in) :: brk
+        REAL(realk), INTENT(in) :: crk
         TYPE(field_t), INTENT(in) :: u_f, v_f, w_f
         TYPE(field_t), INTENT(in) :: ubu_f, vbu_f, wbu_f
         TYPE(field_t), INTENT(inout) :: uli_f, vli_f, wli_f
@@ -291,9 +291,9 @@ CONTAINS    !===================================
             DO i = 1, ii
                 DO j = 1, jj
                     DO k = 1, kk
-                        uli(k, j, i) = ubu(k, j, i) * (1 - brk) + u(k, j, i) * brk
-                        vli(k, j, i) = vbu(k, j, i) * (1 - brk) + v(k, j, i) * brk
-                        wli(k, j, i) = wbu(k, j, i) * (1 - brk) + w(k, j, i) * brk
+                        uli(k, j, i) = ubu(k, j, i) * (1 - crk) + u(k, j, i) * crk
+                        vli(k, j, i) = vbu(k, j, i) * (1 - crk) + v(k, j, i) * crk
+                        wli(k, j, i) = wbu(k, j, i) * (1 - crk) + w(k, j, i) * crk
                     END DO
                 END DO
             END DO

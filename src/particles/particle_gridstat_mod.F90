@@ -250,14 +250,14 @@ CONTAINS
 
         ! local variables
 
-        INTEGER(intk) :: i
+        !INTEGER(intk) :: i
 
-        DO i = 1, nmygrids
-            DEALLOCATE(my_collector_list(i)%np_counter)
-            DEALLOCATE(my_collector_list(i)%rt_counter)
-        END DO
+        !DO i = 1, nmygrids
+        !    DEALLOCATE(my_collector_list(i)%np_counter)
+        !    DEALLOCATE(my_collector_list(i)%rt_counter)
+        !END DO
 
-        DEALLOCATE(my_collector_list)
+        !DEALLOCATE(my_collector_list)
 
     END SUBROUTINE finish_particle_gridstat
 

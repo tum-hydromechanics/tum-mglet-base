@@ -213,18 +213,19 @@ MODULE particle_boundaries_mod
 
         CALL finish_obstacles()
 
-        DEALLOCATE(particle_boundaries%face_normals)
-        DEALLOCATE(particle_boundaries%face_neighbours)
+        !DEALLOCATE(particle_boundaries%face_neighbours)
+        !DEALLOCATE(particle_boundaries%face_normals)
 
     END SUBROUTINE finish_particle_boundaries
 
     !-----------------------------------
 
-    SUBROUTINE move_particle(particle, dx, dy, dz)
+    SUBROUTINE move_particle(particle, dx, dy, dz, dx_eff, dy_eff, dz_eff)
 
         ! subroutine arguments
         TYPE(baseparticle_t), INTENT(inout) :: particle
         REAL(realk), INTENT(in) :: dx, dy, dz
+        REAL(realk), INTENT(out) :: dx_eff, dy_eff, dz_eff
 
         ! local variables
         INTEGER(intk) :: temp_grid, iface, iobst, grid_bc, destproc
@@ -233,13 +234,14 @@ MODULE particle_boundaries_mod
         REAL(realk) :: x, y, z
         REAL(realk) :: dx_step, dy_step, dz_step
         REAL(realk) :: dx_from_here, dy_from_here, dz_from_here
-        REAL(realk) :: dx_eff, dy_eff, dz_eff
+
         REAL(realk) :: epsilon
         REAL(realk) :: n1, n2, n3
 
         CALL start_timer(924)
 
         IF (SQRT(dx**(2) + dy**(2) + dz**(2)) == 0) THEN
+            CALL stop_timer(924)
             RETURN
         END IF
 
@@ -274,13 +276,6 @@ MODULE particle_boundaries_mod
         counter = 1
         DO WHILE (epsilon < SQRT(dx_from_here**(2) + dy_from_here**(2) + dz_from_here**(2)) .AND. counter <= 10)
 
-            CALL move_to_boundary(temp_grid, x, y, z, &
-             dx_from_here, dy_from_here, dz_from_here, dx_step, dy_step, dz_step, iface, iobst)
-
-            dx_eff = dx_eff + dx_step
-            dy_eff = dy_eff + dy_step
-            dz_eff = dz_eff + dz_step
-
             SELECT CASE (TRIM(particle_terminal))
                 CASE ("none")
                     CONTINUE
@@ -291,6 +286,13 @@ MODULE particle_boundaries_mod
                     WRITE(*, *) "dx/dy/dz:", dx_from_here, dy_from_here, dz_from_here
                     WRITE(*, '()')
             END SELECT
+
+            CALL move_to_boundary(temp_grid, x, y, z, &
+             dx_from_here, dy_from_here, dz_from_here, dx_step, dy_step, dz_step, iface, iobst)
+
+            dx_eff = dx_eff + dx_step
+            dy_eff = dy_eff + dy_step
+            dz_eff = dz_eff + dz_step
 
             IF (0 < iobst) THEN
 
