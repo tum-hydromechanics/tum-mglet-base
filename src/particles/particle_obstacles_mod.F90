@@ -107,7 +107,7 @@ CONTAINS    !===================================
 
     SUBROUTINE finish_obstacles()
 
-        !DEALLOCATE(obstacles)
+        DEALLOCATE(obstacles)
 
     END SUBROUTINE finish_obstacles
 

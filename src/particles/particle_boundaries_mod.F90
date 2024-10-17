@@ -68,7 +68,7 @@ MODULE particle_boundaries_mod
 
         ALLOCATE(particle_boundaries%face_neighbours(26, ngrid))
 
-        ibocd = 3
+        ibocd = 2
         DO igrid = 1, ngrid
 
             CALL get_neighbours(neighbours, igrid)
@@ -81,32 +81,32 @@ MODULE particle_boundaries_mod
 
                 SELECT CASE(iface)
                     CASE(1)
-                        IF (ctyp == 'REF') THEN
+                        IF (ctyp == 'SWA') THEN
                             particle_boundaries%face_normals(1, 1, igrid) = 1.0
                             particle_boundaries%face_neighbours(iface, igrid) = igrid
                         END IF
                     CASE(2)
-                        IF (ctyp == 'REF') THEN
+                        IF (ctyp == 'SWA') THEN
                             particle_boundaries%face_normals(1, 2, igrid) = -1.0
                             particle_boundaries%face_neighbours(iface, igrid) = igrid
                         END IF
                     CASE(3)
-                        IF (ctyp == 'REF') THEN
+                        IF (ctyp == 'SWA') THEN
                             particle_boundaries%face_normals(2, 3, igrid) = 1.0
                             particle_boundaries%face_neighbours(iface, igrid) = igrid
                         END IF
                     CASE(4)
-                        IF (ctyp == 'REF') THEN
+                        IF (ctyp == 'SWA') THEN
                             particle_boundaries%face_normals(2, 4, igrid) = -1.0
                             particle_boundaries%face_neighbours(iface, igrid) = igrid
                         END IF
                     CASE(5)
-                        IF (ctyp == 'REF') THEN
+                        IF (ctyp == 'SWA') THEN
                             particle_boundaries%face_normals(3, 5, igrid) = 1.0
                             particle_boundaries%face_neighbours(iface, igrid) = igrid
                         END IF
                     CASE(6)
-                        IF (ctyp == 'REF') THEN
+                        IF (ctyp == 'SWA') THEN
                             particle_boundaries%face_normals(3, 6, igrid) = -1.0
                             particle_boundaries%face_neighbours(iface, igrid) = igrid
                         END IF
@@ -125,7 +125,7 @@ MODULE particle_boundaries_mod
 
                         CALL get_bc_ctyp(ctyp, ibocd, facelist(i, iface), igrid)
 
-                        IF (ctyp == 'CON' .OR. ctyp == 'PER') THEN
+                        IF (ctyp == 'SIO') THEN
                             connect_faces(1) = connect_faces(1) + 1
                             connect_faces(i) = facelist(i, iface)
                         END IF
@@ -213,8 +213,8 @@ MODULE particle_boundaries_mod
 
         CALL finish_obstacles()
 
-        !DEALLOCATE(particle_boundaries%face_neighbours)
-        !DEALLOCATE(particle_boundaries%face_normals)
+        DEALLOCATE(particle_boundaries%face_neighbours)
+        DEALLOCATE(particle_boundaries%face_normals)
 
     END SUBROUTINE finish_particle_boundaries
 

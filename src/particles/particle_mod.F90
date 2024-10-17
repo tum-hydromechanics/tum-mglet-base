@@ -4,6 +4,7 @@ MODULE particle_mod
     ! Initialization of the particle simulation.
     ! Finishing of the particle simulation.
 
+    USE fields_mod
     USE particle_timeintegration_mod
     USE particle_snapshot_mod
     USE particle_gridstat_mod
@@ -98,8 +99,6 @@ CONTAINS
 
     SUBROUTINE finish_particles()
 
-        CALL start_timer(900)
-
         CALL finish_particle_snapshots()
 
         CALL finish_particle_gridstat()
@@ -115,8 +114,6 @@ CONTAINS
         IF (myid == 0) THEN
             WRITE(*,*) "PARTICLE SIMULATION COMPLETED."
         END IF
-
-        CALL stop_timer(900)
 
     END SUBROUTINE finish_particles
 

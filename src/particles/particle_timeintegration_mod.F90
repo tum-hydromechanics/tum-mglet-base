@@ -1,5 +1,6 @@
 MODULE particle_timeintegration_mod
 
+    USE fields_mod
     USE particle_interpolation_mod
     USE particle_exchange_mod
     USE particle_list_mod
@@ -7,8 +8,8 @@ MODULE particle_timeintegration_mod
 
     IMPLICIT NONE
 
-    REAL(realk), ALLOCATABLE :: px_bup(:), py_bup(:), pz_bup(:)
-    REAL(realk), ALLOCATABLE :: pu_itm(:,:), pv_itm(:,:), pw_itm(:,:)
+    !REAL(realk), ALLOCATABLE :: px_bup(:), py_bup(:), pz_bup(:)
+    !REAL(realk), ALLOCATABLE :: pu_itm(:,:), pv_itm(:,:), pw_itm(:,:)
 
     TYPE(particle_rk_t) :: prkscheme
     REAL(realk), ALLOCATABLE :: c(:), b(:), a(:,:)
@@ -37,17 +38,17 @@ CONTAINS
         CALL set_field("VLI", jstag=1, units=units_v, buffers=.TRUE.)
         CALL set_field("WLI", kstag=1, units=units_v, buffers=.TRUE.)
 
-        CALL prkscheme%init(prkmethod)
+        !ALLOCATE(px_bup(my_particle_list%max_np))
+        !ALLOCATE(py_bup(my_particle_list%max_np))
+        !ALLOCATE(pz_bup(my_particle_list%max_np))
 
-        ALLOCATE(px_bup(my_particle_list%max_np))
-        ALLOCATE(py_bup(my_particle_list%max_np))
-        ALLOCATE(pz_bup(my_particle_list%max_np))
-
-        ALLOCATE(pu_itm(my_particle_list%max_np, prkscheme%nrk - 1))
-        ALLOCATE(pv_itm(my_particle_list%max_np, prkscheme%nrk - 1))
-        ALLOCATE(pw_itm(my_particle_list%max_np, prkscheme%nrk - 1))
+        !ALLOCATE(pu_itm(my_particle_list%max_np, prkscheme%nrk - 1))
+        !ALLOCATE(pv_itm(my_particle_list%max_np, prkscheme%nrk - 1))
+        !ALLOCATE(pw_itm(my_particle_list%max_np, prkscheme%nrk - 1))
 
         ! init rk scheme
+        CALL prkscheme%init(prkmethod)
+
         CALL prkscheme%get_coeffs(c, b, a)
 
         ! for debugging
@@ -79,23 +80,23 @@ CONTAINS
 
         CALL update_backup_fields()
 
-        IF (SIZE(px_bup) /= my_particle_list%max_np) THEN
+        !IF (SIZE(px_bup) /= my_particle_list%max_np) THEN
 
-            DEALLOCATE(px_bup)
-            DEALLOCATE(py_bup)
-            DEALLOCATE(pz_bup)
-            DEALLOCATE(pu_itm)
-            DEALLOCATE(pv_itm)
-            DEALLOCATE(pw_itm)
+            !DEALLOCATE(px_bup)
+            !DEALLOCATE(py_bup)
+            !DEALLOCATE(pz_bup)
+            !DEALLOCATE(pu_itm)
+            !DEALLOCATE(pv_itm)
+            !DEALLOCATE(pw_itm)
 
-            ALLOCATE(px_bup(my_particle_list%max_np))
-            ALLOCATE(py_bup(my_particle_list%max_np))
-            ALLOCATE(pz_bup(my_particle_list%max_np))
-            ALLOCATE(pu_itm(my_particle_list%max_np, prkscheme%nrk - 1))
-            ALLOCATE(pv_itm(my_particle_list%max_np, prkscheme%nrk - 1))
-            ALLOCATE(pw_itm(my_particle_list%max_np, prkscheme%nrk - 1))
+            !ALLOCATE(px_bup(my_particle_list%max_np))
+            !ALLOCATE(py_bup(my_particle_list%max_np))
+            !ALLOCATE(pz_bup(my_particle_list%max_np))
+            !ALLOCATE(pu_itm(my_particle_list%max_np, prkscheme%nrk - 1))
+            !ALLOCATE(pv_itm(my_particle_list%max_np, prkscheme%nrk - 1))
+            !ALLOCATE(pw_itm(my_particle_list%max_np, prkscheme%nrk - 1))
 
-        END IF
+       !END IF
 
     END SUBROUTINE prepare_particle_timeintegration
 
@@ -121,10 +122,21 @@ CONTAINS
         REAL(realk) :: pu_adv, pv_adv, pw_adv, pu_diff, pv_diff, pw_diff
         REAL(realk) :: pdx, pdy, pdz, pdx_diff, pdy_diff, pdz_diff, pdx_eff, pdy_eff, pdz_eff
 
+        REAL(realk), ALLOCATABLE :: px_bup(:), py_bup(:), pz_bup(:)
+        REAL(realk), ALLOCATABLE :: pu_itm(:,:), pv_itm(:,:), pw_itm(:,:)
+
         INTEGER(intk) :: irk
 
         CALL start_timer(900)
         CALL start_timer(920)
+
+        ALLOCATE(px_bup(my_particle_list%max_np))
+        ALLOCATE(py_bup(my_particle_list%max_np))
+        ALLOCATE(pz_bup(my_particle_list%max_np))
+
+        ALLOCATE(pu_itm(my_particle_list%max_np, prkscheme%nrk - 1))
+        ALLOCATE(pv_itm(my_particle_list%max_np, prkscheme%nrk - 1))
+        ALLOCATE(pw_itm(my_particle_list%max_np, prkscheme%nrk - 1))
 
         CALL get_field(x_f, "X")
         CALL get_field(y_f, "Y")
@@ -211,9 +223,9 @@ CONTAINS
                 CALL y_f%get_ptr(y, igrid)
                 CALL z_f%get_ptr(z, igrid)
 
-                CALL uli_f%get_ptr(uli, igrid)
-                CALL vli_f%get_ptr(vli, igrid)
-                CALL wli_f%get_ptr(wli, igrid)
+                CALL u_f%get_ptr(uli, igrid)
+                CALL v_f%get_ptr(vli, igrid)
+                CALL w_f%get_ptr(wli, igrid)
 
                 IF (dinterp_particles) THEN
 
@@ -235,12 +247,13 @@ CONTAINS
 
                 END IF
 
-                ! store intermediate velocity
-                pu_itm(i, irk) = pu_adv
-                pv_itm(i, irk) = pv_adv
-                pw_itm(i, irk) = pw_adv
-
                 IF (irk /= prkscheme%nrk) THEN
+
+                    ! store intermediate velocity
+                    pu_itm(i, irk) = pu_adv
+                    pv_itm(i, irk) = pv_adv
+                    pw_itm(i, irk) = pw_adv
+
                     ! zeroize current intermediate particle displacement
                     pdx = 0
                     pdy = 0
@@ -288,7 +301,7 @@ CONTAINS
                         CASE ("verbose")
                             WRITE(*,'("Pre Physical Particle Motion:")')
                             CALL print_particle_status(my_particle_list%particles(i))
-                            WRITE(*,'("Unhindered Motion", I0, "(dt = ", F12.8,"):")') my_particle_list%particles(i)%ipart, dt
+                            WRITE(*,'("Unhindered Motion ", I0, "(dt = ", F12.8,"):")') my_particle_list%particles(i)%ipart, dt
                             WRITE(*,'("Particle ADVECTION [m] = ", 3F12.8)') pdx, pdy, pdz
                             WRITE(*,'("Particle DIFFUSION [m] = ", 3F12.8)') pdx_diff, pdy_diff, pdz_diff
                             WRITE(*, '()')
@@ -361,12 +374,12 @@ CONTAINS
         CALL get_field(vbu_f, "VBU")
         CALL get_field(wbu_f, "WBU")
 
-        ! Copy the velocity field u, v, w into ubu, vbu, wbu
+       !! Copy the velocity field u, v, w into ubu, vbu, wbu
         ubu_f%arr = u_f%arr
         vbu_f%arr = v_f%arr
         wbu_f%arr = w_f%arr
 
-        ! Copy buffers from u, v, w to ubu, vbu, wbu
+       !! Copy buffers from u, v, w to ubu, vbu, wbu
         ubu_f%buffers = u_f%buffers
         vbu_f%buffers = v_f%buffers
         wbu_f%buffers = w_f%buffers
@@ -379,12 +392,12 @@ CONTAINS
 
     SUBROUTINE finish_particle_timeintegration()
 
-        DEALLOCATE(px_bup)
-        DEALLOCATE(py_bup)
-        DEALLOCATE(pz_bup)
-        DEALLOCATE(pu_itm)
-        DEALLOCATE(pv_itm)
-        DEALLOCATE(pw_itm)
+        !DEALLOCATE(px_bup)
+        !DEALLOCATE(py_bup)
+        !DEALLOCATE(pz_bup)
+        !DEALLOCATE(pu_itm)
+        !DEALLOCATE(pv_itm)
+        !DEALLOCATE(pw_itm)
 
     END SUBROUTINE finish_particle_timeintegration
 

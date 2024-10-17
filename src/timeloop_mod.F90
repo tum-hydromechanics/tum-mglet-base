@@ -214,12 +214,12 @@ CONTAINS
 
         IF (dsim_particles .AND. dwrite_particles) THEN ! <------------------------------------particles
             CALL write_psnapshot_timeinfo()
-            CALL finish_particle_snapshots()
+            !CALL finish_particle_snapshots()
         END IF
 
         IF (dsim_particles) THEN ! <------------------------------------particles
             CALL write_gridstat()
-            CALL finish_particle_gridstat()
+            !CALL finish_particle_gridstat()
         END IF
 
         CALL finish_statistics()
@@ -257,7 +257,7 @@ CONTAINS
                 ! particle counter for particle grid statistics
                 CALL advance_np_counter(itstep)
                 ! update backup field for particke rk timeintegration
-                CALL prepare_particle_timeintegration()
+                CALL update_backup_fields()
             END IF
 
             ! Global RK loop for tightly coupled quantities like flow and

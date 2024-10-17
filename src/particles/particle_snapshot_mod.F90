@@ -337,9 +337,9 @@ CONTAINS
 
     SUBROUTINE finish_particle_snapshots()
 
-        !DEALLOCATE(psnapshot_info%nparticles)
-        !DEALLOCATE(psnapshot_info%timesteps)
-        !DEALLOCATE(psnapshot_info%times)
+        DEALLOCATE(psnapshot_info%nparticles)
+        DEALLOCATE(psnapshot_info%timesteps)
+        DEALLOCATE(psnapshot_info%times)
 
     END SUBROUTINE finish_particle_snapshots
 

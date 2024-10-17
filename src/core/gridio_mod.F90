@@ -39,7 +39,7 @@ MODULE gridio_mod
     END TYPE gridinfo_t
 
     ! Boundary conditions table type
-    INTEGER(c_intk), PARAMETER :: maxboconds = 3
+    INTEGER(c_intk), PARAMETER :: maxboconds = 2
     INTEGER(c_intk), PARAMETER :: nchar = 8
     INTEGER(c_intk), PARAMETER :: bcond_elems = 4
     TYPE, BIND(C) :: bcond_t

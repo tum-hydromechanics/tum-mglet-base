@@ -473,7 +473,7 @@ CONTAINS
 
         DEALLOCATE(sendBufParticle)
         DEALLOCATE(recvBufParticle)
-        DEALLOCATE(sendind)
+        !DEALLOCATE(sendind)
 
         ! --- step 10: Clearing the buffers. Done.
 
@@ -757,11 +757,11 @@ CONTAINS
         CALL create_particle_mpitype(particle_mpitype)
         isInit = .TRUE.
 
-        DEALLOCATE(maxTag)
-        DEALLOCATE(sendcounts)
-        DEALLOCATE(sdispls)
-        DEALLOCATE(recvcounts)
-        DEALLOCATE(rdispls)
+        !DEALLOCATE(maxTag)
+        !DEALLOCATE(sendcounts)
+        !DEALLOCATE(sdispls)
+        !DEALLOCATE(recvcounts)
+        !DEALLOCATE(rdispls)
 
         CALL stop_timer(910)
         CALL stop_timer(900)
