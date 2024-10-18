@@ -22,6 +22,7 @@ CONTAINS    !===================================
 
         ! local variables
         INTEGER(intk) :: unit = 1, dict_len, iobst
+        CHARACTER(12) :: dummy_char
 
         IF (.NOT. dread_obstacles) THEN
             ALLOCATE(obstacles(0))
@@ -52,7 +53,7 @@ CONTAINS    !===================================
 
         OPEN(unit, file = 'ObstaclesDict.txt', status = 'OLD', action = 'READ')
 
-        READ(unit, fmt = *) dict_len
+        READ(unit, fmt = *) dummy_char, dummy_char, dummy_char, dict_len
 
         IF (myid == 0) THEN
             SELECT CASE (TRIM(particle_terminal))
@@ -71,8 +72,10 @@ CONTAINS    !===================================
 
         DO iobst = 1, dict_len
 
-            READ(unit, fmt = *) obstacles(iobst)%x, obstacles(iobst)%y, &
-             obstacles(iobst)%z, obstacles(iobst)%radius
+            READ(unit, fmt = *) dummy_char
+
+            READ(unit, fmt = *) obstacles(iobst)%radius, obstacles(iobst)%x, obstacles(iobst)%y, &
+             obstacles(iobst)%z
 
             IF (myid == 0) THEN
                 SELECT CASE (TRIM(particle_terminal))
