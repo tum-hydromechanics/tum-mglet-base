@@ -296,6 +296,8 @@ CONTAINS
         CHARACTER(len=*), INTENT(in) :: ctyp
 
         SELECT CASE(lower(TRIM(ctyp)))
+        CASE("euler")
+            CALL this%init_euler_bt()
         CASE ("williamson")
             CALL this%init_williamson_bt()
         CASE DEFAULT
@@ -304,6 +306,29 @@ CONTAINS
         END SELECT
 
     END SUBROUTINE init_particle_rk
+
+    SUBROUTINE init_euler_bt(rk)
+
+        ! Subroutine arguments
+        CLASS(particle_rk_t), INTENT(out) :: rk
+
+        ! local variables
+        INTEGER(intk) :: i, j
+
+        ! Set to zero
+        rk%c = 0.0
+        rk%a = 0.0
+        rk%b = 0.0
+
+        ! Used coefficients
+        ! CAUTION: here, a and b refer to coefficients in the butcher table
+        ! instead of the low stroage coefficients
+        rk%nrk = 1
+        rk%cflmax = oneeps*SQRT(3.0)
+
+        rk%b(1) = 1.0
+
+    END SUBROUTINE init_euler_bt
 
     SUBROUTINE init_williamson_bt(rk)
 
@@ -323,7 +348,9 @@ CONTAINS
         ! instead of the low stroage coefficients
         rk%nrk = 3
         rk%cflmax = oneeps*SQRT(3.0)
+
         rk%c(1:rk%nrk) = [0.0, 1.0/3.0, 3.0/4.0]
+
         rk%b(1:rk%nrk) = [1.0/6.0, 3.0/10.0, 8.0/15.0]
 
         rk%a(2,1) = 1.0/3.0

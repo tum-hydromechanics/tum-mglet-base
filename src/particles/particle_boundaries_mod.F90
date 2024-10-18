@@ -125,7 +125,7 @@ MODULE particle_boundaries_mod
 
                         CALL get_bc_ctyp(ctyp, ibocd, facelist(i, iface), igrid)
 
-                        IF (ctyp == 'SIO') THEN
+                        IF (ctyp == "SIO") THEN
                             connect_faces(1) = connect_faces(1) + 1
                             connect_faces(i) = facelist(i, iface)
                         END IF
@@ -165,7 +165,11 @@ MODULE particle_boundaries_mod
                  particle_boundaries%face_normals(3, iface, igrid)**2)
 
                 DO j = 1, 3
-                    particle_boundaries%face_normals(j, iface, igrid) = particle_boundaries%face_normals(j, iface, igrid) / magnitude
+                    IF (magnitude == 0.0) THEN
+                        particle_boundaries%face_normals(j, iface, igrid) = 0.0
+                    ELSE
+                        particle_boundaries%face_normals(j, iface, igrid) = particle_boundaries%face_normals(j, iface, igrid) / magnitude
+                    END IF
                 END DO
 
             END DO

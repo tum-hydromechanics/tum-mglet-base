@@ -90,7 +90,7 @@ CONTAINS    !===================================
 
         !- - - - - - - - - - - - - - - - - -
 
-        CALL pconf%get_value("/prkmethod", prkmethod, "williamson")
+        CALL pconf%get_value("/prkmethod", prkmethod, "euler")
 
         !- - - - - - - - - - - - - - - - - -
 
