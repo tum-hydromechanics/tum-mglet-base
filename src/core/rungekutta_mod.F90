@@ -57,7 +57,7 @@ MODULE rungekutta_mod
     CONTAINS
         PROCEDURE :: init => init_particle_rk
         PROCEDURE :: get_coeffs => get_prk_coefficients
-
+        PROCEDURE, PRIVATE :: init_euler_bt
         PROCEDURE, PRIVATE :: init_williamson_bt
     END TYPE particle_rk_t
 
