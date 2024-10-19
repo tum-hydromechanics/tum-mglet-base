@@ -155,7 +155,7 @@ MODULE particle_boundaries_mod
                             END IF
                         END DO
                         IF (found .eqv. .TRUE.) THEN
-                            particle_boundaries%face_neighbours(iface, igrid) = jface
+                            particle_boundaries%face_neighbours(iface, igrid) = neighbours(jface)
                         END IF
                     END IF
                 END DO

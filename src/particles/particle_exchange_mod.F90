@@ -54,7 +54,6 @@ MODULE particle_exchange_mod
     INTEGER(intk) :: iSend = 0, iRecv = 0
 
     ! we use "intk" instead of "ifk" (limits numbers)
-    ! INTEGER(intk), ALLOCATABLE :: npsend(:)
     INTEGER(intk), ALLOCATABLE :: nprecv(:)
     INTEGER(intk), ALLOCATABLE :: npsend(:)
     INTEGER(intk), ALLOCATABLE :: ndispsend(:)
@@ -143,6 +142,9 @@ CONTAINS
 
         active_np_old = particle_list%active_np
 
+        npsend = 0
+        nprecv = -1
+
         DO i = 1, particle_list%ifinal
 
             ! jumping inactive particles
@@ -209,8 +211,6 @@ CONTAINS
         ! --- step 1: The marking is done (grid and proc indicate destination). Done.
         ! --- step 2: The counting is done. Done.
 
-        nprecv = -1
-
         ! posting non-blocking (!) receives
         ! int MPI_Irecv(void *buf, int count,
         !     MPI_Datatype datatype, int source,
@@ -253,7 +253,7 @@ CONTAINS
         j = 1
         DO i = 1, particle_list%ifinal
             ! jumping inactive particles
-            IF (particle_list%particles(i)%state /= 4) THEN
+            IF (particle_list%particles(i)%state < 1) THEN
                 CYCLE
             END IF
             ! jumping local particles
@@ -302,8 +302,8 @@ CONTAINS
 
         ! buffer must be full with valid particles without gaps
         DO i = 1, sizeSendBuf
-            IF ( sendBufParticle(pos)%state < 1 ) THEN
-                WRITE(*,*) 'Invalid send buffer entry at ', i
+            IF ( sendBufParticle(i)%state < 1 ) THEN
+                WRITE(*,*) 'Proc', myid, ': Invalid send buffer entry at ', i
                 CALL errr(__FILE__, __LINE__)
             END IF
         END DO
@@ -473,7 +473,7 @@ CONTAINS
 
         DEALLOCATE(sendBufParticle)
         DEALLOCATE(recvBufParticle)
-        !DEALLOCATE(sendind)
+        DEALLOCATE(sendind)
 
         ! --- step 10: Clearing the buffers. Done.
 
@@ -870,8 +870,8 @@ CONTAINS
                 CASE ("normal")
                     CONTINUE
                 CASE ("verbose")
-                    WRITE(*, '("Destination Proc: ", I0)') destproc
-                    WRITE(*, '("Destination grid: ", I0)') destgrid
+                    WRITE(*, '("Proc ", I0 ," Destination Proc: ", I0)') myid, destproc
+                    WRITE(*, '("Proc ", I0 ," Destination Grid: ", I0)') myid, destgrid
                     IF (myid == 0) THEN
                         WRITE(*, *) " "
                     END IF

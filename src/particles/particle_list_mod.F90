@@ -232,8 +232,6 @@ CONTAINS    !===================================
 
         CALL MOVE_ALLOC(particles_tmp, particle_list%particles)
 
-        DEALLOCATE(particles_tmp)
-
         SELECT CASE (TRIM(particle_terminal))
             CASE ("none")
                 CONTINUE
