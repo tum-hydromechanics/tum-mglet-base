@@ -1,8 +1,8 @@
 {
     "time": {
         "mtstep": 100,
-        "dt": 0.01,
-        "tend": 1.0,
+        "dt": 0.1,
+        "tend": 10.0,
         "itinfo": 1,
         "itcheck": 10
     },
@@ -19,7 +19,7 @@
     	"solve": true,
         "gmol": 0.01,
         "rho": 1.0,
-        "uinf": [1.0, 0.0, 0.0],
+        "uinf": ["var a := 1.0; a", "var b := 0; b", "var c := 0.0; c"],
         "gradp": [0.0, 0.0, 0.0],
         "pressuresolver": {
             "type": "sip",
@@ -50,11 +50,13 @@
     "particles": {
         "terminal": "verbose",
         "read": true,
+        "read_obst": false,
         "interp": true,
+        "prkmethod": "euler",
         "write": true,
         "snapshot_step": 1,
-        "init_np": 10,
-        "list_len": 100,
+        "init_np": 1,
+        "list_len": 1,
         "D":[0.0, 0.0, 0.0]
     }
 }

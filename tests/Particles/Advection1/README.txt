@@ -1,2 +1,2 @@
 DEFAULT SETUP:
-One particle on one grid with uniform and steady flow velocity. Particle moves from one side of a qubic grid to the other. No passing of boundaries. Flow is solved.
+One particle on 2 grids with uniform and steady flow velocity. Particle moves through the grids on a straight line. Particle passes CON and PER boundaries. Flow is solved.

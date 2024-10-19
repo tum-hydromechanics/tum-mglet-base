@@ -32,6 +32,10 @@ echo ------------ DIFFUSION 2 ----------
 cd ~/tum-mglet-base/tests/Particles/Diffusion2
 ./run.sh newtest ../../../build/src/mglet
 
+echo ------------ DIFFUSION 3 ----------
+cd ~/tum-mglet-base/tests/Particles/Diffusion2
+./run.sh newtest ../../../build/src/mglet
+
 echo ------------ ADVECTION DIFFUSION 1 ----------
 cd ~/tum-mglet-base/tests/Particles/AdvectionDiffusion1
 ./run.sh newtest ../../../build/src/mglet
