@@ -1,8 +1,8 @@
 {
     "time": {
-        "mtstep": 100,
+        "mtstep": 1000,
         "dt": 0.1,
-        "tend": 10.0,
+        "tend": 100.0,
         "itinfo": 1,
         "itcheck": 10
     },
@@ -19,7 +19,7 @@
     	"solve": false,
         "gmol": 0.01,
         "rho": 1.0,
-        "uinf": [2.0, 0.0, 0.0],
+        "uinf": [1.0, 0.0, 0.0],
         "gradp": [0.0, 0.0, 0.0],
         "pressuresolver": {
             "type": "sip",
@@ -52,9 +52,9 @@
         "read": false,
         "interp": false,
         "write": true,
-        "snapshot_step": 5,
+        "snapshot_step": 50,
         "init_np": 1000,
-        "list_len": 10000,
-        "D":[0.5, 0.05, 0.05]
+        "list_len": 1000,
+        "D":[0.01, 0.005, 0.005]
     }
 }
