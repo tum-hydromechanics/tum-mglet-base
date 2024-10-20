@@ -235,10 +235,10 @@ MODULE particle_boundaries_mod
         INTEGER(intk) :: temp_grid, iface, iobst, grid_bc, destproc
         INTEGER(intk) :: counter
         INTEGER(intk) :: neighbours(26)
+        INTEGER(intk) :: reflect(3)
         REAL(realk) :: x, y, z
         REAL(realk) :: dx_step, dy_step, dz_step
         REAL(realk) :: dx_from_here, dy_from_here, dz_from_here
-
         REAL(realk) :: epsilon
         REAL(realk) :: n1, n2, n3
 
@@ -325,9 +325,9 @@ MODULE particle_boundaries_mod
                 CALL reflect_at_boundary(dx_from_here, dy_from_here, dz_from_here, &
                 particle_boundaries%face_normals(1, iface, temp_grid), &
                 particle_boundaries%face_normals(2, iface, temp_grid), &
-                particle_boundaries%face_normals(3, iface, temp_grid))
+                particle_boundaries%face_normals(3, iface, temp_grid), reflect)
 
-                CALL update_coordinates(temp_grid, particle_boundaries%face_neighbours(iface, temp_grid), iface, x, y, z)
+                CALL update_coordinates(temp_grid, particle_boundaries%face_neighbours(iface, temp_grid), iface, x, y, z, reflect)
 
                 temp_grid = particle_boundaries%face_neighbours(iface, temp_grid)
 
@@ -572,7 +572,7 @@ MODULE particle_boundaries_mod
             dx_to_b = lx
             dy_to_b = (lx * dy/dx)
             dz_to_b = (lx * dz/dx)
-            x = x + dx_to_b
+            x = minx ! keep this expression so no floating point errors occur and the particle is EXACTLY at hte boundary
             y = y + dy_to_b
             z = z + dz_to_b
             dx = dx - dx_to_b
@@ -584,7 +584,7 @@ MODULE particle_boundaries_mod
             dx_to_b = lx
             dy_to_b = (lx * dy/dx)
             dz_to_b = (lx * dz/dx)
-            x = x + dx_to_b
+            x = maxx ! keep this expression so no floating point errors occur and the particle is EXACTLY at hte boundary
             y = y + dy_to_b
             z = z + dz_to_b
             dx = dx - dx_to_b
@@ -597,7 +597,7 @@ MODULE particle_boundaries_mod
             dy_to_b = ly
             dz_to_b = (ly * dz/dy)
             x = x + dx_to_b
-            y = y + dy_to_b
+            y = miny ! keep this expression so no floating point errors occur and the particle is EXACTLY at hte boundary
             z = z + dz_to_b
             dx = dx - dx_to_b
             dy = dy - dy_to_b
@@ -609,7 +609,7 @@ MODULE particle_boundaries_mod
             dy_to_b = ly
             dz_to_b = (ly * dz/dy)
             x = x + dx_to_b
-            y = y + dy_to_b
+            y = maxy ! keep this expression so no floating point errors occur and the particle is EXACTLY at hte boundary
             z = z + dz_to_b
             dx = dx - dx_to_b
             dy = dy - dy_to_b
@@ -622,7 +622,7 @@ MODULE particle_boundaries_mod
             dz_to_b = lz
             x = x + dx_to_b
             y = y + dy_to_b
-            z = z + dz_to_b
+            z = minz ! keep this expression so no floating point errors occur and the particle is EXACTLY at hte boundary
             dx = dx - dx_to_b
             dy = dy - dy_to_b
             dz = dz - dz_to_b
@@ -634,7 +634,7 @@ MODULE particle_boundaries_mod
             dz_to_b = lz
             x = x + dx_to_b
             y = y + dy_to_b
-            z = z + dz_to_b
+            z = maxz ! keep this expression so no floating point errors occur and the particle is EXACTLY at hte boundary
             dx = dx - dx_to_b
             dy = dy - dy_to_b
             dz = dz - dz_to_b
@@ -676,16 +676,24 @@ MODULE particle_boundaries_mod
 
     END SUBROUTINE apply_periodic_boundary
 
-    SUBROUTINE reflect_at_boundary(dx, dy, dz, n1, n2, n3)
+    SUBROUTINE reflect_at_boundary(dx, dy, dz, n1, n2, n3, reflect)
 
         ! Presumption: Particle is already exactly on the boundary!
 
         ! subroutine arguments
         REAL(realk), INTENT(inout) :: dx, dy, dz
         REAL(realk), INTENT(in) :: n1, n2, n3 ! normal vector components of the surface the particle is reflected from
+        INTEGER(intk), INTENT(out), OPTIONAL :: reflect(3)
 
         ! local variables
         REAL(realk) :: dot_product
+
+        IF (PRESENT(reflect)) THEN
+            reflect = 0
+            IF (0 < ABS(n1)) reflect(1) = 1
+            IF (0 < ABS(n2)) reflect(2) = 1
+            IF (0 < ABS(n3)) reflect(3) = 1
+        END IF
 
         dot_product = n1 * dx + n2 * dy + n3 * dz
 

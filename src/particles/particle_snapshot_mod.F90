@@ -220,9 +220,9 @@ CONTAINS
 
         DO i = 1, my_particle_list%ifinal
 
-            IF ( my_particle_list%particles(i)%state < 1 ) THEN
-                CYCLE
-            END IF
+            !IF ( my_particle_list%particles(i)%state < 1 ) THEN
+            !    CYCLE
+            !END IF
 
             WRITE(unit, '("          ")', advance="no")
             WRITE(unit, '(I0)') my_particle_list%particles(i)%ipart

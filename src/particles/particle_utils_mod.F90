@@ -223,12 +223,13 @@ MODULE particle_utils_mod
 
     END SUBROUTINE update_coordinates_p
 
-    SUBROUTINE update_coordinates_c(igrid, destgrid, iface, x, y, z)
+    SUBROUTINE update_coordinates_c(igrid, destgrid, iface, x, y, z, reflect)
 
         ! subroutine arguments
 
         INTEGER(intk), INTENT(in) :: igrid, destgrid, iface
         REAL(realk), INTENT(inout) :: x, y, z
+        INTEGER(intk), INTENT(in), OPTIONAL :: reflect(3)
 
         ! local variables
         REAL(realk) :: old_minx, old_maxx, old_miny, old_maxy, old_minz, old_maxz, &
@@ -237,37 +238,119 @@ MODULE particle_utils_mod
 
         passed_pb = .FALSE.
 
+        IF (iface == 0) THEN
+            RETURN
+        END IF
+
         CALL get_bbox(old_minx, old_maxx, old_miny, old_maxy, old_minz, old_maxz, igrid)
         CALL get_bbox(new_minx, new_maxx, new_miny, new_maxy, new_minz, new_maxz, destgrid)
 
-        IF (x < new_minx) THEN
-            x = new_maxx - ABS(x - old_minx)
-            passed_pb = .TRUE.
-        END IF
+        IF (PRESENT(reflect)) THEN ! this case is for the particle boundaries module
 
-        IF (new_maxx < x) THEN
-            x = new_minx + ABS(x - old_maxx)
-            passed_pb = .TRUE.
-        END IF
+            IF (igrid == destgrid) THEN
 
-        IF (y < new_miny) THEN
-            y = new_maxy - ABS(y - old_miny)
-            passed_pb = .TRUE.
-        END IF
+                IF (reflect(1) == 0) THEN
+                    IF (x <= new_minx) THEN
+                        x = new_maxx - ABS(x - old_minx)
+                        passed_pb = .TRUE.
+                    END IF
 
-        IF (new_maxy < y) THEN
-            y = new_miny + ABS(y - old_maxy)
-            passed_pb = .TRUE.
-        END IF
+                    IF (new_maxx <= x) THEN
+                        x = new_minx + ABS(x - old_maxx)
+                        passed_pb = .TRUE.
+                    END IF
+                END IF
 
-        IF (z < new_minz) THEN
-            z = new_maxz - ABS(z - old_minz)
-            passed_pb = .TRUE.
-        END IF
+                IF (reflect(2) == 0) THEN
+                    IF (y <= new_miny) THEN
+                        y = new_maxy - ABS(y - old_miny)
+                        passed_pb = .TRUE.
+                    END IF
 
-        IF (new_maxz < z) THEN
-            z = new_minz + ABS(z - old_maxz)
-            passed_pb = .TRUE.
+                    IF (new_maxy <= y) THEN
+                        y = new_miny + ABS(y - old_maxy)
+                        passed_pb = .TRUE.
+                    END IF
+                END IF
+
+                IF (reflect(3) == 0) THEN
+                    IF (z <= new_minz) THEN
+                        z = new_maxz - ABS(z - old_minz)
+                        passed_pb = .TRUE.
+                    END IF
+
+                    IF (new_maxz <= z) THEN
+                        z = new_minz + ABS(z - old_maxz)
+                        passed_pb = .TRUE.
+                    END IF
+                END IF
+
+            ELSE
+
+                IF (x < new_minx) THEN
+                    x = new_maxx - ABS(x - old_minx)
+                    passed_pb = .TRUE.
+                END IF
+
+                IF (new_maxx < x) THEN
+                    x = new_minx + ABS(x - old_maxx)
+                    passed_pb = .TRUE.
+                END IF
+
+                IF (y < new_miny) THEN
+                    y = new_maxy - ABS(y - old_miny)
+                    passed_pb = .TRUE.
+                END IF
+
+                IF (new_maxy < y) THEN
+                    y = new_miny + ABS(y - old_maxy)
+                    passed_pb = .TRUE.
+                END IF
+
+                IF (z < new_minz) THEN
+                    z = new_maxz - ABS(z - old_minz)
+                    passed_pb = .TRUE.
+                END IF
+
+                IF (new_maxz < z) THEN
+                    z = new_minz + ABS(z - old_maxz)
+                    passed_pb = .TRUE.
+                END IF
+
+            END IF
+
+        ELSE ! this case is for the particle exchange module
+
+            IF (x < new_minx) THEN
+                x = new_maxx - ABS(x - old_minx)
+                passed_pb = .TRUE.
+            END IF
+
+            IF (new_maxx < x) THEN
+                x = new_minx + ABS(x - old_maxx)
+                passed_pb = .TRUE.
+            END IF
+
+            IF (y < new_miny) THEN
+                y = new_maxy - ABS(y - old_miny)
+                passed_pb = .TRUE.
+            END IF
+
+            IF (new_maxy < y) THEN
+                y = new_miny + ABS(y - old_maxy)
+                passed_pb = .TRUE.
+            END IF
+
+            IF (z < new_minz) THEN
+                z = new_maxz - ABS(z - old_minz)
+                passed_pb = .TRUE.
+            END IF
+
+            IF (new_maxz < z) THEN
+                z = new_minz + ABS(z - old_maxz)
+                passed_pb = .TRUE.
+            END IF
+
         END IF
 
     END SUBROUTINE update_coordinates_c

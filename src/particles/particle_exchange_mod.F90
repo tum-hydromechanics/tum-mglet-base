@@ -428,7 +428,8 @@ CONTAINS
             CASE ("none")
                 CONTINUE
             CASE ("normal")
-                CONTINUE
+                CALL print_list_status(particle_list)
+                WRITE(*, '()')
             CASE ("verbose")
                 CALL print_list_status(particle_list)
                 WRITE(*, '()')
