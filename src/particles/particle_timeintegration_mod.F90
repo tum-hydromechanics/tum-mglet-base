@@ -185,9 +185,9 @@ CONTAINS
         ! iterate over all particles withing the rk iteration so the field interpolation can be used für all particles
         DO irk = 1, prkscheme%nrk
 
-            DO i = 1, my_particle_list%ifinal
+            CALL time_interpolate_field(c(irk), u_f, v_f, w_f, ubu_f, vbu_f, wbu_f, uli_f, vli_f, wli_f)
 
-                CALL time_interpolate_field(c(irk), u_f, v_f, w_f, ubu_f, vbu_f, wbu_f, uli_f, vli_f, wli_f)
+            DO i = 1, my_particle_list%ifinal
 
                 ! checking activity
                 IF (my_particle_list%particles(i)%state < 1) THEN
@@ -247,6 +247,14 @@ CONTAINS
 
                 END IF
 
+                ! set particle coordinates to backup value
+                IF (irk > 1) THEN
+                    my_particle_list%particles(i)%x = px_bup(i)
+                    my_particle_list%particles(i)%y = py_bup(i)
+                    my_particle_list%particles(i)%z = pz_bup(i)
+                    CALL update_particle_cell(my_particle_list%particles(i))
+                END IF
+
                 IF (irk /= prkscheme%nrk) THEN
 
                     ! store intermediate velocity
@@ -271,16 +279,6 @@ CONTAINS
 
                 ELSEIF (irk == prkscheme%nrk) THEN
 
-                    ! set particle coordinates to backup value
-                    my_particle_list%particles(i)%x = px_bup(i)
-                    my_particle_list%particles(i)%y = py_bup(i)
-                    my_particle_list%particles(i)%z = pz_bup(i)
-
-                    CALL update_particle_cell(my_particle_list%particles(i))
-
-                    ! --- Diffusiion ---
-                    CALL get_particle_diffusion(dt, pu_diff, pv_diff, pw_diff, pdx_diff, pdy_diff, pdz_diff)
-
                     ! --- Advection ---
                     pdx = dt * b(irk) * pu_adv
                     pdy = dt * b(irk) * pv_adv
@@ -291,6 +289,9 @@ CONTAINS
                         pdy = pdy + dt * b(j) * pv_itm(i, j)
                         pdz = pdz + dt * b(j) * pw_itm(i, j)
                     END DO
+
+                    ! --- Diffusiion ---
+                    CALL get_particle_diffusion(dt, pu_diff, pv_diff, pw_diff, pdx_diff, pdy_diff, pdz_diff)
 
                     ! for debugging
                     SELECT CASE (TRIM(particle_terminal))
