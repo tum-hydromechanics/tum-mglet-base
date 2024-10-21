@@ -38,7 +38,7 @@ MODULE offload_helper_mod
     PUBLIC :: ptr_to_grid_x, ptr_to_grid_y, ptr_to_grid_z, ptr_to_grid3, &
         offload_constants, finish_offload_constants, get_mgdims_target, get_mgbasb_target, &
         ddx_offload, ddy_offload, ddz_offload, rdx_offload, rdy_offload, rdz_offload, rddx_offload, rddy_offload, rddz_offload, &
-        bt_offload, u_offload, v_offload, w_offload, t_offload, dx_offload, dy_offload, dz_offload, qtu_offload, qtv_offload, qtw_offload, gp_bc_ctyp_offload, encoded_bc_ctyp_offload, nboconds_offload
+        bt_offload, u_offload, v_offload, w_offload, t_offload, dx_offload, dy_offload, dz_offload, qtu_offload, qtv_offload, qtw_offload, gp_bc_ctyp_offload, encoded_bc_ctyp_offload, nboconds_offload, get_bc_ctyp_offload
 CONTAINS
     SUBROUTINE offload_constants()
         USE pointers_mod, ONLY: ip3d, ip1d
@@ -48,7 +48,7 @@ CONTAINS
         USE scacore_mod
 
         ! Local variablees
-        INTEGER(intk) :: igrid, iface, i, mgdims_arr_size, kk, jj, ii, nfro, nbac, nrgt, nlft, nbot, ntop, bc_counter, n_bo_conds, ibocd
+        INTEGER(intk) :: igrid, iface, i, mgdims_arr_size, kk, jj, ii, nfro, nbac, nrgt, nlft, nbot, ntop, bc_counter, n_bo_conds, ibocd, bctypid, num_bcs
         TYPE(field_t), POINTER :: rddx_f, rddy_f, rddz_f, bt_f, ddx_f, ddy_f, ddz_f, rdx_f, rdy_f, rdz_f, dx_f, dy_f, dz_f, sca_f
         TYPE(field_t), POINTER :: u_f, v_f, w_f
         CHARACTER(len=8) :: ctyp
@@ -123,38 +123,26 @@ CONTAINS
         ALLOCATE(t_offload, source=sca_f%arr)
         ALLOCATE(nboconds_offload, source=nboconds)
 
+        CALL count_num_bc(num_bcs)
         ALLOCATE(gp_bc_ctyp_offload(N_BC_RANGE, N_FACES, nmygrids))
+        ALLOCATE(encoded_bc_ctyp_offload(num_bcs))
+
         gp_bc_ctyp_offload = 0
         bc_counter = 1
         DO igrid = 1, nmygrids
             DO iface = 1, N_FACES
                 n_bo_conds = nboconds(iface, igrid)
                 gp_bc_ctyp_offload(1, iface, igrid) = bc_counter
-                bc_counter = bc_counter + n_bo_conds
-                gp_bc_ctyp_offload(2, iface, igrid) = bc_counter
 
                 DO ibocd = 1, n_bo_conds
-                    SELECT CASE(iface)
-                    CASE(1) ! Front
-                        CALL get_bc_ctyp(ctyp, ibocd, iface, igrid)
-                        print *, igrid, iface, ibocd, ctyp
-                    CASE(2) ! Back
-                        CALL get_bc_ctyp(ctyp, ibocd, iface, igrid)
-                        print *, igrid, iface, ibocd, ctyp
-                    CASE(3) ! Right
-                        CALL get_bc_ctyp(ctyp, ibocd, iface, igrid)
-                        print *, igrid, iface, ibocd, ctyp
-                    CASE(4) ! Left
-                        CALL get_bc_ctyp(ctyp, ibocd, iface, igrid)
-                        print *, igrid, iface, ibocd, ctyp
-                    CASE(5) ! Bottom
-                        CALL get_bc_ctyp(ctyp, ibocd, iface, igrid)
-                        print *, igrid, iface, ibocd, ctyp
-                    CASE(6) ! Top
-                        CALL get_bc_ctyp(ctyp, ibocd, iface, igrid)
-                        print *, igrid, iface, ibocd, ctyp
-                    END SELECT
+                    CALL get_bc_ctyp(ctyp, ibocd, iface, igrid)
+                    CALL map_bc_type(bctypid, ctyp)
+
+                    encoded_bc_ctyp_offload(bc_counter) = bctypid
+                    bc_counter = bc_counter + 1
                 END DO
+
+                gp_bc_ctyp_offload(2, iface, igrid) = bc_counter
             END DO
         END DO
 
@@ -165,6 +153,61 @@ CONTAINS
         !$omp& rdx_offload, rdy_offload, rdz_offload, bt_offload, u_offload, v_offload, w_offload, t_offload, &
         !$omp& dx_offload, dy_offload, dz_offload, qtu_offload, qtv_offload, qtw_offload, gp_bc_ctyp_offload, encoded_bc_ctyp_offload, nboconds_offload)
     END SUBROUTINE offload_constants
+
+    SUBROUTINE get_bc_ctyp_offload(ctyp_encoded, ibocd, iface, igrid)
+        INTEGER(intk), INTENT(out) :: ctyp_encoded
+        INTEGER(intk), INTENT(in) :: ibocd
+        INTEGER(intk), INTENT(in) :: iface
+        INTEGER(intk), INTENT(in) :: igrid
+
+        INTEGER(intk) :: istart
+
+        istart = gp_bc_ctyp_offload(1, iface, igrid)
+
+        ctyp_encoded = encoded_bc_ctyp_offload(istart + ibocd - 1)
+    END SUBROUTINE
+
+    SUBROUTINE map_bc_type(bctypid, ctyp)
+        INTEGER(intk), INTENT(OUT) :: bctypid
+        CHARACTER(len=8), INTENT(IN) :: ctyp
+
+        SELECT CASE(ctyp)
+        CASE ("FIX")
+            bctypid = 1
+        CASE ("SIO")
+            bctypid = 2
+        CASE ("CON")
+            bctypid = 3
+        CASE ("SLI")
+            bctypid = 4
+        CASE ("SWA")
+            bctypid = 5
+        CASE ("NOS")
+            bctypid = 6
+        CASE ("OP1")
+            bctypid = 7
+        CASE DEFAULT
+            print *, "Could not map BC: ", ctyp
+        END SELECT
+    END SUBROUTINE map_bc_type
+
+    SUBROUTINE count_num_bc(num_bc)
+        USE grids_mod, ONLY: nmygrids, nboconds
+
+        INTEGER(intk), INTENT(OUT) :: num_bc
+
+        INTEGER(intk) :: igrid, iface, n_bo_conds
+
+        num_bc = 0
+
+        DO igrid = 1, nmygrids
+            DO iface = 1, N_FACES
+                n_bo_conds = nboconds(iface, igrid)
+                
+                num_bc = num_bc + n_bo_conds
+            END DO
+        END DO
+    END SUBROUTINE count_num_bc
 
     SUBROUTINE finish_offload_constants()
         !$omp target exit data map(delete: ip3d_offload, ip1d_offload, mgdims_offload, mgbasb_offload, &

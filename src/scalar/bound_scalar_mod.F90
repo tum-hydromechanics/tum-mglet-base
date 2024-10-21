@@ -16,7 +16,7 @@ CONTAINS
         TYPE(field_t), INTENT(in) :: t_f
         REAL(realk), INTENT(in), OPTIONAL :: timeph
 
-        INTEGER(intk) :: igrid, iface, nbocd, ibocd
+        INTEGER(intk) :: igrid, iface, nbocd, ibocd, ctyp_encoded
         CHARACTER(len=8) :: ctyp
 
         ! Simplification: Only BCs on the same level are handled
@@ -27,35 +27,36 @@ CONTAINS
 
                 DO ibocd = 1, nbocd
                     CALL get_bc_ctyp(ctyp, ibocd, iface, igrid)
-                    
-                    print *, igrid, iface, ibocd, ctyp
+                    CALL get_bc_ctyp_offload(ctyp_encoded, ibocd, iface, igrid)
+
+                    !print *, igrid, iface, ibocd, ctyp, ctyp_encoded
 
                     SELECT CASE(iface)
                     CASE(1)
-                        CALL bfront(igrid, iface, ibocd, ctyp, t_f, sca_prmol, timeph)
+                        CALL bfront(igrid, iface, ctyp, ctyp_encoded, t_f, sca_prmol, timeph)
                     CASE(2)
-                        CALL bfront(igrid, iface, ibocd, ctyp, t_f, sca_prmol, timeph)
+                        CALL bfront(igrid, iface, ctyp, ctyp_encoded, t_f, sca_prmol, timeph)
                     CASE(3)
-                        CALL bright(igrid, iface, ibocd, ctyp, t_f, sca_prmol, timeph)
+                        CALL bright(igrid, iface, ctyp_encoded, t_f, sca_prmol, timeph)
                     CASE(4)
-                        CALL bright(igrid, iface, ibocd, ctyp, t_f, sca_prmol, timeph)
+                        CALL bright(igrid, iface, ctyp_encoded, t_f, sca_prmol, timeph)
                     CASE(5)
-                        CALL bbottom(igrid, iface, ibocd, ctyp, t_f, sca_prmol, timeph)
+                        CALL bbottom(igrid, iface, ctyp_encoded, t_f, sca_prmol, timeph)
                     CASE(6)
-                        CALL bbottom(igrid, iface, ibocd, ctyp, t_f, sca_prmol, timeph)
+                        CALL bbottom(igrid, iface, ctyp_encoded, t_f, sca_prmol, timeph)
                     END SELECT
                 END DO
             END DO
         END DO
     END SUBROUTINE bound_sca
 
-    SUBROUTINE bfront(igrid, iface, ibocd, ctyp, t_f, sca_prmol, timeph)
+    SUBROUTINE bfront(igrid, iface, ctyp, ctyp_encoded, t_f, sca_prmol, timeph)
         ! Subroutine arguments
-        INTEGER(intk), INTENT(in) :: igrid, iface, ibocd
-        CHARACTER(len=*), INTENT(in) :: ctyp
+        INTEGER(intk), INTENT(in) :: igrid, iface, ctyp_encoded
         TYPE(field_t), INTENT(in), OPTIONAL :: t_f
         REAL(realk), INTENT(in), OPTIONAL :: timeph
         REAL(realk), INTENT(in) :: sca_prmol
+        CHARACTER(len=8), INTENT(IN) :: ctyp
 
         ! Local variables
         INTEGER(intk) :: kk, jj, ii
@@ -66,12 +67,14 @@ CONTAINS
         REAL(realk), POINTER, CONTIGUOUS, DIMENSION(:) :: dx, ddx, ddy, ddz
 
         ! Return early when no action is to be taken
-        SELECT CASE (ctyp)
-        CASE ("PAR", "SIO", "SWA")
+        SELECT CASE (ctyp_encoded)
+        CASE (2, 5)
             CONTINUE
         CASE DEFAULT
             RETURN
         END SELECT
+
+        print *, ctyp, ctyp_encoded
 
         CALL ptr_to_grid3(qtu_offload, igrid, qtu)
 
@@ -131,10 +134,9 @@ CONTAINS
     END SUBROUTINE bfront
 
 
-    SUBROUTINE bright(igrid, iface, ibocd, ctyp, t_f, sca_prmol, timeph)
+    SUBROUTINE bright(igrid, iface, ctyp_encoded, t_f, sca_prmol, timeph)
         ! Subroutine arguments
-        INTEGER(intk), INTENT(in) :: igrid, iface, ibocd
-        CHARACTER(len=*), INTENT(in) :: ctyp
+        INTEGER(intk), INTENT(in) :: igrid, iface, ctyp_encoded
         TYPE(field_t), INTENT(in) :: t_f
         REAL(realk), INTENT(in), OPTIONAL :: timeph
         REAL(realk), INTENT(in) :: sca_prmol
@@ -147,8 +149,8 @@ CONTAINS
         REAL(realk), POINTER, CONTIGUOUS, DIMENSION(:) :: dy, ddx, ddy, ddz
 
         ! Return early when no action is to be taken
-        SELECT CASE (ctyp)
-        CASE ("PAR", "SIO", "SWA")
+        SELECT CASE (ctyp_encoded)
+        CASE (2, 5)
             CONTINUE
         CASE DEFAULT
             RETURN
@@ -195,10 +197,9 @@ CONTAINS
     END SUBROUTINE bright
 
 
-    SUBROUTINE bbottom(igrid, iface, ibocd, ctyp, t_f, sca_prmol, timeph)
+    SUBROUTINE bbottom(igrid, iface, ctyp_encoded, t_f, sca_prmol, timeph)
         ! Subroutine arguments
-        INTEGER(intk), INTENT(in) :: igrid, iface, ibocd
-        CHARACTER(len=*), INTENT(in) :: ctyp
+        INTEGER(intk), INTENT(in) :: igrid, iface, ctyp_encoded
         TYPE(field_t), INTENT(in) :: t_f
         REAL(realk), INTENT(in), OPTIONAL :: timeph
         REAL(realk), INTENT(in) :: sca_prmol
@@ -211,8 +212,8 @@ CONTAINS
         REAL(realk), POINTER, CONTIGUOUS, DIMENSION(:) :: dz, ddx, ddy, ddz
 
         ! Return early when no action is to be taken
-        SELECT CASE (ctyp)
-        CASE ("PAR", "SIO", "SWA")
+        SELECT CASE (ctyp_encoded)
+        CASE (2, 5)
             CONTINUE
         CASE DEFAULT
             RETURN

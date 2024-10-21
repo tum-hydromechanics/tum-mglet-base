@@ -70,7 +70,9 @@ CONTAINS
         ! └────────────────────────────────────────────────────────────────────────────┘
         sca_prmol = scalar(sca_field_index)%prmol
         CALL bound_sca(ilevel, t, sca_prmol)
-        print *, ".------"
+
+
+        print *, "---------------"
         print *, MAXVAL(qtu_offload)
         print *, MAXVAL(qtv_offload)
         print *, MAXVAL(qtw_offload)
