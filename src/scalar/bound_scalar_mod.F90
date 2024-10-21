@@ -10,53 +10,55 @@ MODULE bound_scalar_mod
     PUBLIC :: bound_sca
 
 CONTAINS
-    SUBROUTINE bound_sca(ilevel, t_f, sca_prmol, timeph)
+    SUBROUTINE bound_sca(ilevel, t_f, timeph)
         INTEGER(intk), INTENT(in) :: ilevel
-        REAL(realk), INTENT(in) :: sca_prmol
         TYPE(field_t), INTENT(in) :: t_f
         REAL(realk), INTENT(in), OPTIONAL :: timeph
 
         INTEGER(intk) :: igrid, iface, nbocd, ibocd, ctyp_encoded
-        CHARACTER(len=8) :: ctyp
+        !CHARACTER(len=8) :: ctyp
+        REAL(realk) :: sca_prmol
+
+        sca_prmol = scalar(1)%prmol
+
 
         ! Simplification: Only BCs on the same level are handled
+        !$omp target teams distribute
         DO igrid = 1, nmygrids
 
             DO iface = 1, 6
                 nbocd = nboconds_offload(iface, igrid)
 
                 DO ibocd = 1, nbocd
-                    CALL get_bc_ctyp(ctyp, ibocd, iface, igrid)
                     CALL get_bc_ctyp_offload(ctyp_encoded, ibocd, iface, igrid)
-
-                    !print *, igrid, iface, ibocd, ctyp, ctyp_encoded
 
                     SELECT CASE(iface)
                     CASE(1)
-                        CALL bfront(igrid, iface, ctyp, ctyp_encoded, t_f, sca_prmol, timeph)
+                        CALL bfront(igrid, iface, ctyp_encoded, t_f, sca_prmol, gmol, rho, timeph)
                     CASE(2)
-                        CALL bfront(igrid, iface, ctyp, ctyp_encoded, t_f, sca_prmol, timeph)
+                        CALL bfront(igrid, iface, ctyp_encoded, t_f, sca_prmol, gmol, rho, timeph)
                     CASE(3)
-                        CALL bright(igrid, iface, ctyp_encoded, t_f, sca_prmol, timeph)
+                        CALL bright(igrid, iface, ctyp_encoded, t_f, sca_prmol, gmol, rho, timeph)
                     CASE(4)
-                        CALL bright(igrid, iface, ctyp_encoded, t_f, sca_prmol, timeph)
+                        CALL bright(igrid, iface, ctyp_encoded, t_f, sca_prmol, gmol, rho, timeph)
                     CASE(5)
-                        CALL bbottom(igrid, iface, ctyp_encoded, t_f, sca_prmol, timeph)
+                        CALL bbottom(igrid, iface, ctyp_encoded, t_f, sca_prmol, gmol, rho, timeph)
                     CASE(6)
-                        CALL bbottom(igrid, iface, ctyp_encoded, t_f, sca_prmol, timeph)
+                        CALL bbottom(igrid, iface, ctyp_encoded, t_f, sca_prmol, gmol, rho, timeph)
                     END SELECT
                 END DO
             END DO
         END DO
+        !$omp end target teams distribute
     END SUBROUTINE bound_sca
 
-    SUBROUTINE bfront(igrid, iface, ctyp, ctyp_encoded, t_f, sca_prmol, timeph)
+    SUBROUTINE bfront(igrid, iface, ctyp_encoded, t_f, sca_prmol, gmol_offload, rho_offload, timeph)
+        !$omp declare target
         ! Subroutine arguments
         INTEGER(intk), INTENT(in) :: igrid, iface, ctyp_encoded
         TYPE(field_t), INTENT(in), OPTIONAL :: t_f
         REAL(realk), INTENT(in), OPTIONAL :: timeph
-        REAL(realk), INTENT(in) :: sca_prmol
-        CHARACTER(len=8), INTENT(IN) :: ctyp
+        REAL(realk), INTENT(in) :: sca_prmol, gmol_offload, rho_offload
 
         ! Local variables
         INTEGER(intk) :: kk, jj, ii
@@ -74,11 +76,9 @@ CONTAINS
             RETURN
         END SELECT
 
-        print *, ctyp, ctyp_encoded
-
         CALL ptr_to_grid3(qtu_offload, igrid, qtu)
 
-        CALL t_f%get_ptr(t, igrid)
+        CALL ptr_to_grid3(t_offload, igrid, t)
 
         CALL ptr_to_grid3(u_offload, igrid, u)
         CALL ptr_to_grid3(v_offload, igrid, v)
@@ -106,15 +106,19 @@ CONTAINS
             dir = 1
         END SELECT
 
-        gamma = gmol / rho / sca_prmol
+        ! ┌────────────────────────────────────────────────────────────────────────────┐
+        ! | SIMPLIFICATION: Only Fixed scalar value (inflow/outflow) BC                |
+        ! | *Removed handling of other BCs*                                            |
+        ! └────────────────────────────────────────────────────────────────────────────┘
+        gamma = gmol_offload / rho_offload / sca_prmol
 
-        !$omp target teams distribute parallel do collapse(2)
+        !$omp parallel do collapse(2)
         DO j = 1, jj
             DO k = 1, kk
                 IF (-dir*u(k, j, istag2) >= 0.0) THEN
                     ! flow into the domain (requires specified value)
                     ! OLD: tout = 2.0*tbuf(k, j, 1) - t(k, j, i3)
-                    tout = -t(k, j, i3)
+                    tout = 2.0*0.0 - t(k, j, i3)
                 ELSE
                     ! flow out of the domain (zero-gradient)
                     tout = t(k, j, i3)
@@ -130,16 +134,17 @@ CONTAINS
                 qtu(k, j, istag2) = -dir*(adv + diff)*area
             END DO
         END DO
-        !$omp end target teams distribute parallel do
+        !$omp end parallel do
     END SUBROUTINE bfront
 
 
-    SUBROUTINE bright(igrid, iface, ctyp_encoded, t_f, sca_prmol, timeph)
+    SUBROUTINE bright(igrid, iface, ctyp_encoded, t_f, sca_prmol, gmol_offload, rho_offload, timeph)
+        !$omp declare target
         ! Subroutine arguments
         INTEGER(intk), INTENT(in) :: igrid, iface, ctyp_encoded
         TYPE(field_t), INTENT(in) :: t_f
         REAL(realk), INTENT(in), OPTIONAL :: timeph
-        REAL(realk), INTENT(in) :: sca_prmol
+        REAL(realk), INTENT(in) :: sca_prmol, gmol_offload, rho_offload
 
         ! Local variables
         INTEGER(intk) :: kk, jj, ii
@@ -157,7 +162,7 @@ CONTAINS
         END SELECT
 
         ! Fetch pointers
-        CALL t_f%get_ptr(t, igrid)
+        CALL ptr_to_grid3(t_offload, igrid, t)
 
         CALL ptr_to_grid3(qtv_offload, igrid, qtv)
 
@@ -197,17 +202,18 @@ CONTAINS
     END SUBROUTINE bright
 
 
-    SUBROUTINE bbottom(igrid, iface, ctyp_encoded, t_f, sca_prmol, timeph)
+    SUBROUTINE bbottom(igrid, iface, ctyp_encoded, t_f, sca_prmol, gmol_offload, rho_offload, timeph)
+        !$omp declare target
         ! Subroutine arguments
         INTEGER(intk), INTENT(in) :: igrid, iface, ctyp_encoded
         TYPE(field_t), INTENT(in) :: t_f
         REAL(realk), INTENT(in), OPTIONAL :: timeph
-        REAL(realk), INTENT(in) :: sca_prmol
+        REAL(realk), INTENT(in) :: sca_prmol, gmol_offload, rho_offload
 
         ! Local variables
         INTEGER(intk) :: kk, jj, ii
         INTEGER(intk) :: j, i, k3, kstag2, dir
-        REAL(realk) :: area, diff, gamma2dx, uquer
+        REAL(realk) :: diff, gamma2dx!, uquer, area
         REAL(realk), POINTER, CONTIGUOUS, DIMENSION(:, :, :) :: qtw, t, bt, u, v, w
         REAL(realk), POINTER, CONTIGUOUS, DIMENSION(:) :: dz, ddx, ddy, ddz
 
@@ -222,7 +228,7 @@ CONTAINS
         ! Fetch pointers
         CALL ptr_to_grid3(qtw_offload, igrid, qtw)
 
-        CALL t_f%get_ptr(t, igrid)
+        CALL ptr_to_grid3(t_offload, igrid, t)
 
         CALL ptr_to_grid3(u_offload, igrid, u)
         CALL ptr_to_grid3(v_offload, igrid, v)
@@ -237,8 +243,6 @@ CONTAINS
 
         CALL get_mgdims_target(kk, jj, ii, igrid)
 
-        CALL get_mgdims(kk, jj, ii, igrid)
-
         SELECT CASE (iface)
         CASE (5)
             ! Bottom
@@ -252,11 +256,10 @@ CONTAINS
             dir = 1
         END SELECT
 
-
         ! SWA ctyp with sbctype(idx)=0
         ! tbuf=1.0
-        IF (ilesmodel == 0) THEN
-            gamma2dx = 2.0 * gmol / rho / sca_prmol / dz(kstag2)
+        !IF (ilesmodel == 0) THEN
+            gamma2dx = 2.0 * gmol_offload / rho_offload / sca_prmol / dz(kstag2)
             DO i = 1, ii
                 DO j = 1, jj
                     ! Setting the scalar diffusive flux from the wall
@@ -266,24 +269,23 @@ CONTAINS
                     qtw(kstag2, j, i) = -dir*diff*ddx(i)*ddy(j)
                 END DO
             END DO
-        ELSE
-            DO i = 2, ii
-                DO j = 2, jj
-                    ! Setting the scalar flux with a wall model
-                    ! Wall buffer tbuf contains set scalar value
-                    area = ddx(i)*ddy(j)
-                    uquer = SQRT( &
-                        (u(k3, j, i-1) + (u(k3, j, i)-u(k3, j, i-1)) &
-                            /ddx(i)*ddx(i-1)*0.5)**2.0 + &
-                        (v(k3, j-1, i) + (v(k3, j, i)-v(k3, j-1, i)) &
-                            /ddy(j)*ddy(j-1)*0.5 )**2.0)
-                    ! OLD: qtw(kstag2, j, i) = -dir*qwallfix(tbuf(j, i, 1), &
-                    ! OLD:    t(k3, j, i), uquer, ddz(k3), prmol)*area
-                    qtw(kstag2, j, i) = -dir*qwallfix(1.0, &
-                        t(k3, j, i), uquer, ddz(k3), sca_prmol)*area
-                END DO
-            END DO
-        END IF
+        !ELSE
+        !    DO i = 2, ii
+        !        DO j = 2, jj
+        !            ! Setting the scalar flux with a wall model
+        !            ! Wall buffer tbuf contains set scalar value
+        !            area = ddx(i)*ddy(j)
+        !            uquer = SQRT( &
+        !                (u(k3, j, i-1) + (u(k3, j, i)-u(k3, j, i-1)) &
+        !                    /ddx(i)*ddx(i-1)*0.5)**2.0 + &
+        !                (v(k3, j-1, i) + (v(k3, j, i)-v(k3, j-1, i)) &
+        !                    /ddy(j)*ddy(j-1)*0.5 )**2.0)
+        !            ! OLD: qtw(kstag2, j, i) = -dir*qwallfix(tbuf(j, i, 1), &
+        !            ! OLD:    t(k3, j, i), uquer, ddz(k3), prmol)*area
+        !            qtw(kstag2, j, i) = -dir*0.0*area
+        !        END DO
+        !    END DO
+        !END IF
     END SUBROUTINE bbottom
 
 END MODULE bound_scalar_mod

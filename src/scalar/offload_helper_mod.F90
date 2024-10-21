@@ -155,6 +155,7 @@ CONTAINS
     END SUBROUTINE offload_constants
 
     SUBROUTINE get_bc_ctyp_offload(ctyp_encoded, ibocd, iface, igrid)
+        !$omp declare target
         INTEGER(intk), INTENT(out) :: ctyp_encoded
         INTEGER(intk), INTENT(in) :: ibocd
         INTEGER(intk), INTENT(in) :: iface

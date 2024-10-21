@@ -25,11 +25,10 @@ CONTAINS
         TYPE(rk_2n_t), INTENT(in) :: rkscheme
 
         ! Local variables
-        INTEGER(intk) :: ilevel, sca_field_index
+        INTEGER(intk) :: ilevel
         REAL(realk) :: frhs, fu, dtrk, dtrki
         TYPE(field_t), POINTER :: t, told, dt_f
         TYPE(field_t) :: qtt
-        REAL(realk) :: sca_prmol
 
         IF (.NOT. solve_scalar) RETURN
         CALL start_timer(400)
@@ -43,6 +42,7 @@ CONTAINS
         ! Update u, v and w on the device for next scalar timestep
         !$omp target update to(u_offload, v_offload, w_offload)
 
+        ! ------------------------------------------------------------------------------------------------------------
         ! Perform actual time integration
         ! ┌────────────────────────────────────────────────────────────────────────────┐
         ! | SIMPLIFICATION: Only one scalar field                                      |
@@ -50,17 +50,17 @@ CONTAINS
         ! └────────────────────────────────────────────────────────────────────────────┘
         CALL start_timer(402)
         ! Fetch scalar field
-        sca_field_index = 1
-        CALL get_field(t, scalar(sca_field_index)%name)
-        CALL get_field(dt_f, "D"//TRIM(scalar(sca_field_index)%name))
-        CALL get_field(told, TRIM(scalar(sca_field_index)%name)//"_OLD")
+        CALL get_field(t, scalar(1)%name)
+        CALL get_field(dt_f, "D"//TRIM(scalar(1)%name))
+        CALL get_field(told, TRIM(scalar(1)%name)//"_OLD")
         ! Copy to "T_OLD"
         told%arr = t%arr
+        
+        t_offload = t%arr
+        !$omp target update to(t_offload)
 
         ! TSTSCA4 zeroize qtu, qtv, qtw before use internally
-        CALL tstsca4(t, scalar(sca_field_index))
-
-        !$omp target update from(qtu_offload, qtv_offload, qtw_offload)
+        CALL tstsca4(t, scalar(1))
 
         ! This operation apply boundary conditions to qtu, qtv, qtw ONLY!
         ! Does not modify t-field at all!
@@ -68,23 +68,20 @@ CONTAINS
         ! | SIMPLIFICATION: Only grids on the same level                               |
         ! | *Removed loop over all grid levels*                                        |
         ! └────────────────────────────────────────────────────────────────────────────┘
-        sca_prmol = scalar(sca_field_index)%prmol
-        CALL bound_sca(ilevel, t, sca_prmol)
+        CALL bound_sca(ilevel, t)
 
-
+        !$omp target update from(qtu_offload, qtv_offload, qtw_offload)
         print *, "---------------"
         print *, MAXVAL(qtu_offload)
         print *, MAXVAL(qtv_offload)
         print *, MAXVAL(qtw_offload)
-
-        !$omp target update to(qtu_offload, qtv_offload, qtw_offload)
 
         ! fluxbalance zeroize qtt before use internally
         CALL fluxbalance(qtt)
 
         ! Ghost cell "flux" boundary condition applied to qtt field
         IF (ib%type == "GHOSTCELL") THEN
-            CALL set_scastencils("P", scalar(sca_field_index), qtt=qtt)
+            CALL set_scastencils("P", scalar(1), qtt=qtt)
         END IF
 
         ! In IRK 1, FRHS is zero, therefore we do not need to zeroize
@@ -101,7 +98,7 @@ CONTAINS
         ! Ghost cell "value" boundary condition applied to t field
         IF (ib%type == "GHOSTCELL") THEN
             CALL connect(layers=2, s1=t, corners=.TRUE.)
-            CALL set_scastencils("P", scalar(sca_field_index), t=t)
+            CALL set_scastencils("P", scalar(1), t=t)
         END IF
 
         DO ilevel = maxlevel, minlevel+1, -1
@@ -109,7 +106,7 @@ CONTAINS
         END DO
 
         CALL connect(layers=2, s1=t, corners=.TRUE.)
-
+        ! ------------------------------------------------------------------------------------------------------------
 
         ! TODO: Fill ghost layers of T (maybe only at last IRK?)
         CALL stop_timer(402)
