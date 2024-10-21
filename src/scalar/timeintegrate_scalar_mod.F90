@@ -80,11 +80,11 @@ CONTAINS
             END DO
     
             ! Remove comments for verifications of values
-            !$omp target update from(qtu_offload, qtv_offload, qtw_offload)
-            print *, "---------------"
-            print *, MAXVAL(qtu_offload)
-            print *, MAXVAL(qtv_offload)
-            print *, MAXVAL(qtw_offload)
+            !!$omp target update from(qtu_offload, qtv_offload, qtw_offload)
+            !print *, "---------------"
+            !print *, MAXVAL(qtu_offload)
+            !print *, MAXVAL(qtv_offload)
+            !print *, MAXVAL(qtw_offload)
     
             ! fluxbalance zeroize qtt before use internally
             CALL fluxbalance(qtt)
