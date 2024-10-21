@@ -5,6 +5,7 @@ MODULE offload_helper_mod
     USE fields_mod
     USE realfield_mod
     USE scacore_mod
+    USE flowcore_mod
 
     IMPLICIT NONE(type, external)
     PRIVATE
@@ -15,11 +16,13 @@ MODULE offload_helper_mod
     INTEGER(intk), PARAMETER :: N_FACES = 6
     INTEGER(intk), PARAMETER :: N_BC_RANGE = 2
     INTEGER(intk), PARAMETER :: ISCA_FIELD = 1
+    INTEGER(intk), PARAMETER :: ISCA_LEVEL = 1
 
     ! ┌────────────────────────────────────────────────────────────────────────────┐
     ! | Keeps a copy of the data that is required on the target device             |
-    ! | This is done so that omp directives are not scattered across the code      |
-    ! | and interferes with the core flow implementation                           |
+    ! | WHY COPIES INSTEAD OF POINTERS?                                            |
+    ! |     - Keep omp directives central for the sake of code readability         |
+    ! |     - Prevent any unwanted intereference with the core flow implementation |
     ! └────────────────────────────────────────────────────────────────────────────┘
     ! Grid parameters
     INTEGER(intk), POINTER, CONTIGUOUS, DIMENSION(:) :: ip3d_offload, ip1d_offload, mgdims_offload, mgbasb_offload
@@ -46,25 +49,28 @@ MODULE offload_helper_mod
     ! Public subroutines for host
     PUBLIC :: offload_constants, finish_offload_constants
 
-    ! Public subroutines for device
-    PUBLIC :: ptr_to_grid_x, ptr_to_grid_y, ptr_to_grid_z, ptr_to_grid3, get_mgdims_target, get_mgbasb_target, get_bc_ctyp_offload
+    ! Public variables for host
+    PUBLIC :: ISCA_FIELD, ISCA_LEVEL
 
-    ! Public data arrays for device
+    ! Public subroutines for device
+    PUBLIC :: ptr_to_grid_x, ptr_to_grid_y, ptr_to_grid_z, ptr_to_grid3, get_mgdims_target, get_mgbasb_target, &
+        get_encoded_ctyp_offload
+
+    ! Public variables for device
     PUBLIC :: rdx_offload, rdy_offload, rdz_offload, rddx_offload, rddy_offload, rddz_offload, &
         dx_offload, dy_offload, dz_offload, ddx_offload, ddy_offload, ddz_offload, bt_offload, &
-        u_offload, v_offload, w_offload, t_offload, qtu_offload, qtv_offload, qtw_offload, &
-        nboconds_offload
+        u_offload, v_offload, w_offload, t_offload, qtu_offload, qtv_offload, qtw_offload, nboconds_offload
 
 CONTAINS
     SUBROUTINE offload_constants()        
-        CALL prepare_grid_data_mapping()
-        CALL prepare_constant_grid_field_mapping()
-        CALL prepare_bc_data_mapping()
-        CALL prepare_flow_sca_mapping()
-        CALL prepare_bc_encoding_mapping()
+        CALL map_grid_data()
+        CALL map_constant_grid_fields()
+        CALL map_bc_data()
+        CALL map_bc_encoding()
+        CALL map_flow_sca()
     END SUBROUTINE offload_constants
 
-    SUBROUTINE prepare_grid_data_mapping()
+    SUBROUTINE map_grid_data()
         ! Local variables
         INTEGER(intk) :: igrid, i, mgdims_arr_size, kk, jj, ii
 
@@ -86,7 +92,7 @@ CONTAINS
         !$omp target enter data map(to: ip3d_offload, ip1d_offload, mgdims_offload)
     END SUBROUTINE
 
-    SUBROUTINE prepare_bc_data_mapping()
+    SUBROUTINE map_bc_data()
         ! Local variables
         INTEGER(intk) :: igrid, i, nfro, nbac, nrgt, nlft, nbot, ntop
 
@@ -108,7 +114,7 @@ CONTAINS
         !$omp target enter data map(to: nboconds_offload, mgbasb_offload)
     END SUBROUTINE
 
-    SUBROUTINE prepare_constant_grid_field_mapping()
+    SUBROUTINE map_constant_grid_fields()
         ! Local variables
         TYPE(field_t), POINTER :: rdx_f, rdy_f, rdz_f, rddx_f, rddy_f, rddz_f, dx_f, dy_f, dz_f, ddx_f, ddy_f, ddz_f, bt_f
 
@@ -145,7 +151,7 @@ CONTAINS
         !$omp& dx_offload, dy_offload, dz_offload, ddx_offload, ddy_offload, ddz_offload, bt_offload)
     END SUBROUTINE
 
-    SUBROUTINE prepare_flow_sca_mapping()
+    SUBROUTINE map_flow_sca()
         ! Local variables
         TYPE(field_t), POINTER :: u_f, v_f, w_f, sca_f
 
@@ -165,7 +171,7 @@ CONTAINS
         !$omp target enter data map(to: u_offload, v_offload, w_offload, t_offload, qtu_offload, qtv_offload, qtw_offload)
     END SUBROUTINE
 
-    SUBROUTINE prepare_bc_encoding_mapping()
+    SUBROUTINE map_bc_encoding()
         ! Local variables
         INTEGER(intk) :: igrid, iface, ibocd, n_bo_conds, num_bcs, bc_counter, bctypid
         CHARACTER(len=8) :: ctyp
@@ -197,7 +203,7 @@ CONTAINS
         !$omp target enter data map(to: encoded_ctyp_offload, bc_indexing)
     END SUBROUTINE
 
-    SUBROUTINE get_bc_ctyp_offload(ctyp_encoded, ibocd, iface, igrid)
+    SUBROUTINE get_encoded_ctyp_offload(ctyp_encoded, ibocd, iface, igrid)
         !$omp declare target
         INTEGER(intk), INTENT(out) :: ctyp_encoded
         INTEGER(intk), INTENT(in) :: ibocd

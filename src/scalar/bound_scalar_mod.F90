@@ -4,46 +4,40 @@ MODULE bound_scalar_mod
     USE flow_mod, ONLY: ilesmodel, gmol, rho, qwallfix
     USE offload_helper_mod
 
+    ! ┌────────────────────────────────────────────────────────────────────────────┐
+    ! | Removed interface complying with bound_mod                                 |
+    ! | Allows for experimental code architecture to offload computation           |
+    ! └────────────────────────────────────────────────────────────────────────────┘
+
     IMPLICIT NONE(type, external)
     PRIVATE
 
     PUBLIC :: bound_sca
-
 CONTAINS
     SUBROUTINE bound_sca(ilevel, t_f, timeph)
+        ! Subroutine arguments
         INTEGER(intk), INTENT(in) :: ilevel
         TYPE(field_t), INTENT(in) :: t_f
         REAL(realk), INTENT(in), OPTIONAL :: timeph
 
+        ! Local variables
         INTEGER(intk) :: igrid, iface, nbocd, ibocd, ctyp_encoded
-        !CHARACTER(len=8) :: ctyp
         REAL(realk) :: sca_prmol
+        sca_prmol = scalar(ISCA_FIELD)%prmol
 
-        sca_prmol = scalar(1)%prmol
-
-
-        ! Simplification: Only BCs on the same level are handled
+        ! Simplification: Only BCs on the same level are handled, ilevel is unused
         !$omp target teams distribute
         DO igrid = 1, nmygrids
-
             DO iface = 1, 6
                 nbocd = nboconds_offload(iface, igrid)
-
                 DO ibocd = 1, nbocd
-                    CALL get_bc_ctyp_offload(ctyp_encoded, ibocd, iface, igrid)
-
+                    CALL get_encoded_ctyp_offload(ctyp_encoded, ibocd, iface, igrid)
                     SELECT CASE(iface)
-                    CASE(1)
+                    CASE(1, 2)
                         CALL bfront(igrid, iface, ctyp_encoded, t_f, sca_prmol, gmol, rho, timeph)
-                    CASE(2)
-                        CALL bfront(igrid, iface, ctyp_encoded, t_f, sca_prmol, gmol, rho, timeph)
-                    CASE(3)
+                    CASE(3, 4)
                         CALL bright(igrid, iface, ctyp_encoded, t_f, sca_prmol, gmol, rho, timeph)
-                    CASE(4)
-                        CALL bright(igrid, iface, ctyp_encoded, t_f, sca_prmol, gmol, rho, timeph)
-                    CASE(5)
-                        CALL bbottom(igrid, iface, ctyp_encoded, t_f, sca_prmol, gmol, rho, timeph)
-                    CASE(6)
+                    CASE(5, 6)
                         CALL bbottom(igrid, iface, ctyp_encoded, t_f, sca_prmol, gmol, rho, timeph)
                     END SELECT
                 END DO
@@ -64,7 +58,6 @@ CONTAINS
         INTEGER(intk) :: kk, jj, ii
         INTEGER(intk) :: k, j, i3, istag2, dir
         REAL(realk) :: area, adv, diff, gamma, tout
-
         REAL(realk), POINTER, CONTIGUOUS, DIMENSION(:, :, :) :: qtu, t, bt, u, v, w
         REAL(realk), POINTER, CONTIGUOUS, DIMENSION(:) :: dx, ddx, ddy, ddz
 
@@ -77,20 +70,15 @@ CONTAINS
         END SELECT
 
         CALL ptr_to_grid3(qtu_offload, igrid, qtu)
-
         CALL ptr_to_grid3(t_offload, igrid, t)
-
         CALL ptr_to_grid3(u_offload, igrid, u)
         CALL ptr_to_grid3(v_offload, igrid, v)
         CALL ptr_to_grid3(w_offload, igrid, w)
         CALL ptr_to_grid3(bt_offload, igrid, bt)
-
+        CALL ptr_to_grid_x(dx_offload, igrid, dx)
         CALL ptr_to_grid_x(ddx_offload, igrid, ddx)
         CALL ptr_to_grid_y(ddy_offload, igrid, ddy)
         CALL ptr_to_grid_z(ddz_offload, igrid, ddz)
-
-        CALL ptr_to_grid_x(dx_offload, igrid, dx)
-
         CALL get_mgdims_target(kk, jj, ii, igrid)
 
         SELECT CASE (iface)
@@ -107,8 +95,10 @@ CONTAINS
         END SELECT
 
         ! ┌────────────────────────────────────────────────────────────────────────────┐
-        ! | SIMPLIFICATION: Only Fixed scalar value (inflow/outflow) BC                |
-        ! | *Removed handling of other BCs*                                            |
+        ! | SIMPLIFICATION: Only Fixed scalar value (inflow/outflow) BC = "SIO"        |
+        ! |     - Removed handling of other BCs                                        |
+        ! |     - sbctype(idx)=0 for our test case                                     |
+        ! |     - tbuf=0 for our test case                                             |
         ! └────────────────────────────────────────────────────────────────────────────┘
         gamma = gmol_offload / rho_offload / sca_prmol
 
@@ -163,20 +153,15 @@ CONTAINS
 
         ! Fetch pointers
         CALL ptr_to_grid3(t_offload, igrid, t)
-
         CALL ptr_to_grid3(qtv_offload, igrid, qtv)
-
         CALL ptr_to_grid3(u_offload, igrid, u)
         CALL ptr_to_grid3(v_offload, igrid, v)
         CALL ptr_to_grid3(w_offload, igrid, w)
         CALL ptr_to_grid3(bt_offload, igrid, bt)
-
         CALL ptr_to_grid_x(ddx_offload, igrid, ddx)
         CALL ptr_to_grid_y(ddy_offload, igrid, ddy)
         CALL ptr_to_grid_z(ddz_offload, igrid, ddz)
-
         CALL ptr_to_grid_y(dy_offload, igrid, dy)
-
         CALL get_mgdims_target(kk, jj, ii, igrid)
 
         SELECT CASE (iface)
@@ -190,7 +175,13 @@ CONTAINS
             dir = 1
         END SELECT
 
-        ! SWA ctyp with sbctype(idx)=1
+        ! ┌────────────────────────────────────────────────────────────────────────────┐
+        ! | SIMPLIFICATION: Only Wall BC = "SWA"                                       |
+        ! |     - Removed handling of other BCs                                        |
+        ! |     - sbctype(idx)=1 for our test case                                     |
+        ! |     - tbuf=0 for our test case                                             |
+        ! └────────────────────────────────────────────────────────────────────────────┘
+        !$omp parallel do collapse(2)
         DO i = 1, ii
             DO k = 1, kk
                 ! Wall buffer tbuf contains flux at this boundary
@@ -199,6 +190,7 @@ CONTAINS
                 qtv(k, jstag2, i) = 0
             END DO
         END DO
+        !$omp end parallel do
     END SUBROUTINE bright
 
 
@@ -227,20 +219,15 @@ CONTAINS
 
         ! Fetch pointers
         CALL ptr_to_grid3(qtw_offload, igrid, qtw)
-
         CALL ptr_to_grid3(t_offload, igrid, t)
-
         CALL ptr_to_grid3(u_offload, igrid, u)
         CALL ptr_to_grid3(v_offload, igrid, v)
         CALL ptr_to_grid3(w_offload, igrid, w)
         CALL ptr_to_grid3(bt_offload, igrid, bt)
-
         CALL ptr_to_grid_x(ddx_offload, igrid, ddx)
         CALL ptr_to_grid_y(ddy_offload, igrid, ddy)
         CALL ptr_to_grid_z(ddz_offload, igrid, ddz)
-
         CALL ptr_to_grid_z(dz_offload, igrid, dz)
-
         CALL get_mgdims_target(kk, jj, ii, igrid)
 
         SELECT CASE (iface)
@@ -256,36 +243,25 @@ CONTAINS
             dir = 1
         END SELECT
 
-        ! SWA ctyp with sbctype(idx)=0
-        ! tbuf=1.0
-        !IF (ilesmodel == 0) THEN
-            gamma2dx = 2.0 * gmol_offload / rho_offload / sca_prmol / dz(kstag2)
-            DO i = 1, ii
-                DO j = 1, jj
-                    ! Setting the scalar diffusive flux from the wall
-                    ! Wall buffer tbuf contains set scalar value
-                    ! OLD: diff = gamma2dx*(tbuf(j, i, 1) - t(k3, j, i))
-                    diff = gamma2dx*(1.0 - t(k3, j, i))
-                    qtw(kstag2, j, i) = -dir*diff*ddx(i)*ddy(j)
-                END DO
+        ! ┌────────────────────────────────────────────────────────────────────────────┐
+        ! | SIMPLIFICATION: Only Wall BC = "SWA"                                       |
+        ! |     - Removed handling of other BCs                                        |
+        ! |     - Removed handling of any ilesmodel other than ilesmodel==0            |
+        ! |     - sbctype(idx)=0 for our test case                                     |
+        ! |     - tbuf=1 for our test case                                             |
+        ! └────────────────────────────────────────────────────────────────────────────┘
+        gamma2dx = 2.0 * gmol_offload / rho_offload / sca_prmol / dz(kstag2)
+        !$omp parallel do collapse(2)
+        DO i = 1, ii
+            DO j = 1, jj
+                ! Setting the scalar diffusive flux from the wall
+                ! Wall buffer tbuf contains set scalar value
+                ! OLD: diff = gamma2dx*(tbuf(j, i, 1) - t(k3, j, i))
+                diff = gamma2dx*(1.0 - t(k3, j, i))
+                qtw(kstag2, j, i) = -dir*diff*ddx(i)*ddy(j)
             END DO
-        !ELSE
-        !    DO i = 2, ii
-        !        DO j = 2, jj
-        !            ! Setting the scalar flux with a wall model
-        !            ! Wall buffer tbuf contains set scalar value
-        !            area = ddx(i)*ddy(j)
-        !            uquer = SQRT( &
-        !                (u(k3, j, i-1) + (u(k3, j, i)-u(k3, j, i-1)) &
-        !                    /ddx(i)*ddx(i-1)*0.5)**2.0 + &
-        !                (v(k3, j-1, i) + (v(k3, j, i)-v(k3, j-1, i)) &
-        !                    /ddy(j)*ddy(j-1)*0.5 )**2.0)
-        !            ! OLD: qtw(kstag2, j, i) = -dir*qwallfix(tbuf(j, i, 1), &
-        !            ! OLD:    t(k3, j, i), uquer, ddz(k3), prmol)*area
-        !            qtw(kstag2, j, i) = -dir*0.0*area
-        !        END DO
-        !    END DO
-        !END IF
+        END DO
+        !$omp end parallel do
     END SUBROUTINE bbottom
 
 END MODULE bound_scalar_mod
