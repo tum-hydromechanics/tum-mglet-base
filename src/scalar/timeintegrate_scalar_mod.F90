@@ -56,10 +56,12 @@ CONTAINS
             ! Fetch scalar field
             CALL get_field(t, scalar(l)%name)
             CALL get_field(dt_f, "D"//TRIM(scalar(l)%name))
-            CALL get_field(told, TRIM(scalar(l)%name)//"_OLD")
             ! Copy to "T_OLD" 
             ! ONLY REQUIRED FOR Boussinesq-Approximation
-            IF (has_buoyancy) told%arr = t%arr
+            IF (has_buoyancy) THEN
+                CALL get_field(told, TRIM(scalar(l)%name)//"_OLD")
+                told%arr = t%arr
+            ENDIF
 
             ! Map scalar field to device for new timestep, which is required by tstsca4 and bound_sca
             ! Use t_offload as it is a pointer to the t%arr
