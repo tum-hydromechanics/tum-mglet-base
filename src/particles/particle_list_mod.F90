@@ -30,6 +30,10 @@ MODULE particle_list_mod
         ! array that hold the actual particles
         TYPE(baseparticle_t), ALLOCATABLE :: particles(:)
 
+        CONTAINS
+
+            PROCEDURE :: defragment
+
     END TYPE particle_list_t
 
     TYPE(particle_list_t) :: my_particle_list
@@ -244,6 +248,75 @@ CONTAINS    !===================================
         END SELECT
 
     END SUBROUTINE reallocate_particle_list
+
+    !-----------------------------------
+
+    SUBROUTINE defragment( this )
+
+        ! SIMON: Here just as an idea...
+
+        ! Subroutine arguments
+        CLASS(particle_list_t), INTENT(inout) :: this
+
+        ! Local variables
+        INTEGER(intk) :: i, j, ifin, n
+        LOGICAL :: cont
+
+        ! local copy
+        ifin = this%ifinal
+        cont = .TRUE.
+
+        IF ( this%active_np == ifin ) THEN
+            ! all slots are occupied
+            RETURN
+        END IF
+
+        DO i = 1, ifin
+
+            ! search for empty slot
+            IF ( this%particles(i)%is_active /= 1 ) THEN
+
+                ! search from the end of list and find particle to fill in
+                DO j = this%ifinal, 1, -1
+                    ! finished if positions before "i" are considered
+                    IF ( j < (i+1) ) THEN
+                        cont = .FALSE.
+                        EXIT
+                    END IF
+                    ! fill empty slot with last valid particle
+                    IF ( this%particles(j)%is_active == 1 ) THEN
+                        this%particles(i) = this%particles(j)
+                        this%particles(j)%is_active = 0
+                        this%ifinal = j - 1
+                        EXIT
+                    END IF
+                END DO
+
+                ! empty slot could not be filled
+                IF ( .NOT. cont ) THEN
+                    this%ifinal = i - 1
+                    EXIT
+                END IF
+
+            END IF
+
+        END DO
+
+        ! Debug check
+        DO i = 1, this%ifinal
+            IF ( this%particles(i)%is_active /= 1 ) THEN
+                WRITE(*,*) "defragmented list contains inactive particle at ", i
+                CALL errr(__FILE__, __LINE__)
+            END IF
+        END DO
+
+        ! Some output (to be silenced later)
+        IF ( ifin /= this%ifinal ) THEN
+            n = ifin - this%ifinal
+            WRITE(*,*) " - defragmentation: ", n, " slots cleared"
+        END IF
+
+    END SUBROUTINE defragment
 
     !-----------------------------------
 
