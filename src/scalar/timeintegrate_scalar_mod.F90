@@ -8,6 +8,7 @@ MODULE timeintegrate_scalar_mod
     USE gc_scastencils_mod
     USE offload_helper_mod
     USE pointers_mod
+    USE boussinesqterm_mod, ONLY: has_buoyancy
 
     IMPLICIT NONE(type, external)
     PRIVATE
@@ -56,9 +57,10 @@ CONTAINS
             CALL get_field(t, scalar(l)%name)
             CALL get_field(dt_f, "D"//TRIM(scalar(l)%name))
             CALL get_field(told, TRIM(scalar(l)%name)//"_OLD")
-            ! Copy to "T_OLD"
-            told%arr = t%arr
-            
+            ! Copy to "T_OLD" 
+            ! ONLY REQUIRED FOR Boussinesq-Approximation
+            IF (has_buoyancy) told%arr = t%arr
+
             ! Map scalar field to device for new timestep, which is required by tstsca4 and bound_sca
             ! Use t_offload as it is a pointer to the t%arr
             !$omp target update to(t_offload)

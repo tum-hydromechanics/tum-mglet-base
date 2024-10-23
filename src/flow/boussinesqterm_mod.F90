@@ -9,7 +9,7 @@ MODULE boussinesqterm_mod
     REAL(realk), PROTECTED :: expansioncoefficient
     CHARACTER(len=nchar_name), PROTECTED :: scaname
 
-    PUBLIC :: init_boussinesqterm, finish_boussinesqterm, boussinesqterm
+    PUBLIC :: init_boussinesqterm, finish_boussinesqterm, boussinesqterm, has_buoyancy
 
 CONTAINS
 
