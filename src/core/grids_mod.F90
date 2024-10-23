@@ -32,7 +32,7 @@ MODULE grids_mod
     INTEGER(intk), ALLOCATABLE, PROTECTED :: mygridslvl(:, :)
 
     ! From cobound.h
-    INTEGER(intk), ALLOCATABLE, PROTECTED :: nboconds(:, :)
+    INTEGER(intk), ALLOCATABLE, TARGET :: nboconds(:, :)
     INTEGER(intk), ALLOCATABLE, PROTECTED :: itypboconds(:, :, :)
 
     ! From compi.h

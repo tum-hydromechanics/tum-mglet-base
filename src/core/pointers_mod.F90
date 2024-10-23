@@ -8,7 +8,7 @@ MODULE pointers_mod
     PRIVATE
 
     INTEGER(intk), PROTECTED :: idim3d, idim2d, idim1d
-    INTEGER(intk), ALLOCATABLE, PROTECTED :: ip3d(:), ip2d(:), ip1d(:)
+    INTEGER(intk), ALLOCATABLE, TARGET :: ip3d(:), ip2d(:), ip1d(:)
 
     PUBLIC :: init_pointers, finish_pointers, get_ip1, &
         get_ip3, get_ip3n, get_ibb, get_ibbn, &

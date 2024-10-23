@@ -59,9 +59,8 @@ CONTAINS
             ! Copy to "T_OLD"
             told%arr = t%arr
             
-            ! Map scalar field to device for new timestep
-            ! Field is required by tstsca4 AND bound_sca
-            t_offload = t%arr
+            ! Map scalar field to device for new timestep, which is required by tstsca4 and bound_sca
+            ! Use t_offload as it is a pointer to the t%arr
             !$omp target update to(t_offload)
     
             ! TSTSCA4 zeroize qtu, qtv, qtw before use internally

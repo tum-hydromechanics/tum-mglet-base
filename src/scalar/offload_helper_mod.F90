@@ -24,25 +24,30 @@ MODULE offload_helper_mod
     ! |     - Keep omp directives central for the sake of code readability         |
     ! |     - Prevent any unwanted intereference with the core flow implementation |
     ! └────────────────────────────────────────────────────────────────────────────┘
+    ! ----- Pointers to fields -----
     ! Grid parameters
-    INTEGER(intk), POINTER, CONTIGUOUS, DIMENSION(:) :: ip3d_offload, ip1d_offload, mgdims_offload, mgbasb_offload
-    INTEGER(intk), POINTER, CONTIGUOUS, DIMENSION(:) :: encoded_ctyp_offload
+    INTEGER(intk), POINTER, CONTIGUOUS, DIMENSION(:) :: ip3d_offload, ip1d_offload
     INTEGER(intk), POINTER, CONTIGUOUS, DIMENSION(:, :) :: nboconds_offload
-    INTEGER(intk), POINTER, CONTIGUOUS, DIMENSION(:, :) :: bc_indexing
     REAL(realk), POINTER, CONTIGUOUS, DIMENSION(:) :: rdx_offload, rdy_offload, rdz_offload
     REAL(realk), POINTER, CONTIGUOUS, DIMENSION(:) :: rddx_offload, rddy_offload, rddz_offload
     REAL(realk), POINTER, CONTIGUOUS, DIMENSION(:) :: dx_offload, dy_offload, dz_offload
     REAL(realk), POINTER, CONTIGUOUS, DIMENSION(:) :: ddx_offload, ddy_offload, ddz_offload
     REAL(realk), POINTER, CONTIGUOUS, DIMENSION(:) :: bt_offload
+    ! Flow/Scalar fields
+    REAL(realk), POINTER, CONTIGUOUS, DIMENSION(:) :: u_offload, v_offload, w_offload, t_offload
+    
+    ! ----- Newly encoded or global arrays -----
+    REAL(realk), POINTER, CONTIGUOUS, DIMENSION(:) :: qtu_offload, qtv_offload, qtw_offload
+    INTEGER(intk), POINTER, CONTIGUOUS, DIMENSION(:) :: mgdims_offload, mgbasb_offload
+    INTEGER(intk), POINTER, CONTIGUOUS, DIMENSION(:) :: encoded_ctyp_offload
+    INTEGER(intk), POINTER, CONTIGUOUS, DIMENSION(:, :) :: bc_indexing
+
+    ! Make all data available on the target device
     !$omp declare target(ip3d_offload, ip1d_offload, mgdims_offload, mgbasb_offload)
     !$omp declare target(encoded_ctyp_offload, nboconds_offload, bc_indexing)
     !$omp declare target(rdx_offload, rdy_offload, rdz_offload, rddx_offload, rddy_offload, rddz_offload)
     !$omp declare target(dx_offload, dy_offload, dz_offload, ddx_offload, ddy_offload, ddz_offload)
     !$omp declare target(bt_offload)
-
-    ! Flow/Scalar fields
-    REAL(realk), POINTER, CONTIGUOUS, DIMENSION(:) :: u_offload, v_offload, w_offload, t_offload
-    REAL(realk), POINTER, CONTIGUOUS, DIMENSION(:) :: qtu_offload, qtv_offload, qtw_offload
     !$omp declare target(u_offload, v_offload, w_offload, t_offload)
     !$omp declare target(qtu_offload, qtv_offload, qtw_offload)
 
@@ -85,10 +90,10 @@ CONTAINS
             mgdims_offload(i+2) = kk
         END DO
 
-        ! Create pointers_mod copy to offload
-        ALLOCATE(ip3d_offload, source=ip3d)
-        ALLOCATE(ip1d_offload, source=ip1d)
-
+        ! Create pointers to pointers_mod fields just to have all omp directives to map data in this file
+        ip3d_offload => ip3d
+        ip1d_offload => ip1d
+        
         !$omp target enter data map(to: ip3d_offload, ip1d_offload, mgdims_offload)
     END SUBROUTINE
 
@@ -109,7 +114,8 @@ CONTAINS
             mgbasb_offload(i+5) = ntop
         END DO
 
-        ALLOCATE(nboconds_offload, source=nboconds)
+        ! Create pointers to nboconds just to have all omp directives to map data in this file
+        nboconds_offload => nboconds
 
         !$omp target enter data map(to: nboconds_offload, mgbasb_offload)
     END SUBROUTINE
@@ -133,19 +139,19 @@ CONTAINS
         CALL get_field(ddz_f, "DDZ")
         CALL get_field(bt_f, "BT")
         
-        ALLOCATE(rdx_offload, source=rdx_f%arr)
-        ALLOCATE(rdy_offload, source=rdy_f%arr)
-        ALLOCATE(rdz_offload, source=rdz_f%arr)
-        ALLOCATE(rddx_offload, source=rddx_f%arr)
-        ALLOCATE(rddy_offload, source=rddy_f%arr)
-        ALLOCATE(rddz_offload, source=rddz_f%arr)
-        ALLOCATE(dx_offload, source=dx_f%arr)
-        ALLOCATE(dy_offload, source=dy_f%arr)
-        ALLOCATE(dz_offload, source=dz_f%arr)
-        ALLOCATE(ddx_offload, source=ddx_f%arr)
-        ALLOCATE(ddy_offload, source=ddy_f%arr)
-        ALLOCATE(ddz_offload, source=ddz_f%arr)
-        ALLOCATE(bt_offload, source=bt_f%arr)
+        rdx_offload => rdx_f%arr
+        rdy_offload => rdy_f%arr
+        rdz_offload => rdz_f%arr
+        rddx_offload => rddx_f%arr
+        rddy_offload => rddy_f%arr
+        rddz_offload => rddz_f%arr
+        dx_offload => dx_f%arr
+        dy_offload => dy_f%arr
+        dz_offload => dz_f%arr
+        ddx_offload => ddx_f%arr
+        ddy_offload => ddy_f%arr
+        ddz_offload => ddz_f%arr
+        bt_offload => bt_f%arr
 
         !$omp target enter data map(to: rdx_offload, rdy_offload, rdz_offload, rddx_offload, rddy_offload, rddz_offload, &
         !$omp& dx_offload, dy_offload, dz_offload, ddx_offload, ddy_offload, ddz_offload, bt_offload)
@@ -160,10 +166,11 @@ CONTAINS
         CALL get_field(w_f, "W")
         CALL get_field(sca_f, scalar(ISCA_FIELD)%name)
 
-        ALLOCATE(u_offload, source=u_f%arr)
-        ALLOCATE(v_offload, source=v_f%arr)
-        ALLOCATE(w_offload, source=w_f%arr)
-        ALLOCATE(t_offload, source=sca_f%arr)
+        u_offload => u_f%arr
+        v_offload => v_f%arr
+        w_offload => w_f%arr
+        t_offload => sca_f%arr
+
         ALLOCATE(qtu_offload, source=u_f%arr)
         ALLOCATE(qtv_offload, source=v_f%arr)
         ALLOCATE(qtw_offload, source=w_f%arr)
@@ -269,27 +276,7 @@ CONTAINS
         !$omp target exit data map(delete: bc_indexing, encoded_ctyp_offload)
 
         DEALLOCATE(mgdims_offload)
-        DEALLOCATE(ip3d_offload)
-        DEALLOCATE(ip1d_offload)
-        DEALLOCATE(nboconds_offload)
         DEALLOCATE(mgbasb_offload)
-        DEALLOCATE(rdx_offload)
-        DEALLOCATE(rdy_offload)
-        DEALLOCATE(rdz_offload)
-        DEALLOCATE(rddx_offload)
-        DEALLOCATE(rddy_offload)
-        DEALLOCATE(rddz_offload)
-        DEALLOCATE(dx_offload)
-        DEALLOCATE(dy_offload)
-        DEALLOCATE(dz_offload)
-        DEALLOCATE(ddx_offload)
-        DEALLOCATE(ddy_offload)
-        DEALLOCATE(ddz_offload)
-        DEALLOCATE(bt_offload)
-        DEALLOCATE(u_offload)
-        DEALLOCATE(v_offload)
-        DEALLOCATE(w_offload)
-        DEALLOCATE(t_offload)
         DEALLOCATE(qtu_offload)
         DEALLOCATE(qtv_offload)
         DEALLOCATE(qtw_offload)
