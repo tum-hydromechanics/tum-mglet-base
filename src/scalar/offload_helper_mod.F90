@@ -19,10 +19,11 @@ MODULE offload_helper_mod
     INTEGER(intk), PARAMETER :: ISCA_LEVEL = 1
 
     ! ┌────────────────────────────────────────────────────────────────────────────┐
-    ! | Keeps a copy of the data that is required on the target device             |
-    ! | WHY COPIES INSTEAD OF POINTERS?                                            |
+    ! | Keeps a pointer to the data that is required on the target device          |
+    ! | WHY POINTERS?                                                              |
     ! |     - Keep omp directives central for the sake of code readability         |
     ! |     - Prevent any unwanted intereference with the core flow implementation |
+    ! |     - Allows to directly map field data without omp directives in fields   |
     ! └────────────────────────────────────────────────────────────────────────────┘
     ! ----- Pointers to fields -----
     ! Grid parameters
