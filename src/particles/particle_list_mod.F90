@@ -251,7 +251,7 @@ CONTAINS    !===================================
 
     !-----------------------------------
 
-    SUBROUTINE defragment( this )
+    SUBROUTINE defragment(this)
 
         ! SIMON: Here just as an idea...
 
@@ -274,7 +274,7 @@ CONTAINS    !===================================
         DO i = 1, ifin
 
             ! search for empty slot
-            IF ( this%particles(i)%is_active /= 1 ) THEN
+            IF ( this%particles(i)%state < 1 ) THEN
 
                 ! search from the end of list and find particle to fill in
                 DO j = this%ifinal, 1, -1
@@ -284,9 +284,9 @@ CONTAINS    !===================================
                         EXIT
                     END IF
                     ! fill empty slot with last valid particle
-                    IF ( this%particles(j)%is_active == 1 ) THEN
+                    IF ( this%particles(j)%state >= 1 ) THEN
                         this%particles(i) = this%particles(j)
-                        this%particles(j)%is_active = 0
+                        this%particles(j)%state = -1
                         this%ifinal = j - 1
                         EXIT
                     END IF
@@ -304,7 +304,7 @@ CONTAINS    !===================================
 
         ! Debug check
         DO i = 1, this%ifinal
-            IF ( this%particles(i)%is_active /= 1 ) THEN
+            IF ( this%particles(i)%state < 1 ) THEN
                 WRITE(*,*) "defragmented list contains inactive particle at ", i
                 CALL errr(__FILE__, __LINE__)
             END IF

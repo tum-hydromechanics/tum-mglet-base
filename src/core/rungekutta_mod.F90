@@ -36,6 +36,7 @@ MODULE rungekutta_mod
         GENERIC :: get_coeffs => get_coeffs_a, get_coeffs_b
 
         PROCEDURE, PRIVATE :: get_coeffs_a, get_coeffs_b
+        PROCEDURE, PRIVATE :: init_eeuler
         PROCEDURE, PRIVATE :: init_williamson
         PROCEDURE, PRIVATE :: init_berland
         PROCEDURE, PRIVATE :: init_carpenter
@@ -44,7 +45,7 @@ MODULE rungekutta_mod
     END TYPE rk_2n_t
 
     ! rk type for particle timeintegration
-    TYPE, EXTENDS(rk_t) :: particle_rk_t
+    TYPE, EXTENDS(rk_t) :: bt_rk_t
 
         ! coefficients represent the common butcher tableau, where
         ! c: intermediate timesteps
@@ -55,13 +56,13 @@ MODULE rungekutta_mod
         REAL(realk) :: b(maxnrk) = 0.0
 
     CONTAINS
-        PROCEDURE :: init => init_particle_rk
-        PROCEDURE :: get_coeffs => get_prk_coefficients
+        PROCEDURE :: init => init_bt_rk
+        PROCEDURE :: get_coeffs => get_bt_coefficients
         PROCEDURE, PRIVATE :: init_euler_bt
         PROCEDURE, PRIVATE :: init_williamson_bt
-    END TYPE particle_rk_t
+    END TYPE bt_rk_t
 
-    PUBLIC :: rk_2n_t, particle_rk_t, rkstep
+    PUBLIC :: rk_2n_t, bt_rk_t, rkstep, prkstep
 CONTAINS
 
     SUBROUTINE init_2n(this, ctyp)
@@ -70,6 +71,8 @@ CONTAINS
         CHARACTER(len=*), INTENT(in) :: ctyp
 
         SELECT CASE(lower(TRIM(ctyp)))
+        CASE("euler")
+            CALL this%init_eeuler()
         CASE ("williamson")
             CALL this%init_williamson()
         CASE ("berland")
@@ -84,6 +87,28 @@ CONTAINS
         END SELECT
     END SUBROUTINE init_2n
 
+    SUBROUTINE init_eeuler(rk)
+        ! Classic explicit Euler Scheme
+
+        ! Subroutine arguments
+        CLASS(rk_2n_t), INTENT(out) :: rk
+
+        ! Set to zero
+        rk%c = 0.0
+        rk%a = 0.0
+        rk%b = 0.0
+
+        ! Used coefficients
+        rk%nrk = 1
+        ! TODO: cflmax
+        !rk%cflmax = oneeps*SQRT(3.0)
+        rk%c(1:rk%nrk) = [0.0]
+        rk%a(1:rk%nrk) = [0.0]
+        rk%b(1:rk%nrk) = [1.0]
+
+        ! Compute C from A and B
+        !CALL rk%comp_c()
+    END SUBROUTINE init_eeuler
 
     SUBROUTINE init_williamson(rk)
         ! Classic Williamson RK3 scheme
@@ -287,12 +312,30 @@ CONTAINS
         END DO
     END SUBROUTINE rkstep
 
-    ! ----- Particle RK from here.... ------
+    ! Compute only particle displacement, not the final/ intermediate position, because
+    ! the displacement might have to be influenced by boundary interactions.
+    ! The routine that handles boundary interactions cannot be called here (in the core)
+    ! dX_{j} = dt * B_{j} * ( A_{j} * dXeff_{j-1} + U(X_{j-1}) )
+    PURE SUBROUTINE prkstep(dx, dy, dz, u, v, w, dt, A, B)
 
-    SUBROUTINE init_particle_rk(this, ctyp)
+        ! Subroutine arguments
+        REAL(realk), INTENT(inout) :: dx, dy, dz
+        REAL(realk), INTENT(in) :: u, v, w
+        REAL(realk), INTENT(in) :: dt
+        REAL(realk), INTENT(in) :: A, B
+
+        dx = dt * B * (A * dx + u)
+        dy = dt * B * (A * dy + v)
+        dz = dt * B * (A * dz + w)
+
+    END SUBROUTINE prkstep
+
+    ! ----- Butcher Table RK from here.... ------
+
+    SUBROUTINE init_bt_rk(this, ctyp)
 
         ! subroutine arguments
-        CLASS(particle_rk_t), INTENT(out) :: this
+        CLASS(bt_rk_t), INTENT(out) :: this
         CHARACTER(len=*), INTENT(in) :: ctyp
 
         SELECT CASE(lower(TRIM(ctyp)))
@@ -305,12 +348,12 @@ CONTAINS
             CALL errr(__FILE__, __LINE__)
         END SELECT
 
-    END SUBROUTINE init_particle_rk
+    END SUBROUTINE init_bt_rk
 
     SUBROUTINE init_euler_bt(rk)
 
         ! Subroutine arguments
-        CLASS(particle_rk_t), INTENT(out) :: rk
+        CLASS(bt_rk_t), INTENT(out) :: rk
 
         ! local variables
         INTEGER(intk) :: i, j
@@ -333,7 +376,7 @@ CONTAINS
     SUBROUTINE init_williamson_bt(rk)
 
         ! Subroutine arguments
-        CLASS(particle_rk_t), INTENT(out) :: rk
+        CLASS(bt_rk_t), INTENT(out) :: rk
 
         ! local variables
         INTEGER(intk) :: i, j
@@ -359,10 +402,10 @@ CONTAINS
 
     END SUBROUTINE init_williamson_bt
 
-    SUBROUTINE get_prk_coefficients(this, c, b, a, irk)
+    SUBROUTINE get_bt_coefficients(this, c, b, a, irk)
 
         ! subroutine arguments
-        CLASS(particle_rk_t), INTENT(in) :: this
+        CLASS(bt_rk_t), INTENT(in) :: this
         REAL(realk), OPTIONAL, ALLOCATABLE, INTENT(out) :: c(:)
         REAL(realk), OPTIONAL, ALLOCATABLE, INTENT(out) :: b(:)
         REAL(realk), OPTIONAL, ALLOCATABLE, INTENT(out) :: a(:,:)
@@ -405,6 +448,6 @@ CONTAINS
             END DO
         END IF
 
-    END SUBROUTINE get_prk_coefficients
+    END SUBROUTINE get_bt_coefficients
 
 END MODULE rungekutta_mod

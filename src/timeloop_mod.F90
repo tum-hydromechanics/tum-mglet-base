@@ -225,7 +225,6 @@ CONTAINS
         CALL finish_statistics()
     END SUBROUTINE finish_timeloop
 
-
     SUBROUTINE timeloop()
         ! Local variables
         LOGICAL :: stop_now, allow_checkpoint
@@ -256,8 +255,8 @@ CONTAINS
             IF (dsim_particles) THEN ! <------------------------------------particles
                 ! particle counter for particle grid statistics
                 CALL advance_np_counter(itstep)
-                ! update backup field for particke rk timeintegration
-                CALL update_backup_fields()
+                ! OLD: update backup field for particke rk timeintegration
+                ! OLD: CALL update_backup_fields()
             END IF
 
             ! Global RK loop for tightly coupled quantities like flow and

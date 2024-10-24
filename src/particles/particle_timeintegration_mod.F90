@@ -8,97 +8,22 @@ MODULE particle_timeintegration_mod
 
     IMPLICIT NONE
 
-    !REAL(realk), ALLOCATABLE :: px_bup(:), py_bup(:), pz_bup(:)
-    !REAL(realk), ALLOCATABLE :: pu_itm(:,:), pv_itm(:,:), pw_itm(:,:)
-
-    TYPE(particle_rk_t) :: prkscheme
-    REAL(realk), ALLOCATABLE :: c(:), b(:), a(:,:)
+    TYPE(rk_2n_t) :: prkscheme
 
 CONTAINS
 
     SUBROUTINE init_particle_timeintegration()
 
-        ! local variables
-        INTEGER(intk), PARAMETER :: units_v(7) = [0, 1, -1, 0, 0, 0, 0]
-
-        TYPE(field_t), POINTER :: u, v, w
-        TYPE(field_t), POINTER :: buu, buv, buw
-
         CALL start_timer(900)
         CALL start_timer(910)
 
-        ! set backup fields (U_BackUp  => UBU; V and W analogously), used to store flow field at the beginning of each timestep
-        ! until the beginning of the next timestep; for particle timeintegration
-        CALL set_field("UBU", istag=1, units=units_v, buffers=.TRUE.)
-        CALL set_field("VBU", jstag=1, units=units_v, buffers=.TRUE.)
-        CALL set_field("WBU", kstag=1, units=units_v, buffers=.TRUE.)
-
-        ! set velocity field for Interpolation in rk steps (U Linear Interpolation => ULI; V and W analogously)
-        CALL set_field("ULI", istag=1, units=units_v, buffers=.TRUE.)
-        CALL set_field("VLI", jstag=1, units=units_v, buffers=.TRUE.)
-        CALL set_field("WLI", kstag=1, units=units_v, buffers=.TRUE.)
-
-        !ALLOCATE(px_bup(my_particle_list%max_np))
-        !ALLOCATE(py_bup(my_particle_list%max_np))
-        !ALLOCATE(pz_bup(my_particle_list%max_np))
-
-        !ALLOCATE(pu_itm(my_particle_list%max_np, prkscheme%nrk - 1))
-        !ALLOCATE(pv_itm(my_particle_list%max_np, prkscheme%nrk - 1))
-        !ALLOCATE(pw_itm(my_particle_list%max_np, prkscheme%nrk - 1))
-
         ! init rk scheme
         CALL prkscheme%init(prkmethod)
-
-        CALL prkscheme%get_coeffs(c, b, a)
-
-        ! for debugging
-        SELECT CASE (TRIM(particle_terminal))
-            CASE ("none")
-                CONTINUE
-            CASE ("normal")
-                CONTINUE
-            CASE ("verbose")
-                WRITE(*,'("RK-Coefficients:")')
-                WRITE(*,'("c(1) = ", F12.8)') c(1)
-                WRITE(*,'("c(2) = ", F12.8)') c(2)
-                WRITE(*,'("c(3) = ", F12.8)') c(3)
-                WRITE(*,'("b(1) = ", F12.8)') b(1)
-                WRITE(*,'("b(2) = ", F12.8)') b(2)
-                WRITE(*,'("b(3) = ", F12.8)') b(3)
-                WRITE(*,'("a(2,1) = ", F12.8)') a(2,1)
-                WRITE(*,'("a(3,1) = ", F12.8)') a(3,1)
-                WRITE(*,'("a(3,2) = ", F12.8)') a(3,2)
-                WRITE(*, '()')
-        END SELECT
 
         CALL stop_timer(910)
         CALL stop_timer(900)
 
     END SUBROUTINE init_particle_timeintegration
-
-    SUBROUTINE prepare_particle_timeintegration()
-
-        CALL update_backup_fields()
-
-        !IF (SIZE(px_bup) /= my_particle_list%max_np) THEN
-
-            !DEALLOCATE(px_bup)
-            !DEALLOCATE(py_bup)
-            !DEALLOCATE(pz_bup)
-            !DEALLOCATE(pu_itm)
-            !DEALLOCATE(pv_itm)
-            !DEALLOCATE(pw_itm)
-
-            !ALLOCATE(px_bup(my_particle_list%max_np))
-            !ALLOCATE(py_bup(my_particle_list%max_np))
-            !ALLOCATE(pz_bup(my_particle_list%max_np))
-            !ALLOCATE(pu_itm(my_particle_list%max_np, prkscheme%nrk - 1))
-            !ALLOCATE(pv_itm(my_particle_list%max_np, prkscheme%nrk - 1))
-            !ALLOCATE(pw_itm(my_particle_list%max_np, prkscheme%nrk - 1))
-
-       !END IF
-
-    END SUBROUTINE prepare_particle_timeintegration
 
     SUBROUTINE timeintegrate_particles(itstep, dt)
 
@@ -111,32 +36,30 @@ CONTAINS
         TYPE(field_t), POINTER :: x_f, y_f, z_f
         TYPE(field_t), POINTER :: dx_f, dy_f, dz_f, ddx_f, ddy_f, ddz_f
         TYPE(field_t), POINTER :: u_f, v_f, w_f
-        TYPE(field_t), POINTER :: ubu_f, vbu_f, wbu_f
-        TYPE(field_t), POINTER :: uli_f, vli_f, wli_f
 
         REAL(realk), POINTER, CONTIGUOUS, DIMENSION(:) :: x, y, z
         REAL(realk), POINTER, CONTIGUOUS, DIMENSION(:) :: dx, dy, dz, ddx, ddy, ddz
-        REAL(realk), POINTER, CONTIGUOUS, DIMENSION(:, :, :) :: uli, vli, wli
+        REAL(realk), POINTER, CONTIGUOUS, DIMENSION(:, :, :) :: u, v, w
+
+        REAL(realk), ALLOCATABLE :: pdx(:), pdy(:), pdz(:)
 
         INTEGER(intk) :: igrid, i, j, ii, jj, kk, gfound, ig, destgrid
         REAL(realk) :: pu_adv, pv_adv, pw_adv, pu_diff, pv_diff, pw_diff
-        REAL(realk) :: pdx, pdy, pdz, pdx_diff, pdy_diff, pdz_diff, pdx_eff, pdy_eff, pdz_eff
-
-        REAL(realk), ALLOCATABLE :: px_bup(:), py_bup(:), pz_bup(:)
-        REAL(realk), ALLOCATABLE :: pu_itm(:,:), pv_itm(:,:), pw_itm(:,:)
+        REAL(realk) :: pdx_diff, pdy_diff, pdz_diff, pdx_eff, pdy_eff, pdz_eff
 
         INTEGER(intk) :: irk
+        REAL(realk) :: A, B
 
         CALL start_timer(900)
         CALL start_timer(920)
 
-        ALLOCATE(px_bup(my_particle_list%max_np))
-        ALLOCATE(py_bup(my_particle_list%max_np))
-        ALLOCATE(pz_bup(my_particle_list%max_np))
+        ALLOCATE(pdx(my_particle_list%ifinal))
+        ALLOCATE(pdy(my_particle_list%ifinal))
+        ALLOCATE(pdz(my_particle_list%ifinal))
 
-        ALLOCATE(pu_itm(my_particle_list%max_np, prkscheme%nrk - 1))
-        ALLOCATE(pv_itm(my_particle_list%max_np, prkscheme%nrk - 1))
-        ALLOCATE(pw_itm(my_particle_list%max_np, prkscheme%nrk - 1))
+        pdx = 0.0
+        pdy = 0.0
+        pdz = 0.0
 
         CALL get_field(x_f, "X")
         CALL get_field(y_f, "Y")
@@ -145,14 +68,6 @@ CONTAINS
         CALL get_field(u_f, "U")
         CALL get_field(v_f, "V")
         CALL get_field(w_f, "W")
-
-        CALL get_field(ubu_f, "UBU")
-        CALL get_field(vbu_f, "VBU")
-        CALL get_field(wbu_f, "WBU")
-
-        CALL get_field(uli_f, "ULI")
-        CALL get_field(vli_f, "VLI")
-        CALL get_field(wli_f, "WLI")
 
         IF (dinterp_particles) THEN
 
@@ -172,47 +87,61 @@ CONTAINS
             WRITE(*, '("NEW TIMESTEP - PARTICLE TIMEINTEGRATION:")')
         END IF
 
-        ! store the initial particle coordinates in backup array
+        ! algorithm for EXPLICIT RK schemes
         DO i = 1, my_particle_list%ifinal
 
-            px_bup(i) = my_particle_list%particles(i)%x
-            py_bup(i) = my_particle_list%particles(i)%y
-            pz_bup(i) = my_particle_list%particles(i)%z
+            ! checking activity
+            IF (my_particle_list%particles(i)%state < 1) THEN
+                CYCLE
+            END IF
 
-        END DO
+            ! checking locality (Debug)
+            IF (my_particle_list%particles(i)%iproc /= myid) THEN
+                WRITE(*, '("ERROR: Particle on wrong proc at start of current timestep")')
+                CALL errr(__FILE__, __LINE__)
+            END IF
 
-        ! algorithm for EXPLICIT RK schemes
-        ! iterate over all particles withing the rk iteration so the field interpolation can be used für all particles
-        DO irk = 1, prkscheme%nrk
+            ! assigning igrid for clarity of the follwing expressions
+            igrid = my_particle_list%particles(i)%igrid
 
-            CALL time_interpolate_field(c(irk), u_f, v_f, w_f, ubu_f, vbu_f, wbu_f, uli_f, vli_f, wli_f)
+            ! checking consistency (Debug)
+            gfound = 1
+            DO ig = 1, nMyGrids
+                IF (my_particle_list%particles(i)%igrid == mygrids(ig)) gfound = 1; EXIT
+            END DO
 
-            DO i = 1, my_particle_list%ifinal
+            IF (gfound == 0) THEN
+                WRITE(*, '("ERROR: Particle grid ", I0, " is not on this process (", I0, ")")') my_particle_list%particles(i)%igrid, myid
+                CALL errr(__FILE__, __LINE__)
+            END IF
 
-                ! checking activity
-                IF (my_particle_list%particles(i)%state < 1) THEN
-                    CYCLE
-                END IF
+            ! for debugging
+            SELECT CASE (TRIM(particle_terminal))
+                CASE ("none")
+                    CONTINUE
+                CASE ("normal")
+                    CONTINUE
+                CASE ("verbose")
+                    WRITE(*,'("Pre Motion - Particle Status:")')
+                    CALL print_particle_status(my_particle_list%particles(i))
+                    WRITE(*, '()')
+            END SELECT
 
-                ! checking locality (Debug)
-                IF (my_particle_list%particles(i)%iproc /= myid) THEN
-                    WRITE(*, '("ERROR: Particle on wrong proc at start of current timestep")')
-                    CALL errr(__FILE__, __LINE__)
-                END IF
+            DO irk = 1, prkscheme%nrk
 
-                ! assigning igrid for clarity of the follwing expressions
-                igrid = my_particle_list%particles(i)%igrid
+                CALL prkscheme%get_coeffs(A, B, irk)
 
-                ! checking consistency (Debug)
-                gfound = 1
-                DO ig = 1, nMyGrids
-                    IF (my_particle_list%particles(i)%igrid == mygrids(ig)) gfound = 1; EXIT
-                END DO
-
-                IF (gfound == 0) THEN
-                    WRITE(*, '("ERROR: Particle grid ", I0, " is not on this process (", I0, ")")') my_particle_list%particles(i)%igrid, myid
-                    CALL errr(__FILE__, __LINE__)
-                END IF
+                ! for debugging
+                SELECT CASE (TRIM(particle_terminal))
+                    CASE ("none")
+                        CONTINUE
+                    CASE ("normal")
+                        CONTINUE
+                    CASE ("verbose")
+                        WRITE(*,'("RK Step: ", I0)') irk
+                        WRITE(*,'("LS RK Coefficients: ", 2F12.8)') A, B
+                        WRITE(*, '()')
+                END SELECT
 
                 ! --- ADVECTION VELOCITY ---
 
@@ -223,9 +152,9 @@ CONTAINS
                 CALL y_f%get_ptr(y, igrid)
                 CALL z_f%get_ptr(z, igrid)
 
-                CALL u_f%get_ptr(uli, igrid)
-                CALL v_f%get_ptr(vli, igrid)
-                CALL w_f%get_ptr(wli, igrid)
+                CALL u_f%get_ptr(u, igrid)
+                CALL v_f%get_ptr(v, igrid)
+                CALL w_f%get_ptr(w, igrid)
 
                 IF (dinterp_particles) THEN
 
@@ -238,60 +167,33 @@ CONTAINS
                     CALL ddz_f%get_ptr(ddz, igrid)
 
                     CALL gobert_particle_uvw(kk, jj, ii, my_particle_list%particles(i), &
-                    pu_adv, pv_adv, pw_adv, uli, vli, wli, x, y, z, dx, dy, dz, ddx, ddy, ddz)
+                    pu_adv, pv_adv, pw_adv, u, v, w, x, y, z, dx, dy, dz, ddx, ddy, ddz)
 
                 ELSE
 
                     CALL nearest_particle_uvw(kk, jj, ii, my_particle_list%particles(i), &
-                    pu_adv, pv_adv, pw_adv, uli, vli, wli, x, y, z)
+                    pu_adv, pv_adv, pw_adv, u, v, w, x, y, z)
 
                 END IF
 
-                ! set particle coordinates to backup value
-                IF (irk > 1) THEN
-                    my_particle_list%particles(i)%x = px_bup(i)
-                    my_particle_list%particles(i)%y = py_bup(i)
-                    my_particle_list%particles(i)%z = pz_bup(i)
-                    CALL update_particle_cell(my_particle_list%particles(i))
-                END IF
+                CALL prkstep(pdx(i), pdy(i), pdz(i), pu_adv, pv_adv, pw_adv, dt, A, B)
 
+                ! Particle Boundary Interaction
+                CALL move_particle(my_particle_list%particles(i), pdx(i), pdy(i), pdz(i), pdx_eff, pdy_eff, pdz_eff)
+
+                ! TODO: maybe source this out into move_particle (?)
                 IF (irk /= prkscheme%nrk) THEN
+                    pdx(i) = pdx_eff
+                    pdy(i) = pdy_eff
+                    pdz(i) = pdz_eff
+                END IF
 
-                    ! store intermediate velocity
-                    pu_itm(i, irk) = pu_adv
-                    pv_itm(i, irk) = pv_adv
-                    pw_itm(i, irk) = pw_adv
-
-                    ! zeroize current intermediate particle displacement
-                    pdx = 0
-                    pdy = 0
-                    pdz = 0
-
-                    ! Advection
-                    DO j = 1, prkscheme%nrk
-                        pdx = pdx + dt * pu_itm(i, j) * a(irk + 1, j)
-                        pdy = pdy + dt * pv_itm(i, j) * a(irk + 1, j)
-                        pdz = pdz + dt * pw_itm(i, j) * a(irk + 1, j)
-                    END DO
-
-                    ! Particle Boundary Interaction
-                    CALL move_particle(my_particle_list%particles(i), pdx, pdy, pdz, pdx_eff, pdy_eff, pdz_eff)
-
-                ELSEIF (irk == prkscheme%nrk) THEN
-
-                    ! --- Advection ---
-                    pdx = dt * b(irk) * pu_adv
-                    pdy = dt * b(irk) * pv_adv
-                    pdz = dt * b(irk) * pw_adv
-
-                    DO j = 1, prkscheme%nrk - 1
-                        pdx = pdx + dt * b(j) * pu_itm(i, j)
-                        pdy = pdy + dt * b(j) * pv_itm(i, j)
-                        pdz = pdz + dt * b(j) * pw_itm(i, j)
-                    END DO
+                IF (irk == prkscheme%nrk) THEN
 
                     ! --- Diffusiion ---
                     CALL get_particle_diffusion(dt, pu_diff, pv_diff, pw_diff, pdx_diff, pdy_diff, pdz_diff)
+
+                    CALL move_particle(my_particle_list%particles(i), pdx_diff, pdy_diff, pdz_diff, pdx_eff, pdy_eff, pdz_eff)
 
                     ! for debugging
                     SELECT CASE (TRIM(particle_terminal))
@@ -300,21 +202,9 @@ CONTAINS
                         CASE ("normal")
                             CONTINUE
                         CASE ("verbose")
-                            WRITE(*,'("Pre Physical Particle Motion:")')
-                            CALL print_particle_status(my_particle_list%particles(i))
-                            WRITE(*,'("Unhindered Motion ", I0, "(dt = ", F12.8,"):")') my_particle_list%particles(i)%ipart, dt
-                            WRITE(*,'("Particle ADVECTION [m] = ", 3F12.8)') pdx, pdy, pdz
-                            WRITE(*,'("Particle DIFFUSION [m] = ", 3F12.8)') pdx_diff, pdy_diff, pdz_diff
+                            WRITE(*,'("Partical Diffusion: ")')
                             WRITE(*, '()')
                     END SELECT
-
-                    ! --- Superposition ---
-                    pdx = pdx + pdx_diff
-                    pdy = pdy + pdy_diff
-                    pdz = pdz + pdz_diff
-
-                    ! THIS IS THE ACTUAL "PHYSICAL" DISPLACEMENT OF THE PARTICLE
-                    CALL move_particle(my_particle_list%particles(i), pdx, pdy, pdz, pdx_eff, pdy_eff, pdz_eff)
 
                 END IF
 
@@ -357,48 +247,7 @@ CONTAINS
 
     END SUBROUTINE get_particle_diffusion
 
-    SUBROUTINE update_backup_fields()
-
-        ! local variables
-        TYPE(field_t), POINTER :: u_f, v_f, w_f
-        TYPE(field_t), POINTER :: ubu_f, vbu_f, wbu_f
-
-        CALL start_timer(900)
-        CALL start_timer(920)
-        CALL start_timer(921)
-
-        CALL get_field(u_f, "U")
-        CALL get_field(v_f, "V")
-        CALL get_field(w_f, "W")
-
-        CALL get_field(ubu_f, "UBU")
-        CALL get_field(vbu_f, "VBU")
-        CALL get_field(wbu_f, "WBU")
-
-       !! Copy the velocity field u, v, w into ubu, vbu, wbu
-        ubu_f%arr = u_f%arr
-        vbu_f%arr = v_f%arr
-        wbu_f%arr = w_f%arr
-
-       !! Copy buffers from u, v, w to ubu, vbu, wbu
-        ubu_f%buffers = u_f%buffers
-        vbu_f%buffers = v_f%buffers
-        wbu_f%buffers = w_f%buffers
-
-        CALL stop_timer(921)
-        CALL stop_timer(920)
-        CALL stop_timer(900)
-
-    END SUBROUTINE update_backup_fields
-
     SUBROUTINE finish_particle_timeintegration()
-
-        !DEALLOCATE(px_bup)
-        !DEALLOCATE(py_bup)
-        !DEALLOCATE(pz_bup)
-        !DEALLOCATE(pu_itm)
-        !DEALLOCATE(pv_itm)
-        !DEALLOCATE(pw_itm)
 
     END SUBROUTINE finish_particle_timeintegration
 
