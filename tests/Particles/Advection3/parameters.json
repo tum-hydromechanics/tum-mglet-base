@@ -48,13 +48,17 @@
         ]
     },
     "particles": {
-        "terminal": "verbose",
         "read": true,
-        "interp": true,
-        "write": true,
-        "snapshot_step": 1,
         "init_np": 10,
         "list_len": 100,
-        "D":[0.0, 0.0, 0.0]
+        "interp": true,
+        "D":[0.0, 0.0, 0.0],
+        "terminal": "verbose",
+        "slice_dir": "X",
+        "nslice_levels": 1,
+        "nslices": [10],
+        "slice_levels": [1.0],
+        "write": true,
+        "snapshot_step": 1
     }
 }

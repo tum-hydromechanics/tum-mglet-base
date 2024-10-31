@@ -48,15 +48,19 @@
         ]
     },
     "particles": {
-        "terminal": "verbose",
         "read": true,
         "read_obst": false,
-        "interp": true,
-        "prkmethod": "euler",
-        "write": true,
-        "snapshot_step": 1,
         "init_np": 1,
         "list_len": 1,
-        "D":[0.0, 0.0, 0.0]
+        "interp": true,
+        "prkmethod": "euler",
+        "D":[0.0, 0.0, 0.0],
+        "terminal": "verbose",
+        "slice_dir": "X",
+        "nslice_levels": 1,
+        "nslices": [10],
+        "slice_levels": [1.0],
+        "write": true,
+        "snapshot_step": 1
     }
 }

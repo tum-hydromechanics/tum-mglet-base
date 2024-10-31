@@ -1,8 +1,8 @@
 {
     "time": {
-        "mtstep": 100,
-        "dt": 0.01,
-        "tend": 1.0,
+        "mtstep": 2000,
+        "dt": 0.00628,
+        "tend": 12.56,
         "itinfo": 1,
         "itcheck": 10
     },
@@ -16,10 +16,10 @@
     },
     "flow": {
         "tu_level": 0.0,
-    	"solve": true,
+    	"solve": false,
         "gmol": 0.01,
         "rho": 1.0,
-        "uinf": [-5.0, -5.0, -2.5],
+        "uinf": ["var a := 1.0; a*y", "var b := -1; b*x", "var c := 0; c*x"],
         "gradp": [0.0, 0.0, 0.0],
         "pressuresolver": {
             "type": "sip",
@@ -50,17 +50,14 @@
     "particles": {
         "read": true,
         "read_obst": false,
-        "init_np": 10,
-        "list_len": 100,
+        "init_np": 1,
+        "list_len": 1,
         "interp": true,
-        "prkmethod": "euler",
+        "prkmethod": "williamson",
         "D":[0.0, 0.0, 0.0],
         "terminal": "verbose",
-        "slice_dir": "X",
-        "nslice_levels": 2,
-        "nslices": [2, 10],
-        "slice_levels": [0.5, 0.5],
+        "slice_dir": "N",
         "write": true,
-        "snapshot_step": 1
+        "snapshot_step": 10
     }
 }

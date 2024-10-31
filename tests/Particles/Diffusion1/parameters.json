@@ -48,13 +48,17 @@
         ]
     },
     "particles": {
-        "terminal": "normal",
         "read": true,
-        "interp": true,
-        "write": true,
-        "snapshot_step": 5,
-        "init_np": 100,
+        "init_np": 1000,
         "list_len": 1000,
-        "D":[0.05, 0.05, 0.05]
+        "interp": true,
+        "prkmethod": "williamson",
+        "D":[0.05, 0.05, 0.05],
+        "terminal": "normal",
+        "nslice_levels": 1,
+        "nslices": [100],
+        "slice_levels": [1.0],
+        "write": true,
+        "snapshot_step": 5
     }
 }

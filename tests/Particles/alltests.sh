@@ -24,6 +24,10 @@ echo ------------ ADVECTION 6 ----------
 cd ~/tum-mglet-base/tests/Particles/Advection6
 ./run.sh newtest ../../../build/src/mglet
 
+echo ------------ ADVECTION 7 ----------
+cd ~/tum-mglet-base/tests/Particles/Advection6
+./run.sh newtest ../../../build/src/mglet
+
 echo ------------ DIFFUSION 1 ----------
 cd ~/tum-mglet-base/tests/Particles/Diffusion1
 ./run.sh newtest ../../../build/src/mglet
