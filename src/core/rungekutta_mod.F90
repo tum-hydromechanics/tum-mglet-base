@@ -316,17 +316,21 @@ CONTAINS
     ! the displacement might have to be influenced by boundary interactions.
     ! The routine that handles boundary interactions cannot be called here (in the core)
     ! dX_{j} = dt * B_{j} * ( A_{j} * dXeff_{j-1} + U(X_{j-1}) )
-    PURE SUBROUTINE prkstep(dx, dy, dz, u, v, w, dt, A, B)
+    PURE SUBROUTINE prkstep(dx_pot, dy_pot, dz_pot, u, v, w, dt, A, B, dx, dy, dz)
 
         ! Subroutine arguments
-        REAL(realk), INTENT(inout) :: dx, dy, dz
-        REAL(realk), INTENT(in) :: u, v, w
-        REAL(realk), INTENT(in) :: dt
+        REAL(realk), INTENT(inout) :: dx_pot, dy_pot, dz_pot
+        REAL(realk), INTENT(in) :: u, v, w, dt
         REAL(realk), INTENT(in) :: A, B
+        REAL(realk), INTENT(out) :: dx, dy, dz
 
-        dx = dt * B * (A * dx + u)
-        dy = dt * B * (A * dy + v)
-        dz = dt * B * (A * dz + w)
+        dx_pot = (A * dx_pot + dt * u)
+        dy_pot = (A * dy_pot + dt * v)
+        dz_pot = (A * dz_pot + dt * w)
+
+        dx = B * dx_pot
+        dy = B * dy_pot
+        dz = B * dz_pot
 
     END SUBROUTINE prkstep
 

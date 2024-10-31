@@ -41,11 +41,11 @@ CONTAINS
         REAL(realk), POINTER, CONTIGUOUS, DIMENSION(:) :: dx, dy, dz, ddx, ddy, ddz
         REAL(realk), POINTER, CONTIGUOUS, DIMENSION(:, :, :) :: u, v, w
 
-        REAL(realk), ALLOCATABLE :: pdx(:), pdy(:), pdz(:)
+        REAL(realk), ALLOCATABLE :: pdx_pot(:), pdy_pot(:), pdz_pot(:)
 
         INTEGER(intk) :: igrid, i, j, ii, jj, kk, gfound, ig, destgrid
         REAL(realk) :: pu_adv, pv_adv, pw_adv, pu_diff, pv_diff, pw_diff
-        REAL(realk) :: pdx_diff, pdy_diff, pdz_diff, pdx_eff, pdy_eff, pdz_eff
+        REAL(realk) :: pdx_adv, pdy_adv, pdz_adv, pdx_diff, pdy_diff, pdz_diff, pdx_eff, pdy_eff, pdz_eff
 
         INTEGER(intk) :: irk
         REAL(realk) :: A, B
@@ -53,13 +53,13 @@ CONTAINS
         CALL start_timer(900)
         CALL start_timer(920)
 
-        ALLOCATE(pdx(my_particle_list%ifinal))
-        ALLOCATE(pdy(my_particle_list%ifinal))
-        ALLOCATE(pdz(my_particle_list%ifinal))
+        ALLOCATE(pdx_pot(my_particle_list%ifinal))
+        ALLOCATE(pdy_pot(my_particle_list%ifinal))
+        ALLOCATE(pdz_pot(my_particle_list%ifinal))
 
-        pdx = 0.0
-        pdy = 0.0
-        pdz = 0.0
+        pdx_pot = 0.0
+        pdy_pot = 0.0
+        pdz_pot = 0.0
 
         CALL get_field(x_f, "X")
         CALL get_field(y_f, "Y")
@@ -176,17 +176,15 @@ CONTAINS
 
                 END IF
 
-                CALL prkstep(pdx(i), pdy(i), pdz(i), pu_adv, pv_adv, pw_adv, dt, A, B)
+                CALL prkstep(pdx_pot(i), pdy_pot(i), pdz_pot(i), pu_adv, pv_adv, pw_adv, dt, A, B, pdx_adv, pdy_adv, pdz_adv)
 
                 ! Particle Boundary Interaction
-                CALL move_particle(my_particle_list%particles(i), pdx(i), pdy(i), pdz(i), pdx_eff, pdy_eff, pdz_eff)
+                CALL move_particle(my_particle_list%particles(i), pdx_adv, pdy_adv, pdz_adv, pdx_eff, pdy_eff, pdz_eff)
 
-                ! TODO: maybe source this out into move_particle (?)
-                IF (irk /= prkscheme%nrk) THEN
-                    pdx(i) = pdx_eff
-                    pdy(i) = pdy_eff
-                    pdz(i) = pdz_eff
-                END IF
+                ! IDEA: ...
+                !pdx_pot(i) = pdx_eff / B
+                !pdy_pot(i) = pdy_eff / B
+                !pdz_pot(i) = pdz_eff / B
 
                 IF (irk == prkscheme%nrk) THEN
 
