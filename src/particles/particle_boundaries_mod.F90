@@ -175,34 +175,43 @@ MODULE particle_boundaries_mod
             END DO
         END DO
 
-        DO igrid = 1, ngrid
+        SELECT CASE (TRIM(particle_terminal))
+            CASE ("none")
+                CONTINUE
+            CASE ("normal")
+                CONTINUE
+            CASE ("verbose")
+                IF (myid == 0) THEN
+                    DO igrid = 1, ngrid
+                        WRITE(*, *) "------ Boundaries, Grid:   ", igrid, "------"
+                        CALL get_bc_ctyp(ctyp, ibocd, 1, igrid)
+                        WRITE(*, *) "FRONT:                ", ctyp
+                        CALL get_bc_ctyp(ctyp, ibocd, 2, igrid)
+                        WRITE(*, *) "BACK:                 ", ctyp
+                        CALL get_bc_ctyp(ctyp, ibocd, 3, igrid)
+                        WRITE(*, *) "RIGHT:                ", ctyp
+                        CALL get_bc_ctyp(ctyp, ibocd, 4, igrid)
+                        WRITE(*, *) "LEFT:                 ", ctyp
+                        CALL get_bc_ctyp(ctyp, ibocd, 5, igrid)
+                        WRITE(*, *) "BOTTOM:               ", ctyp
+                        CALL get_bc_ctyp(ctyp, ibocd, 6, igrid)
+                        WRITE(*, *) "TOP:                  ", ctyp
 
-            WRITE(*, *) "------ Boundaries, Grid:   ", igrid, "------"
-            CALL get_bc_ctyp(ctyp, ibocd, 1, igrid)
-            WRITE(*, *) "FRONT:                ", ctyp
-            CALL get_bc_ctyp(ctyp, ibocd, 2, igrid)
-            WRITE(*, *) "BACK:                 ", ctyp
-            CALL get_bc_ctyp(ctyp, ibocd, 3, igrid)
-            WRITE(*, *) "RIGHT:                ", ctyp
-            CALL get_bc_ctyp(ctyp, ibocd, 4, igrid)
-            WRITE(*, *) "LEFT:                 ", ctyp
-            CALL get_bc_ctyp(ctyp, ibocd, 5, igrid)
-            WRITE(*, *) "BOTTOM:               ", ctyp
-            CALL get_bc_ctyp(ctyp, ibocd, 6, igrid)
-            WRITE(*, *) "TOP:                  ", ctyp
+                        WRITE(*, *) "Faces:"
+                        DO iface = 1, 26
+                            WRITE(*, *) "Face:                 ", iface
+                            WRITE(*, *) "Neigbhour grid:       ", particle_boundaries%face_neighbours(iface, igrid)
+                            WRITE(*, *) "Normal vector (n1):   ", particle_boundaries%face_normals(1, iface, igrid)
+                            WRITE(*, *) "Normal vector (n2):   ", particle_boundaries%face_normals(2, iface, igrid)
+                            WRITE(*, *) "Normal vector (n3):   ", particle_boundaries%face_normals(3, iface, igrid)
+                        END DO
+                    END DO
+                    WRITE(*, *) " "
+                END IF
+        END SELECT
 
-            WRITE(*, *) "Faces:"
-            DO iface = 1, 26
-                WRITE(*, *) "Face:                 ", iface
-                WRITE(*, *) "Neigbhour grid:       ", particle_boundaries%face_neighbours(iface, igrid)
-                WRITE(*, *) "Normal vector (n1):   ", particle_boundaries%face_normals(1, iface, igrid)
-                WRITE(*, *) "Normal vector (n2):   ", particle_boundaries%face_normals(2, iface, igrid)
-                WRITE(*, *) "Normal vector (n3):   ", particle_boundaries%face_normals(3, iface, igrid)
-            END DO
-
-        END DO
-
-        WRITE(*, *) " "
+        ! BARRIER ONLY FOR DEGUGGING -- TEMPORARY <----------------------------------------------- TODO : remove
+        CALL MPI_Barrier(MPI_COMM_WORLD)
 
         CALL read_obstacles()
 
