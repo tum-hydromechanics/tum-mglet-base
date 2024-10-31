@@ -10,22 +10,34 @@ USE timer_mod
 
 IMPLICIT NONE
 
+! ON/OFF SWITCH FOR PARTICLE SIMULATION
 LOGICAL :: dsim_particles = .FALSE.
 
-CHARACTER(len = 7) :: particle_terminal
-
+! INPUT
 LOGICAL :: dread_particles
 LOGICAL :: dread_obstacles
-LOGICAL :: dinterp_particles
-LOGICAL :: dwrite_particles
 
+! LIST SPECIFICATION
 INTEGER(intk) :: init_npart
 INTEGER(intk) :: plist_len
-INTEGER(intk) :: psnapshot_step
 
+! SIMULATION SPECIFICATION
+LOGICAL :: dinterp_particles
+CHARACTER(len=16) :: prkmethod
 REAL(realk) :: D(3) = 0.0_realk
 
-CHARACTER(len=16) :: prkmethod
+! OUTPUT
+CHARACTER(len = 7) :: particle_terminal
+
+INTEGER(intk) :: nsamples
+CHARACTER(len = 1) :: slice_dir = "N" ! X, Y, Z or N for None
+INTEGER(intk) :: nslice_levels
+INTEGER(intk), ALLOCATABLE :: nslices(:)
+REAL(realk), ALLOCATABLE :: slice_levels(:)
+
+LOGICAL :: dwrite_particles
+INTEGER(intk) :: psnapshot_step
+
 
 CONTAINS    !===================================
 
@@ -34,9 +46,11 @@ CONTAINS    !===================================
         USE config_mod
         USE fort7_mod
 
-        !- - - - - - - - - - - - - - - - - -
-
+        INTEGER(intk) :: i, j, mtstep_temp
         TYPE(config_t) :: pconf
+        TYPE(config_t) :: timeconf_temp
+
+        !- - - - - - - - - - - - - - - - - -
 
         IF (.NOT. fort7%exists("/particles")) THEN
 
@@ -248,37 +262,259 @@ CONTAINS    !===================================
 
         !- - - - - - - - - - - - - - - - - -
 
+        CALL fort7%get(timeconf_temp, "/time")
+        CALL timeconf_temp%get_value("/mtstep", mtstep_temp)
+
+        CALL pconf%get_value("/nsamples", nsamples, mtstep_temp)
+
+        IF (nsamples < mtstep_temp) THEN
+
+            IF (myid == 0) THEN
+                SELECT CASE (TRIM(particle_terminal))
+                    CASE ("none")
+                        CONTINUE
+                    CASE ("normal")
+                        WRITE(*, *) "WARNING: The number of samples must be an integer greater or equal to mtstep. Using nsamples = mtstep instead."
+                        WRITE(*, '()')
+                    CASE ("verbose")
+                        WRITE(*, *) "WARNING: The number of samples must be an integer greater or equal to mtstep. Using nsamples = mtstep instead."
+                        WRITE(*, '()')
+                END SELECT
+            END IF
+
+            nsamples = mtstep_temp
+
+        END IF
+
+        !- - - - - - - - - - - - - - - - - -
+
+        IF (fort7%exists("/particles/slice_dir")) THEN
+
+            CALL pconf%get_value("/slice_dir", slice_dir, "N")
+
+            IF (slice_dir /= "X" .AND. slice_dir /= "Y" .AND. slice_dir /= "Z" .AND. slice_dir /= "N") THEN
+
+                IF (myid == 0) THEN
+                    SELECT CASE (TRIM(particle_terminal))
+                        CASE ("none")
+                            CONTINUE
+                        CASE ("normal")
+                            WRITE(*, *) "WARNING: Slice direction is not valid. Using slice_dir = N instead (no slice statistics)."
+                            WRITE(*, '()')
+                        CASE ("verbose")
+                            WRITE(*, *) "WARNING: Slice direction is not valid. Using slice_dir = N instead (no slice statistics)."
+                            WRITE(*, '()')
+                    END SELECT
+                END IF
+
+                slice_dir = "N"
+
+            END IF
+
+            !- - - - - - - - - - - - - - - - - -
+
+            IF (slice_dir /= "N") THEN
+
+                CALL pconf%get_value("/nslice_levels", nslice_levels, 1)
+
+                IF (nslice_levels < 1) THEN
+
+                    IF (myid == 0) THEN
+                        SELECT CASE (TRIM(particle_terminal))
+                            CASE ("none")
+                                CONTINUE
+                            CASE ("normal")
+                                WRITE(*, *) "WARNING: The number of slice levels must be an integer greater than 0. Using nslice_levels = 1 instead."
+                                WRITE(*, '()')
+                            CASE ("verbose")
+                                WRITE(*, *) "WARNING: The number of slice levels must be an integer greater than 0. Using nslice_levels = 1 instead."
+                                WRITE(*, '()')
+                        END SELECT
+                    END IF
+
+                    nslice_levels = 1
+
+                END IF
+
+                !- - - - - - - - - - - - - - - - - -
+
+                ALLOCATE(nslices(nslice_levels))
+
+                CALL pconf%get_array("/nslices", nslices)
+
+                DO i = 1, nslice_levels
+
+                    IF (nslices(i) < 1) THEN
+
+                        IF (myid == 0) THEN
+                            SELECT CASE (TRIM(particle_terminal))
+                                CASE ("none")
+                                    CONTINUE
+                                CASE ("normal")
+                                    WRITE(*, *) "WARNING: The number of slices must be an integer greater than 0. Using nslices(i) = 1 for all i instead."
+                                    WRITE(*, '()')
+                                CASE ("verbose")
+                                    WRITE(*, *) "WARNING: The number of slices must be an integer greater than 0. Using nslices(i) = 1 for all i instead."
+                                    WRITE(*, '()')
+                            END SELECT
+                        END IF
+
+                        DO j = 1, nslice_levels
+                            nslices(i) = 1
+                        END DO
+
+                        EXIT
+
+                    END IF
+
+                END DO
+
+                !- - - - - - - - - - - - - - - - - -
+
+                ALLOCATE(slice_levels(nslice_levels))
+
+                CALL pconf%get_array("/slice_levels", slice_levels)
+
+                DO i = 1, nslice_levels
+
+                    IF (i == 1) THEN
+
+                        IF (slice_levels(i) < 0.0 .OR. slice_levels(i) > 1.0) THEN
+
+                            IF (myid == 0) THEN
+                                SELECT CASE (TRIM(particle_terminal))
+                                    CASE ("none")
+                                        CONTINUE
+                                    CASE ("normal")
+                                        WRITE(*, *) "WARNING: Slice levels are invalid. Using automatically generated levels instead."
+                                        WRITE(*, '()')
+                                    CASE ("verbose")
+                                        WRITE(*, *) "WARNING: Slice levels are invalid. Using automatically generated levels instead."
+                                        WRITE(*, '()')
+                                END SELECT
+                            END IF
+
+                            slice_levels(1) = 1/SUM(nslices)
+                            DO j = 2, nslice_levels
+                                slice_levels(j) = slice_levels(j-1) + 1/SUM(nslices)
+                            END DO
+
+                            EXIT
+
+                        END IF
+
+                    ELSEIF (i > 1) THEN
+
+                        IF (slice_levels(i) < 0.0 .OR. slice_levels(i) > 1.0) THEN
+
+                            IF (myid == 0) THEN
+                                SELECT CASE (TRIM(particle_terminal))
+                                    CASE ("none")
+                                        CONTINUE
+                                    CASE ("normal")
+                                        WRITE(*, *) "WARNING: Slice levels are invalid. Using automatically generated levels instead."
+                                        WRITE(*, '()')
+                                    CASE ("verbose")
+                                        WRITE(*, *) "WARNING: Slice levels are invalid. Using automatically generated levels instead."
+                                        WRITE(*, '()')
+                                END SELECT
+                            END IF
+
+                            slice_levels(1) = 1/SUM(nslices)
+                            DO j = 2, nslice_levels
+                                slice_levels(j) = slice_levels(j-1) + 1/SUM(nslices)
+                            END DO
+
+                            EXIT
+
+                        END IF
+
+                    END IF
+
+                END DO
+
+
+                IF (SUM(slice_levels) /= 1.0) THEN
+
+                    IF (myid == 0) THEN
+                        SELECT CASE (TRIM(particle_terminal))
+                            CASE ("none")
+                                CONTINUE
+                            CASE ("normal")
+                                WRITE(*, *) "WARNING: Slice levels are invalid. Using automatically generated levels instead."
+                                WRITE(*, '()')
+                            CASE ("verbose")
+                                WRITE(*, *) "WARNING: Slice levels are invalid. Using automatically generated levels instead."
+                                WRITE(*, '()')
+                        END SELECT
+                    END IF
+
+                    slice_levels(1) = 1/SUM(nslices)
+                    DO j = 2, nslice_levels
+                        slice_levels(j) = slice_levels(j-1) + 1/SUM(nslices)
+                    END DO
+
+                END IF
+
+            END IF
+
+        END IF
+
+
+
+        !- - - - - - - - - - - - - - - - - -
+
         IF (myid == 0) THEN
             SELECT CASE (TRIM(particle_terminal))
                     CASE ("none")
                         CONTINUE
                     CASE ("normal")
                         WRITE(*, '("PARTICLE CONFIGURATION:")')
-                        WRITE(*, '("Terminal Output:              ", A12)') particle_terminal
                         WRITE(*, '("Reading ParticlesDict:        ", L12)') dread_particles
                         WRITE(*, '("Reading ObstaclesDict:        ", L12)') dread_obstacles
-                        WRITE(*, '("Field Interpolation:          ", L12)') dinterp_particles
-                        WRITE(*, '("Writing Particle Snapshots:   ", L12)') dwrite_particles
-                        WRITE(*, '("Particle Snapshot Step:       ", I12)') psnapshot_step
                         WRITE(*, '("Max Particle List Length:     ", I12)') plist_len
                         WRITE(*, '("Initial number of Particles:  ", I12)') init_npart
+                        WRITE(*, '("Field Interpolation:          ", L12)') dinterp_particles
+                        WRITE(*, '("Runge Kutta Method:           ", A12)') TRIM(prkmethod)
                         WRITE(*, '("Diffusion Constant Dx:        ", E12.3)') D(1)
                         WRITE(*, '("Diffusion Constant Dy:        ", E12.3)') D(2)
                         WRITE(*, '("Diffusion Constant Dz:        ", E12.3)') D(3)
+                        WRITE(*, '("Terminal Output:              ", A12)') TRIM(particle_terminal)
+                        WRITE(*, '("Number of Stat. Samples:      ", I12)') nsamples
+                        WRITE(*, '("Slice Direction:              ", A12)') slice_dir
+                        IF (slice_dir == "X" .OR. slice_dir == "Y" .OR. slice_dir == "Z") THEN
+                            WRITE(*, '("Number of Slice Levels:       ", I12)') nslice_levels
+                            DO i = 1, SIZE(nslices)
+                                WRITE(*, '("Number of Slices on Level ", I2 ,": ", I12)') i, nslices(i)
+                                WRITE(*, '("Width of Level ", I2 ,":            ", E12.3)') i, slice_levels(i)
+                            END DO
+                        END IF
+                        WRITE(*, '("Writing Particle Snapshots:   ", L12)') dwrite_particles
+                        WRITE(*, '("Particle Snapshot Step:       ", I12)') psnapshot_step
                         WRITE(*, '()')
                     CASE ("verbose")
                         WRITE(*, '("PARTICLE CONFIGURATION:")')
-                        WRITE(*, '("Terminal Output:              ", A12)') particle_terminal
                         WRITE(*, '("Reading ParticlesDict:        ", L12)') dread_particles
                         WRITE(*, '("Reading ObstaclesDict:        ", L12)') dread_obstacles
-                        WRITE(*, '("Field Interpolation:          ", L12)') dinterp_particles
-                        WRITE(*, '("Writing Particle Snapshots:   ", L12)') dwrite_particles
-                        WRITE(*, '("Particle Snapshot Step:       ", I12)') psnapshot_step
                         WRITE(*, '("Max Particle List Length:     ", I12)') plist_len
                         WRITE(*, '("Initial number of Particles:  ", I12)') init_npart
+                        WRITE(*, '("Field Interpolation:          ", L12)') dinterp_particles
+                        WRITE(*, '("Runge Kutta Method:           ", A12)') TRIM(prkmethod)
                         WRITE(*, '("Diffusion Constant Dx:        ", E12.3)') D(1)
                         WRITE(*, '("Diffusion Constant Dy:        ", E12.3)') D(2)
                         WRITE(*, '("Diffusion Constant Dz:        ", E12.3)') D(3)
+                        WRITE(*, '("Terminal Output:              ", A12)') TRIM(particle_terminal)
+                        WRITE(*, '("Number of Stat. Samples:      ", I12)') nsamples
+                        WRITE(*, '("Slice Direction:              ", A12)') slice_dir
+                        IF (slice_dir == "X" .OR. slice_dir == "Y" .OR. slice_dir == "Z") THEN
+                            WRITE(*, '("Number of Slice Levels:       ", I12)') nslice_levels
+                            DO i = 1, SIZE(nslices)
+                                WRITE(*, '("Number of Slices on Level ", I2 ,": ", I12)') i, nslices(i)
+                                WRITE(*, '("Width of Level ", I2 ,":            ", E12.3)') i, slice_levels(i)
+                            END DO
+                        END IF
+                        WRITE(*, '("Writing Particle Snapshots:   ", L12)') dwrite_particles
+                        WRITE(*, '("Particle Snapshot Step:       ", I12)') psnapshot_step
                         WRITE(*, '()')
             END SELECT
         END IF

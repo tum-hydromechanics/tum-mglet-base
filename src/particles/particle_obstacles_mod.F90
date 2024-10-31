@@ -21,7 +21,7 @@ CONTAINS    !===================================
     SUBROUTINE read_obstacles()
 
         ! local variables
-        INTEGER(intk) :: unit = 1, dict_len, iobst
+        INTEGER(intk) :: unit, dict_len, iobst
         CHARACTER(12) :: dummy_char
 
         IF (.NOT. dread_obstacles) THEN
@@ -51,7 +51,7 @@ CONTAINS    !===================================
 
         END IF
 
-        OPEN(unit, file = 'ObstaclesDict.txt', status = 'OLD', action = 'READ')
+        OPEN(newunit = unit, file = 'ObstaclesDict.txt', status = 'OLD', action = 'READ')
 
         READ(unit, fmt = *) dummy_char, dummy_char, dummy_char, dict_len
 
@@ -105,6 +105,8 @@ CONTAINS    !===================================
                     WRITE(*, '()')
             END SELECT
         END IF
+
+        CLOSE(unit)
 
     END SUBROUTINE read_obstacles
 

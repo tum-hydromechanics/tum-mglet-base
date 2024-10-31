@@ -7,7 +7,7 @@ MODULE particle_mod
     USE fields_mod
     USE particle_timeintegration_mod
     USE particle_snapshot_mod
-    USE particle_gridstat_mod
+    USE particle_statistics_mod
 
     IMPLICIT NONE(type, external)
 
@@ -101,7 +101,7 @@ CONTAINS
 
         CALL finish_particle_snapshots()
 
-        CALL finish_particle_gridstat()
+        CALL finish_particle_statistics()
 
         CALL finish_particle_timeintegration()
 

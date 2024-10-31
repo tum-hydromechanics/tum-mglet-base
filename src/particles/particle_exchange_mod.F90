@@ -5,7 +5,7 @@ MODULE particle_exchange_mod
     USE particle_list_mod
     USE particle_core_mod
     USE particle_utils_mod
-    USE particle_gridstat_mod
+    USE particle_statistics_mod
 
     IMPLICIT NONE (type, external)
 
@@ -152,9 +152,13 @@ CONTAINS
                 CYCLE
             END IF
 
+            ! for particle slice statistics (must be called before update_coordinates !!!)
+            CALL stop_timer(930)
+            CALL associate_new_slice(particle_list%particles(i), itstep)
+            CALL start_timer(930)
+
             ! setting the destination of particle (quo vadis, particle?)
             CALL get_target_grid(particle_list%particles(i), destgrid, destproc, iface)
-
 
             IF (destproc > numprocs .OR. destproc < 0) THEN
                 WRITE(*,*) 'Obviously ill-addressed particle to proc', destproc
@@ -173,7 +177,7 @@ CONTAINS
 
             ELSE
 
-                ! for gridstat
+                ! for particle statistics
                 CALL stop_timer(930)
                 CALL deregister_particle(particle_list%particles(i), itstep)
                 CALL start_timer(930)
@@ -185,7 +189,7 @@ CONTAINS
                     particle_list%particles(i)%igrid = destgrid
                     CALL set_particle_cell(particle_list%particles(i))
 
-                    ! for gridstat
+                    ! for particle statistics
                     CALL stop_timer(930)
                     CALL register_particle(particle_list%particles(i), itstep)
                     CALL start_timer(930)
@@ -829,8 +833,6 @@ CONTAINS
 
     END SUBROUTINE sort_conns_unique
 
-
-
     SUBROUTINE get_target_grid(particle, destgrid, destproc, iface)
 
         ! subroutine arguments
@@ -932,21 +934,25 @@ CONTAINS
         CALL MPI_Get_address(foo%ipart, disp(2))
         CALL MPI_Get_address(foo%iproc, disp(3))
         CALL MPI_Get_address(foo%igrid, disp(4))
-        CALL MPI_Get_address(foo%itstep, disp(5))
-        CALL MPI_Get_address(foo%ijkcell, disp(6))
-        CALL MPI_Get_address(foo%x, disp(7))
-        CALL MPI_Get_address(foo%y, disp(8))
-        CALL MPI_Get_address(foo%z, disp(9))
+        CALL MPI_Get_address(foo%islice, disp(5))
+        CALL MPI_Get_address(foo%gitstep, disp(6))
+        CALL MPI_Get_address(foo%sitstep, disp(7))
+        CALL MPI_Get_address(foo%ijkcell, disp(8))
+        CALL MPI_Get_address(foo%x, disp(9))
+        CALL MPI_Get_address(foo%y, disp(10))
+        CALL MPI_Get_address(foo%z, disp(11))
 
         types(1) = mglet_mpi_int    ! state
         types(2) = mglet_mpi_int    ! ipart
         types(3) = mglet_mpi_int    ! iproc
         types(4) = mglet_mpi_int    ! igrid
-        types(5) = mglet_mpi_int    ! itstep
-        types(6) = triple_int_mpi_type  ! ijkcell(3)
-        types(7) = mglet_mpi_real    ! x
-        types(8) = mglet_mpi_real    ! y
-        types(9) = mglet_mpi_real    ! z
+        types(5) = mglet_mpi_int    ! islice
+        types(6) = mglet_mpi_int    ! gitstep
+        types(7) = mglet_mpi_int    ! sitstep
+        types(8) = triple_int_mpi_type  ! ijkcell(3)
+        types(9) = mglet_mpi_real     ! x
+        types(10) = mglet_mpi_real    ! y
+        types(11) = mglet_mpi_real    ! z
 
         ! computing the displacements in byte
         base = disp(1)

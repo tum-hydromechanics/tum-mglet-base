@@ -195,7 +195,7 @@ CONTAINS
 
         ! Initialize Grid Partile Statistics
         IF (dsim_particles) THEN ! <------------------------------------particles
-            CALL init_particle_gridstat(mtstep)
+            CALL init_particle_statistics()
         END IF
 
     END SUBROUTINE init_timeloop
@@ -214,12 +214,10 @@ CONTAINS
 
         IF (dsim_particles .AND. dwrite_particles) THEN ! <------------------------------------particles
             CALL write_psnapshot_timeinfo()
-            !CALL finish_particle_snapshots()
         END IF
 
         IF (dsim_particles) THEN ! <------------------------------------particles
-            CALL write_gridstat()
-            !CALL finish_particle_gridstat()
+            CALL write_particle_statistics()
         END IF
 
         CALL finish_statistics()
@@ -255,8 +253,6 @@ CONTAINS
             IF (dsim_particles) THEN ! <------------------------------------particles
                 ! particle counter for particle grid statistics
                 CALL advance_np_counter(itstep)
-                ! OLD: update backup field for particke rk timeintegration
-                ! OLD: CALL update_backup_fields()
             END IF
 
             ! Global RK loop for tightly coupled quantities like flow and

@@ -12,7 +12,7 @@ MODULE particle_core_mod
 
     IMPLICIT NONE
 
-    INTEGER(c_intk), PARAMETER :: particle_mpi_elems = 9
+    INTEGER(c_intk), PARAMETER :: particle_mpi_elems = 11
 
     ! C binding for MPI compatability!
     TYPE, BIND(C) :: baseparticle_t
@@ -28,9 +28,12 @@ MODULE particle_core_mod
         INTEGER(c_intk) :: ipart = -1
         INTEGER(c_intk) :: iproc = -1
         INTEGER(c_intk) :: igrid = -1
+        INTEGER(c_intk) :: islice = -1
 
-        !itstep is the timestep at which a particle entered its current grid (for residence time tracking)
-        INTEGER(c_intk) :: itstep = 0
+        !gitstep is the timestep at which a particle entered its current grid (for residence time tracking)
+        INTEGER(c_intk) :: gitstep = 0
+        !sitstep is the timestep at which a particle entered its current slice (for residence time tracking)
+        INTEGER(c_intk) :: sitstep = 0
 
         INTEGER(c_intk) :: ijkcell(3)
 
@@ -45,7 +48,7 @@ MODULE particle_core_mod
 
 CONTAINS    !===================================
 
-    SUBROUTINE set_particle(particle, ipart, x, y, z, iproc, igrid, ijkcell, itstep)
+    SUBROUTINE set_particle(particle, ipart, x, y, z, iproc, igrid, ijkcell, gitstep, sitstep)
 
         ! subroutine arguments
         TYPE(baseparticle_t), INTENT(inout) :: particle
@@ -54,7 +57,7 @@ CONTAINS    !===================================
         INTEGER(intk), INTENT(in), OPTIONAL :: iproc
         INTEGER(intk), INTENT(in), OPTIONAL :: igrid
         INTEGER(intk), INTENT(in), OPTIONAL :: ijkcell(3)
-        INTEGER(intk), INTENT(in), OPTIONAL :: itstep
+        INTEGER(intk), INTENT(in), OPTIONAL :: gitstep, sitstep
 
         particle%state = 1
         particle%ipart = ipart
@@ -81,10 +84,16 @@ CONTAINS    !===================================
             CALL set_particle_cell(particle)
         END IF
 
-        IF (PRESENT(itstep)) THEN
-            particle%itstep = itstep
+        IF (PRESENT(gitstep)) THEN
+            particle%gitstep = gitstep
         ELSE
-            particle%itstep = 0
+            particle%gitstep = 0
+        END IF
+
+        IF (PRESENT(sitstep)) THEN
+            particle%sitstep = sitstep
+        ELSE
+            particle%sitstep = 0
         END IF
 
     END SUBROUTINE set_particle
@@ -426,10 +435,13 @@ CONTAINS    !===================================
 
         IF (particle%state >= 1) THEN
                 WRITE(*, '("Particle ", I0, " - Status:")') particle%ipart
-                WRITE(*, '("iproc       = ", I12)') particle%iproc
-                WRITE(*, '("igrid       = ", I12)') particle%igrid
-                WRITE(*, '("x/y/z       = ", 3F12.6)') particle%x, particle%y, particle%z
-                WRITE(*, '("i/j/k cell  = ", 3I12)') particle%ijkcell(1), particle%ijkcell(2), particle%ijkcell(3)
+                WRITE(*, '("iproc       = ", I20)') particle%iproc
+                WRITE(*, '("igrid       = ", I20)') particle%igrid
+                WRITE(*, '("islice      = ", I20)') particle%islice
+                WRITE(*, '("gitstep     = ", I20)') particle%gitstep
+                WRITE(*, '("sitstep     = ", I20)') particle%sitstep
+                WRITE(*, '("x/y/z       = ", 3F120.17)') particle%x, particle%y, particle%z
+                WRITE(*, '("i/j/k cell  = ", 3I20)') particle%ijkcell(1), particle%ijkcell(2), particle%ijkcell(3)
                 WRITE(*, '()')
         ELSE
             RETURN

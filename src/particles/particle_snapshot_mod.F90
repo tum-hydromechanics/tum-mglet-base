@@ -197,7 +197,7 @@ CONTAINS
     SUBROUTINE write_psnapshot_piece()
 
         ! local variables
-        INTEGER(intk) :: i, unit = 162
+        INTEGER(intk) :: i, unit
         CHARACTER(len = mglet_filename_max) :: subfolder, filename, active_np_char
         !CHARACTER(:), ALLOCATABLE :: active_np_char
 
@@ -208,7 +208,7 @@ CONTAINS
         !ALLOCATE(CHARACTER(CEILING(LOG10(REAL(my_particle_list%max_np))) :: active_np_char)
         WRITE(active_np_char, '(I0)') my_particle_list%active_np
 
-        OPEN(unit, file = TRIM(filename), status = 'NEW', action = 'WRITE')
+        OPEN(newunit = unit, file = TRIM(filename), status = 'NEW', action = 'WRITE')
 
         WRITE(unit, '(A)') '<?xml version="1.0"?>'
         WRITE(unit, '(A)') '<VTKFile type="PolyData" version="0.1" byte_order="LittleEndian">'
@@ -255,6 +255,8 @@ CONTAINS
         WRITE(unit, '(A)') '  </PolyData>'
         WRITE(unit, '(A)') '</VTKFile>'
 
+        CLOSE(unit)
+
     END SUBROUTINE write_psnapshot_piece
 
     !------------------------------
@@ -266,7 +268,7 @@ CONTAINS
         REAL(realk), INTENT(in) :: timeph
 
         !local variables
-        INTEGER(intk) :: proc, unit = 163
+        INTEGER(intk) :: proc, unit
         CHARACTER(len = mglet_filename_max) :: filename, piece
 
         psnapshot_info%times(psnapshot_info%counter) = timeph
@@ -275,7 +277,7 @@ CONTAINS
 
             WRITE(filename,'("Particle_Snapshots/snapshot", I0, ".pvtp")') (psnapshot_info%counter - 1_intk)
 
-            OPEN(unit, file = TRIM(filename), status = 'NEW', action = 'WRITE')
+            OPEN(newunit = unit, file = TRIM(filename), status = 'NEW', action = 'WRITE')
 
             WRITE(unit, '(A)') '<?xml version="1.0"?>'
             WRITE(unit, '(A)') '<VTKFile type="PPolyData" version="0.1" byte_order="LittleEndian">'
@@ -297,6 +299,8 @@ CONTAINS
             WRITE(unit, '(A)') '  </PPolyData>'
             WRITE(unit, '(A)') '</VTKFile>'
 
+            CLOSE(unit)
+
         END IF
 
     END SUBROUTINE write_psnapshot_master
@@ -305,7 +309,7 @@ CONTAINS
 
     SUBROUTINE write_psnapshot_timeinfo()
 
-        INTEGER(intk) :: i, unit = 164
+        INTEGER(intk) :: i, unit
         CHARACTER(len = mglet_filename_max) :: filename
 
         CALL start_timer(900)
@@ -315,7 +319,7 @@ CONTAINS
 
             WRITE(filename,'("Particle_Snapshots/timeinfo.txt")')
 
-            OPEN(unit, file = TRIM(filename), status = 'NEW', action = 'WRITE')
+            OPEN(newunit = unit, file = TRIM(filename), status = 'NEW', action = 'WRITE')
 
             WRITE(unit, '("Number of timesteps: ", I0)') psnapshot_info%nsnapshots
 
@@ -327,6 +331,8 @@ CONTAINS
                 WRITE(unit, psnapshot_info%coordinate_format) psnapshot_info%times(i)
 
             END DO
+
+            CLOSE(unit)
 
         END IF
 
