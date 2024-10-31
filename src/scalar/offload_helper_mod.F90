@@ -34,6 +34,8 @@ MODULE offload_helper_mod
     REAL(realk), POINTER, CONTIGUOUS, DIMENSION(:) :: dx_offload, dy_offload, dz_offload
     REAL(realk), POINTER, CONTIGUOUS, DIMENSION(:) :: ddx_offload, ddy_offload, ddz_offload
     REAL(realk), POINTER, CONTIGUOUS, DIMENSION(:) :: bt_offload
+    REAL(realk), POINTER, CONTIGUOUS, DIMENSION(:) :: g_offload
+    REAL(realk), POINTER, CONTIGUOUS, DIMENSION(:) :: gsca_offload
     ! Flow/Scalar fields
     REAL(realk), POINTER, CONTIGUOUS, DIMENSION(:) :: u_offload, v_offload, w_offload, t_offload
     
@@ -49,6 +51,7 @@ MODULE offload_helper_mod
     !$omp declare target(rdx_offload, rdy_offload, rdz_offload, rddx_offload, rddy_offload, rddz_offload)
     !$omp declare target(dx_offload, dy_offload, dz_offload, ddx_offload, ddy_offload, ddz_offload)
     !$omp declare target(bt_offload)
+    !$omp declare target(g_offload, gsca_offload)
     !$omp declare target(u_offload, v_offload, w_offload, t_offload)
     !$omp declare target(qtu_offload, qtv_offload, qtw_offload)
 
@@ -64,7 +67,7 @@ MODULE offload_helper_mod
 
     ! Public variables for device
     PUBLIC :: rdx_offload, rdy_offload, rdz_offload, rddx_offload, rddy_offload, rddz_offload, &
-        dx_offload, dy_offload, dz_offload, ddx_offload, ddy_offload, ddz_offload, bt_offload, &
+        dx_offload, dy_offload, dz_offload, ddx_offload, ddy_offload, ddz_offload, bt_offload, g_offload, gsca_offload, &
         u_offload, v_offload, w_offload, t_offload, qtu_offload, qtv_offload, qtw_offload, nboconds_offload
 
 CONTAINS
@@ -123,7 +126,7 @@ CONTAINS
 
     SUBROUTINE map_constant_grid_fields()
         ! Local variables
-        TYPE(field_t), POINTER :: rdx_f, rdy_f, rdz_f, rddx_f, rddy_f, rddz_f, dx_f, dy_f, dz_f, ddx_f, ddy_f, ddz_f, bt_f
+        TYPE(field_t), POINTER :: rdx_f, rdy_f, rdz_f, rddx_f, rddy_f, rddz_f, dx_f, dy_f, dz_f, ddx_f, ddy_f, ddz_f, bt_f, g_f
 
         ! Create copy for grid constants
         CALL get_field(rdx_f, "RDX")
@@ -139,6 +142,10 @@ CONTAINS
         CALL get_field(ddy_f, "DDY")
         CALL get_field(ddz_f, "DDZ")
         CALL get_field(bt_f, "BT")
+        CALL get_field(g_f, "G")
+        CALL get_field(t_f, "T")
+        CALL get_field(gsca_f, "GSCA")
+
         
         rdx_offload => rdx_f%arr
         rdy_offload => rdy_f%arr
@@ -153,9 +160,14 @@ CONTAINS
         ddy_offload => ddy_f%arr
         ddz_offload => ddz_f%arr
         bt_offload => bt_f%arr
+        g_offload => g_f%arr
+        t_offload => t_f%arr
+        gsca_offload => gsca_f%arr
+
+
 
         !$omp target enter data map(to: rdx_offload, rdy_offload, rdz_offload, rddx_offload, rddy_offload, rddz_offload, &
-        !$omp& dx_offload, dy_offload, dz_offload, ddx_offload, ddy_offload, ddz_offload, bt_offload)
+        !$omp& dx_offload, dy_offload, dz_offload, ddx_offload, ddy_offload, ddz_offload, bt_offload, g_offload, t_offload, gsca_offload)
     END SUBROUTINE
 
     SUBROUTINE map_flow_sca()
@@ -272,7 +284,7 @@ CONTAINS
         !$omp target exit data map(delete: mgdims_offload, ip3d_offload, ip1d_offload)
         !$omp target exit data map(delete: nboconds_offload, mgbasb_offload)
         !$omp target exit data map(delete: rdx_offload, rdy_offload, rdz_offload, rddx_offload, rddy_offload, rddz_offload, &
-        !$omp& dx_offload, dy_offload, dz_offload, ddx_offload, ddy_offload, ddz_offload, bt_offload)
+        !$omp& dx_offload, dy_offload, dz_offload, ddx_offload, ddy_offload, ddz_offload, bt_offload, g_offload, t_offload, gsca_offload)
         !$omp target exit data map(delete: u_offload, v_offload, w_offload, t_offload, qtu_offload, qtv_offload, qtw_offload)
         !$omp target exit data map(delete: bc_indexing, encoded_ctyp_offload)
 

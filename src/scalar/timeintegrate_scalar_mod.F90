@@ -228,6 +228,10 @@ CONTAINS
                 CALL ptr_to_grid3(w_offload, igrid, w)
                 CALL ptr_to_grid3(g_a, igrid, g)
 
+                CALL ptr_to_grid3(g_offload, igrid, g)
+                CALL ptr_to_grid3(t_offload, igrid, t)
+                CALL ptr_to_grid3(gsca_offload, igrid, gsca)
+
                 CALL ptr_to_grid3(bt_offload, igrid, bt)
                 CALL ptr_to_grid_x(ddx_offload, igrid, ddx)
                 CALL ptr_to_grid_y(ddy_offload, igrid, ddy)
@@ -266,7 +270,7 @@ CONTAINS
         REAL(realk), INTENT(IN) :: gmol_offload, rho_offload
 
         ! Local variables
-        INTEGER(intk) :: i, j, k
+        INTEGER(intk) :: i, j, k, index_grid, index_grid_i1
         INTEGER(intk) :: nfu, nbu, nrv, nlv, nbw, ntw
         INTEGER(intk) :: iles
         REAL(realk) :: gsca(ii)
@@ -300,19 +304,24 @@ CONTAINS
 
         ! X direction
         !$omp parallel
-        !$omp do collapse(2)
+        !!$omp do collapse(2)
+        !$omp target teams distribute parallel do collapse(2)
         DO i = 3-nfu, ii-3+nbu
             DO j = 3, jj-2
                 ! Scalar diffusivity LES/DNS computation
                 IF (iles == 1) THEN
                     DO k = 3, kk-2
+                        ! Calculate the 1D index for each 3D array
+                        index_grid = k + (j-1) * kk + (i-1) * jj * kk
+                        index_grid_i1 = index_grid + kk   ! i+1 offset in flattened array
+                        
                         gscamol = gmol_offload/rho_offload/sca_prmol
-                        gtgmolp = (g(k, j, i) - gmol_offload)/gmol_offload
-                        gtgmoln = (g(k, j, i+1) - gmol_offload)/gmol_offload
+                        gtgmolp = (g_offload(index_grid) - gmol_offload)/gmol_offload
+                        gtgmoln = (g_offload(index_grid_i1) - gmol_offload)/gmol_offload
 
                         ! 1/Re * 1/Pr + 1/Re_t * 1/Pr_t:
                         gsca(k) = gscamol &
-                            + (g(k, j, i+1) + g(k, j, i) - 2.0*gmol_offload) / rho_offload &
+                            + (g_offload(index_grid_i1) + g_offload(index_grid) - 2.0*gmol_offload) / rho_offload &
                             / (sca_prt(sca_prmol, sca_kayscrawford, sca_prturb, gtgmoln) + sca_prt(sca_prmol, sca_kayscrawford, sca_prturb, gtgmolp))
 
                         ! Limit gsca here MAX(...,0): no negative diffusion!
@@ -348,7 +357,8 @@ CONTAINS
                 !$omp end simd
             END DO
         END DO
-        !$omp end do
+        !!$omp end do
+        !$omp end target teams distribute parallel do
 
         ! Y direction
         !$omp do collapse(2)
