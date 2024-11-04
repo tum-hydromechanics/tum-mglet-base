@@ -241,7 +241,7 @@ MODULE particle_boundaries_mod
         REAL(realk), INTENT(out) :: dx_eff, dy_eff, dz_eff
 
         ! local variables
-        INTEGER(intk) :: temp_grid, iface, iobst, grid_bc, destproc
+        INTEGER(intk) :: temp_grid, iface, iobst_local, grid_bc, destproc
         INTEGER(intk) :: counter
         INTEGER(intk) :: neighbours(26)
         INTEGER(intk) :: reflect(3)
@@ -274,7 +274,7 @@ MODULE particle_boundaries_mod
         dy_eff = 0.0
         dz_eff = 0.0
 
-        iobst = 0
+        iobst_local = 0
 
         SELECT CASE (TRIM(particle_terminal))
             CASE ("none")
@@ -301,13 +301,13 @@ MODULE particle_boundaries_mod
             END SELECT
 
             CALL move_to_boundary(temp_grid, x, y, z, &
-             dx_from_here, dy_from_here, dz_from_here, dx_step, dy_step, dz_step, iface, iobst)
+             dx_from_here, dy_from_here, dz_from_here, dx_step, dy_step, dz_step, iface, iobst_local)
 
             dx_eff = dx_eff + dx_step
             dy_eff = dy_eff + dy_step
             dz_eff = dz_eff + dz_step
 
-            IF (0 < iobst) THEN
+            IF (0 < iobst_local) THEN
 
                 SELECT CASE (TRIM(particle_terminal))
                     CASE ("none")
@@ -318,7 +318,7 @@ MODULE particle_boundaries_mod
                         WRITE(*, *) "Particle reflected at Obstacle!"
                 END SELECT
 
-                CALL reflect_at_obstacle(iobst, x, y, z, dx_from_here, dy_from_here, dz_from_here)
+                CALL reflect_at_obstacle(iobst_local, x, y, z, dx_from_here, dy_from_here, dz_from_here)
 
             ELSEIF (0 < iface) THEN
 
@@ -383,7 +383,7 @@ MODULE particle_boundaries_mod
     ! This subroutine only considers grids on the same level
     ! CAUTION: Here, temp_grid refers to the grid the particle coordinates are currently on and of which the boundaries are relevant.
     ! This might NOT be particle%igrid, which is used to deduce the velocity from.
-    SUBROUTINE move_to_boundary(temp_grid, x, y, z, dx, dy, dz, dx_to_b, dy_to_b, dz_to_b, iface, iobst)
+    SUBROUTINE move_to_boundary(temp_grid, x, y, z, dx, dy, dz, dx_to_b, dy_to_b, dz_to_b, iface, iobst_local)
 
         ! subroutine arguments
         INTEGER(intk), INTENT(inout) :: temp_grid
@@ -391,7 +391,7 @@ MODULE particle_boundaries_mod
         REAL(realk), INTENT(inout) :: dx, dy, dz
         REAL(realk), INTENT(out) :: dx_to_b, dy_to_b, dz_to_b
         INTEGER(intk), INTENT(out) :: iface
-        INTEGER(intk), INTENT(inout) :: iobst
+        INTEGER(intk), INTENT(inout) :: iobst_local
 
         !local variables
         INTEGER(intk) :: i, nobst
@@ -424,21 +424,21 @@ MODULE particle_boundaries_mod
         a = (dx**2 + dy**2 + dz**2)
 
         ! iterate over all obstacles of the grid
-        nobst = SIZE(obstacles)
+        nobst = SIZE(my_obstacle_pointers(temp_grid)%grid_obstacles)
 
         DO i = 1, nobst
 
             ! dont check if a particle interacts with the obstacle it has been deflected from in the previous timestep
-            IF (i == iobst) THEN
-                iobst = 0
+            IF (my_obstacle_pointers(temp_grid)%grid_obstacles(i) == iobst_local) THEN
+                iobst_local = 0
                 CYCLE
             END IF
 
             ! for readability
-            cx = obstacles(i)%x
-            cy = obstacles(i)%y
-            cz = obstacles(i)%z
-            r = obstacles(i)%radius
+            cx = my_obstacles(my_obstacle_pointers(temp_grid)%grid_obstacles(i))%x
+            cy = my_obstacles(my_obstacle_pointers(temp_grid)%grid_obstacles(i))%y
+            cz = my_obstacles(my_obstacle_pointers(temp_grid)%grid_obstacles(i))%z
+            r = my_obstacles(my_obstacle_pointers(temp_grid)%grid_obstacles(i))%radius
 
             IF (SQRT((x - cx)**2 + (y - cy)**2 + (z - cz)**2) < r) THEN
                 SELECT CASE (TRIM(particle_terminal))
@@ -488,12 +488,12 @@ MODULE particle_boundaries_mod
 
             IF (sa < s) THEN
                 s = sa
-                iobst = i
+                iobst_local = my_obstacle_pointers(temp_grid)%grid_obstacles(i)
             END IF
 
             IF (sb < s) THEN
                 s = sb
-                iobst = i
+                iobst_local = my_obstacle_pointers(temp_grid)%grid_obstacles(i)
             END IF
 
         END DO
@@ -574,7 +574,7 @@ MODULE particle_boundaries_mod
         END IF
 
         ! if the routine did not return yet, no obstacle will be hit before some grid boundary
-        iobst = 0
+        iobst_local = 0
 
         IF (dx < 0 .AND. ry <= rx .AND. rz <= rx) THEN
 
@@ -719,22 +719,22 @@ MODULE particle_boundaries_mod
     END SUBROUTINE reflect_at_boundary
 
     ! TODO: make this (partly) an obstacle method
-    SUBROUTINE reflect_at_obstacle(iobst, x, y, z, dx, dy, dz)
+    SUBROUTINE reflect_at_obstacle(iobst_local, x, y, z, dx, dy, dz)
 
         ! Presumption 1: Particle is already exactly on the boundary!
         ! Presumption 2: Obstacle is a sphere!
 
         ! subroutine arguments
-        INTEGER(intk), INTENT(in) :: iobst
+        INTEGER(intk), INTENT(in) :: iobst_local
         REAL(realk), INTENT(in) :: x, y, z
         REAL(realk), INTENT(inout) :: dx, dy, dz
 
         ! local variables
         REAL(realk) :: n1, n2 , n3, magnitude
 
-        n1 = x - obstacles(iobst)%x
-        n2 = y - obstacles(iobst)%y
-        n3 = z - obstacles(iobst)%z
+        n1 = x - my_obstacles(iobst_local)%x
+        n2 = y - my_obstacles(iobst_local)%y
+        n3 = z - my_obstacles(iobst_local)%z
 
         magnitude = SQRT(n1**2 + n2**2 + n3**2)
 
