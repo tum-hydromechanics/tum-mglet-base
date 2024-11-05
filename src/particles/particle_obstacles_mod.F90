@@ -120,6 +120,26 @@ CONTAINS    !===================================
 
         READ(unit, fmt = *) dummy_char, dummy_char, dummy_char, dict_len
 
+        IF (dict_len < 1) THEN
+            IF (myid == 0) THEN
+                SELECT CASE (TRIM(particle_terminal))
+                    CASE ("none")
+                        CONTINUE
+                    CASE ("normal")
+                        WRITE(*, '()')
+                        WRITE(*, '("ERROR in particle_obstacles_mod: Number of Obstacles given in ObstaclesDict.txt must be an integer larger than 0.")')
+                        WRITE(*, '("If no Obstacles should be registered, set read_obst to FALSE.")')
+                        WRITE(*, '()')
+                    CASE ("verbose")
+                        WRITE(*, '()')
+                        WRITE(*, '("ERROR in particle_obstacles_mod: Number of Obstacles given in ObstaclesDict.txt must be an integer larger than 0.")')
+                        WRITE(*, '("If no Obstacles should be registered, set read_obst to FALSE.")')
+                        WRITE(*, '()')
+                END SELECT
+            END IF
+            CALL errr(__FILE__, __LINE__)
+        END IF
+
         ALLOCATE(obstacles_src(dict_len))
         ALLOCATE(is_relevant_src(dict_len))
         is_relevant_src = .FALSE.
@@ -423,8 +443,10 @@ CONTAINS    !===================================
 
     SUBROUTINE finish_obstacles()
 
-        DEALLOCATE(my_obstacles)
-        DEALLOCATE(my_obstacle_pointers)
+        IF (dread_obstacles) THEN
+            DEALLOCATE(my_obstacles)
+            DEALLOCATE(my_obstacle_pointers)
+        END IF
 
     END SUBROUTINE finish_obstacles
 

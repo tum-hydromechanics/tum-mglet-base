@@ -357,47 +357,49 @@ CONTAINS    !===================================
 
             ! ESTIMATE the "free" volume by substracting the obstacle volume of all obstacles on this grid
             ! (NOT EXACT, UNDERESTIMATES THE VOLUME TAKEN BY OBSTACLES)
-            DO i = 1, SIZE(my_obstacle_pointers(igrid)%grid_obstacles)
+            IF (dread_obstacles) THEN
+                DO i = 1, SIZE(my_obstacle_pointers(igrid)%grid_obstacles)
 
-                iobst = my_obstacle_pointers(igrid)%grid_obstacles(i)
+                    iobst = my_obstacle_pointers(igrid)%grid_obstacles(i)
 
-                volume_frac(iproc + 1) = volume_frac(iproc + 1) - 3.14 * 4.0 / 3.0 * my_obstacles(iobst)%radius ** 3
+                    volume_frac(iproc + 1) = volume_frac(iproc + 1) - 3.14 * 4.0 / 3.0 * my_obstacles(iobst)%radius ** 3
 
-                ! correction for the obstacles that are only partly on the grid
-                ! (overestimates the volume of relevant spherers that is outsie the grid)
-                DO j = 1, 3
-                    IF (my_obstacles(iobst)%x - my_obstacles(iobst)%radius < minx) THEN
-                        dist = (minx - (my_obstacles(iobst)%x - my_obstacles(iobst)%radius))
-                        volume_frac(iproc + 1) = volume_frac(iproc + 1) + &
-                         3.14 / 3 * dist**2 * (3 * my_obstacles(iobst)%radius - dist)
-                    ELSEIF (my_obstacles(iobst)%x + my_obstacles(iobst)%radius > maxx) THEN
-                        dist = ((my_obstacles(iobst)%x + my_obstacles(iobst)%radius) - maxx)
-                        volume_frac(iproc + 1) = volume_frac(iproc + 1) + &
-                         3.14 / 3 * dist**2 * (3 * my_obstacles(iobst)%radius - dist)
-                    END IF
+                    ! correction for the obstacles that are only partly on the grid
+                    ! (overestimates the volume of relevant spherers that is outsie the grid)
+                    DO j = 1, 3
+                        IF (my_obstacles(iobst)%x - my_obstacles(iobst)%radius < minx) THEN
+                            dist = (minx - (my_obstacles(iobst)%x - my_obstacles(iobst)%radius))
+                            volume_frac(iproc + 1) = volume_frac(iproc + 1) + &
+                            3.14 / 3 * dist**2 * (3 * my_obstacles(iobst)%radius - dist)
+                        ELSEIF (my_obstacles(iobst)%x + my_obstacles(iobst)%radius > maxx) THEN
+                            dist = ((my_obstacles(iobst)%x + my_obstacles(iobst)%radius) - maxx)
+                            volume_frac(iproc + 1) = volume_frac(iproc + 1) + &
+                            3.14 / 3 * dist**2 * (3 * my_obstacles(iobst)%radius - dist)
+                        END IF
 
-                    IF (my_obstacles(iobst)%y - my_obstacles(iobst)%radius < miny) THEN
-                        dist = (miny - (my_obstacles(iobst)%y - my_obstacles(iobst)%radius))
-                        volume_frac(iproc + 1) = volume_frac(iproc + 1) + &
-                         3.14 / 3 * dist**2 * (3 * my_obstacles(iobst)%radius - dist)
-                    ELSEIF (my_obstacles(iobst)%y + my_obstacles(iobst)%radius > maxy) THEN
-                        dist = ((my_obstacles(iobst)%y + my_obstacles(iobst)%radius) - maxy)
-                        volume_frac(iproc + 1) = volume_frac(iproc + 1) + &
-                         3.14 / 3 * dist**2 * (3 * my_obstacles(iobst)%radius - dist)
-                    END IF
+                        IF (my_obstacles(iobst)%y - my_obstacles(iobst)%radius < miny) THEN
+                            dist = (miny - (my_obstacles(iobst)%y - my_obstacles(iobst)%radius))
+                            volume_frac(iproc + 1) = volume_frac(iproc + 1) + &
+                            3.14 / 3 * dist**2 * (3 * my_obstacles(iobst)%radius - dist)
+                        ELSEIF (my_obstacles(iobst)%y + my_obstacles(iobst)%radius > maxy) THEN
+                            dist = ((my_obstacles(iobst)%y + my_obstacles(iobst)%radius) - maxy)
+                            volume_frac(iproc + 1) = volume_frac(iproc + 1) + &
+                            3.14 / 3 * dist**2 * (3 * my_obstacles(iobst)%radius - dist)
+                        END IF
 
-                    IF (my_obstacles(iobst)%z - my_obstacles(iobst)%radius < minz) THEN
-                        dist = (minz - (my_obstacles(iobst)%z - my_obstacles(iobst)%radius))
-                        volume_frac(iproc + 1) = volume_frac(iproc + 1) + &
-                         3.14 / 3 * dist**2 * (3 * my_obstacles(iobst)%radius - dist)
-                    ELSEIF (my_obstacles(iobst)%z + my_obstacles(iobst)%radius > maxz) THEN
-                        dist = ((my_obstacles(iobst)%z + my_obstacles(iobst)%radius) - maxz)
-                        volume_frac(iproc + 1) = volume_frac(iproc + 1) + &
-                         3.14 / 3 * dist**2 * (3 * my_obstacles(iobst)%radius - dist)
-                    END IF
+                        IF (my_obstacles(iobst)%z - my_obstacles(iobst)%radius < minz) THEN
+                            dist = (minz - (my_obstacles(iobst)%z - my_obstacles(iobst)%radius))
+                            volume_frac(iproc + 1) = volume_frac(iproc + 1) + &
+                            3.14 / 3 * dist**2 * (3 * my_obstacles(iobst)%radius - dist)
+                        ELSEIF (my_obstacles(iobst)%z + my_obstacles(iobst)%radius > maxz) THEN
+                            dist = ((my_obstacles(iobst)%z + my_obstacles(iobst)%radius) - maxz)
+                            volume_frac(iproc + 1) = volume_frac(iproc + 1) + &
+                            3.14 / 3 * dist**2 * (3 * my_obstacles(iobst)%radius - dist)
+                        END IF
+                    END DO
+
                 END DO
-
-            END DO
+            END IF
 
         END DO
 
@@ -532,20 +534,22 @@ CONTAINS    !===================================
 
                 valid_location = .TRUE.
 
-                DO j = 1, SIZE(my_obstacle_pointers(igrid)%grid_obstacles)
+                IF (dread_obstacles) THEN
+                    DO j = 1, SIZE(my_obstacle_pointers(igrid)%grid_obstacles)
 
-                    iobst = my_obstacle_pointers(igrid)%grid_obstacles(j)
+                        iobst = my_obstacle_pointers(igrid)%grid_obstacles(j)
 
-                    dist = SQRT((my_obstacles(iobst)%x - x(i))**2 + &
-                     (my_obstacles(iobst)%y - y(i))**2 + &
-                     (my_obstacles(iobst)%z - z(i))**2)
+                        dist = SQRT((my_obstacles(iobst)%x - x(i))**2 + &
+                        (my_obstacles(iobst)%y - y(i))**2 + &
+                        (my_obstacles(iobst)%z - z(i))**2)
 
-                    IF (dist < my_obstacles(iobst)%radius + 100 * EPSILON(dist)) THEN
-                        valid_location = .FALSE.
-                        EXIT
-                    END IF
+                        IF (dist < my_obstacles(iobst)%radius + 100 * EPSILON(dist)) THEN
+                            valid_location = .FALSE.
+                            EXIT
+                        END IF
 
-                END DO
+                    END DO
+                END IF
 
             END DO
 
