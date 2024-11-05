@@ -75,10 +75,11 @@ CONTAINS
             ! write_psnapshot_timeinfo (meta info writing)
             CALL set_timer(950, 'PARTICLE_SNAPSHOTS')
 
-            CALL init_particle_list()
-
             ! determine particle boundaries and their normal vectors
             CALL init_particle_boundaries()
+
+            ! read or generate particles and init particle list
+            CALL init_particle_list()
 
             ! init backup fields for particle timeintegration
             CALL init_particle_timeintegration()

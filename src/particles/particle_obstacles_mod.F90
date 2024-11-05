@@ -6,7 +6,6 @@ MODULE particle_obstacles_mod
     USE field_mod
     USE fields_mod
 
-    USE particle_config_mod
     USE particle_utils_mod
 
     IMPLICIT NONE

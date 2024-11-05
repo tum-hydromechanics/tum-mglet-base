@@ -3,7 +3,6 @@ MODULE particle_exchange_mod
     USE, INTRINSIC :: ISO_C_BINDING
 
     USE particle_list_mod
-    USE particle_core_mod
     USE particle_utils_mod
     USE particle_statistics_mod
 

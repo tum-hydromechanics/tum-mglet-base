@@ -1,15 +1,13 @@
 MODULE particle_boundaries_mod
 
     USE precision_mod, ONLY: realk, intk
-    USE core_mod
+    USE core_mod !TODO: specify
 
-    USE particle_list_mod
     USE particle_obstacles_mod
-    USE particle_utils_mod
 
     IMPLICIT NONE
 
-    INTEGER(intk), PARAMETER :: facelist(4,26) = RESHAPE((/ &
+    INTEGER(intk), PARAMETER :: facelist_b(4,26) = RESHAPE((/ &
         1, 1, 0, 0, &
         1, 2, 0, 0, &
         1, 3, 0, 0, &
@@ -35,7 +33,7 @@ MODULE particle_boundaries_mod
         3, 2, 3, 5, &
         3, 2, 3, 6, &
         3, 2, 4, 5, &
-        3, 2, 4, 6 /), SHAPE(facelist))
+        3, 2, 4, 6 /), SHAPE(facelist_b))
 
     TYPE :: particle_boundaries_t
 
@@ -119,20 +117,20 @@ MODULE particle_boundaries_mod
                 connect_faces = 0
 
                 DO i = 2, 4
-                    IF (facelist(i, iface) == 0) THEN
+                    IF (facelist_b(i, iface) == 0) THEN
                         CONTINUE
                     ELSE
 
-                        CALL get_bc_ctyp(ctyp, ibocd, facelist(i, iface), igrid)
+                        CALL get_bc_ctyp(ctyp, ibocd, facelist_b(i, iface), igrid)
 
                         IF (ctyp == "SIO") THEN
                             connect_faces(1) = connect_faces(1) + 1
-                            connect_faces(i) = facelist(i, iface)
+                            connect_faces(i) = facelist_b(i, iface)
                         END IF
 
                         DO j = 1, 3
                             particle_boundaries%face_normals(j, iface, igrid) = &
-                            particle_boundaries%face_normals(j, iface, igrid) + particle_boundaries%face_normals(j, facelist(i, iface), igrid)
+                            particle_boundaries%face_normals(j, iface, igrid) + particle_boundaries%face_normals(j, facelist_b(i, iface), igrid)
                         END DO
 
                     END IF
@@ -141,13 +139,13 @@ MODULE particle_boundaries_mod
                 particle_boundaries%face_neighbours(iface, igrid) = igrid
                 found = .FALSE.
                 DO jface = 1, 26
-                    IF (facelist(1, jface) /= connect_faces(1)) THEN
+                    IF (facelist_b(1, jface) /= connect_faces(1)) THEN
                         CONTINUE
                     ELSE
                         found = .TRUE.
-                        DO i = 2, 1 + facelist(1, jface)
-                            IF (facelist(i, jface) /= connect_faces(2) &
-                             .AND. facelist(i, jface) /= connect_faces(3) .AND. facelist(i, jface) /= connect_faces(4)) THEN
+                        DO i = 2, 1 + facelist_b(1, jface)
+                            IF (facelist_b(i, jface) /= connect_faces(2) &
+                             .AND. facelist_b(i, jface) /= connect_faces(3) .AND. facelist_b(i, jface) /= connect_faces(4)) THEN
                                 found = .FALSE.
                                 EXIT
                             ELSE

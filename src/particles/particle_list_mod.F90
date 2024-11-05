@@ -12,6 +12,8 @@ MODULE particle_list_mod
 
     USE particle_core_mod
     USE particle_dict_mod
+    USE particle_utils_mod
+    USE particle_boundaries_mod
 
     IMPLICIT NONE
 
@@ -46,7 +48,7 @@ CONTAINS    !===================================
 
         ! local variables
         INTEGER(intk) :: i, global_np, read_np
-        INTEGER(intk), ALLOCATABLE :: ipart_arr(:), p_igrid_arr(:)
+        INTEGER(intk), ALLOCATABLE :: npart_arr(:), ipart_arr(:), p_igrid_arr(:)
         REAL(realk), ALLOCATABLE :: x(:), y(:), z(:)
 
         CALL start_timer(900)
@@ -117,7 +119,11 @@ CONTAINS    !===================================
 
         IF (.NOT. dread_particles) THEN
 
-            my_particle_list%active_np = init_npart
+            ALLOCATE(npart_arr(numprocs))
+
+            CALL dist_npart(numprocs, npart_arr)
+
+            my_particle_list%active_np = npart_arr(myid + 1)
 
             ALLOCATE(ipart_arr(my_particle_list%active_np))
             ALLOCATE(p_igrid_arr(my_particle_list%active_np))
@@ -125,7 +131,7 @@ CONTAINS    !===================================
             ALLOCATE(y(my_particle_list%active_np))
             ALLOCATE(z(my_particle_list%active_np))
 
-            CALL dist_ipart(my_particle_list%active_np, ipart_arr)
+            CALL dist_ipart(numprocs, myid, npart_arr, ipart_arr)
 
             CALL dist_particles(my_particle_list%active_np, p_igrid_arr, x, y, z)
 
@@ -165,6 +171,7 @@ CONTAINS    !===================================
 
             END DO
 
+            DEALLOCATE(npart_arr)
             DEALLOCATE(ipart_arr)
             DEALLOCATE(p_igrid_arr)
             DEALLOCATE(x)
@@ -320,20 +327,128 @@ CONTAINS    !===================================
 
     !-----------------------------------
 
-    !this routine is supposed to hand out a list of unique particle ids (ipart) to every process ! ONLY NON MPI RUNS FOR NOW
-    SUBROUTINE dist_ipart(npart, ipart_arr)
+    ! this routine sets the number of particles each process is to initialize
+    ! (each process does the same computation, but due to the relatively small number of computations
+    ! this should be sufficient or even better than a MPI based routine)
+    SUBROUTINE dist_npart(nprocs, npart_arr)
 
         ! subroutine arguments
-        INTEGER(intk), INTENT(IN) :: npart
-        INTEGER(intk), INTENT(out) :: ipart_arr(npart)
+        INTEGER(intk), INTENT(in) :: nprocs
+        INTEGER(intk), INTENT(inout) :: npart_arr(nprocs)
 
         ! local variables
-        INTEGER(intk) :: i, counter
+        INTEGER(intk) :: i, j, igrid, iproc, iobst, counter
+        REAL(realk), ALLOCATABLE :: volume_frac(:)
+        REAL(realk) :: minx, maxx, miny, maxy, minz, maxz, dist, volume
+
+        npart_arr = 0
+
+        ALLOCATE(volume_frac(nprocs))
+        volume_frac = 0.0
 
         counter = 1
-        DO i = myid * npart + 1, myid * npart + npart
-            ipart_arr(counter) = i
-            counter = counter + 1_intk
+        DO igrid = 1, ngrid
+
+            iproc = idprocofgrd(igrid)
+
+            CALL get_bbox(minx, maxx, miny, maxy, minz, maxz, igrid)
+
+            volume_frac(iproc + 1) = volume_frac(iproc + 1) + (maxx - minx) * (maxy - miny) * (maxz - minz)
+
+            ! ESTIMATE the "free" volume by substracting the obstacle volume of all obstacles on this grid
+            ! (NOT EXACT, UNDERESTIMATES THE VOLUME TAKEN BY OBSTACLES)
+            DO i = 1, SIZE(my_obstacle_pointers(igrid)%grid_obstacles)
+
+                iobst = my_obstacle_pointers(igrid)%grid_obstacles(i)
+
+                volume_frac(iproc + 1) = volume_frac(iproc + 1) - 3.14 * 4.0 / 3.0 * my_obstacles(iobst)%radius ** 3
+
+                ! correction for the obstacles that are only partly on the grid
+                ! (overestimates the volume of relevant spherers that is outsie the grid)
+                DO j = 1, 3
+                    IF (my_obstacles(iobst)%x - my_obstacles(iobst)%radius < minx) THEN
+                        dist = (minx - (my_obstacles(iobst)%x - my_obstacles(iobst)%radius))
+                        volume_frac(iproc + 1) = volume_frac(iproc + 1) + &
+                         3.14 / 3 * dist**2 * (3 * my_obstacles(iobst)%radius - dist)
+                    ELSEIF (my_obstacles(iobst)%x + my_obstacles(iobst)%radius > maxx) THEN
+                        dist = ((my_obstacles(iobst)%x + my_obstacles(iobst)%radius) - maxx)
+                        volume_frac(iproc + 1) = volume_frac(iproc + 1) + &
+                         3.14 / 3 * dist**2 * (3 * my_obstacles(iobst)%radius - dist)
+                    END IF
+
+                    IF (my_obstacles(iobst)%y - my_obstacles(iobst)%radius < miny) THEN
+                        dist = (miny - (my_obstacles(iobst)%y - my_obstacles(iobst)%radius))
+                        volume_frac(iproc + 1) = volume_frac(iproc + 1) + &
+                         3.14 / 3 * dist**2 * (3 * my_obstacles(iobst)%radius - dist)
+                    ELSEIF (my_obstacles(iobst)%y + my_obstacles(iobst)%radius > maxy) THEN
+                        dist = ((my_obstacles(iobst)%y + my_obstacles(iobst)%radius) - maxy)
+                        volume_frac(iproc + 1) = volume_frac(iproc + 1) + &
+                         3.14 / 3 * dist**2 * (3 * my_obstacles(iobst)%radius - dist)
+                    END IF
+
+                    IF (my_obstacles(iobst)%z - my_obstacles(iobst)%radius < minz) THEN
+                        dist = (minz - (my_obstacles(iobst)%z - my_obstacles(iobst)%radius))
+                        volume_frac(iproc + 1) = volume_frac(iproc + 1) + &
+                         3.14 / 3 * dist**2 * (3 * my_obstacles(iobst)%radius - dist)
+                    ELSEIF (my_obstacles(iobst)%z + my_obstacles(iobst)%radius > maxz) THEN
+                        dist = ((my_obstacles(iobst)%z + my_obstacles(iobst)%radius) - maxz)
+                        volume_frac(iproc + 1) = volume_frac(iproc + 1) + &
+                         3.14 / 3 * dist**2 * (3 * my_obstacles(iobst)%radius - dist)
+                    END IF
+                END DO
+
+            END DO
+
+        END DO
+
+        volume = SUM(volume_frac)
+
+        DO iproc = 1, nprocs - 1
+            volume_frac(iproc + 1) = volume_frac(iproc + 1) / volume
+            npart_arr(iproc + 1) = NINT(init_npart * volume_frac(iproc + 1))
+        END DO
+
+        npart_arr(1) = init_npart - SUM(npart_arr)
+
+        do iproc = 1, nprocs
+            IF (myid == 0) THEN
+                SELECT CASE (TRIM(particle_terminal))
+                CASE ("none")
+                    CONTINUE
+                CASE ("normal")
+                    WRITE(*, *) npart_arr(iproc), " particles to be assigned to process ", iproc - 1, "."
+                    WRITE(*, '()')
+                CASE ("verbose")
+                    WRITE(*, *) npart_arr(iproc), " particles to be assigned to process ", iproc - 1, "."
+                    WRITE(*, '()')
+                END SELECT
+            END IF
+        END DO
+
+    END SUBROUTINE dist_npart
+
+    !-----------------------------------
+
+    !this routine generates a list of unique particle ids (ipart) on every process
+    SUBROUTINE dist_ipart(nprocs, iproc, npart_arr, ipart_arr)
+
+        ! subroutine arguments
+        INTEGER(intk), INTENT(in) :: nprocs, iproc
+        INTEGER(intk), INTENT(in) :: npart_arr(nprocs)
+        INTEGER(intk), INTENT(out) :: ipart_arr(npart_arr(iproc))
+
+        ! local variables
+        INTEGER(intk) :: i, counter, offset
+
+        offset = 0
+        DO i = 1, iproc
+            offset = offset + npart_arr(i)
+        END DO
+
+        counter = 1
+        DO i = 1, npart_arr(iproc + 1)
+            ipart_arr(counter) = offset + i
+            counter = counter + 1
         END DO
 
     END SUBROUTINE dist_ipart
@@ -348,11 +463,12 @@ CONTAINS    !===================================
         REAL(realk), INTENT(inout) :: x(npart), y(npart), z(npart)
 
         ! local variables...
-        INTEGER(intk) :: i, j, igrid
+        INTEGER(intk) :: i, j, igrid, iobst, counter
         REAL(realk) :: myvolume, volume_fractions(nmygrids), grid_rn
-        REAL(realk) :: minx, maxx, miny, maxy, minz, maxz
+        REAL(realk) :: minx, maxx, miny, maxy, minz, maxz, dist
+        LOGICAL :: valid_location
 
-        ! compute combined volume of all grids this process owns (assumning ther is only one level)
+        ! compute combined volume of all grids this process owns (assumning there is only one level!)
         myvolume = 0.0_realk
 
         DO i = 1, nmygrids
@@ -364,7 +480,7 @@ CONTAINS    !===================================
 
         END DO
 
-        ! compute fraction of the combined volume of each grids volume (assumning ther is only one level)
+        ! compute fraction of the combined volume of each grids volume (assumning ther is only one level!)
         igrid = mygrids(1)
         CALL get_bbox(minx, maxx, miny, maxy, minz, maxz, igrid)
 
@@ -386,31 +502,52 @@ CONTAINS    !===================================
         END DO
 
         ! distribute particles among all grids this process owns (uniformely distibuted)
-        DO j = 1, npart
+        DO i = 1, npart
 
-            i = 1_intk
+            valid_location = .FALSE.
+            DO WHILE (.NOT. valid_location)
 
-            CALL RANDOM_NUMBER(grid_rn)
+                CALL RANDOM_NUMBER(grid_rn)
 
-            DO WHILE (grid_rn > volume_fractions(i))
-                i = i + 1_intk
+                counter = 1
+                DO WHILE (grid_rn > volume_fractions(counter))
+                    counter = counter + 1
+                END DO
+
+                igrid = mygrids(counter)
+                CALL get_bbox(minx, maxx, miny, maxy, minz, maxz, igrid)
+
+                p_igrid_arr(i) = igrid
+
+                CALL RANDOM_SEED()
+                CALL RANDOM_NUMBER(x(i))
+                CALL RANDOM_SEED()
+                CALL RANDOM_NUMBER(y(i))
+                CALL RANDOM_SEED()
+                CALL RANDOM_NUMBER(z(i))
+
+                x(i) = minx + x(i) * (maxx - minx)
+                y(i) = miny + y(i) * (maxy - miny)
+                z(i) = minz + z(i) * (maxz - minz)
+
+                valid_location = .TRUE.
+
+                DO j = 1, SIZE(my_obstacle_pointers(igrid)%grid_obstacles)
+
+                    iobst = my_obstacle_pointers(igrid)%grid_obstacles(j)
+
+                    dist = SQRT((my_obstacles(iobst)%x - x(i))**2 + &
+                     (my_obstacles(iobst)%y - y(i))**2 + &
+                     (my_obstacles(iobst)%z - z(i))**2)
+
+                    IF (dist < my_obstacles(iobst)%radius + 100 * EPSILON(dist)) THEN
+                        valid_location = .FALSE.
+                        EXIT
+                    END IF
+
+                END DO
+
             END DO
-
-            igrid = mygrids(i)
-            CALL get_bbox(minx, maxx, miny, maxy, minz, maxz, igrid)
-
-            p_igrid_arr(j) = igrid
-
-            CALL RANDOM_SEED()
-            CALL RANDOM_NUMBER(x(j))
-            CALL RANDOM_SEED()
-            CALL RANDOM_NUMBER(y(j))
-            CALL RANDOM_SEED()
-            CALL RANDOM_NUMBER(z(j))
-
-            x(j) = minx + x(j) * (maxx - minx)
-            y(j) = miny + y(j) * (maxy - miny)
-            z(j) = minz + z(j) * (maxz - minz)
 
         END DO
 
