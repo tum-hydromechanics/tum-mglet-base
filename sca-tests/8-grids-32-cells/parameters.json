@@ -8,7 +8,7 @@
         "type": "noib"
     },
     "time": {
-        "mtstep": 2500,
+        "mtstep": 2,
         "dt": 0.002,
         "itinfo": 10,
         "tstat": 6.0,

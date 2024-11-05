@@ -69,7 +69,7 @@ CONTAINS
     
             ! TSTSCA4 zeroize qtu, qtv, qtw before use internally
             CALL tstsca4(scalar(l))
-    
+
             ! ┌────────────────────────────────────────────────────────────────────────────┐
             ! | SIMPLIFICATION: Only grids on the same level                               |
             ! | *Removed minlevel and maxlevel*                                            |
@@ -80,7 +80,7 @@ CONTAINS
                 ! Simplification only same grid level: CALL parent(ilevel, qtu, qtv, qtw)
                 CALL bound_sca(ilevel, t)
             END DO
-    
+
             ! Remove comments for verifications of values
             !!$omp target update from(qtu_offload, qtv_offload, qtw_offload)
             !print *, "---------------"
@@ -90,7 +90,7 @@ CONTAINS
     
             ! fluxbalance zeroize qtt before use internally
             CALL fluxbalance(qtt)
-    
+
             ! Ghost cell "flux" boundary condition applied to qtt field
             IF (ib%type == "GHOSTCELL") THEN
                 CALL set_scastencils("P", scalar(l), qtt=qtt)
@@ -195,20 +195,15 @@ CONTAINS
         INTEGER(intk) :: kayscrawford_offload
 
         ! Expensive data to offload
-        REAL(realk), POINTER, CONTIGUOUS, DIMENSION(:) :: g_a
 
         CALL start_timer(410)
 
-        CALL get_field(g_f, "G")
-
-        CALL g_f%get_arr_ptr(g_a)
+        !$omp target update to(g_offload)
 
         prmol_offload = sca%prmol
         prturb_offload = prturb
         kayscrawford_offload = sca%kayscrawford
         
-        !$omp target data map(to: g_a)
-        !$omp target teams distribute
         DO igrid = 1, nmygrids
             BLOCK
                 INTEGER(intk) :: kk, jj, ii
@@ -226,11 +221,8 @@ CONTAINS
                 CALL ptr_to_grid3(u_offload, igrid, u)
                 CALL ptr_to_grid3(v_offload, igrid, v)
                 CALL ptr_to_grid3(w_offload, igrid, w)
-                CALL ptr_to_grid3(g_a, igrid, g)
 
                 CALL ptr_to_grid3(g_offload, igrid, g)
-                CALL ptr_to_grid3(t_offload, igrid, t)
-                CALL ptr_to_grid3(gsca_offload, igrid, gsca)
 
                 CALL ptr_to_grid3(bt_offload, igrid, bt)
                 CALL ptr_to_grid_x(ddx_offload, igrid, ddx)
@@ -244,11 +236,9 @@ CONTAINS
                     ddx, ddy, ddz, rdx, rdy, rdz, &
                     prmol_offload, kayscrawford_offload, prturb_offload, &
                     nfro, nbac, nrgt, nlft, nbot, ntop, ilesmodel, &
-                    gmol, rho)
+                    gmol, rho, igrid)
             END BLOCK
         END DO
-        !$omp end target teams distribute
-        !$omp end target data
 
         CALL stop_timer(410)
     END SUBROUTINE tstsca4
@@ -256,13 +246,13 @@ CONTAINS
 
     SUBROUTINE tstsca4_grid(kk, jj, ii, qtu, qtv, qtw, t, u, v, w, g, bt, &
             ddx, ddy, ddz, rdx, rdy, rdz, sca_prmol, sca_kayscrawford, sca_prturb, nfro, nbac, nrgt, nlft, &
-            nbot, ntop, ilesmodel_offlad, gmol_offload, rho_offload)
-        !$omp declare target
-        ! Subroutine arguments
-        INTEGER(intk), INTENT(IN) :: kk, jj, ii
+            nbot, ntop, ilesmodel_offlad, gmol_offload, rho_offload, igrid)   
+        
+            ! Subroutine arguments
+        INTEGER(intk), INTENT(IN) :: kk, jj, ii, igrid
         REAL(realk), INTENT(OUT), POINTER, CONTIGUOUS, DIMENSION(:, :, :) :: qtu, qtv, qtw
-        REAL(realk), INTENT(IN), POINTER, CONTIGUOUS, DIMENSION(:, :, :) :: t, u, v, w, g, bt
-        REAL(realk), INTENT(IN), POINTER, CONTIGUOUS, DIMENSION(:) :: ddx, ddy, ddz, rdx, rdy, rdz
+        !REAL(realk), INTENT(IN), POINTER, CONTIGUOUS, DIMENSION(:, :, :) :: t, u, v, w, bt
+        !REAL(realk), INTENT(IN), POINTER, CONTIGUOUS, DIMENSION(:) :: ddx, ddy, ddz, rdx, rdy, rdz
         REAL(realk), INTENT(in) :: sca_prmol, sca_prturb
         INTEGER(intk), INTENT(IN) :: sca_kayscrawford
         INTEGER(intk), INTENT(IN) :: nfro, nbac, nrgt, nlft, nbot, ntop
@@ -276,6 +266,11 @@ CONTAINS
         REAL(realk) :: gsca(ii)
         REAL(realk) :: adv, diff, area
         REAL(realk) :: gscamol, gtgmolp, gtgmoln
+        REAL(realk), POINTER, CONTIGUOUS, DIMENSION(:, :, :) :: g
+        REAL(realk), POINTER, CONTIGUOUS, DIMENSION(:, :, :) :: t, u, v, w, bt
+        REAL(realk), POINTER, CONTIGUOUS, DIMENSION(:) :: ddx, ddy, ddz, rdx, rdy, rdz
+
+
 
         ! Set INTENT(out) to zero
         qtu = 0.0
@@ -302,165 +297,215 @@ CONTAINS
         iles = 1
         IF (ilesmodel_offlad == 0) iles = 0
 
+        
         ! X direction
-        !$omp parallel
-        !!$omp do collapse(2)
-        !$omp target teams distribute parallel do collapse(2)
-        DO i = 3-nfu, ii-3+nbu
-            DO j = 3, jj-2
-                ! Scalar diffusivity LES/DNS computation
-                IF (iles == 1) THEN
-                    DO k = 3, kk-2
-                        ! Calculate the 1D index for each 3D array
-                        index_grid = k + (j-1) * kk + (i-1) * jj * kk
-                        index_grid_i1 = index_grid + kk   ! i+1 offset in flattened array
-                        
-                        gscamol = gmol_offload/rho_offload/sca_prmol
-                        gtgmolp = (g_offload(index_grid) - gmol_offload)/gmol_offload
-                        gtgmoln = (g_offload(index_grid_i1) - gmol_offload)/gmol_offload
+        !$omp target data map(to: gsca)
+        !$omp target
+        BLOCK
+            REAL(realk), POINTER, CONTIGUOUS, DIMENSION(:, :, :) :: g
+            REAL(realk), POINTER, CONTIGUOUS, DIMENSION(:, :, :) :: t, u, v, w, bt
+            REAL(realk), POINTER, CONTIGUOUS, DIMENSION(:) :: ddx, ddy, ddz, rdx, rdy, rdz
 
-                        ! 1/Re * 1/Pr + 1/Re_t * 1/Pr_t:
-                        gsca(k) = gscamol &
-                            + (g_offload(index_grid_i1) + g_offload(index_grid) - 2.0*gmol_offload) / rho_offload &
+            CALL ptr_to_grid3(g_offload, igrid, g)
+            CALL ptr_to_grid3(t_offload, igrid, t)
+            CALL ptr_to_grid3(u_offload, igrid, u)
+            CALL ptr_to_grid3(bt_offload, igrid, bt)
+            CALL ptr_to_grid_y(ddy_offload, igrid, ddy)
+            CALL ptr_to_grid_z(ddz_offload, igrid, ddz)
+            CALL ptr_to_grid_x(rdx_offload, igrid, rdx)
+
+            !$omp teams distribute parallel do collapse(2)
+            DO i = 3-nfu, ii-3+nbu
+                DO j = 3, jj-2
+                    ! Scalar diffusivity LES/DNS computation
+                    IF (iles == 1) THEN
+                        DO k = 3, kk-2
+                            ! Calculate the 1D index for each 3D array
+                            index_grid = k + (j-1) * kk + (i-1) * jj * kk
+                            index_grid_i1 = index_grid + kk   ! i+1 offset in flattened array
+                            
+                            gscamol = gmol_offload/rho_offload/sca_prmol
+                            gtgmolp = (g(k, j, i) - gmol_offload)/gmol_offload
+                            gtgmoln = (g(k, j, i+1) - gmol_offload)/gmol_offload
+
+                            ! 1/Re * 1/Pr + 1/Re_t * 1/Pr_t:
+                            gsca(k) = gscamol &
+                            + (g(k, j, i+1) + g(k, j, i) - 2.0*gmol_offload) / rho_offload &
                             / (sca_prt(sca_prmol, sca_kayscrawford, sca_prturb, gtgmoln) + sca_prt(sca_prmol, sca_kayscrawford, sca_prturb, gtgmolp))
 
-                        ! Limit gsca here MAX(...,0): no negative diffusion!
-                        gsca(k) = MAX(gscamol, gsca(k))
-                    END DO
-                ELSE
+                            ! Limit gsca here MAX(...,0): no negative diffusion!
+                            gsca(k) = MAX(gscamol, gsca(k))
+                        END DO
+                    ELSE
+                        !$omp simd
+                        DO k = 3, kk-2
+                            gsca(k) = gmol_offload/rho_offload/sca_prmol
+                        END DO
+                        !$omp end simd
+                    END IF
+
+                    ! Final asembly
                     !$omp simd
                     DO k = 3, kk-2
-                        gsca(k) = gmol_offload/rho_offload/sca_prmol
+                        index_grid = k + (j - 1) * kk + (i - 1) * jj * kk
+                        index_grid_i1 = index_grid + kk  ! Offset for i+1
+                        ! Convective fluxes
+                        ! It is assumed that the velocity field is already masked
+                        ! with BU, BV, BW = no new masking necessary (!)
+                        adv = (ddy(j)*ddz(k)) * u(k, j, i) &
+                            * 0.5 * (t(k, j, i) + t(k, j, i+1))
+                        ! Depending on the knowledge about the the cell and its
+                        ! neighbours it is determined if faces are blocked (=0)
+                        ! or open (=1)
+                        area = bt(k, j, i)*bt(k, j, i+1)*(ddy(j)*ddz(k))
+                        diff = -gsca(k)*rdx(i)*(t(k, j, i+1) - t(k, j, i))*area                  
+                        ! Final result
+                        !print *, adv
+                        qtu(k, j, i) = adv + diff
                     END DO
                     !$omp end simd
-                END IF
-
-                ! Final asembly
-                !$omp simd
-                DO k = 3, kk-2
-                    ! Convective fluxes
-                    ! It is assumed that the velocity field is already masked
-                    ! with BU, BV, BW = no new masking necessary (!)
-                    adv = (ddy(j)*ddz(k)) * u(k, j, i) &
-                        * 0.5 * (t(k, j, i) + t(k, j, i+1))
-
-                    ! Depending on the knowledge about the the cell and its
-                    ! neighbours it is determined if faces are blocked (=0)
-                    ! or open (=1)
-                    area = bt(k, j, i)*bt(k, j, i+1)*(ddy(j)*ddz(k))
-                    diff = -gsca(k)*rdx(i)*(t(k, j, i+1) - t(k, j, i))*area
-
-                    ! Final result
-                    !print *, adv
-                    qtu(k, j, i) = adv + diff
                 END DO
-                !$omp end simd
             END DO
-        END DO
-        !!$omp end do
-        !$omp end target teams distribute parallel do
+            !$omp end teams distribute parallel do
+        END BLOCK
+        !$omp end target
+        !$omp end target data
 
         ! Y direction
-        !$omp do collapse(2)
-        DO i = 3, ii-2
-            DO j = 3-nrv, jj-3+nlv
-                ! Scalar diffusivity LES/DNS computation
-                IF (iles == 1) THEN
-                    DO k = 3, kk-2
-                        gscamol = gmol_offload/rho_offload/sca_prmol
-                        gtgmolp = (g(k, j, i) - gmol_offload)/gmol_offload
-                        gtgmoln = (g(k, j+1, i) - gmol_offload)/gmol_offload
+        !$omp target data map(to: gsca)
+        !$omp target
+        BLOCK
+            REAL(realk), POINTER, CONTIGUOUS, DIMENSION(:, :, :) :: g
+            REAL(realk), POINTER, CONTIGUOUS, DIMENSION(:, :, :) :: t, u, v, w, bt
+            REAL(realk), POINTER, CONTIGUOUS, DIMENSION(:) :: ddx, ddy, ddz, rdx, rdy, rdz
 
-                        ! 1/Re * 1/Pr + 1/Re_t * 1/Pr_t:
-                        gsca(k) = gscamol &
-                            + (g(k, j+1, i) + g(k, j, i) - 2.0*gmol_offload) / rho_offload &
-                            / (sca_prt(sca_prmol, sca_kayscrawford, sca_prturb, gtgmoln) + sca_prt(sca_prmol, sca_kayscrawford, sca_prturb, gtgmolp))
+            CALL ptr_to_grid3(g_offload, igrid, g)
+            CALL ptr_to_grid3(t_offload, igrid, t)
+            CALL ptr_to_grid3(v_offload, igrid, v)
+            CALL ptr_to_grid3(bt_offload, igrid, bt)
+            CALL ptr_to_grid_x(ddx_offload, igrid, ddx)
+            CALL ptr_to_grid_z(ddz_offload, igrid, ddz)
+            CALL ptr_to_grid_y(rdy_offload, igrid, rdy)
 
-                        ! Limit gsca here MAX(...,0): no negative diffusion!
-                        gsca(k) = MAX(gscamol, gsca(k))
-                    END DO
-                ELSE
+            !$omp teams distribute parallel do collapse(2)        
+            DO i = 3, ii-2
+                DO j = 3-nrv, jj-3+nlv
+                    ! Scalar diffusivity LES/DNS computation
+                    IF (iles == 1) THEN
+                        DO k = 3, kk-2
+                            gscamol = gmol_offload/rho_offload/sca_prmol
+                            gtgmolp = (g(k, j, i) - gmol_offload)/gmol_offload
+                            gtgmoln = (g(k, j+1, i) - gmol_offload)/gmol_offload
+
+                            ! 1/Re * 1/Pr + 1/Re_t * 1/Pr_t:
+                            gsca(k) = gscamol &
+                                + (g(k, j+1, i) + g(k, j, i) - 2.0*gmol_offload) / rho_offload &
+                                / (sca_prt(sca_prmol, sca_kayscrawford, sca_prturb, gtgmoln) + sca_prt(sca_prmol, sca_kayscrawford, sca_prturb, gtgmolp))
+
+                            ! Limit gsca here MAX(...,0): no negative diffusion!
+                            gsca(k) = MAX(gscamol, gsca(k))
+                        END DO
+                    ELSE
+                        !$omp simd
+                        DO k = 3, kk-2
+                            gsca(k) = gmol_offload/rho_offload/sca_prmol
+                        END DO
+                        !$omp end simd
+                    END IF
+
+                    ! Final asembly
                     !$omp simd
                     DO k = 3, kk-2
-                        gsca(k) = gmol_offload/rho_offload/sca_prmol
+                        ! Convective fluxes
+                        ! It is assumed that the velocity field is already masked
+                        ! with BU, BV, BW = no new masking necessary (!)
+                        adv = (ddx(i)*ddz(k)) * v(k, j, i) &
+                            * 0.5 * (t(k, j, i) + t(k, j+1, i))
+
+                        ! Depending on the knowledge about the the cell and its
+                        ! neighbours it is determined if faces are blocked (=0)
+                        ! or open (=1)
+                        area = bt(k, j, i)*bt(k, j+1, i)*(ddx(i)*ddz(k))
+                        diff = -gsca(k)*rdy(j)*(t(k, j+1, i) - t(k, j, i))*area
+
+                        ! Final result
+                        qtv(k, j, i) = adv + diff
                     END DO
                     !$omp end simd
-                END IF
-
-                ! Final asembly
-                !$omp simd
-                DO k = 3, kk-2
-                    ! Convective fluxes
-                    ! It is assumed that the velocity field is already masked
-                    ! with BU, BV, BW = no new masking necessary (!)
-                    adv = (ddx(i)*ddz(k)) * v(k, j, i) &
-                        * 0.5 * (t(k, j, i) + t(k, j+1, i))
-
-                    ! Depending on the knowledge about the the cell and its
-                    ! neighbours it is determined if faces are blocked (=0)
-                    ! or open (=1)
-                    area = bt(k, j, i)*bt(k, j+1, i)*(ddx(i)*ddz(k))
-                    diff = -gsca(k)*rdy(j)*(t(k, j+1, i) - t(k, j, i))*area
-
-                    ! Final result
-                    qtv(k, j, i) = adv + diff
                 END DO
-                !$omp end simd
             END DO
-        END DO
-        !$omp end do
+            !$omp end teams distribute parallel do
+        END BLOCK
+        !$omp end target
+        !$omp end target data
 
         ! Z direction
-        !$omp do collapse(2)
-        DO i = 3, ii-2
-            DO j = 3, jj-2
-                ! Scalar diffusivity LES/DNS computation
-                IF (iles == 1) THEN
-                    DO k = 3-nbw, kk-3+ntw
-                        gscamol = gmol_offload/rho_offload/sca_prmol
-                        gtgmolp = (g(k, j, i) - gmol_offload)/gmol_offload
-                        gtgmoln = (g(k+1, j, i) - gmol_offload)/gmol_offload
+        !$omp target data map(to: gsca)
+        !$omp target
+        BLOCK
+            REAL(realk), POINTER, CONTIGUOUS, DIMENSION(:, :, :) :: g
+            REAL(realk), POINTER, CONTIGUOUS, DIMENSION(:, :, :) :: t, u, v, w, bt
+            REAL(realk), POINTER, CONTIGUOUS, DIMENSION(:) :: ddx, ddy, ddz, rdx, rdy, rdz
 
-                        ! 1/Re * 1/Pr + 1/Re_t * 1/Pr_t:
-                        gsca(k) = gscamol &
-                            + (g(k+1, j, i) + g(k, j, i) - 2.0*gmol_offload) / rho_offload &
-                            / (sca_prt(sca_prmol, sca_kayscrawford, sca_prturb, gtgmoln) + sca_prt(sca_prmol, sca_kayscrawford, sca_prturb, gtgmolp))
+            CALL ptr_to_grid3(g_offload, igrid, g)
+            CALL ptr_to_grid3(t_offload, igrid, t)
+            CALL ptr_to_grid3(w_offload, igrid, w)
+            CALL ptr_to_grid3(bt_offload, igrid, bt)
+            CALL ptr_to_grid_x(ddx_offload, igrid, ddx)
+            CALL ptr_to_grid_y(ddy_offload, igrid, ddy)
+            CALL ptr_to_grid_y(rdy_offload, igrid, rdy)
+            
+            !$omp teams distribute parallel do collapse(2)
+            DO i = 3, ii-2
+                DO j = 3, jj-2
+                    ! Scalar diffusivity LES/DNS computation
+                    IF (iles == 1) THEN
+                        DO k = 3-nbw, kk-3+ntw
+                            gscamol = gmol_offload/rho_offload/sca_prmol
+                            gtgmolp = (g(k, j, i) - gmol_offload)/gmol_offload
+                            gtgmoln = (g(k+1, j, i) - gmol_offload)/gmol_offload
 
-                        ! Limit gsca here MAX(...,0): no negative diffusion!
-                        gsca(k) = MAX(gscamol, gsca(k))
-                    END DO
-                ELSE
+                            ! 1/Re * 1/Pr + 1/Re_t * 1/Pr_t:
+                            gsca(k) = gscamol &
+                                + (g(k+1, j, i) + g(k, j, i) - 2.0*gmol_offload) / rho_offload &
+                                / (sca_prt(sca_prmol, sca_kayscrawford, sca_prturb, gtgmoln) + sca_prt(sca_prmol, sca_kayscrawford, sca_prturb, gtgmolp))
+
+                            ! Limit gsca here MAX(...,0): no negative diffusion!
+                            gsca(k) = MAX(gscamol, gsca(k))
+                        END DO
+                    ELSE
+                        !$omp simd
+                        DO k = 3-nbw, kk-3+ntw
+                            gsca(k) = gmol_offload/rho_offload/sca_prmol
+                        END DO
+                        !$omp end simd
+                    END IF
+
+                    ! Final asembly
                     !$omp simd
                     DO k = 3-nbw, kk-3+ntw
-                        gsca(k) = gmol_offload/rho_offload/sca_prmol
+                        ! Convective fluxes
+                        ! It is assumed that the velocity field is already masked
+                        ! with BU, BV, BW = no new masking necessary (!)
+                        adv = (ddx(i)*ddy(j)) * w(k, j, i) &
+                            * 0.5 * (t(k, j, i) + t(k+1, j, i))
+
+                        ! Depending on the knowledge about the the cell and its
+                        ! neighbours it is determined if faces are blocked (=0)
+                        ! or open (=1)
+                        area = bt(k, j, i)*bt(k+1, j, i)*(ddx(i)*ddy(j))
+                        diff = -gsca(k)*rdy(j)*(t(k+1, j, i) - t(k, j, i))*area
+
+                        ! Final result
+                        qtw(k, j, i) = adv + diff
                     END DO
                     !$omp end simd
-                END IF
-
-                ! Final asembly
-                !$omp simd
-                DO k = 3-nbw, kk-3+ntw
-                    ! Convective fluxes
-                    ! It is assumed that the velocity field is already masked
-                    ! with BU, BV, BW = no new masking necessary (!)
-                    adv = (ddx(i)*ddy(j)) * w(k, j, i) &
-                        * 0.5 * (t(k, j, i) + t(k+1, j, i))
-
-                    ! Depending on the knowledge about the the cell and its
-                    ! neighbours it is determined if faces are blocked (=0)
-                    ! or open (=1)
-                    area = bt(k, j, i)*bt(k+1, j, i)*(ddx(i)*ddy(j))
-                    diff = -gsca(k)*rdy(j)*(t(k+1, j, i) - t(k, j, i))*area
-
-                    ! Final result
-                    qtw(k, j, i) = adv + diff
                 END DO
-                !$omp end simd
             END DO
-        END DO
-        !$omp end do
-        !$omp end parallel
-
+            !$omp end teams distribute parallel do
+        END BLOCK
+        !$omp end target
+        !$omp end target data
 
         ! These loops are not used in our basic scalar test
         ! ------------------------------------------------------------------------------------------------------------
@@ -562,71 +607,67 @@ CONTAINS
 
         ! Local variables
         INTEGER(intk) :: igrid
-
-        ! Expensive data to offload
-        REAL(realk), POINTER, CONTIGUOUS, DIMENSION(:) :: qtt_a
+        INTEGER(intk) :: kk, jj, ii
 
         CALL start_timer(411)
 
-        CALL qtt_f%get_arr_ptr(qtt_a)
-
-        !$omp target data map(from: qtt_a)
-        !$omp target teams distribute 
         DO igrid = 1, nmygrids
-            BLOCK
-                REAL(realk), POINTER, CONTIGUOUS, DIMENSION(:, :, :) :: qtt, qtu, qtv, qtw
-                REAL(realk), POINTER, CONTIGUOUS, DIMENSION(:) :: rddx, rddy, rddz
-                INTEGER(intk) :: kk, jj, ii
-
-                CALL ptr_to_grid3(qtt_a, igrid, qtt)
-                CALL ptr_to_grid3(qtu_offload, igrid, qtu)
-                CALL ptr_to_grid3(qtv_offload, igrid, qtv)
-                CALL ptr_to_grid3(qtw_offload, igrid, qtw)
-
-                CALL ptr_to_grid_x(rddx_offload, igrid, rddx)
-                CALL ptr_to_grid_y(rddy_offload, igrid, rddy)
-                CALL ptr_to_grid_z(rddz_offload, igrid, rddz)
-
-                CALL get_mgdims_target(kk, jj, ii, igrid)
-                CALL fluxbalance_grid(kk, jj, ii, qtt, qtu, qtv, qtw, rddx, rddy, rddz)
-            END BLOCK
+            CALL get_mgdims(kk, jj, ii, igrid)
+            CALL fluxbalance_grid(kk, jj, ii, igrid)
         END DO
-        !$omp end target teams distribute
-        !$omp end target data
+
+        !$omp target update from(qtt_offload)
+        qtt_f%arr = qtt_offload
 
         CALL stop_timer(411)
     END SUBROUTINE fluxbalance
 
-    SUBROUTINE fluxbalance_grid(kk, jj, ii, qtt, qtu, qtv, qtw, rddx, rddy, rddz)
-        !$omp declare target
+    SUBROUTINE fluxbalance_grid(kk, jj, ii, igrid)
         ! Subroutine arguments
-        INTEGER(intk), INTENT(IN) :: kk, jj, ii
-        REAL(realk), INTENT(OUT), POINTER, CONTIGUOUS, DIMENSION(:, :, :) :: qtt
-        REAL(realk), INTENT(IN), POINTER, CONTIGUOUS, DIMENSION(:, :, :) :: qtu, qtv, qtw
-        REAL(realk), INTENT(IN), POINTER, CONTIGUOUS, DIMENSION(:) :: rddx, rddy, rddz
+        INTEGER(intk), INTENT(IN) :: kk, jj, ii, igrid
 
         ! Local variables
-        INTEGER(intk) :: i, j, k
+        INTEGER(intk) :: i, j, k, index, index_im1, index_jm1, index_km1
         REAL(realk) :: netflux
 
         ! Set INTENT(out) to zero
-        qtt = 0.0
+        !qtt = 0.0
 
-        !$omp parallel do collapse(2)
-        DO i = 3, ii-2
-            DO j = 3, jj-2
-                !$omp simd
-                DO k = 3, kk-2
-                    ! Computing netflux resulting from exchange with neighbors
-                    netflux = qtu(k, j, i-1) - qtu(k, j, i) + qtv(k, j-1, i) &
-                        - qtv(k, j, i) + qtw(k-1, j, i) - qtw(k, j, i)
+        !$omp target
+        BLOCK
+            REAL(realk), POINTER, CONTIGUOUS, DIMENSION(:, :, :) :: qtu, qtv, qtw, qtt
+            REAL(realk), POINTER, CONTIGUOUS, DIMENSION(:) :: rddx, rddy, rddz
+            CALL ptr_to_grid3(qtu_offload, igrid, qtu)
+            CALL ptr_to_grid3(qtv_offload, igrid, qtv)
+            CALL ptr_to_grid3(qtw_offload, igrid, qtw)
+            CALL ptr_to_grid3(qtt_offload, igrid, qtt)
 
-                    qtt(k, j, i) = rddz(k)*rddy(j)*rddx(i)*netflux
+            CALL ptr_to_grid_x(rddx_offload, igrid, rddx)
+            CALL ptr_to_grid_y(rddy_offload, igrid, rddy)
+            CALL ptr_to_grid_z(rddz_offload, igrid, rddz)
+            !$omp teams distribute parallel do collapse(2)
+            DO i = 3, ii-2
+                DO j = 3, jj-2
+                    !$omp simd
+                    DO k = 3, kk-2
+                        ! Flattened indices for each 3D array
+                        !index = k + (j - 1) * kk + (i - 1) * jj * kk
+                        !index_im1 = index - kk * jj  ! i-1 offset
+                        !index_jm1 = index - kk       ! j-1 offset
+                        !index_km1 = index - 1        ! k-1 offset
+
+                        ! Computing netflux resulting from exchange with neighbors
+                        netflux = qtu(k, j, i-1) - qtu(k, j, i) + qtv(k, j-1, i) &
+                            - qtv(k, j, i) + qtw(k-1, j, i) - qtw(k, j, i)
+
+                        qtt(k, j, i) = rddz(k)*rddy(j)*rddx(i)*netflux
+                    END DO
+                    !$omp end simd
                 END DO
-                !$omp end simd
             END DO
-        END DO
-        !$omp end parallel do
+            !$omp end teams distribute parallel do
+        END BLOCK
+        !$omp end target
     END SUBROUTINE fluxbalance_grid
 
     SUBROUTINE comp_tmean(tmean, tmeansqr, kk, jj, ii, t, ddx, ddy, ddz)

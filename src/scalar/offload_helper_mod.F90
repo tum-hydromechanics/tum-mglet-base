@@ -35,12 +35,12 @@ MODULE offload_helper_mod
     REAL(realk), POINTER, CONTIGUOUS, DIMENSION(:) :: ddx_offload, ddy_offload, ddz_offload
     REAL(realk), POINTER, CONTIGUOUS, DIMENSION(:) :: bt_offload
     REAL(realk), POINTER, CONTIGUOUS, DIMENSION(:) :: g_offload
-    REAL(realk), POINTER, CONTIGUOUS, DIMENSION(:) :: gsca_offload
+
     ! Flow/Scalar fields
     REAL(realk), POINTER, CONTIGUOUS, DIMENSION(:) :: u_offload, v_offload, w_offload, t_offload
     
     ! ----- Newly encoded or global arrays -----
-    REAL(realk), POINTER, CONTIGUOUS, DIMENSION(:) :: qtu_offload, qtv_offload, qtw_offload
+    REAL(realk), POINTER, CONTIGUOUS, DIMENSION(:) :: qtu_offload, qtv_offload, qtw_offload, qtt_offload
     INTEGER(intk), POINTER, CONTIGUOUS, DIMENSION(:) :: mgdims_offload, mgbasb_offload
     INTEGER(intk), POINTER, CONTIGUOUS, DIMENSION(:) :: encoded_ctyp_offload
     INTEGER(intk), POINTER, CONTIGUOUS, DIMENSION(:, :) :: bc_indexing
@@ -51,9 +51,10 @@ MODULE offload_helper_mod
     !$omp declare target(rdx_offload, rdy_offload, rdz_offload, rddx_offload, rddy_offload, rddz_offload)
     !$omp declare target(dx_offload, dy_offload, dz_offload, ddx_offload, ddy_offload, ddz_offload)
     !$omp declare target(bt_offload)
-    !$omp declare target(g_offload, gsca_offload)
+    !$omp declare target(g_offload)
     !$omp declare target(u_offload, v_offload, w_offload, t_offload)
-    !$omp declare target(qtu_offload, qtv_offload, qtw_offload)
+    !$omp declare target(qtu_offload, qtv_offload, qtw_offload, qtt_offload)
+
 
     ! Public subroutines for host
     PUBLIC :: offload_constants, finish_offload_constants
@@ -67,8 +68,8 @@ MODULE offload_helper_mod
 
     ! Public variables for device
     PUBLIC :: rdx_offload, rdy_offload, rdz_offload, rddx_offload, rddy_offload, rddz_offload, &
-        dx_offload, dy_offload, dz_offload, ddx_offload, ddy_offload, ddz_offload, bt_offload, g_offload, gsca_offload, &
-        u_offload, v_offload, w_offload, t_offload, qtu_offload, qtv_offload, qtw_offload, nboconds_offload
+        dx_offload, dy_offload, dz_offload, ddx_offload, ddy_offload, ddz_offload, bt_offload, g_offload, &
+        u_offload, v_offload, w_offload, t_offload, qtu_offload, qtv_offload, qtw_offload, qtt_offload, nboconds_offload
 
 CONTAINS
     SUBROUTINE offload_constants()        
@@ -143,8 +144,7 @@ CONTAINS
         CALL get_field(ddz_f, "DDZ")
         CALL get_field(bt_f, "BT")
         CALL get_field(g_f, "G")
-        CALL get_field(t_f, "T")
-        CALL get_field(gsca_f, "GSCA")
+
 
         
         rdx_offload => rdx_f%arr
@@ -161,13 +161,12 @@ CONTAINS
         ddz_offload => ddz_f%arr
         bt_offload => bt_f%arr
         g_offload => g_f%arr
-        t_offload => t_f%arr
-        gsca_offload => gsca_f%arr
+
 
 
 
         !$omp target enter data map(to: rdx_offload, rdy_offload, rdz_offload, rddx_offload, rddy_offload, rddz_offload, &
-        !$omp& dx_offload, dy_offload, dz_offload, ddx_offload, ddy_offload, ddz_offload, bt_offload, g_offload, t_offload, gsca_offload)
+        !$omp& dx_offload, dy_offload, dz_offload, ddx_offload, ddy_offload, ddz_offload, bt_offload, g_offload)
     END SUBROUTINE
 
     SUBROUTINE map_flow_sca()
@@ -187,8 +186,9 @@ CONTAINS
         ALLOCATE(qtu_offload, source=u_f%arr)
         ALLOCATE(qtv_offload, source=v_f%arr)
         ALLOCATE(qtw_offload, source=w_f%arr)
+        ALLOCATE(qtt_offload, source=u_f%arr)
 
-        !$omp target enter data map(to: u_offload, v_offload, w_offload, t_offload, qtu_offload, qtv_offload, qtw_offload)
+        !$omp target enter data map(to: u_offload, v_offload, w_offload, t_offload, qtu_offload, qtv_offload, qtw_offload, qtt_offload)
     END SUBROUTINE
 
     SUBROUTINE map_bc_encoding()
@@ -284,8 +284,8 @@ CONTAINS
         !$omp target exit data map(delete: mgdims_offload, ip3d_offload, ip1d_offload)
         !$omp target exit data map(delete: nboconds_offload, mgbasb_offload)
         !$omp target exit data map(delete: rdx_offload, rdy_offload, rdz_offload, rddx_offload, rddy_offload, rddz_offload, &
-        !$omp& dx_offload, dy_offload, dz_offload, ddx_offload, ddy_offload, ddz_offload, bt_offload, g_offload, t_offload, gsca_offload)
-        !$omp target exit data map(delete: u_offload, v_offload, w_offload, t_offload, qtu_offload, qtv_offload, qtw_offload)
+        !$omp& dx_offload, dy_offload, dz_offload, ddx_offload, ddy_offload, ddz_offload, bt_offload, g_offload)
+        !$omp target exit data map(delete: u_offload, v_offload, w_offload, t_offload, qtu_offload, qtv_offload, qtw_offload, qtt_offload)
         !$omp target exit data map(delete: bc_indexing, encoded_ctyp_offload)
 
         DEALLOCATE(mgdims_offload)
@@ -293,6 +293,7 @@ CONTAINS
         DEALLOCATE(qtu_offload)
         DEALLOCATE(qtv_offload)
         DEALLOCATE(qtw_offload)
+        DEALLOCATE(qtt_offload)
         DEALLOCATE(bc_indexing)
         DEALLOCATE(encoded_ctyp_offload)
     END SUBROUTINE finish_offload_constants
