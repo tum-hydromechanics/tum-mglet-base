@@ -2,6 +2,7 @@ MODULE offload_helper_mod
     USE precision_mod, ONLY: intk, realk
     USE pointers_mod, ONLY: ip3d, ip1d
     USE grids_mod, ONLY: nmygrids, get_mgdims, get_mgbasb, nboconds, get_bc_ctyp
+    USE err_mod, ONLY: errr
     USE fields_mod
     USE realfield_mod
     USE scacore_mod
@@ -35,7 +36,7 @@ MODULE offload_helper_mod
     REAL(realk), POINTER, CONTIGUOUS, DIMENSION(:) :: ddx_offload, ddy_offload, ddz_offload
     REAL(realk), POINTER, CONTIGUOUS, DIMENSION(:) :: bt_offload
     ! Flow/Scalar fields
-    REAL(realk), POINTER, CONTIGUOUS, DIMENSION(:) :: u_offload, v_offload, w_offload, t_offload
+    REAL(realk), POINTER, CONTIGUOUS, DIMENSION(:) :: u_offload, v_offload, w_offload, t_offload, g_offload
     
     ! ----- Newly encoded or global arrays -----
     REAL(realk), POINTER, CONTIGUOUS, DIMENSION(:) :: qtu_offload, qtv_offload, qtw_offload
@@ -49,7 +50,7 @@ MODULE offload_helper_mod
     !$omp declare target(rdx_offload, rdy_offload, rdz_offload, rddx_offload, rddy_offload, rddz_offload)
     !$omp declare target(dx_offload, dy_offload, dz_offload, ddx_offload, ddy_offload, ddz_offload)
     !$omp declare target(bt_offload)
-    !$omp declare target(u_offload, v_offload, w_offload, t_offload)
+    !$omp declare target(u_offload, v_offload, w_offload, t_offload, g_offload)
     !$omp declare target(qtu_offload, qtv_offload, qtw_offload)
 
     ! Public subroutines for host
@@ -65,7 +66,7 @@ MODULE offload_helper_mod
     ! Public variables for device
     PUBLIC :: rdx_offload, rdy_offload, rdz_offload, rddx_offload, rddy_offload, rddz_offload, &
         dx_offload, dy_offload, dz_offload, ddx_offload, ddy_offload, ddz_offload, bt_offload, &
-        u_offload, v_offload, w_offload, t_offload, qtu_offload, qtv_offload, qtw_offload, nboconds_offload
+        u_offload, v_offload, w_offload, t_offload, g_offload, qtu_offload, qtv_offload, qtw_offload, nboconds_offload
 
 CONTAINS
     SUBROUTINE offload_constants()        
@@ -160,23 +161,26 @@ CONTAINS
 
     SUBROUTINE map_flow_sca()
         ! Local variables
-        TYPE(field_t), POINTER :: u_f, v_f, w_f, sca_f
+        TYPE(field_t), POINTER :: u_f, v_f, w_f, sca_f, g_f
 
         CALL get_field(u_f, "U")
         CALL get_field(v_f, "V")
         CALL get_field(w_f, "W")
         CALL get_field(sca_f, scalar(ISCA_FIELD)%name)
+        CALL get_field(g_f, "G")
 
         u_offload => u_f%arr
         v_offload => v_f%arr
         w_offload => w_f%arr
         t_offload => sca_f%arr
+        g_offload => g_f%arr
 
         ALLOCATE(qtu_offload, source=u_f%arr)
         ALLOCATE(qtv_offload, source=v_f%arr)
         ALLOCATE(qtw_offload, source=w_f%arr)
 
-        !$omp target enter data map(to: u_offload, v_offload, w_offload, t_offload, qtu_offload, qtv_offload, qtw_offload)
+        !$omp target enter data map(to: u_offload, v_offload, w_offload, t_offload, g_offload, &
+        !$omp& qtu_offload, qtv_offload, qtw_offload)
     END SUBROUTINE
 
     SUBROUTINE map_bc_encoding()
@@ -248,7 +252,7 @@ CONTAINS
         CASE ("PAR")
             bctypid = 8
         CASE DEFAULT
-            print *, "Could not map BC:", ctyp
+            CALL errr(__FILE__, __LINE__)
         END SELECT
     END SUBROUTINE encode_bc_ctyp
 
@@ -273,7 +277,8 @@ CONTAINS
         !$omp target exit data map(delete: nboconds_offload, mgbasb_offload)
         !$omp target exit data map(delete: rdx_offload, rdy_offload, rdz_offload, rddx_offload, rddy_offload, rddz_offload, &
         !$omp& dx_offload, dy_offload, dz_offload, ddx_offload, ddy_offload, ddz_offload, bt_offload)
-        !$omp target exit data map(delete: u_offload, v_offload, w_offload, t_offload, qtu_offload, qtv_offload, qtw_offload)
+        !$omp target exit data map(delete: u_offload, v_offload, w_offload, t_offload, g_offload, &
+        !$omp& qtu_offload, qtv_offload, qtw_offload)
         !$omp target exit data map(delete: bc_indexing, encoded_ctyp_offload)
 
         DEALLOCATE(mgdims_offload)

@@ -40,9 +40,9 @@ CONTAINS
         CALL qtt%init("QTT")
         CALL stop_timer(401)
 
-        ! Update u, v and w fields on the device for next scalar timestep
+        ! Update u, v, w and g fields on the device for next scalar timestep
         ! These were solved for in the flow simulation on the host
-        !$omp target update to(u_offload, v_offload, w_offload)
+        !$omp target update to(u_offload, v_offload, w_offload, g_offload)
 
         ! Perform actual time integration
         ! ┌────────────────────────────────────────────────────────────────────────────┐
@@ -189,25 +189,15 @@ CONTAINS
 
         ! Local variables
         INTEGER(intk) :: igrid
-        TYPE(field_t), POINTER :: g_f
-
         REAL(realk) :: prmol_offload, prturb_offload
         INTEGER(intk) :: kayscrawford_offload
-
-        ! Expensive data to offload
-        REAL(realk), POINTER, CONTIGUOUS, DIMENSION(:) :: g_a
-
-        CALL start_timer(410)
-
-        CALL get_field(g_f, "G")
-
-        CALL g_f%get_arr_ptr(g_a)
 
         prmol_offload = sca%prmol
         prturb_offload = prturb
         kayscrawford_offload = sca%kayscrawford
+
+        CALL start_timer(410)
         
-        !$omp target data map(to: g_a)
         !$omp target teams distribute
         DO igrid = 1, nmygrids
             BLOCK
@@ -226,7 +216,7 @@ CONTAINS
                 CALL ptr_to_grid3(u_offload, igrid, u)
                 CALL ptr_to_grid3(v_offload, igrid, v)
                 CALL ptr_to_grid3(w_offload, igrid, w)
-                CALL ptr_to_grid3(g_a, igrid, g)
+                CALL ptr_to_grid3(g_offload, igrid, g)
 
                 CALL ptr_to_grid3(bt_offload, igrid, bt)
                 CALL ptr_to_grid_x(ddx_offload, igrid, ddx)
@@ -244,7 +234,6 @@ CONTAINS
             END BLOCK
         END DO
         !$omp end target teams distribute
-        !$omp end target data
 
         CALL stop_timer(410)
     END SUBROUTINE tstsca4
@@ -342,7 +331,6 @@ CONTAINS
                     diff = -gsca(k)*rdx(i)*(t(k, j, i+1) - t(k, j, i))*area
 
                     ! Final result
-                    !print *, adv
                     qtu(k, j, i) = adv + diff
                 END DO
                 !$omp end simd
