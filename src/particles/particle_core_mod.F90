@@ -440,7 +440,9 @@ CONTAINS    !===================================
                 WRITE(*, '("islice      = ", I20)') particle%islice
                 WRITE(*, '("gitstep     = ", I20)') particle%gitstep
                 WRITE(*, '("sitstep     = ", I20)') particle%sitstep
-                WRITE(*, '("x/y/z       = ", 3F120.17)') particle%x, particle%y, particle%z
+                WRITE(*, '("x           = ", 1F120.17)') particle%x
+                WRITE(*, '("y           = ", 1F120.17)') particle%y
+                WRITE(*, '("z           = ", 1F120.17)') particle%z
                 WRITE(*, '("i/j/k cell  = ", 3I20)') particle%ijkcell(1), particle%ijkcell(2), particle%ijkcell(3)
                 WRITE(*, '()')
         ELSE

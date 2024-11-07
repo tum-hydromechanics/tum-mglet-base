@@ -45,6 +45,8 @@ MODULE particle_boundaries_mod
 
     TYPE(particle_boundaries_t) :: particle_boundaries
 
+    CHARACTER(len = 4) :: bc_coupling_mode = "SCAL" ! must be "FLOW", "SCAL" or "PART"
+
     CONTAINS
 
     SUBROUTINE init_particle_boundaries()
@@ -55,7 +57,7 @@ MODULE particle_boundaries_mod
         ! to store which boundary surfaces (faces 1-6) that define a lower order face (7-26) are of connect (or periodic) type:
         INTEGER(intk) :: connect_faces(4)
         REAL(realk) :: minx, maxx, miny, maxy, minz, maxz, n_minx, n_maxx, n_miny, n_maxy, n_minz, n_maxz, magnitude
-        CHARACTER(len=8) :: ctyp
+        CHARACTER(len=3) :: ctyp
         LOGICAL :: found
 
         CALL start_timer(900)
@@ -66,45 +68,46 @@ MODULE particle_boundaries_mod
 
         ALLOCATE(particle_boundaries%face_neighbours(26, ngrid))
 
-        ibocd = 2
+        ! CON : connective particle boundary (can be periodic)
+        ! REF : reflective particle boundary
         DO igrid = 1, ngrid
 
             CALL get_neighbours(neighbours, igrid)
 
             DO iface = 1, 6
 
-                CALL get_bc_ctyp(ctyp, ibocd, iface, igrid)
+                CALL get_particle_bc(igrid, iface, bc_coupling_mode, ctyp)
 
                 particle_boundaries%face_neighbours(iface, igrid) = neighbours(iface)
 
                 SELECT CASE(iface)
                     CASE(1)
-                        IF (ctyp == 'SWA') THEN
+                        IF (ctyp == "REF") THEN ! ctyp == "SWA"
                             particle_boundaries%face_normals(1, 1, igrid) = 1.0
                             particle_boundaries%face_neighbours(iface, igrid) = igrid
                         END IF
                     CASE(2)
-                        IF (ctyp == 'SWA') THEN
+                        IF (ctyp == "REF") THEN
                             particle_boundaries%face_normals(1, 2, igrid) = -1.0
                             particle_boundaries%face_neighbours(iface, igrid) = igrid
                         END IF
                     CASE(3)
-                        IF (ctyp == 'SWA') THEN
+                        IF (ctyp == "REF") THEN
                             particle_boundaries%face_normals(2, 3, igrid) = 1.0
                             particle_boundaries%face_neighbours(iface, igrid) = igrid
                         END IF
                     CASE(4)
-                        IF (ctyp == 'SWA') THEN
+                        IF (ctyp == "REF") THEN
                             particle_boundaries%face_normals(2, 4, igrid) = -1.0
                             particle_boundaries%face_neighbours(iface, igrid) = igrid
                         END IF
                     CASE(5)
-                        IF (ctyp == 'SWA') THEN
+                        IF (ctyp == "REF") THEN
                             particle_boundaries%face_normals(3, 5, igrid) = 1.0
                             particle_boundaries%face_neighbours(iface, igrid) = igrid
                         END IF
                     CASE(6)
-                        IF (ctyp == 'SWA') THEN
+                        IF (ctyp == "REF") THEN
                             particle_boundaries%face_normals(3, 6, igrid) = -1.0
                             particle_boundaries%face_neighbours(iface, igrid) = igrid
                         END IF
@@ -121,9 +124,9 @@ MODULE particle_boundaries_mod
                         CONTINUE
                     ELSE
 
-                        CALL get_bc_ctyp(ctyp, ibocd, facelist_b(i, iface), igrid)
+                        CALL get_particle_bc(igrid, facelist_b(i, iface), bc_coupling_mode, ctyp)
 
-                        IF (ctyp == "SIO") THEN
+                        IF (ctyp == "CON") THEN ! ctyp == "SIO"
                             connect_faces(1) = connect_faces(1) + 1
                             connect_faces(i) = facelist_b(i, iface)
                         END IF
@@ -182,17 +185,17 @@ MODULE particle_boundaries_mod
                 IF (myid == 0) THEN
                     DO igrid = 1, ngrid
                         WRITE(*, *) "------ Boundaries, Grid:   ", igrid, "------"
-                        CALL get_bc_ctyp(ctyp, ibocd, 1, igrid)
+                        CALL get_particle_bc(igrid, 1, bc_coupling_mode, ctyp)
                         WRITE(*, *) "FRONT:                ", ctyp
-                        CALL get_bc_ctyp(ctyp, ibocd, 2, igrid)
+                        CALL get_particle_bc(igrid, 2, bc_coupling_mode, ctyp)
                         WRITE(*, *) "BACK:                 ", ctyp
-                        CALL get_bc_ctyp(ctyp, ibocd, 3, igrid)
+                        CALL get_particle_bc(igrid, 3, bc_coupling_mode, ctyp)
                         WRITE(*, *) "RIGHT:                ", ctyp
-                        CALL get_bc_ctyp(ctyp, ibocd, 4, igrid)
+                        CALL get_particle_bc(igrid, 4, bc_coupling_mode, ctyp)
                         WRITE(*, *) "LEFT:                 ", ctyp
-                        CALL get_bc_ctyp(ctyp, ibocd, 5, igrid)
+                        CALL get_particle_bc(igrid, 5, bc_coupling_mode, ctyp)
                         WRITE(*, *) "BOTTOM:               ", ctyp
-                        CALL get_bc_ctyp(ctyp, ibocd, 6, igrid)
+                        CALL get_particle_bc(igrid, 6, bc_coupling_mode, ctyp)
                         WRITE(*, *) "TOP:                  ", ctyp
 
                         WRITE(*, *) "Faces:"
@@ -346,8 +349,11 @@ MODULE particle_boundaries_mod
                 CASE ("normal")
                     CONTINUE
                 CASE ("verbose")
-                    WRITE(*, *) "Current Coordinates:"
-                    WRITE(*, *) "x/y/z:", x, y, z
+                    WRITE(*, *) "Current Location:"
+                    WRITE(*, *) "igrid:", temp_grid
+                    WRITE(*, *) "x:", x
+                    WRITE(*, *) "y:", y
+                    WRITE(*, *) "z:", z
                     WRITE(*, '()')
             END SELECT
 
@@ -430,9 +436,9 @@ MODULE particle_boundaries_mod
 
         DO i = 1, nobst
 
-            ! dont check if a particle interacts with the obstacle it has been deflected from in the previous timestep
+            ! check if a particle interacts with the obstacle it has been deflected from in the previous timestep
             IF (my_obstacle_pointers(temp_grid)%grid_obstacles(i) == iobst_local) THEN
-                iobst_local = 0
+                !iobst_local = 0
                 CYCLE
             END IF
 
@@ -752,5 +758,59 @@ MODULE particle_boundaries_mod
         CALL reflect_at_boundary(dx, dy, dz, n1, n2, n3)
 
     END SUBROUTINE reflect_at_obstacle
+
+    SUBROUTINE get_particle_bc(igrid, iface, coupling_mode, ctyp)
+
+        ! subroutine arguments
+        INTEGER(intk), INTENT(in) :: igrid
+        INTEGER(intk), INTENT(in) :: iface
+        CHARACTER(len = 4), INTENT(in) :: coupling_mode
+        CHARACTER(len = 3), INTENT(out) :: ctyp
+
+        ! local variables
+        INTEGER(intk) :: ibocd
+        CHARACTER(len = 8) :: ctyp1, ctyp2
+
+
+        ! SIO = Skalar-RB für Oberflächen der Domain, die durchströmt werden
+        ! SWA = Skalar-RB auf Wänden (slip und no-slip)
+
+        SELECT CASE(coupling_mode)
+        CASE("PART")
+
+            ibocd = 2
+            CALL get_bc_ctyp(ctyp2, ibocd, iface, igrid)
+
+        CASE("SCAL")
+
+            ibocd = 2
+            CALL get_bc_ctyp(ctyp2, ibocd, iface, igrid)
+
+            IF (ctyp2 == "SIO") THEN
+                ctyp = "CON"
+            ELSEIF (ctyp2 == "SWA") THEN
+                ctyp = "REF"
+            ELSE
+                CALL errr(__FILE__, __LINE__)
+            END IF
+
+        CASE("FLOW")
+            ! CAUTION: this part is not complete!
+            ibocd = 1
+            CALL get_bc_ctyp(ctyp1, ibocd, iface, igrid)
+            !ibocd = 2
+            !CALL get_bc_ctyp(ctyp2, ibocd, iface, igrid)
+
+            IF (ctyp1 == "CON" .OR. ctyp1 == "PER" .OR. ctyp1 == "FIX" .OR. ctyp1 == "OP1") THEN
+                ctyp = "CON"
+            ELSEIF (ctyp1 == "SLI" .OR. ctyp1 == "NOS") THEN
+                ctyp = "REF"
+            ELSE
+                CALL errr(__FILE__, __LINE__)
+            END IF
+
+        END SELECT
+
+    END SUBROUTINE get_particle_bc
 
 END MODULE particle_boundaries_mod

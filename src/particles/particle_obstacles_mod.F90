@@ -175,7 +175,6 @@ CONTAINS    !===================================
 
         ! https://mathworld.wolfram.com/KissingNumber.html
 
-
         counter = 0
         DO i = 1, dict_len - 1
             DO j = i + 1, dict_len
