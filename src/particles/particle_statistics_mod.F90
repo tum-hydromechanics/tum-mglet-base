@@ -216,15 +216,9 @@ CONTAINS
             RETURN
         END IF
 
-        ! is there existing vars that make this obsolete?
-        global_x0 = 0.0
-        global_x1 = 0.0
-        global_y0 = 0.0
-        global_y1 = 0.0
-        global_z0 = 0.0
-        global_z1 = 0.0
+        CALL get_bbox(global_x0, global_x1, global_y0, global_y1, global_z0, global_z1, igrid = 1)
 
-        DO igrid = 1, ngrid
+        DO igrid = 2, ngrid
 
             CALL get_bbox(minx, maxx, miny, maxy, minz, maxz, igrid)
 
