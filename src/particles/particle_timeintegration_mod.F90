@@ -234,10 +234,12 @@ CONTAINS
             rand(2) = rand(2) - 0.5_realk
             rand(3) = rand(3) - 0.5_realk
 
+            ! diffusion velocity
             pu_diff = SQRT(2 * D(1) / dt) * rand(1) / SQRT(rand(1)**(2) + rand(2)**(2) + rand(3)**(2))
             pv_diff = SQRT(2 * D(2) / dt) * rand(2) / SQRT(rand(1)**(2) + rand(2)**(2) + rand(3)**(2))
             pw_diff = SQRT(2 * D(3) / dt) * rand(3) / SQRT(rand(1)**(2) + rand(2)**(2) + rand(3)**(2))
 
+            ! diffusion length
             dx_diff = SQRT(2 * D(1) * dt) * rand(1) / SQRT(rand(1)**(2) + rand(2)**(2) + rand(3)**(2))
             dy_diff = SQRT(2 * D(2) * dt) * rand(2) / SQRT(rand(1)**(2) + rand(2)**(2) + rand(3)**(2))
             dz_diff = SQRT(2 * D(3) * dt) * rand(3) / SQRT(rand(1)**(2) + rand(2)**(2) + rand(3)**(2))

@@ -20,6 +20,7 @@ LOGICAL :: dread_obstacles
 ! LIST SPECIFICATION
 INTEGER(intk) :: init_npart
 INTEGER(intk) :: plist_len
+LOGICAL :: list_limit = .FALSE.
 
 ! SIMULATION SPECIFICATION
 LOGICAL :: dinterp_particles
@@ -112,8 +113,9 @@ CONTAINS    !===================================
 
         !- - - - - - - - - - - - - - - - - -
 
-        CALL pconf%get_value("/list_len", plist_len, 1000_intk)
+        CALL pconf%get_value("/list_len", plist_len, -1)
 
+        list_limit = .TRUE.
 
         IF (plist_len <= 0_intk) THEN
 
@@ -122,15 +124,16 @@ CONTAINS    !===================================
                     CASE ("none")
                         CONTINUE
                     CASE ("normal")
-                        WRITE(*, *) "WARNING: Particle List Length must be positve. Using default Number ", plist_len, "instead."
+                        WRITE(*, *) "WARNING: Maximum Particle List Length must be a positve Integer. Using automatic List Length instead."
                         WRITE(*, '()')
                     CASE ("verbose")
-                        WRITE(*, *) "WARNING: Particle List Length must be positve. Using default Number ", plist_len, "instead."
+                        WRITE(*, *) "WARNING: Maximum Particle List Length must be a positve Integer. Using automatic List Length instead."
                         WRITE(*, '()')
                 END SELECT
             END IF
 
-            plist_len = 1000_intk
+            plist_len = -1
+            list_limit = .FALSE.
 
         END IF
 
@@ -149,25 +152,6 @@ CONTAINS    !===================================
                         WRITE(*, '()')
                     CASE ("verbose")
                         WRITE(*, *) "WARNING: Initial Number of Particles must be positve. Using default Number ", init_npart, "instead."
-                        WRITE(*, '()')
-                END SELECT
-            END IF
-
-            init_npart = 100_intk
-
-        ELSEIF (init_npart > plist_len) THEN
-
-            IF (myid == 0) THEN
-                SELECT CASE (TRIM(particle_terminal))
-                    CASE ("none")
-                        CONTINUE
-                    CASE ("normal")
-                        WRITE(*, *) "WARNING: Initial Number of Particles must be smaller than the maximum List Length. Using default Number ", &
-                         init_npart, "instead."
-                        WRITE(*, '()')
-                    CASE ("verbose")
-                        WRITE(*, *) "WARNING: Initial Number of Particles must be smaller than the maximum List Length. Using default Number ", &
-                         init_npart, "instead."
                         WRITE(*, '()')
                 END SELECT
             END IF
@@ -460,6 +444,7 @@ CONTAINS    !===================================
 
         END IF
 
+        !- - - - - - - - - - - - - - - - - -
 
 
         !- - - - - - - - - - - - - - - - - -

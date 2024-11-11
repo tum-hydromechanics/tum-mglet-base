@@ -13,15 +13,13 @@ MODULE particle_dict_mod
 
 CONTAINS    !===================================
 
-    SUBROUTINE read_particles(dread_particles, list_len, dict_len, ipart_arr, p_igrid_arr, x, y, z, read_np)
+    SUBROUTINE read_particles(dread_particles, dict_len, ipart_arr, igrid_arr, x_arr, y_arr, z_arr, read_np)
 
         !subroutine arguments
         LOGICAL, INTENT(inout) :: dread_particles
-        INTEGER(intk), INTENT(in) :: list_len
         INTEGER(intk), INTENT(out) :: dict_len, read_np
-        INTEGER(intk), INTENT(out) :: ipart_arr(list_len)
-        INTEGER(intk), INTENT(out) :: p_igrid_arr(list_len)
-        REAL(realk), INTENT(out) :: x(list_len), y(list_len), z(list_len)
+        INTEGER(intk), ALLOCATABLE, INTENT(inout) :: ipart_arr(:), igrid_arr(:)
+        REAL(realk), ALLOCATABLE, INTENT(inout) :: x_arr(:), y_arr(:), z_arr(:)
 
         !local variables
         INTEGER(intk) :: i, ipart, igrid, unit
@@ -69,9 +67,23 @@ CONTAINS    !===================================
             END SELECT
         END IF
 
+        IF (list_limit) THEN
+            ALLOCATE(ipart_arr(plist_len))
+            ALLOCATE(igrid_arr(plist_len))
+            ALLOCATE(x_arr(plist_len))
+            ALLOCATE(y_arr(plist_len))
+            ALLOCATE(z_arr(plist_len))
+        ELSE
+            ALLOCATE(ipart_arr(dict_len))
+            ALLOCATE(igrid_arr(dict_len))
+            ALLOCATE(x_arr(dict_len))
+            ALLOCATE(y_arr(dict_len))
+            ALLOCATE(z_arr(dict_len))
+        END IF
+
         ! ParticleDict.txt is screened from top to bottom.
         ! If a particle is found to lie on a grid of this process, the particle is stored on this process.
-        ! Once the particle list length has been reached, no more particles are read on this process.
+        ! Once the particle list length or dict length has been reached, no more particles are read on this process.
         ! Hence, depending on the parameterization of the particle list and the dict length, some particles might not be registered!
 
         read_np = 0
@@ -112,10 +124,10 @@ CONTAINS    !===================================
                 read_np = read_np + 1
 
                 ipart_arr(read_np) = ipart
-                p_igrid_arr(read_np) = igrid
-                x(read_np) = xtemp
-                y(read_np) = ytemp
-                z(read_np) = ztemp
+                igrid_arr(read_np) = igrid
+                x_arr(read_np) = xtemp
+                y_arr(read_np) = ytemp
+                z_arr(read_np) = ztemp
 
                 SELECT CASE (TRIM(particle_terminal))
                     CASE ("none")
@@ -130,8 +142,19 @@ CONTAINS    !===================================
 
             END DO
 
-            IF (list_len == read_np) THEN
-                    EXIT
+            IF (SIZE(ipart_arr) == read_np) THEN
+                IF (ipart < dict_len) THEN
+                    SELECT CASE (TRIM(particle_terminal))
+                        CASE ("none")
+                            CONTINUE
+                        CASE ("normal")
+                            CONTINUE
+                        CASE ("verbose")
+                            WRITE(*,'("Warning on proc ", I0, ": Maximum Number of Particles has been registered on this Proccess.", &
+                             "Stopped reading ParticleDict.txt, so specified Particles might be unregistered." )') myid
+                    END SELECT
+                END IF
+                EXIT
             END IF
 
         END DO

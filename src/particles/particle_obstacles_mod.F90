@@ -169,8 +169,6 @@ CONTAINS    !===================================
 
         CLOSE(unit)
 
-        ! generate obstacles at periodic boundaries
-
         ! generate intermediate obstacles to fill space between touching obstacles
 
         ! https://mathworld.wolfram.com/KissingNumber.html
@@ -351,13 +349,14 @@ CONTAINS    !===================================
             CASE ("none")
                 CONTINUE
             CASE ("normal")
-                                WRITE(*, '("Obstacels on Process ", I0, ":")') myid
-                WRITE(*, '()')
 
                 IF (myid /= 0) THEN
                     CALL MPI_Recv(dummy, 1, mglet_mpi_int, myid - 1, 900, &
                      MPI_COMM_WORLD, MPI_STATUS_IGNORE)
                 END IF
+
+                WRITE(*, '("Obstacels on Process ", I0, ":")') myid
+                WRITE(*, '()')
 
                 DO igrid = 1, ngrid
 
@@ -378,7 +377,7 @@ CONTAINS    !===================================
                 END DO
 
                 IF (myid /= numprocs - 1) THEN
-                    CALL MPI_Send(dummy, 1, mglet_mpi_int, myid + 1, 9402, &
+                    CALL MPI_Send(dummy, 1, mglet_mpi_int, myid + 1, 900, &
                      MPI_COMM_WORLD)
                 END IF
 
@@ -386,13 +385,13 @@ CONTAINS    !===================================
 
             CASE ("verbose")
 
-                WRITE(*, '("Obstacels on Process ", I0, ":")') myid
-                WRITE(*, '()')
-
                 IF (myid /= 0) THEN
                     CALL MPI_Recv(dummy, 1, mglet_mpi_int, myid - 1, 900, &
                      MPI_COMM_WORLD, MPI_STATUS_IGNORE)
                 END IF
+
+                WRITE(*, '("Obstacels on Process ", I0, ":")') myid
+                WRITE(*, '()')
 
                 DO igrid = 1, ngrid
 
@@ -413,7 +412,7 @@ CONTAINS    !===================================
                 END DO
 
                 IF (myid /= numprocs - 1) THEN
-                    CALL MPI_Send(dummy, 1, mglet_mpi_int, myid + 1, 9402, &
+                    CALL MPI_Send(dummy, 1, mglet_mpi_int, myid + 1, 900, &
                      MPI_COMM_WORLD)
                 END IF
 

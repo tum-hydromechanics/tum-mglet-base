@@ -203,6 +203,8 @@ CONTAINS    !===================================
                 CASE ("none")
                     CONTINUE
                 CASE ("normal")
+                    WRITE(*, '("WARNING: Coordinates of particle ", I0 ," do not lie within boundaries of particle grid ", I0)') &
+                     particle%ipart, particle%igrid
                     CONTINUE
                 CASE ("verbose")
                     WRITE(*,*) ' '
@@ -239,8 +241,12 @@ CONTAINS    !===================================
             IF (x(i) <= particle%x) THEN
                 ! the denominator of the fraction will NOT be zero because x(i) /= maxx for all i
                 i = i + CEILING((ii - 2 - i) * (particle%x - x(i)) / (maxx - x(i)), intk)
+                i = MAX(i, 3) ! probalby unneccessary
+                i = MIN(i, ii-2) ! probalby unneccessary
             ELSEIF (x(i) > particle%x) THEN
                 i = 3 + FLOOR((i - 2) * (particle%x - minx) / (x(i) - minx), intk)
+                i = MAX(i, 3) ! probalby unneccessary
+                i = MIN(i, ii-2) ! probalby unneccessary
             ELSE
                 EXIT
             END IF
@@ -271,8 +277,12 @@ CONTAINS    !===================================
             IF (y(j) <= particle%y) THEN
             ! the denominator of the fraction will NOT be zero because y(j) /= maxx for all j
                 j = j + CEILING((jj - 2 - j) * (particle%y - y(j)) / (maxy - y(j)), intk)
+                j = MAX(j, 3) ! probalby unneccessary
+                j = MIN(j, jj-2) ! probalby unneccessary
             ELSEIF (y(j) > particle%y) THEN
                 j = 3 + FLOOR((j - 2) * (particle%y - miny) / (y(j) - miny), intk)
+                j = MAX(j, 3) ! probalby unneccessary
+                j = MIN(j, jj-2) ! probalby unneccessary
             ELSE
                 EXIT
             END IF
@@ -303,8 +313,12 @@ CONTAINS    !===================================
             IF (z(k) <= particle%z) THEN
                 ! the denominator of the fraction will NOT be zero because z(k) /= maxx for all k
                 k = k + CEILING((kk - 2 - k) * (particle%z - z(k)) / (maxz - z(k)), intk)
+                k = MAX(k, 3) ! probalby unneccessary
+                k = MIN(k, kk-2) ! probalby unneccessary
             ELSEIF (z(k) > particle%z) THEN
                 k = 3 + FLOOR((k - 2) * (particle%z - minz) / (z(k) - minz), intk)
+                k = MAX(k, 3) ! probalby unneccessary
+                k = MIN(k, kk-2) ! probalby unneccessary
             ELSE
                 EXIT
             END IF
@@ -440,9 +454,9 @@ CONTAINS    !===================================
                 WRITE(*, '("islice      = ", I20)') particle%islice
                 WRITE(*, '("gitstep     = ", I20)') particle%gitstep
                 WRITE(*, '("sitstep     = ", I20)') particle%sitstep
-                WRITE(*, '("x           = ", 1F120.17)') particle%x
-                WRITE(*, '("y           = ", 1F120.17)') particle%y
-                WRITE(*, '("z           = ", 1F120.17)') particle%z
+                WRITE(*, '("x           = ", F20.17)') particle%x
+                WRITE(*, '("y           = ", F20.17)') particle%y
+                WRITE(*, '("z           = ", F20.17)') particle%z
                 WRITE(*, '("i/j/k cell  = ", 3I20)') particle%ijkcell(1), particle%ijkcell(2), particle%ijkcell(3)
                 WRITE(*, '()')
         ELSE
