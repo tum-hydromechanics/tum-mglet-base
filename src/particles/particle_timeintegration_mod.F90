@@ -1,11 +1,10 @@
 MODULE particle_timeintegration_mod
 
     USE fields_mod
-    USE particle_interpolation_mod
 
-    USE particle_exchange_mod
-    USE particle_boundaries_mod
+    USE particle_interpolation_mod
     USE particle_list_mod
+    USE particle_exchange_mod
 
     IMPLICIT NONE
 
@@ -183,9 +182,9 @@ CONTAINS
                 CALL move_particle(my_particle_list%particles(i), pdx_adv, pdy_adv, pdz_adv, pdx_eff, pdy_eff, pdz_eff)
 
                 ! IDEA: ...
-                !pdx_pot(i) = pdx_eff / B
-                !pdy_pot(i) = pdy_eff / B
-                !pdz_pot(i) = pdz_eff / B
+                pdx_pot(i) = pdx_eff / B
+                pdy_pot(i) = pdy_eff / B
+                pdz_pot(i) = pdz_eff / B
 
                 IF (irk == prkscheme%nrk) THEN
 

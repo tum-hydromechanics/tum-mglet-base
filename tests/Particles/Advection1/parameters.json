@@ -47,6 +47,11 @@
             }
         ]
     },
+    "snapshots": {
+        "itsamp": 10,
+        "tstart": 0.0,
+        "fields": ["U", "V", "W", "P", "NPC"]
+    },
     "particles": {
         "read": true,
         "read_obst": false,

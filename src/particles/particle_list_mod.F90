@@ -10,9 +10,7 @@ MODULE particle_list_mod
 
     USE comms_mod
 
-    USE particle_core_mod
     USE particle_dict_mod
-    USE particle_utils_mod
     USE particle_boundaries_mod
 
     IMPLICIT NONE

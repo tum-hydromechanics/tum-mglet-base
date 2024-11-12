@@ -34,7 +34,11 @@ CONTAINS
 
         CALL get_field(npc_f, "NPC")
 
-        npc_f%arr = 0.0
+        DO i = 1, nmygrids
+            igrid = mygrids(i)
+            CALL npc_f%get_ptr(npc, igrid)
+            npc = 0.0
+        END DO
 
         DO ipart = 1, my_particle_list%ifinal
 
@@ -50,6 +54,6 @@ CONTAINS
 
         END DO
 
-    END SUBROUTINE update_backup_fields
+    END SUBROUTINE update_particle_field
 
 END MODULE particle_fields_mod

@@ -265,10 +265,9 @@ CONTAINS
             END DO rkloop
 
             IF (dsim_particles) THEN ! <------------------------------------particles
-                ! Timeintegrate particles
+                ! timeintegration of particles
                 CALL timeintegrate_particles(itstep, dt)
-                ! migration of particles between grids
-                ! and also across MPI ranks (processes)
+                ! migration of particles across grids and partly across MPI ranks (procs)
                 CALL exchange_particles(my_particle_list, itstep)
             END IF
 
@@ -279,6 +278,11 @@ CONTAINS
             ittot = ittot + 1
             CALL timekeeper%add_to_time(dt)
             CALL timekeeper%get_time(timeph)
+
+            ! Particle Concentration Field
+            IF (dsim_particles) THEN ! <------------------------------------particles
+                CALL update_particle_field()
+            END IF
 
             ! Particle Snapshots
             IF (dsim_particles .AND. dwrite_particles) THEN ! <------------------------------------particles

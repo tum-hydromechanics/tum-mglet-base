@@ -1,8 +1,8 @@
 {
     "time": {
-        "mtstep": 400,
+        "mtstep": 100,
         "dt": 0.01,
-        "tend": 4.0,
+        "tend": 10.0,
         "itinfo": 1,
         "itcheck": 10
     },
@@ -47,19 +47,24 @@
             }
         ]
     },
+    "snapshots": {
+        "itsamp": 100,
+        "tstart": 0.0,
+        "fields": ["U", "V", "W", "P", "NPC"]
+    },
     "particles": {
         "read": true,
-        "init_np": 1000,
-        "list_len": 1000,
+        "init_np": 10000,
+        "list_len": 10000,
         "interp": true,
         "prkmethod": "williamson",
-        "D":[0.02, 0.00, 0.00],
+        "D":[0.002, 0.002, 0.002],
         "terminal": "normal",
         "slice_dir": "X",
         "nslice_levels": 1,
         "nslices": [100],
         "slice_levels": [1.0],
         "write": true,
-        "snapshot_step": 5
+        "snapshot_step": 10
     }
 }

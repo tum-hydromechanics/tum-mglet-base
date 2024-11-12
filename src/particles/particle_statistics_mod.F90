@@ -437,12 +437,11 @@ CONTAINS
         ! local variables
         INTEGER(intk) :: igrid, i, irt
 
-        CALL start_timer(940)
-
         IF (slice_dir == "N") THEN
-            CALL stop_timer(940)
             RETURN
         END IF
+
+        CALL start_timer(940)
 
         SELECT CASE(slice_dir)
 

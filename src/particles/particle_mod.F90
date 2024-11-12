@@ -5,9 +5,11 @@ MODULE particle_mod
     ! Finishing of the particle simulation.
 
     USE fields_mod
+
     USE particle_timeintegration_mod
-    USE particle_snapshot_mod
     USE particle_statistics_mod
+    USE particle_snapshot_mod
+    USE particle_fields_mod
 
     IMPLICIT NONE(type, external)
 
@@ -87,6 +89,9 @@ CONTAINS
             ! determine particle exchange connections and init particle exchange
             CALL init_particle_exchange()
 
+            ! set particle concentration field
+            CALL init_particle_field()
+
         ELSE
 
             IF (myid == 0) THEN
@@ -96,7 +101,6 @@ CONTAINS
         END IF
 
     END SUBROUTINE init_particles
-
 
     SUBROUTINE finish_particles()
 
