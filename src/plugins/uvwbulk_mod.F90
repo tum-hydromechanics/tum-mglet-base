@@ -228,6 +228,17 @@ CONTAINS
             END DO
         END DO
 
+        ! Avoiding possible divisions by 0.0
+        IF ( volu < eps ) THEN
+            volu = eps
+        END IF
+        IF ( volv < eps ) THEN
+            volv = eps
+        END IF
+        IF ( volw < eps ) THEN
+            volw = eps
+        END IF
+
         ! The resulting values for the complete grid is casted back to working
         ! precision
         uvwbulk%ubulk = REAL(ubulk/volu, realk)
