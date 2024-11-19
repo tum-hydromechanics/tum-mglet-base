@@ -84,6 +84,7 @@ CONTAINS    !===================================
 
         ! local variables
         INTEGER(intk) :: p_i, p_j, p_k
+        INTEGER(intk) :: p_ip, p_im, p_jp, p_jm, p_kp, p_km
         REAL(realk) :: p_x, p_y, p_z, alpha, beta, gamma, delta
 
         CALL start_timer(923)
@@ -93,50 +94,62 @@ CONTAINS    !===================================
         p_j = particle%ijkcell(2)
         p_k = particle%ijkcell(3)
 
+        ! limit the shifted indices to the grid limits!
+        ! if a shifted index would be outside the grid index range of [1, ii] (or [1, jj], [1, kk])
+        ! it is set to be the respective grid index limit.
+        ! that should be equivalent to just giving any cell that is referred but is "located outside the grid" (i.e. does not exist)
+        ! the velocity value of the "nearest" cell on the grid (i.e. cell that acutally exists)
+        p_im = MAX(MIN(p_i - 1, ii), 1)
+        p_ip = MAX(MIN(p_i + 1, ii), 1)
+        p_jm = MAX(MIN(p_j - 1, jj), 1)
+        p_jp = MAX(MIN(p_j + 1, jj), 1)
+        p_km = MAX(MIN(p_k - 1, kk), 1)
+        p_kp = MAX(MIN(p_k + 1, kk), 1)
+
         !just for readability of the following expressions
         p_x = particle%x
         p_y = particle%y
         p_z = particle%z
 
         ! u interpolation
-        alpha = (u(p_k, p_j, p_i) - u(p_k, p_j, p_i - 1)) / ddx(p_i)
+        alpha = (u(p_k, p_j, p_i) - u(p_k, p_j, p_im)) / ddx(p_i)
 
-        beta = 0.25 * ((u(p_k, p_j + 1, p_i) + u(p_k, p_j + 1, p_i - 1) - u(p_k, p_j, p_i) - u(p_k, p_j, p_i - 1)) / dy(p_j) &
-         + (u(p_k, p_j, p_i) + u(p_k, p_j, p_i - 1) - u(p_k, p_j - 1, p_i) - u(p_k, p_j - 1, p_i - 1)) / dy(p_j -1))
+        beta = 0.25 * ((u(p_k, p_jp, p_i) + u(p_k, p_jp, p_im) - u(p_k, p_j, p_i) - u(p_k, p_j, p_im)) / dy(p_j) &
+         + (u(p_k, p_j, p_i) + u(p_k, p_j, p_im) - u(p_k, p_jm, p_i) - u(p_k, p_jm, p_im)) / dy(p_j -1))
 
-        gamma = 0.25 * ((u(p_k + 1, p_j, p_i) + u(p_k + 1, p_j, p_i - 1) - u(p_k, p_j, p_i) - u(p_k, p_j, p_i - 1)) / dz(p_k) &
-         + (u(p_k, p_j, p_i) + u(p_k, p_j, p_i - 1) - u(p_k - 1, p_j, p_i) - u(p_k - 1, p_j, p_i - 1)) / dz(p_k - 1))
+        gamma = 0.25 * ((u(p_kp, p_j, p_i) + u(p_kp, p_j, p_im) - u(p_k, p_j, p_i) - u(p_k, p_j, p_im)) / dz(p_k) &
+         + (u(p_k, p_j, p_i) + u(p_k, p_j, p_im) - u(p_km, p_j, p_i) - u(p_km, p_j, p_im)) / dz(p_km))
 
-        delta = 0.5 * (u(p_k, p_j, p_i) + u(p_k, p_j, p_i - 1) &
-         - alpha * (ddx(p_i) - dx(p_i - 1)) - beta * (ddy(p_j) - dy(p_j - 1)) - gamma * (ddz(p_k) - dz(p_k - 1)))
+        delta = 0.5 * (u(p_k, p_j, p_i) + u(p_k, p_j, p_im) &
+         - alpha * (ddx(p_i) - dx(p_im)) - beta * (ddy(p_j) - dy(p_jm)) - gamma * (ddz(p_k) - dz(p_km)))
 
         p_u = alpha * (p_x - x(p_i)) + beta * (p_y - y(p_j)) + gamma * (p_z - z(p_k)) + delta
 
         ! v interpolation
-        alpha = (v(p_k, p_j, p_i) - v(p_k, p_j - 1, p_i)) / ddy(p_j)
+        alpha = (v(p_k, p_j, p_i) - v(p_k, p_jm, p_i)) / ddy(p_j)
 
-        beta = 0.25 * ((v(p_k, p_j, p_i + 1) + v(p_k, p_j - 1, p_i + 1) - v(p_k, p_j, p_i) - v(p_k, p_j - 1, p_i)) / dx(p_i) &
-         + (v(p_k, p_j, p_i) + v(p_k, p_j - 1, p_i) - v(p_k, p_j, p_i - 1) - v(p_k, p_j - 1, p_i - 1)) /dx(p_i - 1))
+        beta = 0.25 * ((v(p_k, p_j, p_ip) + v(p_k, p_jm, p_ip) - v(p_k, p_j, p_i) - v(p_k, p_jm, p_i)) / dx(p_i) &
+         + (v(p_k, p_j, p_i) + v(p_k, p_jm, p_i) - v(p_k, p_j, p_im) - v(p_k, p_jm, p_im)) /dx(p_im))
 
-        gamma = 0.25 * ((v(p_k + 1, p_j, p_i) + v(p_k + 1, p_j - 1, p_i) - v(p_k, p_j, p_i) - v(p_k, p_j - 1, p_i)) / dz(p_k) &
-         + (v(p_k, p_j, p_i) + v(p_k, p_j - 1, p_i) - v(p_k - 1, p_j, p_i) - v(p_k - 1, p_j - 1, p_i)) / dz(p_k - 1))
+        gamma = 0.25 * ((v(p_kp, p_j, p_i) + v(p_kp, p_jm, p_i) - v(p_k, p_j, p_i) - v(p_k, p_jm, p_i)) / dz(p_k) &
+         + (v(p_k, p_j, p_i) + v(p_k, p_jm, p_i) - v(p_km, p_j, p_i) - v(p_km, p_jm, p_i)) / dz(p_km))
 
-        delta = 0.5 * (v(p_k, p_j, p_i) + v(p_k, p_j - 1, p_i) &
-         - alpha * (ddy(p_j) - dy(p_j - 1)) - beta * (ddx(p_i) - dx(p_i - 1)) - gamma * (ddz(p_k) - dz(p_k - 1)))
+        delta = 0.5 * (v(p_k, p_j, p_i) + v(p_k, p_jm, p_i) &
+         - alpha * (ddy(p_j) - dy(p_jm)) - beta * (ddx(p_i) - dx(p_im)) - gamma * (ddz(p_k) - dz(p_km)))
 
         p_v = alpha * (p_y - y(p_j)) + beta * (p_x - x(p_i)) + gamma * (p_z - z(p_k)) + delta
 
         ! w interpolation
-        alpha = (w(p_k, p_j, p_i) - w(p_k - 1 ,p_j ,p_i)) / ddz(p_k)
+        alpha = (w(p_k, p_j, p_i) - w(p_km ,p_j ,p_i)) / ddz(p_k)
 
-        beta = 0.25 * ((w(p_k, p_j, p_i + 1) + w(p_k - 1, p_j, p_i + 1) - w(p_k, p_j, p_i) - w(p_k - 1, p_j, p_i)) / dx(p_i) &
-         + (w(p_k, p_j, p_i) + w(p_k - 1, p_j, p_i) - w(p_k, p_j, p_i - 1) - w(p_k - 1, p_j, p_i - 1)) / dx(p_i - 1))
+        beta = 0.25 * ((w(p_k, p_j, p_ip) + w(p_km, p_j, p_ip) - w(p_k, p_j, p_i) - w(p_km, p_j, p_i)) / dx(p_i) &
+         + (w(p_k, p_j, p_i) + w(p_km, p_j, p_i) - w(p_k, p_j, p_im) - w(p_km, p_j, p_im)) / dx(p_im))
 
-        gamma = 0.25 * ((w(p_k, p_j + 1, p_i) + w(p_k - 1, p_j + 1, p_i) - w(p_k, p_j, p_i) - w(p_k - 1, p_j, p_i)) / dy(p_j) &
-         + (w(p_k, p_j, p_i) + w(p_k - 1, p_j, p_i) - w(p_k, p_j - 1, p_i) - w(p_k - 1, p_j - 1, p_i)) / dy(p_j - 1))
+        gamma = 0.25 * ((w(p_k, p_jp, p_i) + w(p_km, p_jp, p_i) - w(p_k, p_j, p_i) - w(p_km, p_j, p_i)) / dy(p_j) &
+         + (w(p_k, p_j, p_i) + w(p_km, p_j, p_i) - w(p_k, p_jm, p_i) - w(p_km, p_jm, p_i)) / dy(p_jm))
 
-        delta = 0.5 * (w(p_k, p_j, p_i) + w(p_k - 1, p_j, p_i) &
-         - alpha * (ddz(p_k) - dz(p_k - 1)) - beta * (ddx(p_i) - dx(p_i - 1)) - gamma * (ddy(p_j) - dy(p_j - 1)))
+        delta = 0.5 * (w(p_k, p_j, p_i) + w(p_km, p_j, p_i) &
+         - alpha * (ddz(p_k) - dz(p_km)) - beta * (ddx(p_i) - dx(p_im)) - gamma * (ddy(p_j) - dy(p_jm)))
 
         p_w = alpha * (p_z - z(p_k)) + beta * (p_x - x(p_i)) + gamma * (p_y - y(p_j)) + delta
 

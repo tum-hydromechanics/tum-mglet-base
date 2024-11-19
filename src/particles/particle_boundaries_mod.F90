@@ -801,7 +801,7 @@ MODULE particle_boundaries_mod
             !ibocd = 2
             !CALL get_bc_ctyp(ctyp2, ibocd, iface, igrid)
 
-            IF (ctyp1 == "CON" .OR. ctyp1 == "PER" .OR. ctyp1 == "FIX" .OR. ctyp1 == "OP1") THEN
+            IF (ctyp1 == "CON" .OR. ctyp1 == "PER") THEN !.OR. ctyp1 == "FIX" .OR. ctyp1 == "OP1"
                 ctyp = "CON"
             ELSEIF (ctyp1 == "SLI" .OR. ctyp1 == "NOS") THEN
                 ctyp = "REF"
