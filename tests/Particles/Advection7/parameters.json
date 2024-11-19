@@ -1,8 +1,8 @@
 {
     "time": {
-        "mtstep": 2000,
+        "mtstep": 4000,
         "dt": 0.00628,
-        "tend": 12.56,
+        "tend": 25.12,
         "itinfo": 1,
         "itcheck": 10
     },
@@ -55,7 +55,7 @@
         "interp": true,
         "prkmethod": "williamson",
         "D":[0.0, 0.0, 0.0],
-        "terminal": "verbose",
+        "terminal": "normal",
         "slice_dir": "N",
         "write": true,
         "snapshot_step": 10
