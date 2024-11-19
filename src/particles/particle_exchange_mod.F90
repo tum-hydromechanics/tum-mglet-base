@@ -501,7 +501,7 @@ CONTAINS
         INTEGER(int32), ALLOCATABLE :: sendcounts(:), sdispls(:)
         INTEGER(int32), ALLOCATABLE :: recvcounts(:), rdispls(:)
 
-        INTEGER(intk) :: neighbours(26)
+        INTEGER(intk) :: neighbours(26), neighbour
         INTEGER :: iexchange
 
         CALL start_timer(900)
@@ -539,137 +539,42 @@ CONTAINS
         rdispls = 0
         nRecv = 0
 
-        ! SIMON: Hier sammeln wir zunächst zu viel Information, die für die
-        ! Partikel nicht benötigt wird. Style to be improved...
-        ! JULIUS: partly cleaned, but possibly more to improve
+        ! ---------------------------
 
-        ! <--------------------------
-
-        DO i = 1, nMyGrids
+        DO i = 1, nmygrids
 
             ! getting the grid parameters
-            igrid = myGrids(i)
-            CALL get_neighbours(neighbours, igrid)
+            igrid = mygrids(i)
 
             ! Check surfaces of grid
-            DO iface = 1, 6
+            DO iface = 1, 26
 
-                itypbc = itypboconds(1, iface, igrid)
-                inbrgrid = neighbours(iface)
+                neighbour = particle_boundaries%face_neighbours(iface, igrid)
 
-                IF (itypbc == 7 .OR. itypbc == 19) THEN
-
-                    IF (inbrgrid == 0) THEN
-                        CYCLE
-                    END IF
-
-                    iprocnbr = idprocofgrd(neighbours(iface))
-
-                    IF (iprocnbr == myid) THEN
-                        CYCLE
-                    END IF
-
-                    ! only if neighbor not already listed
-                    IF ( sendcounts(iprocnbr) == 0 ) THEN
-
-                        iexchange = 1
-                        nRecv = nRecv + 1
-                        maxTag(iprocnbr) = maxTag(iprocnbr) + 1
-
-                        recvConns(1, nRecv) = myid              ! Receiving process (this process)
-                        recvConns(2, nRecv) = iprocnbr          ! Sending process (neighbour process)
-                        recvConns(3, nRecv) = maxTag(iprocnbr)  ! Message tag
-                        recvConns(4, nRecv) = iexchange         ! Geometry exchange flag
-
-                        sendcounts(iprocnbr) = SIZE(recvConns, 1)   ! not an increment
-
-                    END IF
+                IF (neighbour == igrid) THEN
+                    CYCLE
                 END IF
-            END DO
 
-            ! Check lines fo grid
-            DO iface = 7, 18
+                iprocnbr = idprocofgrd(neighbour)
 
-                iface1 = facelist(2, iface)
-                iface2 = facelist(3, iface)
-
-                itypbc1 = itypboconds(1, iface1, igrid)
-                itypbc2 = itypboconds(1, iface2, igrid)
-
-                inbrgrid = neighbours(iface)
-
-                IF (itypbc1 == 7 .OR. itypbc2 == 7 .OR. &
-                    itypbc1 == 19 .OR. itypbc2 == 19) THEN
-
-                    IF (inbrgrid == 0) THEN
-                        CYCLE
-                    END IF
-
-                    iprocnbr = idprocofgrd(inbrgrid)
-
-                    IF (iprocnbr == myid) THEN
-                        CYCLE
-                    END IF
-
-                    ! only if neighbor not already listed
-                    IF ( sendcounts(iprocnbr) == 0 ) THEN
-
-                        iexchange = 1
-                        nRecv = nRecv + 1
-                        maxTag(iprocnbr) = maxTag(iprocnbr) + 1
-
-                        recvConns(1, nRecv) = myid              ! Receiving process (this process)
-                        recvConns(2, nRecv) = iprocnbr          ! Sending process (neighbour process)
-                        recvConns(3, nRecv) = maxTag(iprocnbr)  ! Message tag
-                        recvConns(4, nRecv) = iexchange         ! Geometry exchange flag
-
-                        sendcounts(iprocnbr) = SIZE(recvConns, 1)   ! not an increment
-
-                    END IF
+                IF (iprocnbr == myid) THEN
+                    CYCLE
                 END IF
-            END DO
 
-            ! Check corners of grid
-            DO iface = 19, 26
+                ! only if neighbor not already listed
+                IF ( sendcounts(iprocnbr) == 0 ) THEN
 
-                iface1 = facelist(2, iface)
-                iface2 = facelist(3, iface)
-                iface3 = facelist(4, iface)
-                itypbc1 = itypboconds(1, iface1, igrid)
-                itypbc2 = itypboconds(1, iface2, igrid)
-                itypbc3 = itypboconds(1, iface3, igrid)
+                    iexchange = 1
+                    nRecv = nRecv + 1
+                    maxTag(iprocnbr) = maxTag(iprocnbr) + 1
 
-                inbrgrid = neighbours(iface)
+                    recvConns(1, nRecv) = myid              ! Receiving process (this process)
+                    recvConns(2, nRecv) = iprocnbr          ! Sending process (neighbour process)
+                    recvConns(3, nRecv) = maxTag(iprocnbr)  ! Message tag
+                    recvConns(4, nRecv) = iexchange         ! Geometry exchange flag
 
-                IF (itypbc1 == 7 .OR. itypbc2 == 7 .OR. itypbc3 == 7 .OR. &
-                    itypbc1 == 19 .OR. itypbc2 == 19 .OR. itypbc3 == 19) THEN
+                    sendcounts(iprocnbr) = SIZE(recvConns, 1)   ! not an increment
 
-                    IF (inbrgrid == 0) THEN
-                        CYCLE
-                    END IF
-
-                    iprocnbr = idprocofgrd(inbrgrid)
-
-                    IF (iprocnbr == myid) THEN
-                        CYCLE
-                    END IF
-
-                    ! only if neighbor not already listed
-                    IF (sendcounts(iprocnbr) == 0) THEN
-
-                        iexchange = 1
-                        nRecv = nRecv + 1
-                        maxTag(iprocnbr) = maxTag(iprocnbr) + 1
-
-                        recvConns(1, nRecv) = myid              ! Receiving process (this process)
-                        recvConns(2, nRecv) = iprocnbr          ! Sending process (neighbour process)
-                        recvConns(3, nRecv) = maxTag(iprocnbr)  ! Message tag
-                        recvConns(4, nRecv) = iexchange         ! Geometry exchange flag
-
-                        ! JULIUS: why not assign to recvcounts here? Naming seems confusing to me.
-                        sendcounts(iprocnbr) = SIZE(recvConns, 1)   ! not an increment
-
-                    END IF
                 END IF
             END DO
         END DO
