@@ -25,7 +25,7 @@ cd ~/tum-mglet-base/tests/Particles/Advection6
 ./run.sh newtest ../../../build/src/mglet
 
 echo ------------ ADVECTION 7 ----------
-cd ~/tum-mglet-base/tests/Particles/Advection6
+cd ~/tum-mglet-base/tests/Particles/Advection7
 ./run.sh newtest ../../../build/src/mglet
 
 echo ------------ DIFFUSION 1 ----------
@@ -37,7 +37,7 @@ cd ~/tum-mglet-base/tests/Particles/Diffusion2
 ./run.sh newtest ../../../build/src/mglet
 
 echo ------------ DIFFUSION 3 ----------
-cd ~/tum-mglet-base/tests/Particles/Diffusion2
+cd ~/tum-mglet-base/tests/Particles/Diffusion3
 ./run.sh newtest ../../../build/src/mglet
 
 echo ------------ ADVECTION DIFFUSION 1 ----------
@@ -48,8 +48,8 @@ echo ------------ ADVECTION DIFFUSION 2 ----------
 cd ~/tum-mglet-base/tests/Particles/AdvectionDiffusion2
 ./run.sh newtest ../../../build/src/mglet
 
-#echo ------------ TAYLOR GREEN VORTEX ----------
-#cd ~/tum-mglet-base/tests/Particles/TaylorGreenVortex
-#./run.sh newtest ../../../build/src/mglet
+echo ------------ ADVECTION DIFFUSION 3 ----------
+cd ~/tum-mglet-base/tests/Particles/AdvectionDiffusion3
+./run.sh newtest ../../../build/src/mglet
 
 cd $cwd

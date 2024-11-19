@@ -1,6 +1,6 @@
 {
     "time": {
-        "mtstep": 100,
+        "mtstep": 2000,
         "dt": 0.01,
         "tend": 10.0,
         "itinfo": 1,
@@ -48,7 +48,7 @@
         ]
     },
     "snapshots": {
-        "itsamp": 100,
+        "itsamp": 500,
         "tstart": 0.0,
         "fields": ["U", "V", "W", "P", "NPC"]
     },
@@ -58,7 +58,7 @@
         "list_len": 10000,
         "interp": true,
         "prkmethod": "williamson",
-        "D":[0.002, 0.002, 0.002],
+        "D":[0.002, 0.002, 0.000],
         "terminal": "normal",
         "slice_dir": "X",
         "nslice_levels": 1,
