@@ -189,7 +189,6 @@ CONTAINS
 
         ! Local variables
         INTEGER(intk) :: igrid
-        TYPE(field_t), POINTER :: g_f
 
         REAL(realk) :: prmol_offload, prturb_offload
         INTEGER(intk) :: kayscrawford_offload
@@ -208,32 +207,8 @@ CONTAINS
             BLOCK
                 INTEGER(intk) :: kk, jj, ii
                 INTEGER(intk) :: nfro, nbac, nrgt, nlft, nbot, ntop
-                REAL(realk), POINTER, CONTIGUOUS, DIMENSION(:) :: ddx, ddy, ddz, rdx, rdy, rdz
-                REAL(realk), POINTER, CONTIGUOUS, DIMENSION(:, :, :) :: qtu, qtv, qtw, t, u, v, w, g, bt
 
-                CALL get_mgbasb_target(nfro, nbac, nrgt, nlft, nbot, ntop, igrid)
-                CALL get_mgdims_target(kk, jj, ii, igrid)
-
-                CALL ptr_to_grid3(qtu_offload, igrid, qtu)
-                CALL ptr_to_grid3(qtv_offload, igrid, qtv)
-                CALL ptr_to_grid3(qtw_offload, igrid, qtw)
-                CALL ptr_to_grid3(t_offload, igrid, t)
-                CALL ptr_to_grid3(u_offload, igrid, u)
-                CALL ptr_to_grid3(v_offload, igrid, v)
-                CALL ptr_to_grid3(w_offload, igrid, w)
-
-                CALL ptr_to_grid3(g_offload, igrid, g)
-
-                CALL ptr_to_grid3(bt_offload, igrid, bt)
-                CALL ptr_to_grid_x(ddx_offload, igrid, ddx)
-                CALL ptr_to_grid_y(ddy_offload, igrid, ddy)
-                CALL ptr_to_grid_z(ddz_offload, igrid, ddz)
-                CALL ptr_to_grid_x(rdx_offload, igrid, rdx)
-                CALL ptr_to_grid_y(rdy_offload, igrid, rdy)
-                CALL ptr_to_grid_z(rdz_offload, igrid, rdz)
-
-                CALL tstsca4_grid(kk, jj, ii, qtu, qtv, qtw, t, u, v, w, g, bt, &
-                    ddx, ddy, ddz, rdx, rdy, rdz, &
+                CALL tstsca4_grid(kk, jj, ii, &
                     prmol_offload, kayscrawford_offload, prturb_offload, &
                     nfro, nbac, nrgt, nlft, nbot, ntop, ilesmodel, &
                     gmol, rho, igrid)
@@ -244,15 +219,12 @@ CONTAINS
     END SUBROUTINE tstsca4
 
 
-    SUBROUTINE tstsca4_grid(kk, jj, ii, qtu, qtv, qtw, t, u, v, w, g, bt, &
-            ddx, ddy, ddz, rdx, rdy, rdz, sca_prmol, sca_kayscrawford, sca_prturb, nfro, nbac, nrgt, nlft, &
-            nbot, ntop, ilesmodel_offlad, gmol_offload, rho_offload, igrid)   
+    SUBROUTINE tstsca4_grid(kk, jj, ii, &
+            sca_prmol, sca_kayscrawford, sca_prturb, nfro, nbac, nrgt, nlft, &
+            nbot, ntop, ilesmodel_offlad, gmol_offload, rho_offload, igrid)  
         
             ! Subroutine arguments
         INTEGER(intk), INTENT(IN) :: kk, jj, ii, igrid
-        REAL(realk), INTENT(OUT), POINTER, CONTIGUOUS, DIMENSION(:, :, :) :: qtu, qtv, qtw
-        !REAL(realk), INTENT(IN), POINTER, CONTIGUOUS, DIMENSION(:, :, :) :: t, u, v, w, bt
-        !REAL(realk), INTENT(IN), POINTER, CONTIGUOUS, DIMENSION(:) :: ddx, ddy, ddz, rdx, rdy, rdz
         REAL(realk), INTENT(in) :: sca_prmol, sca_prturb
         INTEGER(intk), INTENT(IN) :: sca_kayscrawford
         INTEGER(intk), INTENT(IN) :: nfro, nbac, nrgt, nlft, nbot, ntop
@@ -260,22 +232,12 @@ CONTAINS
         REAL(realk), INTENT(IN) :: gmol_offload, rho_offload
 
         ! Local variables
-        INTEGER(intk) :: i, j, k, index_grid, index_grid_i1
+        INTEGER(intk) :: i, j, k
         INTEGER(intk) :: nfu, nbu, nrv, nlv, nbw, ntw
         INTEGER(intk) :: iles
         REAL(realk) :: gsca(ii)
         REAL(realk) :: adv, diff, area
         REAL(realk) :: gscamol, gtgmolp, gtgmoln
-        REAL(realk), POINTER, CONTIGUOUS, DIMENSION(:, :, :) :: g
-        REAL(realk), POINTER, CONTIGUOUS, DIMENSION(:, :, :) :: t, u, v, w, bt
-        REAL(realk), POINTER, CONTIGUOUS, DIMENSION(:) :: ddx, ddy, ddz, rdx, rdy, rdz
-
-
-
-        ! Set INTENT(out) to zero
-        qtu = 0.0
-        qtv = 0.0
-        qtw = 0.0
 
         ! Usually, the fluxes across the grid boundaries are already set
         nfu = 0
@@ -303,9 +265,10 @@ CONTAINS
         !$omp target
         BLOCK
             REAL(realk), POINTER, CONTIGUOUS, DIMENSION(:, :, :) :: g
-            REAL(realk), POINTER, CONTIGUOUS, DIMENSION(:, :, :) :: t, u, v, w, bt
-            REAL(realk), POINTER, CONTIGUOUS, DIMENSION(:) :: ddx, ddy, ddz, rdx, rdy, rdz
+            REAL(realk), POINTER, CONTIGUOUS, DIMENSION(:, :, :) :: t, u, bt, qtu
+            REAL(realk), POINTER, CONTIGUOUS, DIMENSION(:) :: ddy, ddz, rdx
 
+            CALL ptr_to_grid3(qtu_offload, igrid, qtu)
             CALL ptr_to_grid3(g_offload, igrid, g)
             CALL ptr_to_grid3(t_offload, igrid, t)
             CALL ptr_to_grid3(u_offload, igrid, u)
@@ -320,10 +283,6 @@ CONTAINS
                     ! Scalar diffusivity LES/DNS computation
                     IF (iles == 1) THEN
                         DO k = 3, kk-2
-                            ! Calculate the 1D index for each 3D array
-                            index_grid = k + (j-1) * kk + (i-1) * jj * kk
-                            index_grid_i1 = index_grid + kk   ! i+1 offset in flattened array
-                            
                             gscamol = gmol_offload/rho_offload/sca_prmol
                             gtgmolp = (g(k, j, i) - gmol_offload)/gmol_offload
                             gtgmoln = (g(k, j, i+1) - gmol_offload)/gmol_offload
@@ -347,8 +306,6 @@ CONTAINS
                     ! Final asembly
                     !$omp simd
                     DO k = 3, kk-2
-                        index_grid = k + (j - 1) * kk + (i - 1) * jj * kk
-                        index_grid_i1 = index_grid + kk  ! Offset for i+1
                         ! Convective fluxes
                         ! It is assumed that the velocity field is already masked
                         ! with BU, BV, BW = no new masking necessary (!)
@@ -376,9 +333,10 @@ CONTAINS
         !$omp target
         BLOCK
             REAL(realk), POINTER, CONTIGUOUS, DIMENSION(:, :, :) :: g
-            REAL(realk), POINTER, CONTIGUOUS, DIMENSION(:, :, :) :: t, u, v, w, bt
-            REAL(realk), POINTER, CONTIGUOUS, DIMENSION(:) :: ddx, ddy, ddz, rdx, rdy, rdz
+            REAL(realk), POINTER, CONTIGUOUS, DIMENSION(:, :, :) :: t, v, bt, qtv
+            REAL(realk), POINTER, CONTIGUOUS, DIMENSION(:) :: ddx, ddz, rdy
 
+            CALL ptr_to_grid3(qtv_offload, igrid, qtv)
             CALL ptr_to_grid3(g_offload, igrid, g)
             CALL ptr_to_grid3(t_offload, igrid, t)
             CALL ptr_to_grid3(v_offload, igrid, v)
@@ -444,9 +402,10 @@ CONTAINS
         !$omp target
         BLOCK
             REAL(realk), POINTER, CONTIGUOUS, DIMENSION(:, :, :) :: g
-            REAL(realk), POINTER, CONTIGUOUS, DIMENSION(:, :, :) :: t, u, v, w, bt
-            REAL(realk), POINTER, CONTIGUOUS, DIMENSION(:) :: ddx, ddy, ddz, rdx, rdy, rdz
+            REAL(realk), POINTER, CONTIGUOUS, DIMENSION(:, :, :) :: t, w, bt, qtw
+            REAL(realk), POINTER, CONTIGUOUS, DIMENSION(:) :: ddx, ddy, rdy
 
+            CALL ptr_to_grid3(qtw_offload, igrid, qtw)
             CALL ptr_to_grid3(g_offload, igrid, g)
             CALL ptr_to_grid3(t_offload, igrid, t)
             CALL ptr_to_grid3(w_offload, igrid, w)
@@ -507,77 +466,6 @@ CONTAINS
         !$omp end target
         !$omp end target data
 
-        ! These loops are not used in our basic scalar test
-        ! ------------------------------------------------------------------------------------------------------------
-
-        ! Special treatment at par boundaries
-        ! Substraction of downwind and addition of upwind T-value
-        ! to finally get an upwind scheme in case of flow towards coarse grid
-        IF (nfro == 8) THEN
-            i =  3
-            DO j = 3, jj-2
-                DO k = 3, kk-2
-                    adv = (ddy(j)*ddz(k)) * (u(k, j, i) - ABS(u(k, j, i))) &
-                        * 0.5 * 0.5 * (-t(k, j, i) + t(k, j, i+1))
-                    qtu(k, j, i) = qtu(k, j, i) + adv
-                END DO
-            END DO
-        END IF
-
-        IF (nbac == 8) THEN
-            i = ii-3
-            DO j = 3, jj-2
-                DO k = 3, kk-2
-                    adv = (ddy(j)*ddz(k)) * (u(k, j, i) + ABS(u(k, j, i))) &
-                        * 0.5 * 0.5 * (t(k, j, i) - t(k, j, i+1))
-                    qtu(k, j, i) = qtu(k, j, i) + adv
-                END DO
-            END DO
-        END IF
-
-        IF (nrgt == 8) THEN
-            DO i = 3, ii-2
-                j = 3
-                DO k = 3, kk-2
-                    adv = (ddx(i)*ddz(k)) * (v(k, j, i) - ABS(v(k, j, i))) &
-                        * 0.5 * 0.5 * (-t(k, j, i) + t(k, j+1, i) )
-                    qtv(k, j, i) = qtv(k, j, i) + adv
-                END DO
-            END DO
-        END IF
-
-        IF (nlft == 8) THEN
-            DO i = 3, ii-2
-                j = jj-3
-                DO k = 3, kk-2
-                    adv = (ddx(i)*ddz(k)) * (v(k, j, i) + ABS(v(k, j, i))) &
-                        * 0.5 * 0.5 * (t(k, j, i) - t(k, j+1, i))
-                    qtv(k, j, i) = qtv(k, j, i) + adv
-                END DO
-            END DO
-        END IF
-
-        IF (nbot == 8) THEN
-            DO i = 3, ii-2
-                DO j = 3, jj-2
-                    k = 3
-                    adv = (ddx(i)*ddy(j)) * (w(k, j, i) - ABS(w(k, j, i))) &
-                        * 0.5 * 0.5 * (-t(k, j, i) + t(k+1, j, i))
-                    qtw(k, j, i) = qtw(k, j, i) + adv
-                END DO
-            END DO
-        END IF
-
-        IF (ntop == 8) THEN
-            DO i = 3, ii-2
-                DO j = 3, jj-2
-                    k = kk-3
-                    adv = (ddx(i)*ddy(j)) * (w(k, j, i) + ABS(w(k, j, i))) &
-                        * 0.5 * 0.5 * (t(k, j, i) - t(k+1, j, i))
-                    qtw(k, j, i) = qtw(k, j, i) + adv
-                END DO
-            END DO
-        END IF
     END SUBROUTINE tstsca4_grid
 
     FUNCTION sca_prt(sca_prmol, sca_kayscrawford, sca_prturb, sca_gtgmol) RESULT(res)
@@ -627,7 +515,7 @@ CONTAINS
         INTEGER(intk), INTENT(IN) :: kk, jj, ii, igrid
 
         ! Local variables
-        INTEGER(intk) :: i, j, k, index, index_im1, index_jm1, index_km1
+        INTEGER(intk) :: i, j, k
         REAL(realk) :: netflux
 
         ! Set INTENT(out) to zero
@@ -650,12 +538,6 @@ CONTAINS
                 DO j = 3, jj-2
                     !$omp simd
                     DO k = 3, kk-2
-                        ! Flattened indices for each 3D array
-                        !index = k + (j - 1) * kk + (i - 1) * jj * kk
-                        !index_im1 = index - kk * jj  ! i-1 offset
-                        !index_jm1 = index - kk       ! j-1 offset
-                        !index_km1 = index - 1        ! k-1 offset
-
                         ! Computing netflux resulting from exchange with neighbors
                         netflux = qtu(k, j, i-1) - qtu(k, j, i) + qtv(k, j-1, i) &
                             - qtv(k, j, i) + qtw(k-1, j, i) - qtw(k, j, i)
