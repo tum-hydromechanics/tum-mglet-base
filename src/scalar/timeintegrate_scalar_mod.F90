@@ -192,6 +192,8 @@ CONTAINS
 
         REAL(realk) :: prmol_offload, prturb_offload
         INTEGER(intk) :: kayscrawford_offload
+        INTEGER(intk) :: kk, jj, ii
+        INTEGER(intk) :: nfro, nbac, nrgt, nlft, nbot, ntop
 
         ! Expensive data to offload
 
@@ -204,15 +206,14 @@ CONTAINS
         kayscrawford_offload = sca%kayscrawford
         
         DO igrid = 1, nmygrids
-            BLOCK
-                INTEGER(intk) :: kk, jj, ii
-                INTEGER(intk) :: nfro, nbac, nrgt, nlft, nbot, ntop
 
-                CALL tstsca4_grid(kk, jj, ii, &
-                    prmol_offload, kayscrawford_offload, prturb_offload, &
-                    nfro, nbac, nrgt, nlft, nbot, ntop, ilesmodel, &
-                    gmol, rho, igrid)
-            END BLOCK
+            CALL get_mgbasb_target(nfro, nbac, nrgt, nlft, nbot, ntop, igrid)
+            CALL get_mgdims(kk, jj, ii, igrid)
+
+            CALL tstsca4_grid(kk, jj, ii, &
+                prmol_offload, kayscrawford_offload, prturb_offload, &
+                nfro, nbac, nrgt, nlft, nbot, ntop, ilesmodel, &
+                gmol, rho, igrid)
         END DO
 
         CALL stop_timer(410)
