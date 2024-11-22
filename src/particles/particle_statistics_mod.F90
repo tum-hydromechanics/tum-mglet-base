@@ -599,9 +599,10 @@ CONTAINS
             DO i = 1, numprocs - 1
                 CALL MPI_Irecv(drecv(i), 1, mglet_mpi_int, i, 9401, &
                      MPI_COMM_WORLD, recv_req(i))
-                CALL MPI_Waitall(numprocs - 1, recv_req, MPI_STATUSES_IGNORE)
             END DO
+            CALL MPI_Waitall(numprocs - 1, recv_req, MPI_STATUSES_IGNORE)
         END IF
+
 
         buffer_len = 2 * nsamples + 1
         ALLOCATE(buffer(buffer_len))
