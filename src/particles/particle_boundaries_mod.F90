@@ -202,10 +202,11 @@ MODULE particle_boundaries_mod
                         DO iface = 1, 26
                             WRITE(*, *) "Face:                 ", iface
                             WRITE(*, *) "Neigbhour grid:       ", particle_boundaries%face_neighbours(iface, igrid)
-                            WRITE(*,'("Normal vector", F4.2, " ", F4.2, " ", F4.2)') &
-                             particle_boundaries%face_normals(1, iface, igrid), &
-                             particle_boundaries%face_normals(2, iface, igrid), &
-                             particle_boundaries%face_normals(3, iface, igrid)
+                            WRITE(*,'("Normal vector: ")')
+                            WRITE(*, *) "n1                    ", particle_boundaries%face_normals(1, iface, igrid)
+                            WRITE(*, *) "n2                    ", particle_boundaries%face_normals(2, iface, igrid)
+                            WRITE(*, *) "n3                    ", particle_boundaries%face_normals(3, iface, igrid)
+                            WRITE(*, *) " "
                         END DO
                     END DO
                     WRITE(*, *) " "
@@ -244,7 +245,7 @@ MODULE particle_boundaries_mod
         INTEGER(intk), INTENT(inout), OPTIONAL :: temp_grid_prev
 
         ! local variables
-        INTEGER(intk) :: temp_grid, iface, iobst_local, grid_bc, destproc, counter
+        INTEGER(intk) :: temp_grid, iface, iobst_local, grid_bc, destgrid, counter
         INTEGER(intk) :: neighbours(26)
         INTEGER(intk) :: reflect(3)
         REAL(realk) :: x, y, z
@@ -322,12 +323,14 @@ MODULE particle_boundaries_mod
                     CASE ("normal")
                         CONTINUE
                     CASE ("verbose")
-                        WRITE(*, *) "Particle reflected at Obstacle!"
+                        WRITE(*, *) "Particle reflected at Obstacle ", my_obstacles(iobst_local)%iobst, "."
                 END SELECT
 
                 CALL reflect_at_obstacle(iobst_local, x, y, z, dx_from_here, dy_from_here, dz_from_here)
 
             ELSEIF (0 < iface) THEN
+
+                destgrid = particle_boundaries%face_neighbours(iface, temp_grid)
 
                 SELECT CASE (TRIM(particle_terminal))
                     CASE ("none")
@@ -335,7 +338,7 @@ MODULE particle_boundaries_mod
                     CASE ("normal")
                         CONTINUE
                     CASE ("verbose")
-                        WRITE(*, *) "Particle processed at Grid face."
+                        WRITE(*, *) "Particle moved to Grid face ", iface, "with Target Grid ", destgrid, "."
                 END SELECT
 
                 CALL reflect_at_boundary(dx_from_here, dy_from_here, dz_from_here, &
@@ -343,9 +346,9 @@ MODULE particle_boundaries_mod
                 particle_boundaries%face_normals(2, iface, temp_grid), &
                 particle_boundaries%face_normals(3, iface, temp_grid), reflect)
 
-                CALL update_coordinates(temp_grid, particle_boundaries%face_neighbours(iface, temp_grid), iface, x, y, z, reflect)
+                CALL update_coordinates(temp_grid, destgrid, iface, x, y, z, reflect)
 
-                temp_grid = particle_boundaries%face_neighbours(iface, temp_grid)
+                temp_grid = destgrid
 
             END IF
 

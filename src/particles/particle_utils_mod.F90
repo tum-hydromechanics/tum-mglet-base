@@ -253,9 +253,7 @@ MODULE particle_utils_mod
                     IF (x <= new_minx) THEN
                         x = new_maxx - ABS(x - old_minx)
                         passed_pb = .TRUE.
-                    END IF
-
-                    IF (new_maxx <= x) THEN
+                    ELSEIF (new_maxx <= x) THEN
                         x = new_minx + ABS(x - old_maxx)
                         passed_pb = .TRUE.
                     END IF
@@ -265,9 +263,7 @@ MODULE particle_utils_mod
                     IF (y <= new_miny) THEN
                         y = new_maxy - ABS(y - old_miny)
                         passed_pb = .TRUE.
-                    END IF
-
-                    IF (new_maxy <= y) THEN
+                    ELSEIF (new_maxy <= y) THEN
                         y = new_miny + ABS(y - old_maxy)
                         passed_pb = .TRUE.
                     END IF
@@ -277,9 +273,7 @@ MODULE particle_utils_mod
                     IF (z <= new_minz) THEN
                         z = new_maxz - ABS(z - old_minz)
                         passed_pb = .TRUE.
-                    END IF
-
-                    IF (new_maxz <= z) THEN
+                    ELSEIF (new_maxz <= z) THEN
                         z = new_minz + ABS(z - old_maxz)
                         passed_pb = .TRUE.
                     END IF
@@ -290,9 +284,7 @@ MODULE particle_utils_mod
                 IF (x < new_minx) THEN
                     x = new_maxx - ABS(x - old_minx)
                     passed_pb = .TRUE.
-                END IF
-
-                IF (new_maxx < x) THEN
+                ELSEIF (new_maxx < x) THEN
                     x = new_minx + ABS(x - old_maxx)
                     passed_pb = .TRUE.
                 END IF
@@ -300,9 +292,7 @@ MODULE particle_utils_mod
                 IF (y < new_miny) THEN
                     y = new_maxy - ABS(y - old_miny)
                     passed_pb = .TRUE.
-                END IF
-
-                IF (new_maxy < y) THEN
+                ELSEIF (new_maxy < y) THEN
                     y = new_miny + ABS(y - old_maxy)
                     passed_pb = .TRUE.
                 END IF
@@ -310,9 +300,7 @@ MODULE particle_utils_mod
                 IF (z < new_minz) THEN
                     z = new_maxz - ABS(z - old_minz)
                     passed_pb = .TRUE.
-                END IF
-
-                IF (new_maxz < z) THEN
+                ELSEIF (new_maxz < z) THEN
                     z = new_minz + ABS(z - old_maxz)
                     passed_pb = .TRUE.
                 END IF
@@ -324,9 +312,7 @@ MODULE particle_utils_mod
             IF (x < new_minx) THEN
                 x = new_maxx - ABS(x - old_minx)
                 passed_pb = .TRUE.
-            END IF
-
-            IF (new_maxx < x) THEN
+            ELSEIF (new_maxx < x) THEN
                 x = new_minx + ABS(x - old_maxx)
                 passed_pb = .TRUE.
             END IF
@@ -334,9 +320,7 @@ MODULE particle_utils_mod
             IF (y < new_miny) THEN
                 y = new_maxy - ABS(y - old_miny)
                 passed_pb = .TRUE.
-            END IF
-
-            IF (new_maxy < y) THEN
+            ELSEIF (new_maxy < y) THEN
                 y = new_miny + ABS(y - old_maxy)
                 passed_pb = .TRUE.
             END IF
@@ -344,9 +328,7 @@ MODULE particle_utils_mod
             IF (z < new_minz) THEN
                 z = new_maxz - ABS(z - old_minz)
                 passed_pb = .TRUE.
-            END IF
-
-            IF (new_maxz < z) THEN
+            ELSEIF (new_maxz < z) THEN
                 z = new_minz + ABS(z - old_maxz)
                 passed_pb = .TRUE.
             END IF
