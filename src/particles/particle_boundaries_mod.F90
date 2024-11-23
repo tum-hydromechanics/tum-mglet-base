@@ -197,14 +197,15 @@ MODULE particle_boundaries_mod
                         WRITE(*, *) "BOTTOM:               ", ctyp
                         CALL get_particle_bc(igrid, 6, bc_coupling_mode, ctyp)
                         WRITE(*, *) "TOP:                  ", ctyp
-
-                        WRITE(*, *) "Faces:"
+                        WRITE(*, *) " "
+                        WRITE(*, *) "FACES:"
                         DO iface = 1, 26
                             WRITE(*, *) "Face:                 ", iface
                             WRITE(*, *) "Neigbhour grid:       ", particle_boundaries%face_neighbours(iface, igrid)
-                            WRITE(*, *) "Normal vector (n1):   ", particle_boundaries%face_normals(1, iface, igrid)
-                            WRITE(*, *) "Normal vector (n2):   ", particle_boundaries%face_normals(2, iface, igrid)
-                            WRITE(*, *) "Normal vector (n3):   ", particle_boundaries%face_normals(3, iface, igrid)
+                            WRITE(*,'("Normal vector", F4.2, " ", F4.2, " ", F4.2)') &
+                             particle_boundaries%face_normals(1, iface, igrid), &
+                             particle_boundaries%face_normals(2, iface, igrid), &
+                             particle_boundaries%face_normals(3, iface, igrid)
                         END DO
                     END DO
                     WRITE(*, *) " "
@@ -234,16 +235,16 @@ MODULE particle_boundaries_mod
 
     !-----------------------------------
 
-    SUBROUTINE move_particle(particle, dx, dy, dz, dx_eff, dy_eff, dz_eff)
+    SUBROUTINE move_particle(particle, dx, dy, dz, dx_eff, dy_eff, dz_eff, temp_grid_prev)
 
         ! subroutine arguments
         TYPE(baseparticle_t), INTENT(inout) :: particle
         REAL(realk), INTENT(in) :: dx, dy, dz
         REAL(realk), INTENT(out) :: dx_eff, dy_eff, dz_eff
+        INTEGER(intk), INTENT(inout), OPTIONAL :: temp_grid_prev
 
         ! local variables
-        INTEGER(intk) :: temp_grid, iface, iobst_local, grid_bc, destproc
-        INTEGER(intk) :: counter
+        INTEGER(intk) :: temp_grid, iface, iobst_local, grid_bc, destproc, counter
         INTEGER(intk) :: neighbours(26)
         INTEGER(intk) :: reflect(3)
         REAL(realk) :: x, y, z
@@ -254,14 +255,23 @@ MODULE particle_boundaries_mod
 
         CALL start_timer(924)
 
+        dx_eff = 0.0
+        dy_eff = 0.0
+        dz_eff = 0.0
+
         IF (SQRT(dx**(2) + dy**(2) + dz**(2)) == 0) THEN
             CALL stop_timer(924)
             RETURN
         END IF
 
+        ! TODO: make this a reasonable stoping criterion
         epsilon = SQRT(dx**(2) + dy**(2) + dz**(2)) / 10**3
 
-        temp_grid = particle%igrid
+        IF (PRESENT(temp_grid_prev)) THEN
+            temp_grid = temp_grid_prev
+        ELSE
+            temp_grid = particle%igrid
+        END IF
 
         x = particle%x
         y = particle%y
@@ -271,10 +281,6 @@ MODULE particle_boundaries_mod
         dy_from_here = dy
         dz_from_here = dz
 
-        dx_eff = 0.0
-        dy_eff = 0.0
-        dz_eff = 0.0
-
         iobst_local = 0
 
         SELECT CASE (TRIM(particle_terminal))
@@ -283,7 +289,7 @@ MODULE particle_boundaries_mod
             CASE ("normal")
                 CONTINUE
             CASE ("verbose")
-                WRITE(*, *) "MOVE PARTICLE: ----------------------START-----------------------"
+                WRITE(*, *) "---------- MOVE PARTICLE ----------"
                 WRITE(*, '()')
         END SELECT
 
@@ -329,7 +335,7 @@ MODULE particle_boundaries_mod
                     CASE ("normal")
                         CONTINUE
                     CASE ("verbose")
-                        WRITE(*, *) "Particle reflected at Grid face."
+                        WRITE(*, *) "Particle processed at Grid face."
                 END SELECT
 
                 CALL reflect_at_boundary(dx_from_here, dy_from_here, dz_from_here, &
@@ -349,7 +355,7 @@ MODULE particle_boundaries_mod
                 CASE ("normal")
                     CONTINUE
                 CASE ("verbose")
-                    WRITE(*, *) "Current Location:"
+                    WRITE(*, *) "Intermediate Location:"
                     WRITE(*, *) "igrid:", temp_grid
                     WRITE(*, *) "x:", x
                     WRITE(*, *) "y:", y
@@ -366,17 +372,9 @@ MODULE particle_boundaries_mod
         particle%y = particle%y + dy_eff
         particle%z = particle%z + dz_eff
 
-        CALL update_particle_cell(particle)
+        temp_grid_prev = temp_grid
 
-        SELECT CASE (TRIM(particle_terminal))
-            CASE ("none")
-                CONTINUE
-            CASE ("normal")
-                CONTINUE
-            CASE ("verbose")
-                WRITE(*, *) "MOVE PARTICLE: -----------------------END------------------------"
-                WRITE(*, '()')
-        END SELECT
+        CALL update_particle_cell(particle)
 
         CALL stop_timer(924)
 

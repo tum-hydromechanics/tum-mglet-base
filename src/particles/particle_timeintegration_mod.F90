@@ -43,7 +43,7 @@ CONTAINS
 
         REAL(realk), ALLOCATABLE :: pdx_pot(:), pdy_pot(:), pdz_pot(:)
 
-        INTEGER(intk) :: igrid, i, j, ii, jj, kk, gfound, ig, destgrid
+        INTEGER(intk) :: igrid, i, j, ii, jj, kk, gfound, ig, temp_grid
         REAL(realk) :: pu_adv, pv_adv, pw_adv, pu_diff, pv_diff, pw_diff
         REAL(realk) :: pdx_adv, pdy_adv, pdz_adv, pdx_diff, pdy_diff, pdz_diff, pdx_eff, pdy_eff, pdz_eff
 
@@ -84,7 +84,7 @@ CONTAINS
         ! REMOVE later
         IF (myid == 0) THEN
             WRITE(*, *) ''
-            WRITE(*, '("NEW TIMESTEP - PARTICLE TIMEINTEGRATION:")')
+            WRITE(*, '("=== TIMESTEP ", I0, " - PARTICLE TIMEINTEGRATION ===")') itstep
         END IF
 
         ! algorithm for EXPLICIT RK schemes
@@ -103,15 +103,27 @@ CONTAINS
 
             ! assigning igrid for clarity of the follwing expressions
             igrid = my_particle_list%particles(i)%igrid
+            temp_grid = my_particle_list%particles(i)%igrid
+
+            CALL get_mgdims(kk, jj, ii, igrid)
+
+            ! Grid and Field Info
+            CALL x_f%get_ptr(x, igrid)
+            CALL y_f%get_ptr(y, igrid)
+            CALL z_f%get_ptr(z, igrid)
+
+            CALL u_f%get_ptr(u, igrid)
+            CALL v_f%get_ptr(v, igrid)
+            CALL w_f%get_ptr(w, igrid)
 
             ! checking consistency (Debug)
             gfound = 1
             DO ig = 1, nMyGrids
-                IF (my_particle_list%particles(i)%igrid == mygrids(ig)) gfound = 1; EXIT
+                IF (igrid == mygrids(ig)) gfound = 1; EXIT
             END DO
 
             IF (gfound == 0) THEN
-                WRITE(*, '("ERROR: Particle grid ", I0, " is not on this process (", I0, ")")') my_particle_list%particles(i)%igrid, myid
+                WRITE(*, '("ERROR: Particle grid ", I0, " is not on this process (", I0, ")")') igrid, myid
                 CALL errr(__FILE__, __LINE__)
             END IF
 
@@ -131,30 +143,12 @@ CONTAINS
 
                 CALL prkscheme%get_coeffs(A, B, irk)
 
-                ! for debugging
-                SELECT CASE (TRIM(particle_terminal))
-                    CASE ("none")
-                        CONTINUE
-                    CASE ("normal")
-                        CONTINUE
-                    CASE ("verbose")
-                        WRITE(*,'("RK Step: ", I0)') irk
-                        WRITE(*,'("LS RK Coefficients: ", 2F12.8)') A, B
-                        WRITE(*, '()')
-                END SELECT
+                ! should be obsolete as the effective displacement is also zeroized in move_particle
+                pdx_eff = 0.0
+                pdy_eff = 0.0
+                pdz_eff = 0.0
 
                 ! --- ADVECTION VELOCITY ---
-
-                CALL get_mgdims(kk, jj, ii, igrid)
-
-                ! Grid and Field Info
-                CALL x_f%get_ptr(x, igrid)
-                CALL y_f%get_ptr(y, igrid)
-                CALL z_f%get_ptr(z, igrid)
-
-                CALL u_f%get_ptr(u, igrid)
-                CALL v_f%get_ptr(v, igrid)
-                CALL w_f%get_ptr(w, igrid)
 
                 IF (dinterp_particles) THEN
 
@@ -178,37 +172,48 @@ CONTAINS
 
                 CALL prkstep(pdx_pot(i), pdy_pot(i), pdz_pot(i), pu_adv, pv_adv, pw_adv, dt, A, B, pdx_adv, pdy_adv, pdz_adv)
 
-                ! Particle Boundary Interaction
-                CALL move_particle(my_particle_list%particles(i), pdx_adv, pdy_adv, pdz_adv, pdx_eff, pdy_eff, pdz_eff)
+                ! for debugging
+                SELECT CASE (TRIM(particle_terminal))
+                    CASE ("none")
+                        CONTINUE
+                    CASE ("normal")
+                        CONTINUE
+                    CASE ("verbose")
+                        WRITE(*,'("---------- Advection RK Step: ", I0, " ----------")') irk
+                        WRITE(*,'("Intermediate Velocity ", F12.9, " ", F12.9, " ", F12.9)') pu_adv, pv_adv, pw_adv
+                        WRITE(*,'("Intermediate Displacement ", F12.9, " ", F12.9, " ", F12.9)') pdx_adv, pdy_adv, pdz_adv
+                        WRITE(*, '()')
+                END SELECT
 
-                ! IDEA: ...
+                ! Particle Boundary Interaction
+                CALL move_particle(my_particle_list%particles(i), pdx_adv, pdy_adv, pdz_adv, pdx_eff, pdy_eff, pdz_eff, temp_grid)
+
                 pdx_pot(i) = pdx_eff / B
                 pdy_pot(i) = pdy_eff / B
                 pdz_pot(i) = pdz_eff / B
 
-                IF (irk == prkscheme%nrk) THEN
-
-                    ! --- Diffusiion ---
-                    CALL get_particle_diffusion(dt, pu_diff, pv_diff, pw_diff, pdx_diff, pdy_diff, pdz_diff)
-
-                    CALL move_particle(my_particle_list%particles(i), pdx_diff, pdy_diff, pdz_diff, pdx_eff, pdy_eff, pdz_eff)
-
-                    ! for debugging
-                    SELECT CASE (TRIM(particle_terminal))
-                        CASE ("none")
-                            CONTINUE
-                        CASE ("normal")
-                            CONTINUE
-                        CASE ("verbose")
-                            WRITE(*,'("Partical Diffusion: ")')
-                            WRITE(*, '()')
-                    END SELECT
-
-                END IF
-
             END DO
 
+            ! --- Diffusiion ---
+            SELECT CASE (TRIM(particle_terminal))
+                CASE ("none")
+                    CONTINUE
+                CASE ("normal")
+                    CONTINUE
+                CASE ("verbose")
+                    WRITE(*,'("Partical Diffusion: ")')
+                    WRITE(*, '()')
+            END SELECT
+
+            CALL get_particle_diffusion(dt, pu_diff, pv_diff, pw_diff, pdx_diff, pdy_diff, pdz_diff)
+
+            CALL move_particle(my_particle_list%particles(i), pdx_diff, pdy_diff, pdz_diff, pdx_eff, pdy_eff, pdz_eff, temp_grid)
+
         END DO
+
+        DEALLOCATE(pdx_pot)
+        DEALLOCATE(pdy_pot)
+        DEALLOCATE(pdz_pot)
 
         CALL stop_timer(920)
         CALL stop_timer(900)
@@ -222,26 +227,37 @@ CONTAINS
             REAL(realk), INTENT(out) :: pu_diff, pv_diff, pw_diff, dx_diff, dy_diff, dz_diff
 
             ! local variables
-            REAL(realk) :: rand(3)
+            REAL(realk) :: ranx, rany, ranz
 
             CALL start_timer(922)
 
-            CALL RANDOM_SEED()
-            CALL RANDOM_NUMBER(rand)
+            ranx = 0.0
+            rany = 0.0
+            ranz = 0.0
 
-            rand(1) = rand(1) - 0.5_realk
-            rand(2) = rand(2) - 0.5_realk
-            rand(3) = rand(3) - 0.5_realk
+            CALL RANDOM_SEED()
+            IF (D(1) > 0) THEN
+                CALL RANDOM_NUMBER(ranx)
+                ranx = ranx - 0.5_realk
+            END IF
+            IF (D(2) > 0) THEN
+                CALL RANDOM_NUMBER(rany)
+                rany = rany - 0.5_realk
+            END IF
+            IF (D(3) > 0) THEN
+                CALL RANDOM_NUMBER(ranz)
+                ranz = ranz - 0.5_realk
+            END IF
 
             ! diffusion velocity
-            pu_diff = SQRT(2 * D(1) / dt) * rand(1) / SQRT(rand(1)**(2) + rand(2)**(2) + rand(3)**(2))
-            pv_diff = SQRT(2 * D(2) / dt) * rand(2) / SQRT(rand(1)**(2) + rand(2)**(2) + rand(3)**(2))
-            pw_diff = SQRT(2 * D(3) / dt) * rand(3) / SQRT(rand(1)**(2) + rand(2)**(2) + rand(3)**(2))
+            pu_diff = SQRT(2 * D(1) / dt) * ranx / SQRT(ranx**2 + rany**2 + ranz**2)
+            pv_diff = SQRT(2 * D(2) / dt) * rany / SQRT(ranx**2 + rany**2 + ranz**2)
+            pw_diff = SQRT(2 * D(3) / dt) * ranz / SQRT(ranx**2 + rany**2 + ranz**2)
 
             ! diffusion length
-            dx_diff = SQRT(2 * D(1) * dt) * rand(1) / SQRT(rand(1)**(2) + rand(2)**(2) + rand(3)**(2))
-            dy_diff = SQRT(2 * D(2) * dt) * rand(2) / SQRT(rand(1)**(2) + rand(2)**(2) + rand(3)**(2))
-            dz_diff = SQRT(2 * D(3) * dt) * rand(3) / SQRT(rand(1)**(2) + rand(2)**(2) + rand(3)**(2))
+            dx_diff = SQRT(2 * D(1) * dt) * ranx / SQRT(ranx**2 + rany**2 + ranz**2)
+            dy_diff = SQRT(2 * D(2) * dt) * rany / SQRT(ranx**2 + rany**2 + ranz**2)
+            dz_diff = SQRT(2 * D(3) * dt) * ranz / SQRT(ranx**2 + rany**2 + ranz**2)
 
             CALL stop_timer(922)
 

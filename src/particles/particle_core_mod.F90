@@ -198,7 +198,9 @@ CONTAINS    !===================================
         CALL get_bbox(minx, maxx, miny, maxy, minz, maxz, particle%igrid)
 
         ! check if particle is located on igrid, KEEP particle check up?
-        IF (particle%x < minx .OR. particle%x > maxx .OR. particle%y < miny .OR. particle%y > maxy .OR. particle%z < minz .OR. particle%z > maxz) THEN
+        IF (particle%x + EPSILON(particle%x) < minx .OR. particle%x - EPSILON(particle%x) > maxx .OR. &
+         particle%y + EPSILON(particle%y) < miny .OR. particle%y - EPSILON(particle%y) > maxy .OR. &
+         particle%z + EPSILON(particle%z) < minz .OR. particle%z - EPSILON(particle%z) > maxz) THEN
             SELECT CASE (TRIM(particle_terminal))
                 CASE ("none")
                     CONTINUE
@@ -212,7 +214,7 @@ CONTAINS    !===================================
                      particle%ipart, particle%igrid
             END SELECT
 
-            CALL set_particle_igrid(particle)
+            !CALL set_particle_igrid(particle)
 
         END IF
 
