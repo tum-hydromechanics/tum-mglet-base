@@ -43,9 +43,9 @@ INTEGER(intk), ALLOCATABLE :: nslices(:)
 REAL(realk), ALLOCATABLE :: slice_levels(:)
 
 ! OUTPUT
-LOGICAL :: dwrite_npcfield = .FALSE.
-LOGICAL :: dwrite_psnapshots
-INTEGER(intk) :: psnapshot_step
+LOGICAL :: dwrite_npcfield
+LOGICAL :: dwrite_psnapshots = .TRUE.
+INTEGER(intk) :: psnapshot_step = 0
 
 
 CONTAINS    !===================================
@@ -228,6 +228,10 @@ CONTAINS    !===================================
         !- - - - - - - - - - - - - - - - - -
 
         CALL pconf%get_value("/dturb_diff", dturb_diff, .FALSE.)
+
+        !- - - - - - - - - - - - - - - - - -
+
+        CALL pconf%get_value("/dwrite_npc", dwrite_npcfield, .FALSE.)
 
         !- - - - - - - - - - - - - - - - - -
 
@@ -517,7 +521,7 @@ CONTAINS    !===================================
 
     SUBROUTINE finish_particle_config()
 
-        DEALLOCATE(nsilces)
+        DEALLOCATE(nslices)
         DEALLOCATE(slice_levels)
 
     END SUBROUTINE finish_particle_config

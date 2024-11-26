@@ -666,21 +666,39 @@ CONTAINS
 
         END IF
 
+        DEALLOCATE(buffer)
+        DEALLOCATE(recv_req)
+        DEALLOCATE(drecv)
+
     END SUBROUTINE merge_slicestat
 
-    SUBROUTINE deallocate_slice(islice)
+    SUBROUTINE deallocate_slicestat(islice)
 
         ! subroutine arguments
         INTEGER(intk), INTENT(in) :: islice
 
-        IF (slice_dir == "N") THEN
-            RETURN
-        END IF
+        IF (.NOT. ALLOCATED(my_scollector_list)) RETURN
 
-        !DEALLOCATE(my_scollector_list(islice)%np_counter)
-        !DEALLOCATE(my_scollector_list(islice)%rt_counter)
+        IF (islice < 1 .OR. islice > SIZE(my_scollector_list)) RETURN
 
-    END SUBROUTINE deallocate_slice
+        IF (ALLOCATED(my_scollector_list(islice)%np_counter)) DEALLOCATE(my_scollector_list(islice)%np_counter)
+        IF (ALLOCATED(my_scollector_list(islice)%rt_counter)) DEALLOCATE(my_scollector_list(islice)%rt_counter)
+
+    END SUBROUTINE deallocate_slicestat
+
+    SUBROUTINE deallocate_gridstat(i)
+
+        ! subroutine arguments
+        INTEGER(intk), INTENT(in) :: i
+
+        IF (.NOT. ALLOCATED(my_collector_list)) RETURN
+
+        IF (i < 1 .OR. i > SIZE(my_collector_list)) RETURN
+
+        IF (ALLOCATED(my_collector_list(i)%np_counter)) DEALLOCATE(my_collector_list(i)%np_counter)
+        IF (ALLOCATED(my_collector_list(i)%rt_counter)) DEALLOCATE(my_collector_list(i)%rt_counter)
+
+    END SUBROUTINE deallocate_gridstat
 
     SUBROUTINE write_particle_statistics()
 
@@ -822,8 +840,22 @@ CONTAINS
 
     SUBROUTINE finish_particle_statistics()
 
-        !DEALLOCATE(my_collector_list)
-        !DEALLOCATE(my_scollector_list)
+        ! local varibales
+        INTEGER(intk) :: i
+
+        IF (ALLOCATED(my_collector_list)) THEN
+            DO i = 1, SIZE(my_collector_list)
+                CALL deallocate_gridstat(i)
+            END DO
+            DEALLOCATE(my_collector_list)
+        END IF
+
+        IF (ALLOCATED(my_scollector_list)) THEN
+            DO i = 1, SIZE(my_scollector_list)
+                CALL deallocate_slicestat(i)
+            END DO
+            DEALLOCATE(my_scollector_list)
+        END IF
 
     END SUBROUTINE finish_particle_statistics
 

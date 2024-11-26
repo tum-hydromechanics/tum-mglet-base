@@ -201,7 +201,7 @@ CONTAINS
                 CASE ("normal")
                     CONTINUE
                 CASE ("verbose")
-                    WRITE(*,'("Partical Diffusion: ")')
+                    WRITE(*,'("---------- Particle Diffusion ----------")')
                     WRITE(*, '()')
             END SELECT
 

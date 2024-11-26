@@ -343,6 +343,8 @@ CONTAINS
 
     SUBROUTINE finish_particle_snapshots()
 
+        IF (.NOT. dwrite_psnapshots) RETURN
+
         DEALLOCATE(psnapshot_info%nparticles)
         DEALLOCATE(psnapshot_info%timesteps)
         DEALLOCATE(psnapshot_info%times)
