@@ -3,12 +3,14 @@
 #include <algorithm>    // std::min
 #include <cassert>      // assert
 #include <cerrno>       // errno
-#include <charconv>     // std::from_chars (C++17)
 #include <cstdio>       // std::sscanf
 #include <fstream>      // std::ifstream
 #include <iostream>     // std::cerr, std::cout
 #include <string>       // std::string
 #include <vector>       // std::vector
+#if __cpp_lib_to_chars >= 201611L
+#include <charconv>     // std::from_chars (C++17)
+#endif
 
 #include <sys/stat.h>   // stat
 extern "C" {
