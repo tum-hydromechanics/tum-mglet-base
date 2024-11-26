@@ -13,10 +13,10 @@ MODULE particle_dict_mod
 
 CONTAINS    !===================================
 
-    SUBROUTINE read_particles(dread_particles, dict_len, ipart_arr, igrid_arr, x_arr, y_arr, z_arr, read_np)
+    SUBROUTINE read_particles(dread_particles_dict, dict_len, ipart_arr, igrid_arr, x_arr, y_arr, z_arr, read_np)
 
         !subroutine arguments
-        LOGICAL, INTENT(inout) :: dread_particles
+        LOGICAL, INTENT(inout) :: dread_particles_dict
         INTEGER(intk), INTENT(out) :: dict_len, read_np
         INTEGER(intk), ALLOCATABLE, INTENT(inout) :: ipart_arr(:), igrid_arr(:)
         REAL(realk), ALLOCATABLE, INTENT(inout) :: x_arr(:), y_arr(:), z_arr(:)
@@ -26,9 +26,9 @@ CONTAINS    !===================================
         REAL(realk) :: xtemp, ytemp, ztemp
         REAL(realk) :: minx, maxx, miny, maxy, minz, maxz
 
-        INQUIRE(file = 'ParticleDict.txt', exist = dread_particles)
+        INQUIRE(file = 'ParticleDict.txt', exist = dread_particles_dict)
 
-        IF (.NOT. dread_particles) THEN
+        IF (.NOT. dread_particles_dict) THEN
 
             IF (myid == 0) THEN
                 SELECT CASE (TRIM(particle_terminal))
@@ -175,6 +175,8 @@ CONTAINS    !===================================
         END IF
 
         CLOSE(unit)
+
+        ! DEALLOCATION IN CALLING ROUTINE !
 
     END SUBROUTINE read_particles
 

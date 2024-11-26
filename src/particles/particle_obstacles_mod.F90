@@ -420,7 +420,12 @@ CONTAINS    !===================================
 
         END SELECT
 
+        DEALLOCATE(counter_array)
+        DEALLOCATE(grid_processed)
         DEALLOCATE(obstacles_src)
+        DEALLOCATE(is_relevant_src)
+        DEALLOCATE(obstacles_itm)
+        DEALLOCATE(is_relevant_itm)
 
         IF (myid == 0) THEN
             SELECT CASE (TRIM(particle_terminal))

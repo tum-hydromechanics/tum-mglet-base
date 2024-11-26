@@ -14,7 +14,7 @@ IMPLICIT NONE
 LOGICAL :: dsim_particles = .FALSE.
 
 ! INPUT
-LOGICAL :: dread_particles
+LOGICAL :: dread_particles_dict
 LOGICAL :: dread_obstacles
 
 ! LIST SPECIFICATION
@@ -22,21 +22,29 @@ INTEGER(intk) :: init_npart
 INTEGER(intk) :: plist_len
 LOGICAL :: list_limit = .FALSE.
 
-! SIMULATION SPECIFICATION
-LOGICAL :: dinterp_particles
+! INTERPOLATION
+LOGICAL :: dinterp_particles = .TRUE.
+
+! TIMEINTEGRATION
 CHARACTER(len=16) :: prkmethod
+
+! DIFFUSION
 REAL(realk) :: D(3) = 0.0_realk
+LOGICAL :: dturb_diff = .FALSE.
 
 ! OUTPUT
 CHARACTER(len = 7) :: particle_terminal
 
+! SAMPLES (GRID AND SLICE STATISTICS)
 INTEGER(intk) :: nsamples
 CHARACTER(len = 1) :: slice_dir = "N" ! X, Y, Z or N for None
 INTEGER(intk) :: nslice_levels
 INTEGER(intk), ALLOCATABLE :: nslices(:)
 REAL(realk), ALLOCATABLE :: slice_levels(:)
 
-LOGICAL :: dwrite_particles
+! OUTPUT
+LOGICAL :: dwrite_npcfield = .FALSE.
+LOGICAL :: dwrite_psnapshots
 INTEGER(intk) :: psnapshot_step
 
 
@@ -93,7 +101,7 @@ CONTAINS    !===================================
 
         !- - - - - - - - - - - - - - - - - -
 
-        CALL pconf%get_value("/read", dread_particles, .FALSE.)
+        CALL pconf%get_value("/read", dread_particles_dict, .FALSE.)
 
         !- - - - - - - - - - - - - - - - - -
 
@@ -106,10 +114,6 @@ CONTAINS    !===================================
         !- - - - - - - - - - - - - - - - - -
 
         CALL pconf%get_value("/prkmethod", prkmethod, "euler")
-
-        !- - - - - - - - - - - - - - - - - -
-
-        CALL pconf%get_value("/write", dwrite_particles, .TRUE.)
 
         !- - - - - - - - - - - - - - - - - -
 
@@ -223,7 +227,11 @@ CONTAINS    !===================================
 
         !- - - - - - - - - - - - - - - - - -
 
-        CALL pconf%get_value("/snapshot_step", psnapshot_step, 10_intk)
+        CALL pconf%get_value("/dturb_diff", dturb_diff, .FALSE.)
+
+        !- - - - - - - - - - - - - - - - - -
+
+        CALL pconf%get_value("/snapshot_step", psnapshot_step, 0)
 
         IF (psnapshot_step < 1_intk) THEN
 
@@ -232,15 +240,16 @@ CONTAINS    !===================================
                     CASE ("none")
                         CONTINUE
                     CASE ("normal")
-                        WRITE(*, *) "WARNING: Snapshot step should be an integer greater or equal to 1. Using snapshot_step = 10 instead."
+                        WRITE(*, *) "WARNING: Snapshot step should be an integer greater or equal to 1. Not writing Particle Snapshots."
                         WRITE(*, '()')
                     CASE ("verbose")
-                        WRITE(*, *) "WARNING: Snapshot step should be an integer greater or equal to 1. Using snapshot_step = 10 instead."
+                        WRITE(*, *) "WARNING: Snapshot step should be an integer greater or equal to 1. Not writing Particle Snapshots."
                         WRITE(*, '()')
                 END SELECT
             END IF
 
-            psnapshot_step = 10_intk
+            psnapshot_step = 0
+            dwrite_psnapshots = .FALSE.
 
         END IF
 
@@ -455,7 +464,7 @@ CONTAINS    !===================================
                         CONTINUE
                     CASE ("normal")
                         WRITE(*, '("PARTICLE CONFIGURATION:")')
-                        WRITE(*, '("Reading ParticlesDict:        ", L12)') dread_particles
+                        WRITE(*, '("Reading ParticlesDict:        ", L12)') dread_particles_dict
                         WRITE(*, '("Reading ObstaclesDict:        ", L12)') dread_obstacles
                         WRITE(*, '("Max Particle List Length:     ", I12)') plist_len
                         WRITE(*, '("Initial number of Particles:  ", I12)') init_npart
@@ -474,12 +483,12 @@ CONTAINS    !===================================
                                 WRITE(*, '("Width of Level ", I2 ,":            ", E12.3)') i, slice_levels(i)
                             END DO
                         END IF
-                        WRITE(*, '("Writing Particle Snapshots:   ", L12)') dwrite_particles
+                        WRITE(*, '("Writing Particle Snapshots:   ", L12)') dwrite_psnapshots
                         WRITE(*, '("Particle Snapshot Step:       ", I12)') psnapshot_step
                         WRITE(*, '()')
                     CASE ("verbose")
                         WRITE(*, '("PARTICLE CONFIGURATION:")')
-                        WRITE(*, '("Reading ParticlesDict:        ", L12)') dread_particles
+                        WRITE(*, '("Reading ParticlesDict:        ", L12)') dread_particles_dict
                         WRITE(*, '("Reading ObstaclesDict:        ", L12)') dread_obstacles
                         WRITE(*, '("Max Particle List Length:     ", I12)') plist_len
                         WRITE(*, '("Initial number of Particles:  ", I12)') init_npart
@@ -498,12 +507,19 @@ CONTAINS    !===================================
                                 WRITE(*, '("Width of Level ", I2 ,":            ", E12.3)') i, slice_levels(i)
                             END DO
                         END IF
-                        WRITE(*, '("Writing Particle Snapshots:   ", L12)') dwrite_particles
+                        WRITE(*, '("Writing Particle Snapshots:   ", L12)') dwrite_psnapshots
                         WRITE(*, '("Particle Snapshot Step:       ", I12)') psnapshot_step
                         WRITE(*, '()')
             END SELECT
         END IF
 
     END SUBROUTINE init_particle_config
+
+    SUBROUTINE finish_particle_config()
+
+        DEALLOCATE(nsilces)
+        DEALLOCATE(slice_levels)
+
+    END SUBROUTINE finish_particle_config
 
 END MODULE particle_config_mod

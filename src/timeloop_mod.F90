@@ -188,7 +188,7 @@ CONTAINS
         CALL init_statistics()
 
         ! Initialize particle snapshots
-        IF (dsim_particles .AND. dwrite_particles) THEN
+        IF (dsim_particles .AND. dwrite_psnapshots) THEN
             CALL init_psnapshots(mtstep, dt) ! <------------------------------------particles
             CALL write_psnapshot(0_intk, 0.0_realk)
         END IF
@@ -212,7 +212,7 @@ CONTAINS
         CALL write_runinfo(itstep, ittot, timeph, dt, targetcflmax, deltawt, &
             ncellstot)
 
-        IF (dsim_particles .AND. dwrite_particles) THEN ! <------------------------------------particles
+        IF (dsim_particles .AND. dwrite_psnapshots) THEN ! <------------------------------------particles
             CALL write_psnapshot_timeinfo()
         END IF
 
@@ -285,7 +285,7 @@ CONTAINS
             END IF
 
             ! Particle Snapshots
-            IF (dsim_particles .AND. dwrite_particles) THEN ! <------------------------------------particles
+            IF (dsim_particles .AND. dwrite_psnapshots) THEN ! <------------------------------------particles
                 CALL write_psnapshot(itstep, timeph)
             END IF
 

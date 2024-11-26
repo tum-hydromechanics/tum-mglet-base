@@ -116,8 +116,10 @@ CONTAINS
 
         CALL finish_particle_list()
 
+        CALL finish_particle_config()
+
         IF (myid == 0) THEN
-            WRITE(*,*) "PARTICLE SIMULATION COMPLETED."
+            WRITE(*,*) "PARTICLE SIMULATION FINISHED SUCCESSFULLY."
         END IF
 
     END SUBROUTINE finish_particles

@@ -54,12 +54,12 @@ CONTAINS    !===================================
 
         my_particle_list%iproc = myid
 
-        IF (dread_particles) THEN
+        IF (dread_particles_dict) THEN
 
             ! all arguments that are passed as particle list attributes are input only
-            CALL read_particles(dread_particles, global_np, ipart_arr, igrid_arr, x_arr, y_arr, z_arr, read_np)
+            CALL read_particles(dread_particles_dict, global_np, ipart_arr, igrid_arr, x_arr, y_arr, z_arr, read_np)
 
-            IF (dread_particles) THEN
+            IF (dread_particles_dict) THEN
 
                 IF (myid == 0) THEN
                     SELECT CASE (TRIM(particle_terminal))
@@ -110,7 +110,7 @@ CONTAINS    !===================================
 
         END IF
 
-        IF (.NOT. dread_particles) THEN
+        IF (.NOT. dread_particles_dict) THEN
 
             CALL distribute_particles(ipart_arr, igrid_arr, x_arr, y_arr, z_arr)
 
@@ -229,7 +229,7 @@ CONTAINS    !===================================
         particle_list%max_np = particle_list%max_np + add_len
         particle_list%ifinal = MIN(particle_list%ifinal, particle_list%max_np)
 
-        CALL MOVE_ALLOC(particles_tmp, particle_list%particles)
+        CALL MOVE_ALLOC(particles_tmp, particle_list%particles) ! includes deallocation of particles temp
 
         SELECT CASE (TRIM(particle_terminal))
             CASE ("none")
@@ -552,7 +552,7 @@ CONTAINS    !===================================
             END IF
         END DO
 
-        ! move already generated positions to the final output arry
+        ! move already generated positions to the final output array
         ALLOCATE(ipart_arr(npart_arr(myid)))
         ALLOCATE(igrid_arr(npart_arr(myid)))
         ALLOCATE(x_arr(npart_arr(myid)))
