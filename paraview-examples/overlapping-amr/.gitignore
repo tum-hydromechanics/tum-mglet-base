@@ -1,0 +1,5 @@
+# Ignore build and output data
+__pycache__/
+build/
+amr-data/
+amr-data.vthb
