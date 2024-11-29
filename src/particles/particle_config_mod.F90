@@ -527,8 +527,8 @@ CONTAINS    !===================================
 
     SUBROUTINE finish_particle_config()
 
-        DEALLOCATE(nslices)
-        DEALLOCATE(slice_levels)
+        IF (ALLOCATED(nslices)) DEALLOCATE(nslices)
+        IF (ALLOCATED(slice_levels)) DEALLOCATE(slice_levels)
 
     END SUBROUTINE finish_particle_config
 
