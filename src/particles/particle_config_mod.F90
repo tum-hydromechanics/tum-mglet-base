@@ -30,6 +30,7 @@ CHARACTER(len=16) :: prkmethod
 
 ! DIFFUSION
 REAL(realk) :: D(3) = 0.0_realk
+LOGICAL :: ddiffusion
 LOGICAL :: dturb_diff = .FALSE.
 
 ! OUTPUT
@@ -229,6 +230,11 @@ CONTAINS    !===================================
 
         CALL pconf%get_value("/dturb_diff", dturb_diff, .FALSE.)
 
+        !- - - - - - - - - - - - - - - - - -
+
+        IF (D(1) == 0.0 .AND. D(2) == 0.0 .AND. D(3) == 0.0 .AND. .NOT. dturb_diff) THEN
+            ddiffusion = .FALSE.
+        END IF
         !- - - - - - - - - - - - - - - - - -
 
         CALL pconf%get_value("/dwrite_npc", dwrite_npcfield, .FALSE.)

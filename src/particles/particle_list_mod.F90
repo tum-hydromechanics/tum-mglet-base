@@ -315,22 +315,6 @@ CONTAINS    !===================================
 
     !-----------------------------------
 
-    SUBROUTINE print_list_status(particle_list)
-
-        ! subroutine arguments
-        TYPE(particle_list_t), INTENT(in) :: particle_list
-
-        WRITE(*, *) "Particle list status on process ", myid, ": max_np = ", &
-         particle_list%max_np, ", active_np = ", particle_list%active_np, ", ifinal = ", particle_list%ifinal
-
-        IF (myid == 0) THEN
-            WRITE(*, '()')
-        END IF
-
-    END SUBROUTINE print_list_status
-
-    !-----------------------------------
-
     SUBROUTINE distribute_particles(ipart_arr, igrid_arr, x_arr, y_arr, z_arr)
 
         ! subroutine arguments
@@ -642,6 +626,73 @@ CONTAINS    !===================================
         DEALLOCATE(npart_arr)
 
     END SUBROUTINE distribute_particles
+
+    !-----------------------------------
+
+    SUBROUTINE print_list_status(particle_list)
+
+        ! subroutine arguments
+        TYPE(particle_list_t), INTENT(in) :: particle_list
+
+        WRITE(*, *) "Particle list status on process ", myid, ": max_np = ", &
+         particle_list%max_np, ", active_np = ", particle_list%active_np, ", ifinal = ", particle_list%ifinal
+
+        IF (myid == 0) THEN
+            WRITE(*, '()')
+        END IF
+
+    END SUBROUTINE print_list_status
+
+    !-----------------------------------
+
+    ! for debugging
+    SUBROUTINE write_particle_list(itstep, suffix)
+
+        ! subroutine arguments
+        INTEGER(intk), INTENT(in) :: itstep
+        CHARACTER(len = 3), INTENT(in), OPTIONAL :: suffix
+
+        ! local varibales
+        CHARACTER(len = mglet_filename_max) :: filename
+        INTEGER(intk) :: unit, i
+        LOGICAL :: exists
+
+        IF (PRESENT(suffix)) THEN
+            WRITE(filename,'("ParticleList-", I0, "-", A, ".txt")') my_particle_list%iproc, suffix
+        ELSE
+            WRITE(filename,'("ParticleList-", I0, ".txt")') my_particle_list%iproc
+        END IF
+
+        INQUIRE(file = TRIM(filename), exist = exists)
+
+        IF (exists) THEN
+            OPEN(newunit = unit, file = TRIM(filename), status = 'OLD', action = 'WRITE')
+        ELSE
+            OPEN(newunit = unit, file = TRIM(filename), status = 'NEW', action = 'WRITE')
+        END IF
+
+        WRITE(unit, '("PARTICLE LIST ", I0, " - TIMESTEP ", I0)') my_particle_list%iproc, itstep
+        WRITE(unit, '(" ")')
+        WRITE(unit, '("active_np: ", I0)') my_particle_list%active_np
+        WRITE(unit, '("ifinal: ", I0)') my_particle_list%ifinal
+        WRITE(unit, '(" ")')
+        WRITE(unit, '("PARTICLES")')
+
+        DO i = 1, SIZE(my_particle_list%particles)
+
+                WRITE(unit, '("i = ", I0)') i
+                WRITE(unit, '("ipart = ", I9, ", iproc = ", I3, ", igrid = ", I3, ", state = ", I3)') my_particle_list%particles(i)%ipart, &
+                 my_particle_list%particles(i)%iproc, my_particle_list%particles(i)%igrid, my_particle_list%particles(i)%state
+                WRITE(unit, '("i/j/k cell :", 3I9)') my_particle_list%particles(i)%ijkcell(1), &
+                 my_particle_list%particles(i)%ijkcell(2), my_particle_list%particles(i)%ijkcell(3)
+                WRITE(unit, '("x/y/z      :", 3F9.6)') my_particle_list%particles(i)%x, &
+                 my_particle_list%particles(i)%y, my_particle_list%particles(i)%z
+
+        END DO
+
+        CLOSE(unit)
+
+    END SUBROUTINE write_particle_list
 
     SUBROUTINE finish_particle_list()
 

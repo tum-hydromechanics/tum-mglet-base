@@ -35,7 +35,7 @@ MODULE particle_core_mod
         !sitstep is the timestep at which a particle entered its current slice (for residence time tracking)
         INTEGER(c_intk) :: sitstep = 0
 
-        INTEGER(c_intk) :: ijkcell(3)
+        INTEGER(c_intk) :: ijkcell(3) = 0
 
         REAL(c_realk) :: x = 0.0
         REAL(c_realk) :: y = 0.0
@@ -156,7 +156,9 @@ CONTAINS    !===================================
             CASE ("none")
                 CONTINUE
             CASE ("normal")
-                CONTINUE
+                WRITE(*, '("WARNING: In get_p_igrid: Particle ", I0, " could not be found on any grid, process ", I0, " owns!")') &
+                 particle%ipart, particle%iproc
+                WRITE(*, '()')
             CASE ("verbose")
                 WRITE(*, '("WARNING: In get_p_igrid: Particle ", I0, " could not be found on any grid, process ", I0, " owns!")') &
                  particle%ipart, particle%iproc

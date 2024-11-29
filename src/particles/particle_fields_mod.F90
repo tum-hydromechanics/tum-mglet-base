@@ -21,9 +21,11 @@ CONTAINS
             RETURN
         END IF
 
+        ! TODO: set dwrite to .FALSE.
+
         ! number per cell (NPC) field to count particles on cell
         ! with buffer so particle%ijkcell point to the right cell directly (neccessary?)
-        CALL set_field("NPC", units=units_part, buffers=.TRUE.)
+        CALL set_field("NPC", units=units_part, dwrite=.TRUE., buffers=.TRUE.)
 
         CALL update_particle_field()
 

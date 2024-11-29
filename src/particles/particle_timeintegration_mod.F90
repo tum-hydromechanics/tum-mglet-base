@@ -81,7 +81,7 @@ CONTAINS
 
         END IF
 
-        ! REMOVE later
+        ! TODO: REMOVE
         IF (myid == 0) THEN
             WRITE(*, *) ''
             WRITE(*, '("=== TIMESTEP ", I0, " - PARTICLE TIMEINTEGRATION ===")') itstep

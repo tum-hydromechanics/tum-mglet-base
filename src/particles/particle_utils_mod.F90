@@ -45,6 +45,7 @@ MODULE particle_utils_mod
             minz < z .AND. z < maxz) THEN
                 iface = 0
                 dist = 0.0
+                RETURN
         ELSE
             ! checking the geometrical relation
             IF (x <= minx) THEN !-------------------------------------------------------- low x

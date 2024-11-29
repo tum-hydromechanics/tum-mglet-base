@@ -72,6 +72,7 @@ CONTAINS    !===================================
     !------------------------------
 
     ! from Gobert et. al, LAGRANGIAN SCALAR TRACKING FOR LAMINAR MICROMIXING AT HIGH SCHMIDT NUMBERS, 2006
+    ! linear and differntially conservative interpolation
     SUBROUTINE gobert_particle_uvw(kk, jj, ii, particle, p_u, p_v, p_w, &
          u, v, w, x, y, z, dx, dy, dz, ddx, ddy, ddz)
 
