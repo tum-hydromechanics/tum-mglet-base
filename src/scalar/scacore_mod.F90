@@ -19,6 +19,7 @@ MODULE scacore_mod
     TYPE :: scalar_t
         CHARACTER(len=nchar_name) :: name
         REAL(realk) :: prmol
+        Real(realk) :: sca_int_src
         INTEGER(intk) :: units(7)
         INTEGER(intk) :: kayscrawford
         TYPE(scalar_bc_t), ALLOCATABLE :: geometries(:)
@@ -89,6 +90,16 @@ CONTAINS
             END IF
 
             CALL sc%get_value("/prmol", scalar(l)%prmol)
+
+            ! Retrieving the scalar internal source term per volume unit
+            IF (sc%exists("/source")) THEN
+                CALL sc%get_value("/source", scalar(l)%sca_int_src)
+                IF (scalar(l)%sca_int_src < 0) THEN  ! Maybe this is unnecesary
+                    CALL errr(__FILE__, __LINE__)
+                END IF
+            ELSE
+                scalar(l)%sca_int_src = 0
+            END IF
 
             ! Retrieving the scalar units (noisy output for test)
             IF (sc%exists("/units")) THEN
