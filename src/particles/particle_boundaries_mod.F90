@@ -517,54 +517,57 @@ MODULE particle_boundaries_mod
 
         IF (dx < 0) THEN
             lx = (minx - x)
-            IF(lx == 0) THEN
+            rx = dx * s / lx
+            ! if particle is at boundary in X dir (lx = 0) or particle is outside temp_grid (rx < 0.0),
+            ! get exit face and return; so if a particle is incorrectly outside a reflect boundary its
+            ! motion vector is reflected towards temp_grid
+            IF (lx == 0 .OR. rx < 0.0) THEN
                 CALL get_exit_face(temp_grid, x, y, z, dist, iface)
                 RETURN
             END IF
-            rx = dx * s / lx
         ELSEIF (0 < dx) THEN
             lx = (maxx - x)
-            IF(lx == 0) THEN
+            rx = dx * s / lx
+            IF (lx == 0 .OR. rx < 0.0) THEN
                 CALL get_exit_face(temp_grid, x, y, z, dist, iface)
                 RETURN
             END IF
-            rx = dx * s / lx
         ELSE
             rx = 0.0_realk
         END IF
 
         IF (dy < 0) THEN
             ly = (miny - y)
-            IF(ly == 0) THEN
+            ry = dy * s / ly
+            IF (ly == 0 .OR. ry < 0.0) THEN
                 CALL get_exit_face(temp_grid, x, y, z, dist, iface)
                 RETURN
             END IF
-            ry = dy * s / ly
         ELSEIF (0 < dy) THEN
             ly = (maxy - y)
-            IF(ly == 0) THEN
+            ry = dy * s / ly
+            IF (ly == 0 .OR. ry < 0.0) THEN
                 CALL get_exit_face(temp_grid, x, y, z, dist, iface)
                 RETURN
             END IF
-            ry = dy * s / ly
         ELSE
             ry = 0.0_realk
         END IF
 
         IF (dz < 0) THEN
             lz = (minz - z)
-            IF(lz == 0) THEN
+            rz = dz * s / lz
+            IF(lz == 0 .OR. rz < 0.0) THEN
                 CALL get_exit_face(temp_grid, x, y, z, dist, iface)
                 RETURN
             END IF
-            rz = dz * s / lz
         ELSEIF (0 < dz) THEN
             lz = (maxz - z)
-            IF(lz == 0) THEN
+            rz = dz * s / lz
+            IF(lz == 0 .OR. rz < 0.0) THEN
                 CALL get_exit_face(temp_grid, x, y, z, dist, iface)
                 RETURN
             END IF
-            rz = dz * s / lz
         ELSE
             rz = 0.0_realk
         END IF
@@ -582,9 +585,7 @@ MODULE particle_boundaries_mod
             dz = dz - dz_to_b
 
             iface = 0
-
             RETURN
-
         END IF
 
         ! if the routine did not return yet, no obstacle will be hit before some grid boundary
