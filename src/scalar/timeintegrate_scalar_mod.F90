@@ -64,7 +64,7 @@ CONTAINS
             END DO
 
             ! fluxbalance zeroize qtt before use internally
-            CALL fluxbalance(qtt, qtu, qtv, qtw)
+            CALL fluxbalance(qtt, qtu, qtv, qtw, scalar(l)%sca_vol_src)
 
             ! Ghost cell "flux" boundary condition applied to qtt field
             IF (ib%type == "GHOSTCELL") THEN
@@ -475,10 +475,11 @@ CONTAINS
     END SUBROUTINE tstsca4_grid
 
 
-    SUBROUTINE fluxbalance(qtt_f, qtu_f, qtv_f, qtw_f)
+    SUBROUTINE fluxbalance(qtt_f, qtu_f, qtv_f, qtw_f, src)
         ! Subroutine arguments
         TYPE(field_t), INTENT(inout) :: qtt_f
         TYPE(field_t), INTENT(in) :: qtu_f, qtv_f, qtw_f
+        REAL(realk), INTENT(in) :: src
 
         ! Local variables
         INTEGER(intk) :: i, igrid
@@ -509,7 +510,7 @@ CONTAINS
             CALL rddz_f%get_ptr(rddz, igrid)
 
             CALL fluxbalance_grid(kk, jj, ii, qtt, qtu, qtv, qtw, &
-                rddx, rddy, rddz)
+                rddx, rddy, rddz, src)
         END DO
 
         CALL stop_timer(411)
@@ -517,12 +518,13 @@ CONTAINS
 
 
     SUBROUTINE fluxbalance_grid(kk, jj, ii, qtt, qtu, qtv, qtw, &
-            rddx, rddy, rddz)
+            rddx, rddy, rddz, src)
         ! Subroutine arguments
         INTEGER(intk), INTENT(IN) :: kk, jj, ii
         REAL(realk), INTENT(OUT), DIMENSION(kk, jj, ii) :: qtt
         REAL(realk), INTENT(IN), DIMENSION(kk, jj, ii) :: qtu, qtv, qtw
         REAL(realk), INTENT(IN) :: rddx(ii), rddy(jj), rddz(kk)
+        REAL(realk), INTENT(in) :: src
 
         ! Local variables
         INTEGER(intk) :: i, j, k
@@ -536,9 +538,9 @@ CONTAINS
                 DO k = 3, kk-2
                     ! Computing netflux resulting from exchange with neighbors
                     netflux = qtu(k, j, i-1) - qtu(k, j, i) + qtv(k, j-1, i) &
-                        - qtv(k, j, i) + qtw(k-1, j, i) - qtw(k, j, i)
-
-                    qtt(k, j, i) = rddz(k)*rddy(j)*rddx(i)*netflux
+                        - qtv(k, j, i) + qtw(k-1, j, i) - qtw(k, j, i) 
+                    ! Division by cell volumen and adding the source
+                    qtt(k, j, i) = rddz(k)*rddy(j)*rddx(i)*netflux + src
                 END DO
             END DO
         END DO
