@@ -94,11 +94,8 @@ CONTAINS
             ! Retrieving the scalar internal source term per volume unit
             IF (sc%exists("/source")) THEN
                 CALL sc%get_value("/source", scalar(l)%sca_int_src)
-                IF (scalar(l)%sca_int_src < 0) THEN  ! Maybe this is unnecesary
-                    CALL errr(__FILE__, __LINE__)
-                END IF
             ELSE
-                scalar(l)%sca_int_src = 0
+                scalar(l)%sca_int_src = 0.0
             END IF
 
             ! Retrieving the scalar units (noisy output for test)

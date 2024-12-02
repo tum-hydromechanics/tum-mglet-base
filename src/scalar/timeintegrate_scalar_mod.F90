@@ -538,9 +538,8 @@ CONTAINS
                 DO k = 3, kk-2
                     ! Computing netflux resulting from exchange with neighbors
                     netflux = qtu(k, j, i-1) - qtu(k, j, i) + qtv(k, j-1, i) &
-                        - qtv(k, j, i) + qtw(k-1, j, i) - qtw(k, j, i) &
-                        + sca%sca_int_src  
-                    qtt(k, j, i) = rddz(k)*rddy(j)*rddx(i)*netflux
+                        - qtv(k, j, i) + qtw(k-1, j, i) - qtw(k, j, i) 
+                    qtt(k, j, i) = rddz(k)*rddy(j)*rddx(i)*netflux + sca%sca_int_src
                 END DO
             END DO
         END DO
