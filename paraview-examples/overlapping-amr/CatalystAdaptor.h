@@ -129,6 +129,7 @@ void Execute(unsigned int cycle, double time, AMR& amr)
     conduit_cpp::Node nest_set;
     nest_set["association"] = "element";
     nest_set["topology"] = "topo";
+    // If level is not on the root level, parent_id is the level above
     if (level > 0)
     {
       int parent_id = amr.BlockId[level - 1];
@@ -149,6 +150,7 @@ void Execute(unsigned int cycle, double time, AMR& amr)
       parent["ratio/j"] = 2;
       parent["ratio/k"] = 2;
     }
+    // If level is not on the leaf level, child_id gets set?
     if (level < amr.NumberOfAMRLevels - 1)
     {
       int child_id = amr.BlockId[level];
@@ -174,14 +176,17 @@ void Execute(unsigned int cycle, double time, AMR& amr)
     conduit_cpp::Node fields = patch["fields"];
 
     // cell data corresponding to MPI process id
-    conduit_cpp::Node proc_id_field = fields["procid"];
-    proc_id_field["association"] = "element";
-    proc_id_field["topology"] = "topo";
+    conduit_cpp::Node cell_vals_field = fields["cellvals"];
+    cell_vals_field["association"] = "element";
+    cell_vals_field["topology"] = "topo";
     int num_cells = (levelIndices[1] - levelIndices[0]) * (levelIndices[3] - levelIndices[2]) *
       (levelIndices[5] - levelIndices[4]);
-    std::vector<int> cellValues(num_cells, myRank);
+    std::vector<double> cellValues(num_cells, 0.0);
+    for (int i = 0; i < cellValues.size(); ++i) {
+      cellValues[i] = static_cast<double>(static_cast<double>(rand()) / static_cast<double>(RAND_MAX));
+    }
     // we copy the data since cellValues will get deallocated
-    proc_id_field["values"] = cellValues;
+    cell_vals_field["values"] = cellValues;
 
     // point data that varies in time and X location.
     conduit_cpp::Node other_field = fields["otherfield"];
