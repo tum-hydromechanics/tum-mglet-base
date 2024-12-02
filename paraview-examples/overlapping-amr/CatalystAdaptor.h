@@ -141,6 +141,7 @@ void Execute(unsigned int cycle, double time, AMR& amr)
       parent["origin/i"] = levelIndices[0] / 2;
       parent["origin/j"] = parentLevelIndices[2];
       parent["origin/k"] = parentLevelIndices[4];
+      
       parent["dims/i"] = parentLevelIndices[1] - levelIndices[0] / 2 + 1;
       parent["dims/j"] = parentLevelIndices[3] - parentLevelIndices[2] + 1;
       ;
@@ -182,9 +183,20 @@ void Execute(unsigned int cycle, double time, AMR& amr)
     int num_cells = (levelIndices[1] - levelIndices[0]) * (levelIndices[3] - levelIndices[2]) *
       (levelIndices[5] - levelIndices[4]);
     std::vector<double> cellValues(num_cells, 0.0);
-    for (int i = 0; i < cellValues.size(); ++i) {
-      cellValues[i] = static_cast<double>(static_cast<double>(rand()) / static_cast<double>(RAND_MAX));
+
+    for (size_t k = 0; k < levelIndices[5] - levelIndices[4]; k++)
+    {
+      for (size_t j = 0; j < levelIndices[3] - levelIndices[2]; j++)
+      {
+        for (size_t i = 0; i < levelIndices[1] - levelIndices[0]; i++)
+        {
+          size_t l = i + j * (levelIndices[1] - levelIndices[0]) +
+            k * (levelIndices[1] - levelIndices[0]) * (levelIndices[3] - levelIndices[2]);
+          cellValues[l] = i;
+        }
+      }
     }
+
     // we copy the data since cellValues will get deallocated
     cell_vals_field["values"] = cellValues;
 
