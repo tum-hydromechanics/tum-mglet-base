@@ -2,6 +2,9 @@
 
 This is a slightly modified version of `CxxOverlappingAMRExample` from Paraview's Catalyst2 examples. It also allows the user to output a representative dataset by specifying an output path.
 
+In the originl Example provided by Paraview, the different levels of the AMR structure are "extracted" and displayed next to each other in the z direction.
+This code merges the AMR structure back together to visualize the potential application for MGLET.
+
 ## Build Instructions
 
 Export environment variables for catalyst and the paraview implementation
