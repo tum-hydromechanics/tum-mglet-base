@@ -491,11 +491,11 @@ CONTAINS
         CALL MPI_Allreduce(err_local, err_global, 1, mglet_mpi_int, MPI_MAX, MPI_COMM_WORLD)
 
         IF (err_global == 0) THEN
-            !CALL write_particle_list(itstep)
+            !CALL write_particle_list_txt(itstep)
             !CALL write_buffer(itstep, "Send")
             !CALL write_buffer(itstep, "Recv")
         ELSE
-            !CALL write_particle_list(itstep, "err")
+            !CALL write_particle_list_txt(itstep, "err")
             !CALL write_buffer(itstep, "Send", "err")
             !CALL write_buffer(itstep, "Recv", "err")
         END IF

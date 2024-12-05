@@ -646,7 +646,7 @@ CONTAINS    !===================================
     !-----------------------------------
 
     ! for debugging
-    SUBROUTINE write_particle_list(itstep, suffix)
+    SUBROUTINE write_particle_list_txt(itstep, suffix)
 
         ! subroutine arguments
         INTEGER(intk), INTENT(in) :: itstep
@@ -692,7 +692,7 @@ CONTAINS    !===================================
 
         CLOSE(unit)
 
-    END SUBROUTINE write_particle_list
+    END SUBROUTINE write_particle_list_txt
 
     SUBROUTINE finish_particle_list()
 

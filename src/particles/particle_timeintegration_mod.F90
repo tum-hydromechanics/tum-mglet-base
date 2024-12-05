@@ -20,6 +20,9 @@ CONTAINS
         ! init rk scheme
         CALL prkscheme%init(prkmethod)
 
+        ! TODO: put this in particle diffusion mod
+        CALL RANDOM_SEED()
+
         CALL stop_timer(910)
         CALL stop_timer(900)
 
@@ -227,41 +230,106 @@ CONTAINS
             REAL(realk), INTENT(out) :: pu_diff, pv_diff, pw_diff, dx_diff, dy_diff, dz_diff
 
             ! local variables
-            REAL(realk) :: ranx, rany, ranz
+            REAL(realk) :: sigx, sigy, sigz, ranx, rany, ranz
 
             CALL start_timer(922)
 
-            ranx = 0.0
-            rany = 0.0
-            ranz = 0.0
-
-            CALL RANDOM_SEED()
             IF (D(1) > 0) THEN
-                CALL RANDOM_NUMBER(ranx)
-                ranx = ranx - 0.5_realk
+                sigx = SQRT(2 * D(1) * dt)
+                !CALL uniform_length(sigx, ranx)
+                CALL uniform_distribution(sigx, ranx)
+                !CALL truncated_gaussian2(0.0_realk, sigx, 2.0_realk, ranx)
+                dx_diff = ranx ! diffusion length
+                pu_diff = dx_diff / dt! diffusion velocity
             END IF
+
             IF (D(2) > 0) THEN
-                CALL RANDOM_NUMBER(rany)
-                rany = rany - 0.5_realk
+                sigy = SQRT(2 * D(2) * dt)
+                !CALL uniform_length(sigy, rany)
+                CALL uniform_distribution(sigy, rany)
+                !CALL truncated_gaussian2(0.0_realk, sigy, 2.0_realk, rany)
+                dy_diff = rany ! diffusion length
+                pv_diff = dy_diff / dt! diffusion velocity
             END IF
+
             IF (D(3) > 0) THEN
-                CALL RANDOM_NUMBER(ranz)
-                ranz = ranz - 0.5_realk
+                sigz = SQRT(2 * D(3) * dt)
+                !CALL uniform_length(sigz, ranz)
+                CALL uniform_distribution(sigz, ranz)
+                !CALL truncated_gaussian2(0.0_realk, sigz, 2.0_realk, ranz)
+                dz_diff = ranz ! diffusion length
+                pw_diff = dz_diff / dt! diffusion velocity
             END IF
-
-            ! diffusion velocity
-            pu_diff = SQRT(2 * D(1) / dt) * ranx / SQRT(ranx**2 + rany**2 + ranz**2)
-            pv_diff = SQRT(2 * D(2) / dt) * rany / SQRT(ranx**2 + rany**2 + ranz**2)
-            pw_diff = SQRT(2 * D(3) / dt) * ranz / SQRT(ranx**2 + rany**2 + ranz**2)
-
-            ! diffusion length
-            dx_diff = SQRT(2 * D(1) * dt) * ranx / SQRT(ranx**2 + rany**2 + ranz**2)
-            dy_diff = SQRT(2 * D(2) * dt) * rany / SQRT(ranx**2 + rany**2 + ranz**2)
-            dz_diff = SQRT(2 * D(3) * dt) * ranz / SQRT(ranx**2 + rany**2 + ranz**2)
 
             CALL stop_timer(922)
 
     END SUBROUTINE get_particle_diffusion
+
+    SUBROUTINE uniform_length(sigma, R)
+
+        ! subroutine arguments
+        REAL(realk), INTENT(in) :: sigma
+        REAL(realk), INTENT(out) :: R
+
+        R = 0.0
+        !CALL RANDOM_SEED()
+        CALL RANDOM_NUMBER(R)
+        R = R - 0.5_realk
+        R = SIGN(1.0_realk, R) * sigma
+
+    END SUBROUTINE uniform_length
+
+    SUBROUTINE uniform_distribution(sigma, R)
+
+        ! subroutine arguments
+        REAL(realk), INTENT(in) :: sigma
+        REAL(realk), INTENT(out) :: R
+
+        !CALL RANDOM_SEED()
+        CALL RANDOM_NUMBER(R)
+        R = 2 * SQRT(3.0) * sigma * (R - 0.5)
+
+    END SUBROUTINE uniform_distribution
+
+    ! https://de.wikipedia.org/wiki/Polar-Methode
+    ! TODO: implement
+    SUBROUTINE truncated_gaussian1()
+
+    END SUBROUTINE truncated_gaussian1
+
+    ! from: Simulation of truncated normal variables, Christian Robert, Statistics and Computing (1995) 5, 121-125
+    ! TODO: fully understand paper and potentially optimize this
+    SUBROUTINE truncated_gaussian2(mu, sigma, truncation_factor, R)
+
+        ! subroutine arguments
+        REAL(realk), INTENT(in) :: mu, sigma, truncation_factor
+        REAL(realk), INTENT(out) :: R
+
+        ! local variables
+        REAL(realk) :: rand1, rand2, P
+        LOGICAL :: found
+
+        found = .FALSE.
+        !CALL RANDOM_SEED()
+
+        DO WHILE (.NOT. found)
+
+            CALL RANDOM_NUMBER(rand1)
+            rand1 = truncation_factor * (rand1 - 0.5) * 2
+
+            P = EXP(-(rand1 ** 2) / 2)
+
+            CALL RANDOM_NUMBER(rand2)
+
+            IF (rand2 <= P) THEN
+                ! linear transformation to match given mean and standard deviation
+                R = mu + sigma * rand1
+                found = .TRUE.
+            END IF
+
+        END DO
+
+    END SUBROUTINE truncated_gaussian2
 
     SUBROUTINE finish_particle_timeintegration()
 
