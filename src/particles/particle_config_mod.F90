@@ -23,15 +23,16 @@ INTEGER(intk) :: plist_len
 LOGICAL :: list_limit = .FALSE.
 
 ! INTERPOLATION
-LOGICAL :: dinterp_particles = .TRUE.
+LOGICAL :: dinterp_padvection = .TRUE.
+LOGICAL :: dinterp_pdiffsuion = .TRUE.
 
 ! TIMEINTEGRATION
 CHARACTER(len=16) :: prkmethod
 
 ! DIFFUSION
 REAL(realk) :: D(3) = 0.0_realk
+LOGICAL :: dturb_diff
 LOGICAL :: ddiffusion
-LOGICAL :: dturb_diff = .FALSE.
 
 ! OUTPUT
 CHARACTER(len = 7) :: particle_terminal
@@ -110,7 +111,7 @@ CONTAINS    !===================================
 
         !- - - - - - - - - - - - - - - - - -
 
-        CALL pconf%get_value("/interp", dinterp_particles, .TRUE.)
+        CALL pconf%get_value("/interp", dinterp_padvection, .TRUE.)
 
         !- - - - - - - - - - - - - - - - - -
 
@@ -234,6 +235,10 @@ CONTAINS    !===================================
 
         IF (D(1) == 0.0 .AND. D(2) == 0.0 .AND. D(3) == 0.0 .AND. .NOT. dturb_diff) THEN
             ddiffusion = .FALSE.
+        END IF
+
+        IF (.NOT. dturb_diff) THEN
+            dinterp_pdiffsuion = .FALSE.
         END IF
         !- - - - - - - - - - - - - - - - - -
 
@@ -478,7 +483,7 @@ CONTAINS    !===================================
                         WRITE(*, '("Reading ObstaclesDict:        ", L12)') dread_obstacles
                         WRITE(*, '("Max Particle List Length:     ", I12)') plist_len
                         WRITE(*, '("Initial number of Particles:  ", I12)') init_npart
-                        WRITE(*, '("Field Interpolation:          ", L12)') dinterp_particles
+                        WRITE(*, '("Field Interpolation:          ", L12)') dinterp_padvection
                         WRITE(*, '("Runge Kutta Method:           ", A12)') TRIM(prkmethod)
                         WRITE(*, '("Diffusion Constant Dx:        ", E12.3)') D(1)
                         WRITE(*, '("Diffusion Constant Dy:        ", E12.3)') D(2)
@@ -502,7 +507,7 @@ CONTAINS    !===================================
                         WRITE(*, '("Reading ObstaclesDict:        ", L12)') dread_obstacles
                         WRITE(*, '("Max Particle List Length:     ", I12)') plist_len
                         WRITE(*, '("Initial number of Particles:  ", I12)') init_npart
-                        WRITE(*, '("Field Interpolation:          ", L12)') dinterp_particles
+                        WRITE(*, '("Field Interpolation:          ", L12)') dinterp_padvection
                         WRITE(*, '("Runge Kutta Method:           ", A12)') TRIM(prkmethod)
                         WRITE(*, '("Diffusion Constant Dx:        ", E12.3)') D(1)
                         WRITE(*, '("Diffusion Constant Dy:        ", E12.3)') D(2)

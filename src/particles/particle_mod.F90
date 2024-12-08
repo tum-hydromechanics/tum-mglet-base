@@ -51,7 +51,6 @@ CONTAINS
                 CALL set_timer(922, 'PARTICLE_DIFFUSION_GENERATION')
 
                 ! PARTICLE ADVECTION GENERATION:
-                ! get_particle_uvw (particle velocity deduction)
                 ! nearest_particle_uvw (particle velocity deduction)
                 ! gobert_particle_uvw (particle velocity deduction with interpolation)
                 CALL set_timer(923, 'PARTICLE_ADVECTION_GENERATION')
@@ -82,6 +81,9 @@ CONTAINS
 
             ! read or generate particles and init particle list
             CALL init_particle_list()
+
+            ! generate diffusion field from turbulent
+            CALL init_particle_diffusion()
 
             ! init backup fields for particle timeintegration
             CALL init_particle_timeintegration()

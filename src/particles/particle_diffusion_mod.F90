@@ -1,30 +1,60 @@
 MODULE particle_diffusion_mod
 
+    USE precision_mod
+    USE charfunc_mod
+    USE fort7_mod
     USE grids_mod
     USE field_mod
     USE fields_mod
     USE connect2_mod
-    USE fort7_mod
 
     USE particle_config_mod
+    USE particle_core_mod
+    USE particle_interpolation_mod
 
     IMPLICIT NONE
 
-    INTERFACE get_particle_diffusion
-        MODULE PROCEDURE :: get_particle_diffusion_automatic
-        MODULE PROCEDURE :: get_particle_diffusion_homogeneous
-        MODULE PROCEDURE :: get_particle_diffusion_nearest
-        MODULE PROCEDURE :: get_particle_diffusion_interpolated
-    END INTERFACE get_particle_diffusion
+    CHARACTER(len = 16) :: random_walk_mode = "gaussian2"
+
+    ! REFERENCE VALUES FOR THE STANDART NORMAL DISTRIBUTIONS:
+    ! realization values
+    REAL(intk) :: sn_x(22) = [-3.0, -2.8, -2.6, -2.4, -2.2, -2.0, -1.8, -1.6, -1.4, -1.2, -1.0, &
+       1.0,  1.2,  1.4,  1.6,  1.8,  2.0,  2.2,  2.4,  2.6,  2.8,  3.0]
+    ! corresponding cumulative probabilities
+    REAL(intk) :: sn_pc(22) = [0.00135, 0.00256, 0.00466, 0.00820, 0.01390, 0.02275, 0.03593, 0.05480, 0.08076, 0.11507, 0.15866, &
+      0.84134, 0.88493, 0.91924, 0.94520, 0.96407, 0.97725, 0.98610, 0.99180, 0.99534, 0.99744, 0.99865]
+    ! corresponding probabilites
+    REAL(intk) :: sn_p(22)
+
+    REAL(realk) :: truncation_limit = 2.0
+    REAL(realk) :: truncation_factor
 
 CONTAINS
 
     SUBROUTINE init_particle_diffusion()
 
         ! local_variables
+        INTEGER(intk) :: i
         INTEGER(intk), PARAMETER :: units_diff(7) = [0, 2, -1, 0, 0, 0, 0]
 
-        IF (.NOT. turb_diff) THEN
+        DO i = 1, SIZE(sn_p)
+            sn_p(i) = 1 / SQRT(2 * pi) * EXP(- (sn_x(i)** 2) / 2)
+        END DO
+
+        CALL get_truncation_factor(truncation_limit, truncation_factor)
+
+        IF (myid == 0) THEN
+            SELECT CASE (TRIM(particle_terminal))
+                CASE ("none")
+                    CONTINUE
+                CASE ("normal")
+                    WRITE(*, *) "TRUNCATION CORRECTION FACTOR ", truncation_factor, "."
+                CASE ("verbose")
+                    WRITE(*, *) "TRUNCATION CORRECTION FACTOR ", truncation_factor, "."
+            END SELECT
+        END IF
+
+        IF (.NOT. dturb_diff) THEN
             RETURN
         END IF
 
@@ -39,7 +69,6 @@ CONTAINS
         CALL set_field("P_DIFF_Z", kstag = 1, units = units_diff, &
          dread = dcont, required = dcont, dwrite = .TRUE., buffers = .TRUE.)
 
-        ! TODO: how to find out if a field was actually read if required = .FALSE.?
         IF (.NOT. dcont) THEN
             CALL generate_diffusion_field
         END IF
@@ -49,7 +78,7 @@ CONTAINS
     SUBROUTINE generate_diffusion_field()
 
         ! local_variables
-        INTEGER(intk) :: igrid, ii, jj, kk, g, i, j, k
+        INTEGER(intk) :: igrid, ii, jj, kk, g, i, j, k, ilevel
 
         TYPE(field_t), POINTER :: dx_f, dy_f, dz_f
         REAL(realk), POINTER, CONTIGUOUS, DIMENSION(:) :: dx, dy, dz
@@ -57,9 +86,9 @@ CONTAINS
         REAL(realk), POINTER, CONTIGUOUS, DIMENSION(:, :, :) :: t1_avg
         TYPE(field_t), POINTER :: u_avg_f, v_avg_f, w_avg_f
         REAL(realk), POINTER, CONTIGUOUS, DIMENSION(:, :, :) :: u_avg, v_avg, w_avg
-        TYPE(field_t), POINTER :: ut1_avg_f, vt1_avg, wt1_avg
+        TYPE(field_t), POINTER :: ut1_avg_f, vt1_avg_f, wt1_avg_f
         REAL(realk), POINTER, CONTIGUOUS, DIMENSION(:, :, :) :: ut1_avg, vt1_avg, wt1_avg
-        TYPE(field_t), POINTER :: diffx_f, diffy_f, diffz_d
+        TYPE(field_t), POINTER :: diffx_f, diffy_f, diffz_f
         REAL(realk), POINTER, CONTIGUOUS, DIMENSION(:, :, :) :: diffx, diffy, diffz
 
         ! if one of the following fields does not exist, get_field will call an error and terminate the process
@@ -108,8 +137,8 @@ CONTAINS
             DO i = 3, ii - 2
                 DO j = 3, jj - 2
                     DO k = 3, kk - 2
-                        diffx(k, j, i) = (ut1_avg(k, j, i) - u_avg(k, j, i) * 0.5 (t1_avg(k, j, i + 1) + t1_avg(k, j, i))) &
-                         * dx(k, j, i) / (t1_avg(k, j, i + 1) - t1_avg(k, j, i)) + D(1)
+                        diffx(k, j, i) = (ut1_avg(k, j, i) - u_avg(k, j, i) * 0.5 * (t1_avg(k, j, i + 1) + t1_avg(k, j, i))) &
+                         * dx(i) / (t1_avg(k, j, i + 1) - t1_avg(k, j, i)) + D(1)
                     END DO
                 END DO
             END DO
@@ -117,8 +146,8 @@ CONTAINS
             DO i = 3, ii - 2
                 DO j = 3, jj - 2
                     DO k = 3, kk - 2
-                        diffy(k, j, i) = (vt1_avg(k, j, i) - v_avg(k, j, i) * 0.5 (t1_avg(k, j + 1, i) + t1_avg(k, j, i))) &
-                         * dy(k, j, i) / (t1_avg(k, j + 1, i) - t1_avg(k, j, i)) + D(2)
+                        diffy(k, j, i) = (vt1_avg(k, j, i) - v_avg(k, j, i) * 0.5 * (t1_avg(k, j + 1, i) + t1_avg(k, j, i))) &
+                         * dy(j) / (t1_avg(k, j + 1, i) - t1_avg(k, j, i)) + D(2)
                     END DO
                 END DO
             END DO
@@ -126,41 +155,41 @@ CONTAINS
             DO i = 3, ii - 2
                 DO j = 3, jj - 2
                     DO k = 3, kk - 2
-                        diffz(k, j, i) = (wt1_avg(k, j, i) - w_avg(k, j, i) * 0.5 (t1_avg(k + 1, j, i) + t1_avg(k, j, i))) &
-                         * dz(k, j, i) / (t1_avg(k + 1, j, i) - t1_avg(k, j, i)) + D(3)
+                        diffz(k, j, i) = (wt1_avg(k, j, i) - w_avg(k, j, i) * 0.5 * (t1_avg(k + 1, j, i) + t1_avg(k, j, i))) &
+                         * dz(k) / (t1_avg(k + 1, j, i) - t1_avg(k, j, i)) + D(3)
                     END DO
                 END DO
             END DO
 
             ! TODO: check this approach for buffers; esp. levels ...
             DO ilevel = minlevel, maxlevel
-                CALL connect(ilevel, 1, v1 = diffx, v2 = diffy, v3 = diffz, corners = .TRUE.)
+                CALL connect(ilevel, 1, v1 = diffx_f, v2 = diffy_f, v3 = diffz_f, corners = .TRUE.)
             END DO
         END DO
 
     END SUBROUTINE generate_diffusion_field
 
-    SUBROUTINE get_particle_diffusion_automatic(particle, dt, pu_diff, pv_diff, pw_diff, pdx_diff, pdy_diff, pdz_diff, dinterp_diffsuion)
+    SUBROUTINE get_pdiff(particle, dt, pu_diff, pv_diff, pw_diff, pdx_diff, pdy_diff, pdz_diff, dinterp_pdiffsuion)
 
             ! subroutine arguments
             TYPE(baseparticle_t), INTENT(in) :: particle
             REAL(realk), INTENT(in) :: dt
-            LOGICAL, INTENT(in) :: dinterp_diffsuion
+            LOGICAL, INTENT(in) :: dinterp_pdiffsuion
             REAL(realk), INTENT(out) :: pu_diff, pv_diff, pw_diff, pdx_diff, pdy_diff, pdz_diff
 
             ! local variables
-            INTEGER(intk), INTENT(in) :: kk, jj, ii
+            INTEGER(intk) :: kk, jj, ii
             TYPE(field_t), POINTER :: x_f, y_f, z_f
             REAL(realk), POINTER, CONTIGUOUS, DIMENSION(:) :: x, y, z
             TYPE(field_t), POINTER :: dx_f, dy_f, dz_f
             REAL(realk), POINTER, CONTIGUOUS, DIMENSION(:) :: dx, dy, dz
             TYPE(field_t), POINTER :: ddx_f, ddy_f, ddz_f
             REAL(realk), POINTER, CONTIGUOUS, DIMENSION(:) :: ddx, ddy, ddz
-            TYPE(field_t), POINTER :: diffx_f, diffy_f, diffz_d
+            TYPE(field_t), POINTER :: diffx_f, diffy_f, diffz_f
             REAL(realk), POINTER, CONTIGUOUS, DIMENSION(:, :, :) :: diffx, diffy, diffz
 
             ! local variables
-            REAL(realk) :: D_x, D_y, D_z, ranx, rany, ranz
+            REAL(realk) :: p_diffx, p_diffy, p_diffz, ranx, rany, ranz
             LOGICAL :: dusefield, dinterp
 
             IF (.NOT. ddiffusion) THEN
@@ -169,7 +198,9 @@ CONTAINS
 
             CALL start_timer(922)
 
-            IF (dturb_diff)
+            CALL get_mgdims(kk, jj, ii, particle%igrid)
+
+            IF (dturb_diff) THEN
 
                 CALL get_field(x_f, "X")
                 CALL get_field(y_f, "Y")
@@ -187,7 +218,7 @@ CONTAINS
                 CALL diffy_f%get_ptr(diffy, particle%igrid)
                 CALL diffz_f%get_ptr(diffz, particle%igrid)
 
-                IF (dinterp_diffsuion) THEN
+                IF (dinterp_pdiffsuion) THEN
 
                     CALL get_field(dx_f, "DX")
                     CALL get_field(dy_f, "DY")
@@ -205,220 +236,244 @@ CONTAINS
                     CALL ddy_f%get_ptr(ddy, particle%igrid)
                     CALL ddz_f%get_ptr(ddz, particle%igrid)
 
-                    CALL interpolate_lincon(kk, jj, ii, particle, &
-                    D_x, D_y, D_z, diffx, diffy, diffz, x, y, z, dx, dy, dz, ddx, ddy, ddz)
+                    CALL interpolate_lincon(particle, kk, jj, ii, x, y, z, dx, dy, dz, ddx, ddy, ddz, &
+                     diffx, diffy, diffz, p_diffx, p_diffy, p_diffz)
 
                 ELSE
 
-                    CALL get_nearest_val(kk, jj, ii, particle, &
-                     D_x, D_y, D_z, diffx, diffy, diffz, x, y, z)
+                    CALL get_nearest_value(particle, kk, jj, ii, x, y, z, &
+                    diffx, diffy, diffz, p_diffx, p_diffy, p_diffz)
 
                 END IF
 
             ELSE
 
-                D_x = D(1)
-                D_y = D(2)
-                D_z = D(3)
+                P_diffx = D(1)
+                p_diffy = D(2)
+                p_diffz = D(3)
 
             END IF
-
-            ranx = 0.0
-            rany = 0.0
-            ranz = 0.0
-
-            CALL RANDOM_SEED()
-            IF (D_x > 0) THEN
-                CALL RANDOM_NUMBER(ranx)
-                ranx = ranx - 0.5_realk
-            END IF
-            IF (D_y > 0) THEN
-                CALL RANDOM_NUMBER(rany)
-                rany = rany - 0.5_realk
-            END IF
-            IF (D_z > 0) THEN
-                CALL RANDOM_NUMBER(ranz)
-                ranz = ranz - 0.5_realk
-            END IF
-
-            ! diffusion velocity
-            pu_diff = SQRT(2 * D_x / dt) * ranx / SQRT(ranx**2 + rany**2 + ranz**2)
-            pv_diff = SQRT(2 * D_y / dt) * rany / SQRT(ranx**2 + rany**2 + ranz**2)
-            pw_diff = SQRT(2 * D_z / dt) * ranz / SQRT(ranx**2 + rany**2 + ranz**2)
-
-            ! diffusion length
-            pdx_diff = SQRT(2 * D_x * dt) * ranx / SQRT(ranx**2 + rany**2 + ranz**2)
-            pdy_diff = SQRT(2 * D_y * dt) * rany / SQRT(ranx**2 + rany**2 + ranz**2)
-            pdz_diff = SQRT(2 * D_z * dt) * ranz / SQRT(ranx**2 + rany**2 + ranz**2)
 
             CALL stop_timer(922)
 
-    END SUBROUTINE get_particle_diffusion_automatic
+    END SUBROUTINE get_pdiff
 
-    SUBROUTINE get_particle_diffusion_homogeneous(particle, dt, pu_diff, pv_diff, pw_diff, pdx_diff, pdy_diff, pdz_diff)
+    SUBROUTINE generate_diffusive_displacement(dt, D_x, D_y, D_z, pdx, pdy, pdz)
 
-            ! subroutine arguments
-            TYPE(baseparticle_t), INTENT(in) :: particle
-            REAL(realk), INTENT(in) :: dt
-            REAL(realk), INTENT(out) :: pu_diff, pv_diff, pw_diff, pdx_diff, pdy_diff, pdz_diff
+        ! subroutine arguments
+        REAL(realk), INTENT(in) :: dt
+        REAL(realk), INTENT(in) :: D_x, D_y, D_z
+        REAL(realk), INTENT(out) :: pdx, pdy, pdz
 
-            ! local variables
-            REAL(realk) :: D_x, D_y, D_z, ranx, rany, ranz
-            LOGICAL :: dusefield, dinterp
+        ! local variables
+        REAL(realk) :: sigx, sigy, sigz, ranx, rany, ranz
 
-            IF (.NOT. ddiffusion) THEN
-                RETURN
+        CALL start_timer(922)
+
+        IF (D(1) > 0) THEN
+            sigx = SQRT(2 * D(1) * dt)
+
+            SELECT CASE (lower(TRIM(random_walk_mode)))
+            CASE ("rademacher")
+                CALL rademacher_dist(sigx, ranx)
+            CASE ("uniform")
+                CALL uniform_dist(sigx, ranx)
+            CASE ("gaussian2")
+                CALL gaussian_dist2(0.0_realk, sigx, ranx)
+            END SELECT
+
+            pdx = ranx ! diffusion length
+
+        END IF
+
+        IF (D(2) > 0) THEN
+
+            sigy = SQRT(2 * D(2) * dt)
+
+            SELECT CASE (lower(TRIM(random_walk_mode)))
+            CASE ("rademacher")
+                CALL rademacher_dist(sigy, rany)
+            CASE ("uniform")
+                CALL uniform_dist(sigy, rany)
+            CASE ("gaussian2")
+                CALL gaussian_dist2(0.0_realk, sigy, rany)
+            END SELECT
+
+            pdy = rany ! diffusion length
+
+        END IF
+
+        IF (D(3) > 0) THEN
+
+            sigz = SQRT(2 * D(3) * dt)
+
+            SELECT CASE (lower(TRIM(random_walk_mode)))
+            CASE ("rademacher")
+                CALL rademacher_dist(sigz, ranz)
+            CASE ("uniform")
+                CALL uniform_dist(sigz, ranz)
+            CASE ("gaussian2")
+                CALL gaussian_dist2(0.0_realk, sigz, ranz)
+            END SELECT
+
+            pdz = ranz ! diffusion length
+
+        END IF
+
+        CALL stop_timer(922)
+
+    END SUBROUTINE generate_diffusive_displacement
+
+    SUBROUTINE rademacher_dist(sigma, R)
+
+        ! subroutine arguments
+        REAL(realk), INTENT(in) :: sigma
+        REAL(realk), INTENT(out) :: R
+
+        R = 0.0
+        !CALL RANDOM_SEED()
+        CALL RANDOM_NUMBER(R)
+        R = R - 0.5_realk
+        R = SIGN(1.0_realk, R) * sigma
+
+    END SUBROUTINE rademacher_dist
+
+    SUBROUTINE uniform_dist(sigma, R)
+
+        ! subroutine arguments
+        REAL(realk), INTENT(in) :: sigma
+        REAL(realk), INTENT(out) :: R
+
+        !CALL RANDOM_SEED()
+        CALL RANDOM_NUMBER(R)
+        R = 2 * SQRT(3.0) * sigma * (R - 0.5)
+
+    END SUBROUTINE uniform_dist
+
+    ! TODO: implement polar method for gaussian distribution (https://de.wikipedia.org/wiki/Polar-Methode)
+
+    ! from: Simulation of truncated normal variables, Christian Robert, Statistics and Computing (1995) 5, 121-125
+    ! TODO: fully understand paper and potentially optimize this
+    SUBROUTINE gaussian_dist2(mu, sigma, R)
+
+        ! subroutine arguments
+        REAL(realk), INTENT(in) :: mu, sigma
+        REAL(realk), INTENT(out) :: R
+
+        ! local variables
+        REAL(realk) :: rand1, rand2, P
+        LOGICAL :: found
+
+        found = .FALSE.
+        !CALL RANDOM_SEED()
+
+        DO WHILE (.NOT. found)
+
+            CALL RANDOM_NUMBER(rand1)
+            rand1 = truncation_limit / truncation_factor * (rand1 - 0.5) * 2
+
+            P = EXP(-(rand1 ** 2) / 2)
+
+            CALL RANDOM_NUMBER(rand2)
+
+            IF (rand2 <= P) THEN
+                ! linear transformation to match given mean and standard deviation
+                R = mu + sigma * truncation_factor * rand1
+                found = .TRUE.
             END IF
 
-            CALL start_timer(922)
+        END DO
 
-            ranx = 0.0
-            rany = 0.0
-            ranz = 0.0
+    END SUBROUTINE gaussian_dist2
 
-            D_x = D(1)
-            D_y = D(2)
-            D_z = D(3)
+    SUBROUTINE get_truncation_factor(sym_limit, tcf)
 
-            CALL RANDOM_SEED()
-            IF (D_x > 0) THEN
-                CALL RANDOM_NUMBER(ranx)
-                ranx = ranx - 0.5_realk
-            END IF
-            IF (D_y > 0) THEN
-                CALL RANDOM_NUMBER(rany)
-                rany = rany - 0.5_realk
-            END IF
-            IF (D_z > 0) THEN
-                CALL RANDOM_NUMBER(ranz)
-                ranz = ranz - 0.5_realk
-            END IF
+        ! subroutine arguments
+        REAL(realk), INTENT(in) :: sym_limit
+        REAL(realk), INTENT(out) :: tcf
 
-            ! diffusion velocity
-            pu_diff = SQRT(2 * D_x / dt) * ranx / SQRT(ranx**2 + rany**2 + ranz**2)
-            pv_diff = SQRT(2 * D_y / dt) * rany / SQRT(ranx**2 + rany**2 + ranz**2)
-            pw_diff = SQRT(2 * D_z / dt) * ranz / SQRT(ranx**2 + rany**2 + ranz**2)
+        ! local variables
+        INTEGER(intk) :: i, counter
+        REAL(realk) :: alpha, beta, prob_alpha, cprob_alpha, prob_beta, cprob_beta, rhs, diff, eps
+        LOGICAL :: found_tcf, abort
 
-            ! diffusion length
-            pdx_diff = SQRT(2 * D_x * dt) * ranx / SQRT(ranx**2 + rany**2 + ranz**2)
-            pdy_diff = SQRT(2 * D_y * dt) * rany / SQRT(ranx**2 + rany**2 + ranz**2)
-            pdz_diff = SQRT(2 * D_z * dt) * ranz / SQRT(ranx**2 + rany**2 + ranz**2)
+        ! IMPLICIT
+        found_tcf = .FALSE.
+        abort = .FALSE.
+        eps = 10**(-3)
 
-            CALL stop_timer(922)
+        ! initialization value
+        tcf = 1.0
 
-    END SUBROUTINE get_particle_diffusion_homogeneous
+        ! iteration to numerically determine tcf
+        counter = 1
+        DO WHILE (.NOT. found_tcf .AND. .NOT. abort)
 
-    SUBROUTINE get_particle_diffusion_nearest(particle, dt, pu_diff, pv_diff, pw_diff, pdx_diff, pdy_diff, pdz_diff, &
-                kk, jj, ii, diffx, diffy, diffz, x, y, z)
+            alpha = - sym_limit / tcf
+            beta = sym_limit / tcf
 
-            ! subroutine arguments
-            TYPE(baseparticle_t), INTENT(in) :: particle
-            REAL(realk), INTENT(in) :: dt
-            REAL(realk), INTENT(out) :: pu_diff, pv_diff, pw_diff, pdx_diff, pdy_diff, pdz_diff
-            INTEGER(intk), INTENT(in) :: kk, jj, ii
-            REAL(realk), INTENT(in) :: diffx(kk, jj, ii), diffy(kk, jj, ii), diffz(kk, jj, ii)
-            REAL(realk), INTENT(in) :: x(ii), y(jj), z(kk)
+            DO i = 1, SIZE(sn_x)
+                IF (alpha <= sn_x(i)) THEN
+                    prob_alpha = sn_p(i -1) + (sn_p(i) - sn_p(i-1)) * (alpha - sn_x(i-1)) / (sn_x(i) - sn_x(i-1))
+                    cprob_alpha = sn_pc(i -1) + (sn_pc(i) - sn_pc(i-1)) * (alpha - sn_x(i-1)) / (sn_x(i) - sn_x(i-1))
+                    EXIT
+                END IF
+            END DO
 
-            ! local variables
-            REAL(realk) :: D_x, D_y, D_z, ranx, rany, ranz
-            LOGICAL :: dusefield, dinterp
+            DO i = 1, SIZE(sn_x)
+                IF (beta <= sn_x(i)) THEN
+                    prob_beta = sn_p(i -1) + (sn_p(i) - sn_p(i-1)) * (beta - sn_x(i-1)) / (sn_x(i) - sn_x(i-1))
+                    cprob_beta = sn_pc(i -1) + (sn_pc(i) - sn_pc(i-1)) * (beta - sn_x(i-1)) / (sn_x(i) - sn_x(i-1))
+                    EXIT
+                END IF
+            END DO
 
-            IF (.NOT. turb_diff) THEN
-                CALL get_particle_diffusion_homogeneous(particle, dt, pu_diff, pv_diff, pw_diff, pdx_diff, pdy_diff, pdz_diff)
-                RETURN
+            rhs = 1 / SQRT(1 - sym_limit / tcf * ((prob_beta + prob_alpha) / (cprob_beta - cprob_alpha)))
+
+            IF (ABS(tcf - rhs) / tcf < eps) THEN
+                found_tcf = .TRUE.
             END IF
 
-            CALL start_timer(922)
-
-            ranx = 0.0
-            rany = 0.0
-            ranz = 0.0
-
-            CALL get_nearest_val(kk, jj, ii, particle, &
-             D_x, D_y, D_z, diffx, diffy, diffz, x, y, z)
-
-            CALL RANDOM_SEED()
-            IF (D_x > 0) THEN
-                CALL RANDOM_NUMBER(ranx)
-                ranx = ranx - 0.5_realk
-            END IF
-            IF (D_y > 0) THEN
-                CALL RANDOM_NUMBER(rany)
-                rany = rany - 0.5_realk
-            END IF
-            IF (D_z > 0) THEN
-                CALL RANDOM_NUMBER(ranz)
-                ranz = ranz - 0.5_realk
+            IF (counter > 10**(6)) THEN
+                abort = .TRUE.
             END IF
 
-            ! diffusion velocity
-            pu_diff = SQRT(2 * D_x / dt) * ranx / SQRT(ranx**2 + rany**2 + ranz**2)
-            pv_diff = SQRT(2 * D_y / dt) * rany / SQRT(ranx**2 + rany**2 + ranz**2)
-            pw_diff = SQRT(2 * D_z / dt) * ranz / SQRT(ranx**2 + rany**2 + ranz**2)
-
-            ! diffusion length
-            pdx_diff = SQRT(2 * D_x * dt) * ranx / SQRT(ranx**2 + rany**2 + ranz**2)
-            pdy_diff = SQRT(2 * D_y * dt) * rany / SQRT(ranx**2 + rany**2 + ranz**2)
-            pdz_diff = SQRT(2 * D_z * dt) * ranz / SQRT(ranx**2 + rany**2 + ranz**2)
-
-            CALL stop_timer(922)
-
-    END SUBROUTINE get_particle_diffusion_nearest
-
-    SUBROUTINE get_particle_diffusion_interpolated(particle, dt, pu_diff, pv_diff, pw_diff, pdx_diff, pdy_diff, pdz_diff, &
-                kk, jj, ii, diffx, diffy, diffz, x, y, z, dx, dy, dz, ddx, ddz, ddy)
-
-            ! subroutine arguments
-            TYPE(baseparticle_t), INTENT(in) :: particle
-            REAL(realk), INTENT(in) :: dt
-            REAL(realk), INTENT(out) :: pu_diff, pv_diff, pw_diff, pdx_diff, pdy_diff, pdz_diff
-            INTEGER(intk), INTENT(in) :: kk, jj, ii
-            REAL(realk), INTENT(in) :: diffx(kk, jj, ii), diffy(kk, jj, ii), diffz(kk, jj, ii)
-            REAL(realk), INTENT(in) :: x(ii), y(jj), z(kk), dx(ii), dy(jj), dz(kk), ddx(ii), ddy(jj), ddz(kk)
-
-            ! local variables
-            REAL(realk) :: D_x, D_y, D_z, ranx, rany, ranz
-
-            IF (.NOT. turb_diff) THEN
-                CALL get_particle_diffusion_homogeneous(particle, dt, pu_diff, pv_diff, pw_diff, pdx_diff, pdy_diff, pdz_diff)
-                RETURN
+            IF (rhs < 1.0) THEN
+                abort = .TRUE.
             END IF
 
-            CALL start_timer(922)
-
-            ranx = 0.0
-            rany = 0.0
-            ranz = 0.0
-
-            CALL interpolate_lincon(kk, jj, ii, particle, &
-             D_x, D_y, D_z, diffx, diffy, diffz, x, y, z, dx, dy, dz, ddx, ddy, ddz)
-
-            CALL RANDOM_SEED()
-            IF (D_x > 0) THEN
-                CALL RANDOM_NUMBER(ranx)
-                ranx = ranx - 0.5_realk
-            END IF
-            IF (D_y > 0) THEN
-                CALL RANDOM_NUMBER(rany)
-                rany = rany - 0.5_realk
-            END IF
-            IF (D_z > 0) THEN
-                CALL RANDOM_NUMBER(ranz)
-                ranz = ranz - 0.5_realk
+            IF (counter > 1 .AND. ABS(tcf - rhs) > diff) THEN
+                abort = .TRUE.
             END IF
 
-            ! diffusion velocity
-            pu_diff = SQRT(2 * D_x / dt) * ranx / SQRT(ranx**2 + rany**2 + ranz**2)
-            pv_diff = SQRT(2 * D_y / dt) * rany / SQRT(ranx**2 + rany**2 + ranz**2)
-            pw_diff = SQRT(2 * D_z / dt) * ranz / SQRT(ranx**2 + rany**2 + ranz**2)
+            diff = ABS(tcf - rhs)
+            tcf = rhs
+            counter = counter + 1
 
-            ! diffusion length
-            pdx_diff = SQRT(2 * D_x * dt) * ranx / SQRT(ranx**2 + rany**2 + ranz**2)
-            pdy_diff = SQRT(2 * D_y * dt) * rany / SQRT(ranx**2 + rany**2 + ranz**2)
-            pdz_diff = SQRT(2 * D_z * dt) * ranz / SQRT(ranx**2 + rany**2 + ranz**2)
+        END DO
 
-            CALL stop_timer(922)
+        ! EXPLICIT
+        !alpha = - sym_limit
+        !beta = sym_limit
 
-    END SUBROUTINE get_particle_diffusion_interpolated
+        !DO i = 1, SIZE(sn_x)
+        !    IF (alpha <= sn_x(i)) THEN
+        !        prob_alpha = sn_p(i-1) + (sn_p(i) - sn_p(i-1)) * (alpha - sn_x(i-1)) / (sn_x(i) - sn_x(i-1))
+        !        cprob_alpha = sn_pc(i-1) + (sn_pc(i) - sn_pc(i-1)) * (alpha - sn_x(i-1)) / (sn_x(i) - sn_x(i-1))
+        !        EXIT
+        !    END IF
+        !END DO
+
+        !DO i = 1, SIZE(sn_x)
+        !    IF (beta <= sn_x(i)) THEN
+        !        prob_beta = sn_p(i-1) + (sn_p(i) - sn_p(i-1)) * (beta - sn_x(i-1)) / (sn_x(i) - sn_x(i-1))
+        !        cprob_beta = sn_pc(i-1) + (sn_pc(i) - sn_pc(i-1)) * (beta - sn_x(i-1)) / (sn_x(i) - sn_x(i-1))
+        !        EXIT
+        !    END IF
+        !END DO
+
+        !tcf = 1 / SQRT(1 - sym_limit * ((prob_beta + prob_alpha) / (cprob_beta - cprob_alpha)))
+
+    END SUBROUTINE get_truncation_factor
 
 END MODULE

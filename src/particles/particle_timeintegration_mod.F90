@@ -2,6 +2,7 @@ MODULE particle_timeintegration_mod
 
     USE fields_mod
 
+    USE particle_diffusion_mod
     USE particle_interpolation_mod
     USE particle_list_mod
     USE particle_exchange_mod
@@ -39,15 +40,17 @@ CONTAINS
         TYPE(field_t), POINTER :: x_f, y_f, z_f
         TYPE(field_t), POINTER :: dx_f, dy_f, dz_f, ddx_f, ddy_f, ddz_f
         TYPE(field_t), POINTER :: u_f, v_f, w_f
+        TYPE(field_t), POINTER :: diffx_f, diffy_f, diffz_f
 
         REAL(realk), POINTER, CONTIGUOUS, DIMENSION(:) :: x, y, z
         REAL(realk), POINTER, CONTIGUOUS, DIMENSION(:) :: dx, dy, dz, ddx, ddy, ddz
         REAL(realk), POINTER, CONTIGUOUS, DIMENSION(:, :, :) :: u, v, w
+        REAL(realk), POINTER, CONTIGUOUS, DIMENSION(:, :, :) :: diffx, diffy, diffz
 
         REAL(realk), ALLOCATABLE :: pdx_pot(:), pdy_pot(:), pdz_pot(:)
 
         INTEGER(intk) :: igrid, i, j, ii, jj, kk, gfound, ig, temp_grid
-        REAL(realk) :: pu_adv, pv_adv, pw_adv, pu_diff, pv_diff, pw_diff
+        REAL(realk) :: pu_adv, pv_adv, pw_adv, p_diffx, p_diffy, p_diffz
         REAL(realk) :: pdx_adv, pdy_adv, pdz_adv, pdx_diff, pdy_diff, pdz_diff, pdx_eff, pdy_eff, pdz_eff
 
         INTEGER(intk) :: irk
@@ -68,20 +71,23 @@ CONTAINS
         CALL get_field(y_f, "Y")
         CALL get_field(z_f, "Z")
 
+        IF (dinterp_padvection .OR. dinterp_pdiffsuion) THEN
+            CALL get_field(dx_f, "DX")
+            CALL get_field(dy_f, "DY")
+            CALL get_field(dz_f, "DZ")
+            CALL get_field(ddx_f, "DDX")
+            CALL get_field(ddy_f, "DDY")
+            CALL get_field(ddz_f, "DDZ")
+        END IF
+
         CALL get_field(u_f, "U")
         CALL get_field(v_f, "V")
         CALL get_field(w_f, "W")
 
-        IF (dinterp_particles) THEN
-
-            CALL get_field(dx_f, "DX")
-            CALL get_field(dy_f, "DY")
-            CALL get_field(dz_f, "DZ")
-
-            CALL get_field(ddx_f, "DDX")
-            CALL get_field(ddy_f, "DDY")
-            CALL get_field(ddz_f, "DDZ")
-
+        IF (dturb_diff) THEN
+            CALL get_field(diffx_f, "P_DIFF_X")
+            CALL get_field(diffy_f, "P_DIFF_Y")
+            CALL get_field(diffz_f, "P_DIFF_Z")
         END IF
 
         ! TODO: REMOVE
@@ -115,9 +121,24 @@ CONTAINS
             CALL y_f%get_ptr(y, igrid)
             CALL z_f%get_ptr(z, igrid)
 
+            IF (dinterp_padvection .OR. dinterp_pdiffsuion) THEN
+                CALL dx_f%get_ptr(dx, igrid)
+                CALL dy_f%get_ptr(dy, igrid)
+                CALL dz_f%get_ptr(dz, igrid)
+                CALL ddx_f%get_ptr(ddx, igrid)
+                CALL ddy_f%get_ptr(ddy, igrid)
+                CALL ddz_f%get_ptr(ddz, igrid)
+            END IF
+
             CALL u_f%get_ptr(u, igrid)
             CALL v_f%get_ptr(v, igrid)
             CALL w_f%get_ptr(w, igrid)
+
+            IF (dturb_diff) THEN
+                CALL diffx_f%get_ptr(diffx, my_particle_list%particles(i)%igrid)
+                CALL diffy_f%get_ptr(diffy, my_particle_list%particles(i)%igrid)
+                CALL diffz_f%get_ptr(diffz, my_particle_list%particles(i)%igrid)
+            END IF
 
             ! checking consistency (Debug)
             gfound = 1
@@ -142,6 +163,8 @@ CONTAINS
                     WRITE(*, '()')
             END SELECT
 
+            ! --- ADVECTION ---
+
             DO irk = 1, prkscheme%nrk
 
                 CALL prkscheme%get_coeffs(A, B, irk)
@@ -151,26 +174,17 @@ CONTAINS
                 pdy_eff = 0.0
                 pdz_eff = 0.0
 
-                ! --- ADVECTION VELOCITY ---
-
-                IF (dinterp_particles) THEN
-
-                    CALL dx_f%get_ptr(dx, igrid)
-                    CALL dy_f%get_ptr(dy, igrid)
-                    CALL dz_f%get_ptr(dz, igrid)
-
-                    CALL ddx_f%get_ptr(ddx, igrid)
-                    CALL ddy_f%get_ptr(ddy, igrid)
-                    CALL ddz_f%get_ptr(ddz, igrid)
-
-                    CALL gobert_particle_uvw(kk, jj, ii, my_particle_list%particles(i), &
-                    pu_adv, pv_adv, pw_adv, u, v, w, x, y, z, dx, dy, dz, ddx, ddy, ddz)
-
+                ! get particle velocity
+                IF (dinterp_padvection) THEN
+                    !CALL gobert_particle_uvw(kk, jj, ii, my_particle_list%particles(i), &
+                    !pu_adv, pv_adv, pw_adv, u, v, w, x, y, z, dx, dy, dz, ddx, ddy, ddz)
+                    CALL interpolate_lincon(my_particle_list%particles(i), kk, jj, ii, x, y, z, dx, dy, dz, ddx, ddy, ddz, &
+                     u, v, w, pu_adv, pv_adv, pw_adv)
                 ELSE
-
-                    CALL nearest_particle_uvw(kk, jj, ii, my_particle_list%particles(i), &
-                    pu_adv, pv_adv, pw_adv, u, v, w, x, y, z)
-
+                    !CALL nearest_particle_uvw(kk, jj, ii, my_particle_list%particles(i), &
+                    !pu_adv, pv_adv, pw_adv, u, v, w, x, y, z)
+                    CALL get_nearest_value(my_particle_list%particles(i), kk, jj, ii, x, y, z, &
+                     u, v, w, pu_adv, pv_adv, pw_adv)
                 END IF
 
                 CALL prkstep(pdx_pot(i), pdy_pot(i), pdz_pot(i), pu_adv, pv_adv, pw_adv, dt, A, B, pdx_adv, pdy_adv, pdz_adv)
@@ -197,7 +211,8 @@ CONTAINS
 
             END DO
 
-            ! --- Diffusiion ---
+            ! --- DIFFSUION ---
+
             SELECT CASE (TRIM(particle_terminal))
                 CASE ("none")
                     CONTINUE
@@ -208,7 +223,21 @@ CONTAINS
                     WRITE(*, '()')
             END SELECT
 
-            CALL get_particle_diffusion(dt, pu_diff, pv_diff, pw_diff, pdx_diff, pdy_diff, pdz_diff)
+            IF (dturb_diff) THEN
+                IF (dinterp_pdiffsuion) THEN
+                    CALL interpolate_lincon(my_particle_list%particles(i), kk, jj, ii, x, y, z, dx, dy, dz, ddx, ddy, ddz, &
+                    diffx, diffy, diffz, p_diffx, p_diffy, p_diffz)
+                ELSE
+                    CALL get_nearest_value(my_particle_list%particles(i), kk, jj, ii, x, y, z, &
+                    diffx, diffy, diffz, p_diffx, p_diffy, p_diffz)
+                END IF
+            ELSE
+                p_diffx = D(1)
+                p_diffy = D(2)
+                p_diffz = D(3)
+            END IF
+
+            CALL generate_diffusive_displacement(dt, p_diffx, p_diffy, p_diffz, pdx_diff, pdy_diff, pdz_diff)
 
             CALL move_particle(my_particle_list%particles(i), pdx_diff, pdy_diff, pdz_diff, pdx_eff, pdy_eff, pdz_eff, temp_grid)
 
@@ -222,114 +251,6 @@ CONTAINS
         CALL stop_timer(900)
 
     END SUBROUTINE timeintegrate_particles
-
-    SUBROUTINE get_particle_diffusion(dt, pu_diff, pv_diff, pw_diff, dx_diff, dy_diff, dz_diff)
-
-            ! subroutine arguments
-            REAL(realk), INTENT(in) :: dt
-            REAL(realk), INTENT(out) :: pu_diff, pv_diff, pw_diff, dx_diff, dy_diff, dz_diff
-
-            ! local variables
-            REAL(realk) :: sigx, sigy, sigz, ranx, rany, ranz
-
-            CALL start_timer(922)
-
-            IF (D(1) > 0) THEN
-                sigx = SQRT(2 * D(1) * dt)
-                !CALL uniform_length(sigx, ranx)
-                CALL uniform_distribution(sigx, ranx)
-                !CALL truncated_gaussian2(0.0_realk, sigx, 2.0_realk, ranx)
-                dx_diff = ranx ! diffusion length
-                pu_diff = dx_diff / dt! diffusion velocity
-            END IF
-
-            IF (D(2) > 0) THEN
-                sigy = SQRT(2 * D(2) * dt)
-                !CALL uniform_length(sigy, rany)
-                CALL uniform_distribution(sigy, rany)
-                !CALL truncated_gaussian2(0.0_realk, sigy, 2.0_realk, rany)
-                dy_diff = rany ! diffusion length
-                pv_diff = dy_diff / dt! diffusion velocity
-            END IF
-
-            IF (D(3) > 0) THEN
-                sigz = SQRT(2 * D(3) * dt)
-                !CALL uniform_length(sigz, ranz)
-                CALL uniform_distribution(sigz, ranz)
-                !CALL truncated_gaussian2(0.0_realk, sigz, 2.0_realk, ranz)
-                dz_diff = ranz ! diffusion length
-                pw_diff = dz_diff / dt! diffusion velocity
-            END IF
-
-            CALL stop_timer(922)
-
-    END SUBROUTINE get_particle_diffusion
-
-    SUBROUTINE uniform_length(sigma, R)
-
-        ! subroutine arguments
-        REAL(realk), INTENT(in) :: sigma
-        REAL(realk), INTENT(out) :: R
-
-        R = 0.0
-        !CALL RANDOM_SEED()
-        CALL RANDOM_NUMBER(R)
-        R = R - 0.5_realk
-        R = SIGN(1.0_realk, R) * sigma
-
-    END SUBROUTINE uniform_length
-
-    SUBROUTINE uniform_distribution(sigma, R)
-
-        ! subroutine arguments
-        REAL(realk), INTENT(in) :: sigma
-        REAL(realk), INTENT(out) :: R
-
-        !CALL RANDOM_SEED()
-        CALL RANDOM_NUMBER(R)
-        R = 2 * SQRT(3.0) * sigma * (R - 0.5)
-
-    END SUBROUTINE uniform_distribution
-
-    ! https://de.wikipedia.org/wiki/Polar-Methode
-    ! TODO: implement
-    SUBROUTINE truncated_gaussian1()
-
-    END SUBROUTINE truncated_gaussian1
-
-    ! from: Simulation of truncated normal variables, Christian Robert, Statistics and Computing (1995) 5, 121-125
-    ! TODO: fully understand paper and potentially optimize this
-    SUBROUTINE truncated_gaussian2(mu, sigma, truncation_factor, R)
-
-        ! subroutine arguments
-        REAL(realk), INTENT(in) :: mu, sigma, truncation_factor
-        REAL(realk), INTENT(out) :: R
-
-        ! local variables
-        REAL(realk) :: rand1, rand2, P
-        LOGICAL :: found
-
-        found = .FALSE.
-        !CALL RANDOM_SEED()
-
-        DO WHILE (.NOT. found)
-
-            CALL RANDOM_NUMBER(rand1)
-            rand1 = truncation_factor * (rand1 - 0.5) * 2
-
-            P = EXP(-(rand1 ** 2) / 2)
-
-            CALL RANDOM_NUMBER(rand2)
-
-            IF (rand2 <= P) THEN
-                ! linear transformation to match given mean and standard deviation
-                R = mu + sigma * rand1
-                found = .TRUE.
-            END IF
-
-        END DO
-
-    END SUBROUTINE truncated_gaussian2
 
     SUBROUTINE finish_particle_timeintegration()
 
