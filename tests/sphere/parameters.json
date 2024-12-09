@@ -109,5 +109,10 @@
         "itsamp": 50,
         "tstart": 8.0,
         "fields": ["U", "V", "W", "P"]
+    },
+
+    "catalyst": {
+        "path": "/usr/local/lib64/catalyst/",
+        "script": "sphere_pipeline.py"
     }
 }

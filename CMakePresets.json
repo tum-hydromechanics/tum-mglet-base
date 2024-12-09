@@ -58,9 +58,9 @@
             "displayName": "GNU compilers",
             "description": "Default build options using the GNU compilers",
             "cacheVariables": {
-                "CMAKE_C_COMPILER": "gcc",
-                "CMAKE_CXX_COMPILER": "g++",
-                "CMAKE_Fortran_COMPILER": "gfortran",
+                "CMAKE_C_COMPILER": "gcc-13",
+                "CMAKE_CXX_COMPILER": "g++-13",
+                "CMAKE_Fortran_COMPILER": "gfortran-13",
 
                 "MGLET_C_FLAGS": "-Wall;-Wextra;-Wpedantic;-Werror;-Wno-maybe-uninitialized",
                 "MGLET_CXX_FLAGS": "-Wall;-Wextra;-Wpedantic;-Werror;-Wno-maybe-uninitialized",
