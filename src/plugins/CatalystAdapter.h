@@ -111,10 +111,10 @@ void Execute(TransferFromMGLET* args)
     std::cout << "myid=" << args->myid << std::endl;
 
 
-    for ( int ilvl = 1; ilvl <= 1; ilvl++ )
+    for ( int ilvl = 0; ilvl <= 0; ilvl++ )
     {
         std::cout << "  ilvl=" << ilvl << std::endl;
-        int ngridlvl = get_ngrids_lvl( args, 0 );
+        int ngridlvl = get_ngrids_lvl( args, ilvl );
 
         std::cout << "  ngridlvl=" << ngridlvl << std::endl;
 
@@ -140,6 +140,7 @@ void Execute(TransferFromMGLET* args)
             args->cp_iterate_grids_lvl( &igrid, &igrdlvl, &ilvl );
 
             std::cout << "    igrid=" << igrid << std::endl;
+            std::cout << "    ilvl=" << ilvl << std::endl;
 
 
             if ( igrid > 0 )
