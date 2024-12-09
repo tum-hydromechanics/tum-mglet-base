@@ -1,6 +1,6 @@
 {
     "time": {
-        "mtstep": 10,
+        "mtstep": 50,
         "dt": 0.4,
         "itinfo": 50,
         "tstat": 5.0,

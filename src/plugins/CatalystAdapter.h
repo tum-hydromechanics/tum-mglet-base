@@ -54,13 +54,15 @@ void Initialize( const char* file, const char* impl, const char* path )
     // Conduit node for the initialization
     conduit_cpp::Node init_node;
 
+    /*
     init_node["catalyst/pipelines/0/type"].set("io");
-    init_node["catalyst/pipelines/0/filename"].set("dataout.vthb");
+    init_node["catalyst/pipelines/0/filename"].set("dataout.vtm");
     init_node["catalyst/pipelines/0/channel"].set("grid");
+    */
     /*
     // Passing the parameters from the JSON
-    init_node["catalyst/scripts/script/filename"] = file;
     */
+    init_node["catalyst/scripts/script/filename"] = file;
     init_node["catalyst_load/implementation"] = impl;
     init_node["catalyst_load/search_paths/paraview"] = path;
 
@@ -112,11 +114,11 @@ void Execute(TransferFromMGLET* args)
     for ( int ilvl = 1; ilvl <= 1; ilvl++ )
     {
         std::cout << "  ilvl=" << ilvl << std::endl;
-        int ngridlvl = get_ngrids_lvl( args, ilvl );
+        int ngridlvl = get_ngrids_lvl( args, 0 );
 
         std::cout << "  ngridlvl=" << ngridlvl << std::endl;
 
-        for ( int igrdlvl = 1; igrdlvl <= ngridlvl; igrdlvl++ )
+        for ( int igrdlvl = 0; igrdlvl <= ngridlvl; igrdlvl++ )
         {
             // std::cout << igrdlvl << std::endl;
 
