@@ -54,8 +54,13 @@ void Initialize( const char* file, const char* impl, const char* path )
     // Conduit node for the initialization
     conduit_cpp::Node init_node;
 
+    init_node["catalyst/pipelines/0/type"].set("io");
+    init_node["catalyst/pipelines/0/filename"].set("dataout.vthb");
+    init_node["catalyst/pipelines/0/channel"].set("grid");
+    /*
     // Passing the parameters from the JSON
     init_node["catalyst/scripts/script/filename"] = file;
+    */
     init_node["catalyst_load/implementation"] = impl;
     init_node["catalyst_load/search_paths/paraview"] = path;
 
@@ -293,6 +298,8 @@ void Finalize()
 {
     conduit_cpp::Node node;
     
+
+
     // finalization by passing an empty node
     catalyst_status err = catalyst_finalize(conduit_cpp::c_node(&node));
     if (err != catalyst_status_ok)

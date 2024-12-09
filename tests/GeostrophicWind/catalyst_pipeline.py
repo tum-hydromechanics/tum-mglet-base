@@ -22,5 +22,5 @@ def catalyst_execute(info):
 
     # access the node pass through catalyst_execute from the simulation
     # make sure that CATALYST_PYTHONPATH is in your PYTHONPATH
-    node = info.catalyst_params
-    print(f"{node=}")
+    #node = info.catalyst_params
+    #print(f"{node=}")
