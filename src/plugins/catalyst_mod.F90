@@ -46,14 +46,14 @@ MODULE catalyst_mod
     ! Module variables
 
     LOGICAL :: isInit = .false.
-    LOGICAL :: exists = .false.
+    ! LOGICAL :: exists = .false.
     TYPE(config_t) :: cata_conf
 
     CHARACTER(len=127) :: path_char
     CHARACTER(len=127) :: script_char
     CHARACTER(len=127) :: implementation_char
 
-    TYPE(c_ptr) :: node = c_null_ptr
+    ! TYPE(c_ptr) :: node = c_null_ptr
 
     PUBLIC :: init_catalyst, sample_catalyst, finish_catalyst
 

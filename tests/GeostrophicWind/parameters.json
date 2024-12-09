@@ -50,8 +50,8 @@
     },
 
     "catalyst": {
-        "path": "/home/simon/Software/paraview_build/lib/catalyst/",
-        "script": "script.py"
+        "path": "/usr/local/lib64/catalyst/",
+        "script": "catalyst_pipeline.py"
     },
 
     "uvwbulk": true

@@ -63,9 +63,9 @@ void Initialize( const char* file, const char* impl, const char* path )
     if (err == catalyst_status_ok)
     {
         std::cerr << "Successfully initialized Catalyst" << std::endl;
-        std::cerr << " - catalyst/scripts/script/filename = 'paraview'" << std::endl;
-        std::cerr << " - catalyst_load/implementation = 'paraview'" << std::endl;
-        std::cerr << " - catalyst_load/search_paths/paraview = " << std::endl;
+        std::cerr << " - catalyst/scripts/script/filename = '" << file << "'" << std::endl;
+        std::cerr << " - catalyst_load/implementation = '" << impl << "'" << std::endl;
+        std::cerr << " - catalyst_load/search_paths/paraview = '" << path << "'" << std::endl;
         std::cerr << std::endl;
     } 
     else
@@ -97,9 +97,20 @@ void Execute(TransferFromMGLET* args)
     auto channel = exec_params["catalyst/channels/grid"];
     channel["type"].set("multimesh");
 
-    for ( int ilvl = 2; ilvl <= 2; ilvl++ )
+    std::cout << "---------- Execute ----------" << std::endl;
+    std::cout << "lvlmin=" << args->lvlmin << std::endl;
+    std::cout << "lvlmax=" << args->lvlmax << std::endl;
+    std::cout << "itstep=" << args->istep << std::endl;
+    std::cout << "myid=" << args->myid << std::endl;
+
+
+    for ( int ilvl = 1; ilvl <= 1; ilvl++ )
     {
+        std::cout << "  ilvl=" << ilvl << std::endl;
         int ngridlvl = get_ngrids_lvl( args, ilvl );
+
+        std::cout << "  ngridlvl=" << ngridlvl << std::endl;
+
         for ( int igrdlvl = 1; igrdlvl <= ngridlvl; igrdlvl++ )
         {
             // std::cout << igrdlvl << std::endl;
@@ -120,11 +131,16 @@ void Execute(TransferFromMGLET* args)
             void *ptr_ddz = nullptr;
 
             args->cp_iterate_grids_lvl( &igrid, &igrdlvl, &ilvl );
+
+            std::cout << "    igrid=" << igrid << std::endl;
+
+
             if ( igrid > 0 )
             {
                 // calls to MGLET routines
 
                 args->cp_mgdims( &kk, &jj, &ii, &igrid );
+                std::cout << "    kk=" << kk << ", jj=" << jj << ", ii=" << ii << std::endl;
 
                 // casting of arrays
 
@@ -158,23 +174,32 @@ void Execute(TransferFromMGLET* args)
                 float mdx; float mdy; float mdz;
 
                 args->cp_get_bbox( &minx, &maxx, &miny, &maxy, &minz, &maxz, &igrid );
+                std::cout << "    minx=" << minx << ", maxx=" << maxx << std::endl;
+                std::cout << "    miny=" << miny << ", maxy=" << maxy << std::endl;
+                std::cout << "    minz=" << minz << ", maxz=" << maxz << std::endl;
 
                 char const *u_name = "U_C";
                 args->cp_get_arrptr( &ptr_arr, &u_name, &igrid );
-                float (*vel_u) = (float*) ptr_arr;
+                float *vel_u = (float*) ptr_arr;
 
                 char const *v_name = "V_C";
                 args->cp_get_arrptr( &ptr_arr, &v_name, &igrid );
-                float (*vel_v) = (float*) ptr_arr;
+                float *vel_v = (float*) ptr_arr;
 
                 char const *w_name = "W_C";
                 args->cp_get_arrptr( &ptr_arr, &w_name, &igrid );
-                float (*vel_w) = (float*) ptr_arr;          
+                float *vel_w = (float*) ptr_arr;          
 
                 args->cp_get_xyzptr( &ptr_x, &ptr_y, &ptr_z, &igrid );
                 args->cp_get_dxyzptr( &ptr_dx, &ptr_dy, &ptr_dz, &igrid );
                 args->cp_get_ddxyzptr( &ptr_ddx, &ptr_ddy, &ptr_ddz, &igrid );
 
+                std::cout << "    vel_u=" << vel_u << ", vel_v=" << vel_v << ", vel_w=" << vel_w << std::endl;
+                std::cout << "    ptr_x=" << ptr_x << ", ptr_y=" << ptr_y << ", ptr_z=" << ptr_z << std::endl;
+                std::cout << "    ptr_dx=" << ptr_dx << ", ptr_dy=" << ptr_dy << ", ptr_dz=" << ptr_dz << std::endl;
+                std::cout << "    ptr_ddx=" << ptr_ddx << ", ptr_ddy=" << ptr_ddy << ", ptr_ddz=" << ptr_ddz << std::endl;
+
+                /*
                 float (*x_arr) = (float*) ptr_x;  // [0 - (ii-1)]
                 float (*y_arr) = (float*) ptr_y;  // [0 - (jj-1)]
                 float (*z_arr) = (float*) ptr_z;  // [0 - (kk-1)]
@@ -184,6 +209,7 @@ void Execute(TransferFromMGLET* args)
                 float (*ddx_arr) = (float*) ptr_ddx;  // [0 - (ii-1)]
                 float (*ddy_arr) = (float*) ptr_ddy;  // [0 - (jj-1)]
                 float (*ddz_arr) = (float*) ptr_ddz;  // [0 - (kk-1)]
+                */
 #endif
 
                 // now create the mesh.
@@ -192,12 +218,14 @@ void Execute(TransferFromMGLET* args)
                 std::string numStr = std::to_string(igrid);
                 numStr = std::string(n_zero - std::min(n_zero, (int) numStr.length()), '0') + numStr;
                 std::string blockName = dataStr + numStr;
+                std::cout << "    blockName=" << blockName << std::endl;
 
                 auto mesh = channel[blockName];
 
                 mdx = ( maxx - minx ) / ( ii - 4 );
                 mdy = ( maxy - miny ) / ( jj - 4 );
                 mdz = ( maxz - minz ) / ( kk - 4 );
+                std::cout << "    mdx=" << mdx << ", mdy=" << mdy << ", mdz=" << mdz << std::endl;
 
                 // start with coordsets
                 mesh["coordsets/coords/type"].set("uniform");
@@ -224,6 +252,8 @@ void Execute(TransferFromMGLET* args)
                 // number of value entries without boundary layer
                 const int nval = (ii-4)*(jj-4)*(kk-4);
 
+                std::cout << "    nval=" << nval << std::endl;
+
                 // velocity_x is cell-data
                 fields["u/association"].set("element");
                 fields["u/topology"].set("mesh");
@@ -241,10 +271,14 @@ void Execute(TransferFromMGLET* args)
                 fields["w/topology"].set("mesh");
                 fields["w/volume_dependent"].set("false");
                 fields["w/values"].set_external(vel_w, nval, 0, sizeof(float) );
+
+                std::cout << "  -- end of grid --" << std::endl;
             }
         }
     }
 
+
+    std::cout << "TEST" << std::endl;
     // submitting the execution node
     catalyst_status err = catalyst_execute(conduit_cpp::c_node(&exec_params));
     if (err != catalyst_status_ok)
