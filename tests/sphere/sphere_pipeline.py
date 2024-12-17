@@ -47,7 +47,7 @@ SetActiveView(renderView1)
 # ----------------------------------------------------------------
 
 # create a new 'XML MultiBlock Data Reader'
-grid = XMLMultiBlockDataReader(registrationName='grid', FileName=['/students/jfuchs/repos/tum-mglet-base/tests/sphere/dataout.vtm'])
+grid = XMLMultiBlockDataReader(registrationName='grid', FileName=['/home/jakob/uni/hydro-project/tum-mglet-base/tests/sphere/dataout.vtm'])
 grid.CellArrayStatus = ['u', 'v', 'w']
 
 # create a new 'Clip'
@@ -65,7 +65,7 @@ clip1.ClipType.Normal = [0.0, 0.0, 1.0]
 clip1.HyperTreeGridClipper.Origin = [4.000000029802322, 2.9802322387695312e-08, 2.9802322387695312e-08]
 
 # create a new 'STL Reader'
-spherestl = STLReader(registrationName='sphere.stl', FileNames=['/students/jfuchs/repos/tum-mglet-base/tests/sphere/sphere.stl'])
+spherestl = STLReader(registrationName='sphere.stl', FileNames=['/home/jakob/uni/hydro-project/tum-mglet-base/tests/sphere/sphere.stl'])
 
 # ----------------------------------------------------------------
 # setup the visualization in view 'renderView1'
