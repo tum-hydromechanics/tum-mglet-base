@@ -12,6 +12,7 @@ CONTAINS
         USE probes_mod
         USE snapshots_mod
         USE uvwbulk_mod
+        USE catalyst_mod
 
         CALL register_plugin("DERIVFIELDS", init_late=init_derivfields, &
             postprocess=calc_derivfields, finish=finish_derivfields)
@@ -22,5 +23,7 @@ CONTAINS
             postprocess=sample_snapshots, finish=finish_snapshots)
         CALL register_plugin("UVWBULK", init_late=init_uvwbulk, &
             itinfo=itinfo_uvwbulk, finish=finish_uvwbulk)
+        CALL register_plugin("CATALYST", init_late=init_catalyst, &
+            itinfo=sample_catalyst, finish=finish_catalyst)
     END SUBROUTINE register_builtin_plugins
 END MODULE builtin_plugins_mod

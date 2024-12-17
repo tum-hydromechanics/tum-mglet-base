@@ -14,6 +14,14 @@ FortranCInterface_VERIFY(CXX)
 
 find_package(ZLIB REQUIRED)
 
+find_package(catalyst 2.0 REQUIRED)
+if(catalyst_FOUND)
+    message(STATUS "Found Catalyst 2.0")
+    message(STATUS "Catalyst 2.0 using ${catalyst_DIR}")
+else()
+    message(FATAL_ERROR "Catalyst 2.0 not found")
+endif()
+
 find_package(MPI COMPONENTS C Fortran REQUIRED)
 if(MPI_Fortran_HAVE_F08_MODULE)
     message(STATUS "MPI Library supports MPI_f08")
