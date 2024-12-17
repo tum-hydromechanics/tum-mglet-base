@@ -2,6 +2,11 @@
 #ifndef CatalystAdaptor_h
 #define CatalystAdaptor_h
 
+// This Macro is required due to the deprecation of MPI C++ bindings
+// Without it, some function argument casting of MPI::Op::Init(...) between the C and C++ version may fail unexpectedly
+// Note: This is somehow not required on the hyd44 system, on my home system this is the only way to make it work
+#define OMPI_SKIP_MPICXX 1
+
 #include <catalyst.hpp>
 
 #include <mpi.h>
@@ -54,14 +59,14 @@ void Initialize( const char* file, const char* impl, const char* path )
     // Conduit node for the initialization
     conduit_cpp::Node init_node;
 
+    
     /*
     init_node["catalyst/pipelines/0/type"].set("io");
     init_node["catalyst/pipelines/0/filename"].set("dataout.vtm");
     init_node["catalyst/pipelines/0/channel"].set("grid");
+    
     */
-    /*
     // Passing the parameters from the JSON
-    */
     init_node["catalyst/scripts/script/filename"] = file;
     init_node["catalyst_load/implementation"] = impl;
     init_node["catalyst_load/search_paths/paraview"] = path;
@@ -111,7 +116,7 @@ void Execute(TransferFromMGLET* args)
     std::cout << "myid=" << args->myid << std::endl;
 
 
-    for ( int ilvl = 0; ilvl <= 0; ilvl++ )
+    for ( int ilvl = args->lvlmin; ilvl <= args->lvlmax; ilvl++ )
     {
         std::cout << "  ilvl=" << ilvl << std::endl;
         int ngridlvl = get_ngrids_lvl( args, ilvl );
