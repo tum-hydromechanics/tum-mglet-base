@@ -1,7 +1,7 @@
 MODULE particle_dict_mod
 
     ! This module is responsible for:
-    ! Reading of initial particle coordinates from the ParticleDict.txt file.
+    ! Reading of initial particle coordinates from a ParticleDict.txt file.
 
     USE grids_mod
 
@@ -11,7 +11,7 @@ MODULE particle_dict_mod
 
     PUBLIC :: read_particles
 
-CONTAINS    !===================================
+CONTAINS
 
     SUBROUTINE read_particles(dread_particles_dict, dict_len, ipart_arr, igrid_arr, x_arr, y_arr, z_arr, read_np)
 
@@ -31,17 +31,10 @@ CONTAINS    !===================================
         IF (.NOT. dread_particles_dict) THEN
 
             IF (myid == 0) THEN
-                SELECT CASE (TRIM(particle_terminal))
-                    CASE ("none")
-                        CONTINUE
-                    CASE ("normal")
-                        WRITE(*, *) "WARNING: No file for reading particles detected! Using automated initial particle distribution instead."
-                        WRITE(*, '()')
-                    CASE ("verbose")
-                        WRITE(*, *) ' '
-                        WRITE(*, *) "WARNING: No file for reading particles detected! Using automated initial particle distribution instead."
-                        WRITE(*, '()')
-                END SELECT
+                IF (TRIM(particle_terminal) == "normal" .OR. TRIM(particle_terminal) == "verbose") THEN
+                    WRITE(*, *) "WARNING: No file for reading particles detected! Using automated initial particle distribution instead."
+                    WRITE(*, '()')
+                END IF
             END IF
 
             RETURN
@@ -55,16 +48,10 @@ CONTAINS    !===================================
         READ(unit, fmt = *) dict_len
 
         IF (myid == 0) THEN
-            SELECT CASE (TRIM(particle_terminal))
-                CASE ("none")
-                    CONTINUE
-                CASE ("normal")
-                    WRITE(*, '("READING ", I0, " PARTICLE(S) ON ", I0, " PROCESSES.")') dict_len, numprocs
-                    WRITE(*, '()')
-                CASE ("verbose")
-                    WRITE(*, '("READING ", I0, " PARTICLE(S) ON ", I0, " PROCESSES.")') dict_len, numprocs
-                    WRITE(*, '()')
-            END SELECT
+            IF (TRIM(particle_terminal) == "normal" .OR. TRIM(particle_terminal) == "verbose") THEN
+                WRITE(*, '("READING ", I0, " PARTICLE(S) ON ", I0, " PROCESSES.")') dict_len, numprocs
+                WRITE(*, '()')
+            END IF
         END IF
 
         IF (list_limit) THEN
@@ -129,14 +116,10 @@ CONTAINS    !===================================
                 y_arr(read_np) = ytemp
                 z_arr(read_np) = ztemp
 
-                SELECT CASE (TRIM(particle_terminal))
-                    CASE ("none")
-                        CONTINUE
-                    CASE ("normal")
-                        CONTINUE
-                    CASE ("verbose")
-                        WRITE(*,'("Particle read on proc ", I0, ": ID = ", I0, " | x/y/z = ", 3F12.6)') myid, ipart, xtemp, ytemp, ztemp
-                END SELECT
+                IF (TRIM(particle_terminal) == "verbose") THEN
+                    WRITE(*,'("Particle read on proc ", I0, ": ID = ", I0, " | x/y/z = ", 3F12.6)') myid, ipart, xtemp, ytemp, ztemp
+                    WRITE(*, '()')
+                END IF
 
                 EXIT
 
@@ -144,15 +127,11 @@ CONTAINS    !===================================
 
             IF (SIZE(ipart_arr) == read_np) THEN
                 IF (ipart < dict_len) THEN
-                    SELECT CASE (TRIM(particle_terminal))
-                        CASE ("none")
-                            CONTINUE
-                        CASE ("normal")
-                            CONTINUE
-                        CASE ("verbose")
-                            WRITE(*,'("Warning on proc ", I0, ": Maximum Number of Particles has been registered on this Proccess.", &
-                             "Stopped reading ParticleDict.txt, so specified Particles might be unregistered." )') myid
-                    END SELECT
+                    IF (TRIM(particle_terminal) == "normal" .OR. TRIM(particle_terminal) == "verbose") THEN
+                        WRITE(*,'("Warning on proc ", I0, ": Maximum Number of Particles has been registered on this Proccess.", &
+                         "Stopped reading ParticleDict.txt, so specified Particles might be unregistered." )') myid
+                        WRITE(*, '()')
+                    END IF
                 END IF
                 EXIT
             END IF
@@ -160,23 +139,15 @@ CONTAINS    !===================================
         END DO
 
         IF (myid == 0) THEN
-            SELECT CASE (TRIM(particle_terminal))
-                CASE ("none")
-                    CONTINUE
-                CASE ("normal")
-                    WRITE(*, '()')
-                    WRITE(*, '("READING OF PARTICLES SUCCESSFULLY COMPLETED.")')
-                    WRITE(*, '()')
-                CASE ("verbose")
-                    WRITE(*, '()')
-                    WRITE(*, '("READING OF PARTICLES SUCCESSFULLY COMPLETED.")')
-                    WRITE(*, '()')
-            END SELECT
+            IF (TRIM(particle_terminal) == "normal" .OR. TRIM(particle_terminal) == "verbose") THEN
+                WRITE(*, '("READING OF PARTICLES SUCCESSFULLY COMPLETED.")')
+                WRITE(*, '()')
+            END IF
         END IF
 
         CLOSE(unit)
 
-        ! DEALLOCATION IN CALLING ROUTINE !
+        ! Deallocation is performed in calling routine
 
     END SUBROUTINE read_particles
 

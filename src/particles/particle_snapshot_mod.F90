@@ -48,7 +48,7 @@ CONTAINS
         LOGICAL :: snapshots_exist
 
         CALL start_timer(900)
-        CALL start_timer(950)
+        CALL start_timer(960)
 
        !INQUIRE(directory = './Particle_Snapshots', exist = snapshots_exist)
 
@@ -107,27 +107,29 @@ CONTAINS
         END DO
 
         IF (myid == 0) THEN
-            WRITE(*,*) 'Writing Particle Snapshots for timesteps: '
-            WRITE(*,*) ' '
+            IF (TRIM(particle_terminal) == "normal" .OR. TRIM(particle_terminal) == "verbose") THEN
+                WRITE(*,*) 'Writing Particle Snapshots for timesteps: '
+                WRITE(*,*) ' '
 
-            DO i = 2, psnapshot_info%nsnapshots
+                DO i = 2, psnapshot_info%nsnapshots
 
-                IF (MOD(i - 1_intk, 10) == 0) THEN
+                    IF (MOD(i - 1_intk, 10) == 0) THEN
 
-                    WRITE(*, '(I0)', advance="yes") psnapshot_info%timesteps(i)
+                        WRITE(*, '(I0)', advance="yes") psnapshot_info%timesteps(i)
 
-                ELSE
+                    ELSE
 
-                    WRITE(*, '(I0)', advance="no") psnapshot_info%timesteps(i)
-                    WRITE(*, '(A)', advance="no") ' '
+                        WRITE(*, '(I0)', advance="no") psnapshot_info%timesteps(i)
+                        WRITE(*, '(A)', advance="no") ' '
 
-                END IF
+                    END IF
 
-            END DO
-            WRITE(*,*) ' '
+                END DO
+                WRITE(*,*) ' '
+            END IF
         END IF
 
-        CALL stop_timer(950)
+        CALL stop_timer(960)
         CALL stop_timer(900)
 
     END SUBROUTINE init_psnapshots
@@ -141,7 +143,7 @@ CONTAINS
         REAL(realk), INTENT(in) :: timeph
 
         CALL start_timer(900)
-        CALL start_timer(950)
+        CALL start_timer(960)
 
         IF (psnapshot_info%timesteps(psnapshot_info%counter + 1) == itstep) THEN
 
@@ -156,7 +158,7 @@ CONTAINS
 
         END IF
 
-        CALL stop_timer(950)
+        CALL stop_timer(960)
         CALL stop_timer(900)
 
     END SUBROUTINE write_psnapshot
@@ -313,7 +315,7 @@ CONTAINS
         CHARACTER(len = mglet_filename_max) :: filename
 
         CALL start_timer(900)
-        CALL start_timer(950)
+        CALL start_timer(960)
 
         IF (myid == 0) THEN
 
@@ -336,7 +338,7 @@ CONTAINS
 
         END IF
 
-        CALL stop_timer(950)
+        CALL stop_timer(960)
         CALL stop_timer(900)
 
     END SUBROUTINE write_psnapshot_timeinfo
@@ -345,9 +347,15 @@ CONTAINS
 
         IF (.NOT. dwrite_psnapshots) RETURN
 
-        DEALLOCATE(psnapshot_info%nparticles)
-        DEALLOCATE(psnapshot_info%timesteps)
-        DEALLOCATE(psnapshot_info%times)
+        CALL start_timer(900)
+        CALL start_timer(960)
+
+        IF (ALLOCATED(psnapshot_info%nparticles)) DEALLOCATE(psnapshot_info%nparticles)
+        IF (ALLOCATED(psnapshot_info%timesteps)) DEALLOCATE(psnapshot_info%timesteps)
+        IF (ALLOCATED(psnapshot_info%times)) DEALLOCATE(psnapshot_info%times)
+
+        CALL stop_timer(960)
+        CALL stop_timer(900)
 
     END SUBROUTINE finish_particle_snapshots
 

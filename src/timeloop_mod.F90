@@ -190,7 +190,7 @@ CONTAINS
         ! Initialize particle snapshots
         IF (dsim_particles .AND. dwrite_psnapshots) THEN
             CALL init_psnapshots(mtstep, dt) ! <------------------------------------particles
-            CALL write_psnapshot(0_intk, 0.0_realk)
+            CALL write_psnapshot(mtstep, dt)
         END IF
 
         ! Initialize Grid Partile Statistics

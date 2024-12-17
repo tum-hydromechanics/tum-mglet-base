@@ -4,10 +4,9 @@ MODULE particle_list_mod
     ! Definition of the particle_list_t type.
     ! Storage of Particles in my_particle_list.
     ! Basic list manipulations.
-    ! Initialization of partticles.
+    ! Initialization of particles.
 
     USE MPI_f08
-
     USE comms_mod
 
     USE particle_dict_mod
@@ -17,7 +16,7 @@ MODULE particle_list_mod
 
     TYPE :: particle_list_t
 
-        ! TODO: REMOVE (obsolete) ?
+        ! TODO: remove (obsolete)?
         INTEGER(intk) :: iproc
 
         ! max number of particles of this process/list
@@ -62,17 +61,10 @@ CONTAINS    !===================================
             IF (dread_particles_dict) THEN
 
                 IF (myid == 0) THEN
-                    SELECT CASE (TRIM(particle_terminal))
-                        CASE ("none")
-                            CONTINUE
-                        CASE ("normal")
-                            WRITE(*,*) ' '
-                            WRITE(*, '("INITIALIZING ", I0, " PARTICLE(S):")') global_np
-                            WRITE(*, '()')
-                        CASE ("verbose")
-                            WRITE(*, '("INITIALIZING ", I0, " PARTICLE(S):")') global_np
-                            WRITE(*, '()')
-                    END SELECT
+                    IF (TRIM(particle_terminal) == "normal" .OR. TRIM(particle_terminal) == "verbose") THEN
+                        WRITE(*, '("INITIALIZING ", I0, " PARTICLE(S):")') global_np
+                        WRITE(*, '()')
+                    END IF
                 END IF
 
                 my_particle_list%max_np = SIZE(ipart_arr) ! this is either plist_len (if list_limit is true) or dict_len
@@ -86,15 +78,10 @@ CONTAINS    !===================================
 
                     my_particle_list%active_np = my_particle_list%active_np + 1
 
-                    SELECT CASE (TRIM(particle_terminal))
-                        CASE ("none")
-                            CONTINUE
-                        CASE ("normal")
-                            CONTINUE
-                        CASE ("verbose")
-                            CALL print_particle_status(my_particle_list%particles(i))
-                            WRITE(*, '()')
-                    END SELECT
+                    IF (TRIM(particle_terminal) == "verbose") THEN
+                        CALL print_particle_status(my_particle_list%particles(i))
+                        WRITE(*, '()')
+                    END IF
 
                 END DO
 
@@ -112,23 +99,14 @@ CONTAINS    !===================================
 
         IF (.NOT. dread_particles_dict) THEN
 
-            CALL distribute_particles(ipart_arr, igrid_arr, x_arr, y_arr, z_arr)
-
             IF (myid == 0) THEN
-                SELECT CASE (TRIM(particle_terminal))
-                    CASE ("none")
-                        CONTINUE
-                    CASE ("normal")
-                        WRITE(*, '("INITIALIZING ", I0, " PARTICLE(S):")') my_particle_list%active_np
-                        WRITE(*, '()')
-                    CASE ("verbose")
-                        WRITE(*, '("INITIALIZING ", I0, " PARTICLE(S):")') my_particle_list%active_np
-                        WRITE(*, '()')
-                END SELECT
+                IF (TRIM(particle_terminal) == "normal" .OR. TRIM(particle_terminal) == "verbose") THEN
+                    WRITE(*, '("INITIALIZING PARTICLE(S) ...")')
+                    WRITE(*, '()')
+                END IF
             END IF
 
-            ! BARRIER ONLY FOR DEGUGGING -- TEMPORARY <----------------------------------------------- TODO : remove
-            CALL MPI_Barrier(MPI_COMM_WORLD)
+            CALL distribute_particles(ipart_arr, igrid_arr, x_arr, y_arr, z_arr)
 
             IF (list_limit) THEN
                 my_particle_list%max_np = plist_len
@@ -146,15 +124,10 @@ CONTAINS    !===================================
 
                     my_particle_list%active_np = my_particle_list%active_np + 1
 
-                SELECT CASE (TRIM(particle_terminal))
-                    CASE ("none")
-                        CONTINUE
-                    CASE ("normal")
-                        CONTINUE
-                    CASE ("verbose")
-                        CALL print_particle_status(my_particle_list%particles(i))
+                IF (TRIM(particle_terminal) == "verbose") THEN
+                    CALL print_particle_status(my_particle_list%particles(i))
                     WRITE(*, '()')
-                END SELECT
+                END IF
 
             END DO
 
@@ -168,31 +141,19 @@ CONTAINS    !===================================
 
         END IF
 
-        SELECT CASE (TRIM(particle_terminal))
-                CASE ("none")
-                    CONTINUE
-                CASE ("normal")
-                    WRITE(*, *) "Particle list of length ", my_particle_list%max_np, " initialized on process ", myid, "."
-                    WRITE(*, '()')
-                CASE ("verbose")
-                    WRITE(*, *) "Particle list of length ", my_particle_list%max_np, " initialized on process ", myid, "."
-                    WRITE(*, '()')
-        END SELECT
+        IF (TRIM(particle_terminal) == "normal" .OR. TRIM(particle_terminal) == "verbose") THEN
+            WRITE(*, *) "Particle list of length ", my_particle_list%max_np, " initialized on process ", myid, "."
+            WRITE(*, '()')
+        END IF
 
-        ! BARRIER ONLY FOR DEGUGGING -- TEMPORARY <----------------------------------------------- TODO : remove
+        ! TODO : remove ?
         CALL MPI_Barrier(MPI_COMM_WORLD)
 
         IF (myid == 0) THEN
-            SELECT CASE (TRIM(particle_terminal))
-                CASE ("none")
-                    CONTINUE
-                CASE ("normal")
-                    WRITE(*, '("INITIALIZATION OF PARTICLE(S) SUCCESSFULLY COMPLETED.")')
-                    WRITE(*, '()')
-                CASE ("verbose")
-                    WRITE(*, '("INITIALIZATION OF PARTICLE(S) SUCCESSFULLY COMPLETED.")')
-                    WRITE(*, '()')
-            END SELECT
+            IF (TRIM(particle_terminal) == "normal" .OR. TRIM(particle_terminal) == "verbose") THEN
+                WRITE(*, '("INITIALIZATION OF PARTICLE(S) SUCCESSFULLY COMPLETED.")')
+                WRITE(*, '()')
+            END IF
         END IF
 
         CALL stop_timer(910)
@@ -231,16 +192,10 @@ CONTAINS    !===================================
 
         CALL MOVE_ALLOC(particles_tmp, particle_list%particles) ! includes deallocation of particles temp
 
-        SELECT CASE (TRIM(particle_terminal))
-            CASE ("none")
-                CONTINUE
-            CASE ("normal")
-                WRITE(*, *) "Particle list enlarged by ", add_len, " on process ", myid, "."
-                WRITE(*, '()')
-            CASE ("verbose")
-                WRITE(*, *) "Particle list enlarged by ", add_len, " on process ", myid, "."
-                WRITE(*, '()')
-        END SELECT
+        IF (TRIM(particle_terminal) == "normal" .OR. TRIM(particle_terminal) == "verbose") THEN
+            WRITE(*, *) "Particle list enlarged by ", add_len, " on process ", myid, "."
+            WRITE(*, '()')
+        END IF
 
     END SUBROUTINE reallocate_particle_list
 
@@ -336,7 +291,7 @@ CONTAINS    !===================================
         ALLOCATE(proc_volume_fractions(0:numprocs-1))
         proc_volume_fractions = 0.0
 
-        ! ever proc computes the preliminary number of particles of all procs from each proc's combined grid volume
+        ! every proc computes the preliminary number of particles of all procs respectively from each proc's combined grid volume
         DO igrid = 1, ngrid
 
             iproc = idprocofgrd(igrid)
@@ -351,6 +306,7 @@ CONTAINS    !===================================
 
         DO iproc = 1, numprocs - 1
             proc_volume_fractions(iproc) = proc_volume_fractions(iproc) / volume
+            ! using init_npart from particle_config_mod
             init_npart_arr(iproc) = NINT(init_npart * proc_volume_fractions(iproc))
         END DO
 
@@ -386,12 +342,9 @@ CONTAINS    !===================================
         myvolume = 0.0_realk
 
         DO i = 1, nmygrids
-
             igrid = mygrids(i)
             CALL get_bbox(minx, maxx, miny, maxy, minz, maxz, igrid)
-
             myvolume = myvolume + (maxx - minx) * (maxy - miny) * (maxz - minz)
-
         END DO
 
         ! compute each grids (normalized) volume as a fraction of the combined proc volume (volume of all grids this process owns)
@@ -417,8 +370,9 @@ CONTAINS    !===================================
             my_grid_volume_fractions(i) = MIN(1.0_realk, my_grid_volume_fractions(i))
 
         END DO
+        ! until here, no particles have actually been initialized
 
-        ! distribute particles among all grids this process owns proportianally to the volume fraction of each grid
+        ! generate and distribute particles among all grids this process owns proportianally to the volume fraction of each grid
         part_counter = 1
         DO i = 1, init_npart_arr(myid)
 
@@ -434,11 +388,8 @@ CONTAINS    !===================================
             igrid = mygrids(grid_counter)
             CALL get_bbox(minx, maxx, miny, maxy, minz, maxz, igrid)
 
-            CALL RANDOM_SEED()
             CALL RANDOM_NUMBER(x)
-            CALL RANDOM_SEED()
             CALL RANDOM_NUMBER(y)
-            CALL RANDOM_SEED()
             CALL RANDOM_NUMBER(z)
 
             x = minx + x * (maxx - minx)
@@ -473,12 +424,14 @@ CONTAINS    !===================================
 
         END DO
 
+        ! gather number of particles that have been initialized at a valid location on each process
         ALLOCATE(npart_arr(0:numprocs-1))
         npart_arr = 0
 
         CALL MPI_Gather(part_counter - 1, 1, mglet_mpi_int, &
          npart_arr, 1, mglet_mpi_int, 0, MPI_COMM_WORLD)
 
+        ! compute the final number of particles that is to be initialized on each process respectively
         IF (myid == 0) THEN
             itm_npart = SUM(npart_arr)
 
@@ -500,16 +453,10 @@ CONTAINS    !===================================
                     END IF
                 END DO
                 IF (SUM(npart_arr) /= init_npart) THEN
-                    SELECT CASE (TRIM(particle_terminal))
-                        CASE ("none")
-                            CONTINUE
-                        CASE ("normal")
-                            WRITE(*, *) "The specified number of Particles could not be initialized due to Particle List Limitations."
-                            WRITE(*, '()')
-                        CASE ("verbose")
-                            WRITE(*, *) "The specified number of Particles could not be initialized due to Particle List Limitations."
-                            WRITE(*, '()')
-                    END SELECT
+                    IF (TRIM(particle_terminal) == "verbose") THEN
+                        WRITE(*, *) "The specified number of Particles could not be initialized due to Particle List Limitations."
+                        WRITE(*, '()')
+                    END IF
                 END IF
             ELSE
                 IF (SUM(npart_arr) /= init_npart) THEN
@@ -523,16 +470,10 @@ CONTAINS    !===================================
 
         DO iproc = 0, numprocs - 1
             IF (myid == 0) THEN
-                SELECT CASE (TRIM(particle_terminal))
-                CASE ("none")
-                    CONTINUE
-                CASE ("normal")
+                IF (TRIM(particle_terminal) == "normal" .OR. TRIM(particle_terminal) == "verbose") THEN
                     WRITE(*, *) npart_arr(iproc), " particles assigned to process ", iproc, "."
                     WRITE(*, '()')
-                CASE ("verbose")
-                    WRITE(*, *) npart_arr(iproc), " particles assigned to process ", iproc, "."
-                    WRITE(*, '()')
-                END SELECT
+                END IF
             END IF
         END DO
 
@@ -551,6 +492,7 @@ CONTAINS    !===================================
         END DO
 
         ! distribute particles among all grids this process owns (uniformely distibuted)
+        ! to eachieve the predefined number of particles
         DO i = part_counter, npart_arr(myid)
 
             valid_location = .FALSE.
@@ -566,11 +508,8 @@ CONTAINS    !===================================
                 igrid = mygrids(grid_counter)
                 CALL get_bbox(minx, maxx, miny, maxy, minz, maxz, igrid)
 
-                CALL RANDOM_SEED()
                 CALL RANDOM_NUMBER(x)
-                CALL RANDOM_SEED()
                 CALL RANDOM_NUMBER(y)
-                CALL RANDOM_SEED()
                 CALL RANDOM_NUMBER(z)
 
                 x = minx + x * (maxx - minx)

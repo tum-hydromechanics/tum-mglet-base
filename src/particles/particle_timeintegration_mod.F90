@@ -2,9 +2,9 @@ MODULE particle_timeintegration_mod
 
     USE fields_mod
 
-    USE particle_diffusion_mod
-    USE particle_interpolation_mod
     USE particle_list_mod
+    USE particle_interpolation_mod
+    USE particle_diffusion_mod
     USE particle_exchange_mod
 
     IMPLICIT NONE
@@ -20,9 +20,6 @@ CONTAINS
 
         ! init rk scheme
         CALL prkscheme%init(prkmethod)
-
-        ! TODO: put this in particle diffusion mod
-        CALL RANDOM_SEED()
 
         CALL stop_timer(910)
         CALL stop_timer(900)
@@ -90,10 +87,12 @@ CONTAINS
             CALL get_field(diffz_f, "P_DIFF_Z")
         END IF
 
-        ! TODO: REMOVE
         IF (myid == 0) THEN
-            WRITE(*, *) ''
-            WRITE(*, '("=== TIMESTEP ", I0, " - PARTICLE TIMEINTEGRATION ===")') itstep
+            IF (TRIM(particle_terminal) == "verbose") THEN
+                WRITE(*, *) ''
+                WRITE(*, '("=== TIMESTEP ", I0, " - PARTICLE TIMEINTEGRATION ===")') itstep
+                WRITE(*, *) ''
+            END IF
         END IF
 
         ! algorithm for EXPLICIT RK schemes
@@ -130,16 +129,6 @@ CONTAINS
                 CALL ddz_f%get_ptr(ddz, igrid)
             END IF
 
-            CALL u_f%get_ptr(u, igrid)
-            CALL v_f%get_ptr(v, igrid)
-            CALL w_f%get_ptr(w, igrid)
-
-            IF (dturb_diff) THEN
-                CALL diffx_f%get_ptr(diffx, my_particle_list%particles(i)%igrid)
-                CALL diffy_f%get_ptr(diffy, my_particle_list%particles(i)%igrid)
-                CALL diffz_f%get_ptr(diffz, my_particle_list%particles(i)%igrid)
-            END IF
-
             ! checking consistency (Debug)
             gfound = 1
             DO ig = 1, nMyGrids
@@ -152,20 +141,21 @@ CONTAINS
             END IF
 
             ! for debugging
-            SELECT CASE (TRIM(particle_terminal))
-                CASE ("none")
-                    CONTINUE
-                CASE ("normal")
-                    CONTINUE
-                CASE ("verbose")
-                    WRITE(*,'("Pre Motion - Particle Status:")')
-                    CALL print_particle_status(my_particle_list%particles(i))
-                    WRITE(*, '()')
-            END SELECT
+            IF (TRIM(particle_terminal) == "verbose") THEN
+                WRITE(*,'("Pre Motion - Particle Status:")')
+                CALL print_particle_status(my_particle_list%particles(i))
+                WRITE(*, '()')
+            END IF
 
             ! --- ADVECTION ---
+            CALL start_timer(921)
+
+            CALL u_f%get_ptr(u, igrid)
+            CALL v_f%get_ptr(v, igrid)
+            CALL w_f%get_ptr(w, igrid)
 
             DO irk = 1, prkscheme%nrk
+
 
                 CALL prkscheme%get_coeffs(A, B, irk)
 
@@ -176,13 +166,9 @@ CONTAINS
 
                 ! get particle velocity
                 IF (dinterp_padvection) THEN
-                    !CALL gobert_particle_uvw(kk, jj, ii, my_particle_list%particles(i), &
-                    !pu_adv, pv_adv, pw_adv, u, v, w, x, y, z, dx, dy, dz, ddx, ddy, ddz)
                     CALL interpolate_lincon(my_particle_list%particles(i), kk, jj, ii, x, y, z, dx, dy, dz, ddx, ddy, ddz, &
                      u, v, w, pu_adv, pv_adv, pw_adv)
                 ELSE
-                    !CALL nearest_particle_uvw(kk, jj, ii, my_particle_list%particles(i), &
-                    !pu_adv, pv_adv, pw_adv, u, v, w, x, y, z)
                     CALL get_nearest_value(my_particle_list%particles(i), kk, jj, ii, x, y, z, &
                      u, v, w, pu_adv, pv_adv, pw_adv)
                 END IF
@@ -190,38 +176,41 @@ CONTAINS
                 CALL prkstep(pdx_pot(i), pdy_pot(i), pdz_pot(i), pu_adv, pv_adv, pw_adv, dt, A, B, pdx_adv, pdy_adv, pdz_adv)
 
                 ! for debugging
-                SELECT CASE (TRIM(particle_terminal))
-                    CASE ("none")
-                        CONTINUE
-                    CASE ("normal")
-                        CONTINUE
-                    CASE ("verbose")
-                        WRITE(*,'("---------- Advection RK Step: ", I0, " ----------")') irk
-                        WRITE(*,'("Intermediate Velocity ", F12.9, " ", F12.9, " ", F12.9)') pu_adv, pv_adv, pw_adv
-                        WRITE(*,'("Intermediate Displacement ", F12.9, " ", F12.9, " ", F12.9)') pdx_adv, pdy_adv, pdz_adv
-                        WRITE(*, '()')
-                END SELECT
+                IF (TRIM(particle_terminal) == "verbose") THEN
+                    WRITE(*,'("---------- Advection RK Step: ", I0, " ----------")') irk
+                    WRITE(*,'("Intermediate Velocity ", F12.9, " ", F12.9, " ", F12.9)') pu_adv, pv_adv, pw_adv
+                    WRITE(*,'("Intermediate Displacement ", F12.9, " ", F12.9, " ", F12.9)') pdx_adv, pdy_adv, pdz_adv
+                    WRITE(*, '()')
+                END IF
+                CALL stop_timer(921)
 
+                CALL start_timer(922)
                 ! Particle Boundary Interaction
                 CALL move_particle(my_particle_list%particles(i), pdx_adv, pdy_adv, pdz_adv, pdx_eff, pdy_eff, pdz_eff, temp_grid)
+                CALL stop_timer(922)
 
+                CALL start_timer(921)
                 pdx_pot(i) = pdx_eff / B
                 pdy_pot(i) = pdy_eff / B
                 pdz_pot(i) = pdz_eff / B
 
             END DO
 
-            ! --- DIFFSUION ---
+            CALL stop_timer(921)
 
-            SELECT CASE (TRIM(particle_terminal))
-                CASE ("none")
-                    CONTINUE
-                CASE ("normal")
-                    CONTINUE
-                CASE ("verbose")
-                    WRITE(*,'("---------- Particle Diffusion ----------")')
-                    WRITE(*, '()')
-            END SELECT
+            ! --- DIFFSUION ---
+            CALL start_timer(923)
+
+            IF (dturb_diff) THEN
+                CALL diffx_f%get_ptr(diffx, my_particle_list%particles(i)%igrid)
+                CALL diffy_f%get_ptr(diffy, my_particle_list%particles(i)%igrid)
+                CALL diffz_f%get_ptr(diffz, my_particle_list%particles(i)%igrid)
+            END IF
+
+            IF (TRIM(particle_terminal) == "verbose") THEN
+                WRITE(*,'("---------- Particle Diffusion ----------")')
+                WRITE(*, '()')
+            END IF
 
             IF (dturb_diff) THEN
                 IF (dinterp_pdiffsuion) THEN
@@ -237,11 +226,19 @@ CONTAINS
                 p_diffz = D(3)
             END IF
 
-            CALL generate_diffusive_displacement(dt, p_diffx, p_diffy, p_diffz, pdx_diff, pdy_diff, pdz_diff)
+            CALL stop_timer(923)
 
+            CALL start_timer(924)
+            CALL generate_diffusive_displacement(dt, p_diffx, p_diffy, p_diffz, pdx_diff, pdy_diff, pdz_diff)
+            CALL stop_timer(924)
+
+            CALL start_timer(925)
             CALL move_particle(my_particle_list%particles(i), pdx_diff, pdy_diff, pdz_diff, pdx_eff, pdy_eff, pdz_eff, temp_grid)
+            CALL stop_timer(925)
 
         END DO
+
+        ! TODO: print out particle statistics (terminal)
 
         DEALLOCATE(pdx_pot)
         DEALLOCATE(pdy_pot)

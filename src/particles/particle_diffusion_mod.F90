@@ -14,8 +14,6 @@ MODULE particle_diffusion_mod
 
     IMPLICIT NONE
 
-    CHARACTER(len = 16) :: random_walk_mode = "gaussian2"
-
     ! REFERENCE VALUES FOR THE STANDART NORMAL DISTRIBUTIONS:
     ! realization values
     REAL(intk) :: sn_x(22) = [-3.0, -2.8, -2.6, -2.4, -2.2, -2.0, -1.8, -1.6, -1.4, -1.2, -1.0, &
@@ -26,7 +24,7 @@ MODULE particle_diffusion_mod
     ! corresponding probabilites
     REAL(intk) :: sn_p(22)
 
-    REAL(realk) :: truncation_limit = 2.0
+    ! truncation limit stored in config mod
     REAL(realk) :: truncation_factor
 
 CONTAINS
@@ -37,24 +35,33 @@ CONTAINS
         INTEGER(intk) :: i
         INTEGER(intk), PARAMETER :: units_diff(7) = [0, 2, -1, 0, 0, 0, 0]
 
+        CALL start_timer(900)
+        CALL start_timer(910)
+
         DO i = 1, SIZE(sn_p)
             sn_p(i) = 1 / SQRT(2 * pi) * EXP(- (sn_x(i)** 2) / 2)
         END DO
 
+        ! given a truncation narrower than APPROXIMATELY [-truncation_limit = -1.75, truncation_limit = 1.75]
+        ! of the (stretched) parent pdf, the target standart deviation of 1 cannot be achieved for the truncated pdf
+        IF (truncation_limit <= 1.8) THEN
+            WRITE(*, *) "Truncation set too narrow. Invalid truncation limit of ", truncation_limit, "."
+            WRITE(*, *) "Try a truncation limit above 1.8, or use another random walk mode"
+            CALL errr(__FILE__, __LINE__)
+        END IF
+
         CALL get_truncation_factor(truncation_limit, truncation_factor)
 
         IF (myid == 0) THEN
-            SELECT CASE (TRIM(particle_terminal))
-                CASE ("none")
-                    CONTINUE
-                CASE ("normal")
-                    WRITE(*, *) "TRUNCATION CORRECTION FACTOR ", truncation_factor, "."
-                CASE ("verbose")
-                    WRITE(*, *) "TRUNCATION CORRECTION FACTOR ", truncation_factor, "."
-            END SELECT
+            IF (TRIM(particle_terminal) == "normal" .OR. TRIM(particle_terminal) == "verbose") THEN
+                WRITE(*, '("TRUNCATION CORRECTION FACTOR: ", F12.3)') truncation_factor
+                WRITE(*, '()')
+            END IF
         END IF
 
         IF (.NOT. dturb_diff) THEN
+            CALL stop_timer(910)
+            CALL stop_timer(900)
             RETURN
         END IF
 
@@ -72,6 +79,9 @@ CONTAINS
         IF (.NOT. dcont) THEN
             CALL generate_diffusion_field
         END IF
+
+        CALL stop_timer(910)
+        CALL stop_timer(900)
 
     END SUBROUTINE init_particle_diffusion
 
@@ -196,8 +206,6 @@ CONTAINS
                 RETURN
             END IF
 
-            CALL start_timer(922)
-
             CALL get_mgdims(kk, jj, ii, particle%igrid)
 
             IF (dturb_diff) THEN
@@ -254,8 +262,6 @@ CONTAINS
 
             END IF
 
-            CALL stop_timer(922)
-
     END SUBROUTINE get_pdiff
 
     SUBROUTINE generate_diffusive_displacement(dt, D_x, D_y, D_z, pdx, pdy, pdz)
@@ -268,10 +274,8 @@ CONTAINS
         ! local variables
         REAL(realk) :: sigx, sigy, sigz, ranx, rany, ranz
 
-        CALL start_timer(922)
-
-        IF (D(1) > 0) THEN
-            sigx = SQRT(2 * D(1) * dt)
+        IF (D_x > 0) THEN
+            sigx = SQRT(2 * D_x * dt)
 
             SELECT CASE (lower(TRIM(random_walk_mode)))
             CASE ("rademacher")
@@ -286,9 +290,9 @@ CONTAINS
 
         END IF
 
-        IF (D(2) > 0) THEN
+        IF (D_y > 0) THEN
 
-            sigy = SQRT(2 * D(2) * dt)
+            sigy = SQRT(2 * D_y * dt)
 
             SELECT CASE (lower(TRIM(random_walk_mode)))
             CASE ("rademacher")
@@ -303,9 +307,9 @@ CONTAINS
 
         END IF
 
-        IF (D(3) > 0) THEN
+        IF (D_z > 0) THEN
 
-            sigz = SQRT(2 * D(3) * dt)
+            sigz = SQRT(2 * D_z * dt)
 
             SELECT CASE (lower(TRIM(random_walk_mode)))
             CASE ("rademacher")
@@ -319,8 +323,6 @@ CONTAINS
             pdz = ranz ! diffusion length
 
         END IF
-
-        CALL stop_timer(922)
 
     END SUBROUTINE generate_diffusive_displacement
 
@@ -396,6 +398,12 @@ CONTAINS
         INTEGER(intk) :: i, counter
         REAL(realk) :: alpha, beta, prob_alpha, cprob_alpha, prob_beta, cprob_beta, rhs, diff, eps
         LOGICAL :: found_tcf, abort
+
+        ! given a truncation narrower than APPROXIMATELY [-sym_limit = -1.75, sym_limit = 1.75]
+        ! of the (stretched) parent pdf, the target standart deviation of 1 cannot be achieved for the truncated pdf
+        IF (sym_limit <= 1.8) THEN
+            CALL errr(__FILE__, __LINE__)
+        END IF
 
         ! IMPLICIT
         found_tcf = .FALSE.
@@ -475,5 +483,9 @@ CONTAINS
         !tcf = 1 / SQRT(1 - sym_limit * ((prob_beta + prob_alpha) / (cprob_beta - cprob_alpha)))
 
     END SUBROUTINE get_truncation_factor
+
+    SUBROUTINE finish_particle_diffusion()
+
+    END SUBROUTINE finish_particle_diffusion
 
 END MODULE

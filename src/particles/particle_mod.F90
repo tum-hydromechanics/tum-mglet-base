@@ -27,54 +27,61 @@ CONTAINS
             END IF
 
             ! --- TIMERS ---
+            ! TODO: restructure
+            ! 900: particles
+            !  910: initialization
+            !   911: init_particle_boundaries
+            !   ...
+            !  920: timeintegration
+            !   ...
+            !  930: timeloop extras
+            !   931: fields
+            !   932: statistics
+            !   933: snapshots
+            !  940: finishing
+            !   ...
+
             ! PARTICLES : includes all other timers
-            CALL set_timer(900, 'PARTICLES')
+            CALL set_timer(900, 'PARTICLE_SIMULATION')
 
-            ! PARTICLE_INITIALIZATION:
-            ! init_particle_list (particle reading/particle distribution, particle list initialization)
-            ! init_particle_boundaries (initialization of particle grid boundaries, reading of obstacles)
-            ! init_particle_timeintegration (initialization of velocity backup field)
-            CALL set_timer(910, 'PARTICLE_CORE')
+            ! PARTICLE SIMULATION CORE INITIALIZATION:
+            ! init_particle_boundaries()
+            ! init_particle_list()
+            ! init_particle_diffusion()
+            ! init_particle_timeintegration()
+            ! init_particle_exchange()
+            ! init_particle_field()
+            CALL set_timer(910, 'PSIM_CORE_INIT')
 
-            ! PARTICLE_TIMEINTEGRATION:
-            ! update_backup_fields (copying of velocity fields at beginning of each timestep)
-            ! timeintegrate_particles (particle timeintegration)
-            CALL set_timer(920, 'PARTICLE_TIMEINTEGRATION')
+            ! PARTICLE TIMEINTEGRATION:
+            CALL set_timer(920, 'PSIM_TIMEINTEGRATION')
+                CALL set_timer(921, 'ADV_VELOCITY')
+                CALL set_timer(922, 'ADV_MOTION')
+                CALL set_timer(923, 'DIF_COEFF')
+                CALL set_timer(924, 'DIF_RW_GENERATION')
+                CALL set_timer(925, 'DIF_MOTION')
 
-                ! VELOCITY BACKUP MANIPULATION:
-                ! update_backup_fields (copying of velocity fields at beginning of each timestep)
-                ! time_interpolate_field (time interpolation of the the velocity field for particle velocity deduction)
-                CALL set_timer(921, 'VELOCITY_BACKUP_MANIPULATION')
-
-                ! PARTICLE DIFFSUION GENERATION:
-                ! get_particle_diffusion (random walk computation)
-                CALL set_timer(922, 'PARTICLE_DIFFUSION_GENERATION')
-
-                ! PARTICLE ADVECTION GENERATION:
-                ! nearest_particle_uvw (particle velocity deduction)
-                ! gobert_particle_uvw (particle velocity deduction with interpolation)
-                CALL set_timer(923, 'PARTICLE_ADVECTION_GENERATION')
-
-                ! PARTICLE BOUNDARY INTERACTION:
-                ! move_particle (particle motion and interaction with boundaries)
-                CALL set_timer(924, 'PARTICLE_BOUNDARY_INTERACTION')
+            ! PARTICLE BOUNDARY INTERACTION:
+            ! ... see TIMEINTEGRATION
 
             ! PARTICLE EXCHANGE
-            ! exchange particles (particle target grid and proc determination, particle exchange between procs)
-            CALL set_timer(930, 'PARTICLE_EXCHANGE')
+            CALL set_timer(940, 'PSIM_EXCHANGE')
 
             ! PARTICLE STATISTICS
-            ! init_particle_gridstat (initialization of particle grid statistics)
-            ! advance_np_counter (copy the number of particles of each grid from last timestep)
-            ! init_particle_gridstat (initialization of particle grid statistics)
-            ! register_particle/ deregister_particle (register/ deregister particle on grid)
-            CALL set_timer(940, 'PARTICLE_STATISTICS')
+            ! everything relatet to statistics (incl. init/finish_particle_statistics)
+            CALL set_timer(950, 'PSIM_STATISTICS')
 
             ! PARTICLE SNAPSHOTS
-            ! init_psnapshots (initialization of particle snaphots, directory creation)
-            ! write_psnapshot (particle snapshot writing)
-            ! write_psnapshot_timeinfo (meta info writing)
-            CALL set_timer(950, 'PARTICLE_SNAPSHOTS')
+            ! everything related to snapshots (incl. init/finish_particle_snapshots)
+            CALL set_timer(960, 'PSIM_SNAPSHOTS')
+
+            ! PARTICLE SIMULATION CORE FINISHING:
+            ! finish_particle_boundaries()
+            ! finish_particle_list()
+            ! finish_particle_exchange()
+            ! finish_particle_timeintegration()
+            ! finish_particle_config()
+            CALL set_timer(990, 'PSIM_CORE_FINISH')
 
             ! determine particle boundaries and their normal vectors
             CALL init_particle_boundaries()
@@ -93,6 +100,8 @@ CONTAINS
 
             ! set particle concentration field
             CALL init_particle_field()
+
+            ! SNAPSHOT AND STATISTICS INITIALIZATION IN TIMELOOP
 
         ELSE
 
@@ -114,9 +123,9 @@ CONTAINS
 
         CALL finish_particle_exchange()
 
-        CALL finish_particle_boundaries()
-
         CALL finish_particle_list()
+
+        CALL finish_particle_boundaries()
 
         CALL finish_particle_config()
 

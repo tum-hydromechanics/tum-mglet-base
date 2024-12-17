@@ -15,11 +15,12 @@ CONTAINS
         ! local variables
         INTEGER(intk), PARAMETER :: units_part(7) = [0, 0, 0, 0, 0, 0, 0]
 
-        ! TODO: TIMER
-
         IF (.NOT. dwrite_npcfield) THEN
             RETURN
         END IF
+
+        CALL start_timer(900)
+        CALL start_timer(910)
 
         ! TODO: set dwrite to .FALSE.
 
@@ -28,6 +29,9 @@ CONTAINS
         CALL set_field("NPC", units=units_part, dwrite=.TRUE., buffers=.TRUE.)
 
         CALL update_particle_field()
+
+        CALL stop_timer(910)
+        CALL stop_timer(900)
 
     END SUBROUTINE init_particle_field
 
@@ -46,8 +50,6 @@ CONTAINS
         IF (.NOT. dwrite_npcfield) THEN
             RETURN
         END IF
-
-        ! TODO: TIMER
 
         CALL get_field(x_f, "X")
         CALL get_field(y_f, "Y")
@@ -95,14 +97,10 @@ CONTAINS
 
             ! sanity checks
             IF (i_p < 1 .OR. i_p > ii .OR. j_p < 1 .OR. j_p > jj .OR. k_p < 1 .OR. k_p > kk) THEN
-                SELECT CASE (TRIM(particle_terminal))
-                    CASE ("none")
-                        CONTINUE
-                    CASE ("normal")
-                        WRITE(*, *) "WARNING in update_particle_field: Particle ijkcell outside valid Range!"
-                    CASE ("verbose")
-                        WRITE(*, *) "WARNING in update_particle_field: Particle ijkcell outside valid Range!"
-                    END SELECT
+                IF (TRIM(particle_terminal) == "normal" .OR. TRIM(particle_terminal) == "verbose") THEN
+                    WRITE(*, *) "WARNING in update_particle_field: Particle ijkcell outside valid Range!"
+                    WRITE(*, '()')
+                END IF
             END IF
 
             IF (x_p + EPSILON(x_p) < x(i_p) - dx(MAX(1, i_p - 1)) / 2 .OR. &
@@ -111,30 +109,19 @@ CONTAINS
              y_p - EPSILON(y_p) > y(j_p) + dy(j_p) / 2 .OR. &
              z_p + EPSILON(z_p) < z(k_p) - dz(MAX(1, k_p - 1)) / 2 .OR. &
              z_p - EPSILON(z_p) > z(k_p) + dz(k_p) / 2) THEN
-                SELECT CASE (TRIM(particle_terminal))
-                    CASE ("none")
-                        CONTINUE
-                    CASE ("normal")
-                        WRITE(*, *) "WARNING in update_particle_field: Particle ijkcell does not coincide with Particle Coordinates."
-                        WRITE(*, '()')
-                    CASE ("verbose")
-                        WRITE(*, *) "WARNING in update_particle_field: Particle ijkcell does not coincide with Particle Coordinates."
-                        WRITE(*, '()')
-                END SELECT
+                IF (TRIM(particle_terminal) == "normal" .OR. TRIM(particle_terminal) == "verbose") THEN
+                    WRITE(*, *) "WARNING in update_particle_field: Particle ijkcell does not coincide with Particle Coordinates."
+                    WRITE(*, '()')
+                END IF
             END IF
 
             ! actual field computation
             npc(k_p, j_p, i_p) = npc(k_p, j_p, i_p) + 1
 
-            SELECT CASE (TRIM(particle_terminal))
-            CASE ("none")
-                CONTINUE
-            CASE ("normal")
-                CONTINUE
-            CASE ("verbose")
+            IF (TRIM(particle_terminal) == "verbose") THEN
                 WRITE(*, *) "Particle registered on NPC field: igrid = ", igrid, "; cell: i=", i_p, " /j=", j_p, " /k=", k_p, "."
                 WRITE(*, '()')
-            END SELECT
+            END IF
 
         END DO
 
