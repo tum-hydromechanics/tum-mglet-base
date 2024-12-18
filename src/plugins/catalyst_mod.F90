@@ -50,8 +50,7 @@ MODULE catalyst_mod
 
     ! Module variables
 
-    LOGICAL :: isInit = .false.
-    ! LOGICAL :: exists = .false.
+    LOGICAL :: has_catalyst = .FALSE.
     TYPE(config_t) :: cata_conf
 
     CHARACTER(len=127) :: path_char
@@ -118,7 +117,7 @@ CONTAINS
         CALL set_field("TEMP_C")
 
         ! Declaring initialized
-        isInit = .true.
+        has_catalyst = .TRUE.
 
     END SUBROUTINE init_catalyst
 
@@ -184,6 +183,8 @@ CONTAINS
 
         INTEGER(kind=C_INT) :: c_myid, c_numprocs, c_istep, &
                                c_nscal, c_lvlmin, c_lvlmax
+
+        IF (.NOT. has_catalyst) RETURN
 
         ! setting the function pointers
         ! (necessary to transfer MGLET functions to the library)
