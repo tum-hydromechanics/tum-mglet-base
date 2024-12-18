@@ -114,7 +114,6 @@ CONTAINS
         CALL set_field("U_C")
         CALL set_field("V_C")
         CALL set_field("W_C")
-        CALL set_field("TEMP_C")
 
         ! Declaring initialized
         has_catalyst = .TRUE.
@@ -173,7 +172,7 @@ CONTAINS
         REAL(realk), INTENT(in) :: timeph
         REAL(realk), INTENT(in) :: dt
 
-        TYPE(field_t), POINTER :: u_c_f, v_c_f, w_c_f, temp_c_f
+        TYPE(field_t), POINTER :: u_c_f, v_c_f, w_c_f
 
         ! local variables
         TYPE(C_FUNPTR) :: cp_mgdims, cp_iterate_grids_lvl, &
@@ -210,8 +209,7 @@ CONTAINS
         CALL get_field(u_c_f, "U_C")
         CALL get_field(v_c_f, "V_C")
         CALL get_field(w_c_f, "W_C")
-        CALL get_field(temp_c_f, "TEMP_C")
-        CALL field_to_c(u_c_f, v_c_f, w_c_f, temp_c_f)
+        CALL field_to_c(u_c_f, v_c_f, w_c_f)
 
         ! calling the C function described in the interface
         CALL catalyst_trigger( &
@@ -444,19 +442,18 @@ CONTAINS
     END SUBROUTINE
 
 
-    SUBROUTINE field_to_c(u_c_f, v_c_f, w_c_f, temp_c_f)
+    SUBROUTINE field_to_c(u_c_f, v_c_f, w_c_f)
         ! Subroutine arguments
-        TYPE(field_t), INTENT(inout) :: u_c_f, v_c_f, w_c_f, temp_c_f
+        TYPE(field_t), INTENT(inout) :: u_c_f, v_c_f, w_c_f
         ! Local variables
         INTEGER(intk) :: i, igrid
         INTEGER(intk) :: kk, jj, ii
-        TYPE(field_t), POINTER :: u_f, v_f, w_f, temp_f
+        TYPE(field_t), POINTER :: u_f, v_f, w_f
         REAL(realk), POINTER, CONTIGUOUS :: arr_c(:, :, :), arr(:, :, :)
         INTEGER, PARAMETER :: nbl = 2
         CALL get_field(u_f, "U")
         CALL get_field(v_f, "V")
         CALL get_field(w_f, "W")
-        CALL get_field(temp_f, "TEMP")
 
         DO i = 1, nmygrids
             igrid = mygrids(i)
@@ -472,10 +469,6 @@ CONTAINS
             ! treating W
             CALL w_f%get_ptr(arr, igrid)
             CALL w_c_f%get_ptr(arr_c, igrid)
-            CALL field_to_c_grid(kk, jj, ii, nbl, arr_c, arr)
-            ! treating Temp
-            CALL temp_f%get_ptr(arr, igrid)
-            CALL temp_c_f%get_ptr(arr_c, igrid)
             CALL field_to_c_grid(kk, jj, ii, nbl, arr_c, arr)
         END DO
 

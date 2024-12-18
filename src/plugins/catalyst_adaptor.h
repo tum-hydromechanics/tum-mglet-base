@@ -232,10 +232,6 @@ void execute(const MgletDataLink& args)
                 args.cp_get_arrptr( &ptr_arr, &w_name, &igrid );
                 //float *vel_w = (float*) ptr_arr;          
 
-                char const *temp_name = "TEMP_C";
-                args.cp_get_arrptr( &ptr_arr, &temp_name, &igrid );
-                //float *temp = (float*) ptr_arr;     
-
                 args.cp_get_xyzptr( &ptr_x, &ptr_y, &ptr_z, &igrid );
                 args.cp_get_dxyzptr( &ptr_dx, &ptr_dy, &ptr_dz, &igrid );
                 args.cp_get_ddxyzptr( &ptr_ddx, &ptr_ddy, &ptr_ddz, &igrid );
