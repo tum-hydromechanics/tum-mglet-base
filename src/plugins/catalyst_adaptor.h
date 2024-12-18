@@ -49,9 +49,13 @@ int get_ngrids_lvl(const MgletDataLink& args, int ilevel)
     int igrid = -1;
     while ( true ) {
         args.cp_iterate_grids_lvl( &igrid, &lvlcounter, &ilevel );
-        if ( igrid > 0 ){ lvlcounter++; } else { break; }
+        if (igrid > 0) { 
+            lvlcounter++; 
+        } else { 
+            break;
+        }
     }
-    return (lvlcounter-1);
+    return lvlcounter-1;
 };
 
 
@@ -116,6 +120,10 @@ void initialize(const CatalystConfig& config)
     }
 }
 
+
+// Consistency requirement accross MPI ranks
+//  - each MPI rank must manage the same number of grids
+//  - otherwise conduit will append an empty .vtp entry which will trigger an import error in paraview
 void execute(const MgletDataLink& args)
 {
     // Conduit node for the execution
@@ -131,22 +139,18 @@ void execute(const MgletDataLink& args)
     auto channel = exec_params["catalyst/channels/grid"];
     channel["type"].set("multimesh");
 
-    std::cout << "---------- Execute ----------" << std::endl;
-    std::cout << "lvlmin=" << args.lvlmin << std::endl;
-    std::cout << "lvlmax=" << args.lvlmax << std::endl;
-    std::cout << "itstep=" << args.istep << std::endl;
-    std::cout << "myid=" << args.myid << std::endl;
+    //std::cout << "---------- Execute ----------" << std::endl;
+    //std::cout << "lvlmin=" << args.lvlmin << std::endl;
+    //std::cout << "lvlmax=" << args.lvlmax << std::endl;
+    //std::cout << "itstep=" << args.istep << std::endl;
+    //std::cout << "myid=" << args.myid << std::endl;
 
-
-    for ( int ilvl = args.lvlmin; ilvl <= args.lvlmax; ilvl++ )
-    {
-        std::cout << "  ilvl=" << ilvl << std::endl;
+    // Loop levels independent of specific grid
+    for ( int ilvl = args.lvlmin; ilvl <= args.lvlmax; ilvl++ ) {
+        // Get number of grids on specific ilvl
         int ngridlvl = get_ngrids_lvl( args, ilvl );
-
-        std::cout << "  ngridlvl=" << ngridlvl << std::endl;
-
-        for ( int igrdlvl = 0; igrdlvl <= ngridlvl; igrdlvl++ )
-        {
+        // Loop through all grids on level ilvl
+        for ( int igrdlvl = 0; igrdlvl <= ngridlvl; igrdlvl++ ) {
             // std::cout << igrdlvl << std::endl;
 
             // grid properties
@@ -166,16 +170,19 @@ void execute(const MgletDataLink& args)
 
             args.cp_iterate_grids_lvl( &igrid, &igrdlvl, &ilvl );
 
-            std::cout << "    igrid=" << igrid << std::endl;
-            std::cout << "    ilvl=" << ilvl << std::endl;
+            //std::cout << "    igrid=" << igrid << std::endl;
+            //std::cout << "    ilvl=" << ilvl << std::endl;
 
 
-            if ( igrid > 0 )
-            {
+            if ( igrid > 0 ) {
                 // calls to MGLET routines
 
+                //print_if_root(args.myid, "  ilvl=", ilvl);
+                //print_if_root(args.myid, "  igrid=", igrid);
+
+
                 args.cp_mgdims( &kk, &jj, &ii, &igrid );
-                std::cout << "    kk=" << kk << ", jj=" << jj << ", ii=" << ii << std::endl;
+                //std::cout << "    kk=" << kk << ", jj=" << jj << ", ii=" << ii << std::endl;
 
                 // casting of arrays
 
@@ -209,9 +216,9 @@ void execute(const MgletDataLink& args)
                 float mdx; float mdy; float mdz;
 
                 args.cp_get_bbox( &minx, &maxx, &miny, &maxy, &minz, &maxz, &igrid );
-                std::cout << "    minx=" << minx << ", maxx=" << maxx << std::endl;
-                std::cout << "    miny=" << miny << ", maxy=" << maxy << std::endl;
-                std::cout << "    minz=" << minz << ", maxz=" << maxz << std::endl;
+                //std::cout << "    minx=" << minx << ", maxx=" << maxx << std::endl;
+                //std::cout << "    miny=" << miny << ", maxy=" << maxy << std::endl;
+                //std::cout << "    minz=" << minz << ", maxz=" << maxz << std::endl;
 
                 char const *u_name = "U_C";
                 args.cp_get_arrptr( &ptr_arr, &u_name, &igrid );
@@ -219,24 +226,24 @@ void execute(const MgletDataLink& args)
 
                 char const *v_name = "V_C";
                 args.cp_get_arrptr( &ptr_arr, &v_name, &igrid );
-                float *vel_v = (float*) ptr_arr;
+                //float *vel_v = (float*) ptr_arr;
 
                 char const *w_name = "W_C";
                 args.cp_get_arrptr( &ptr_arr, &w_name, &igrid );
-                float *vel_w = (float*) ptr_arr;          
+                //float *vel_w = (float*) ptr_arr;          
 
                 char const *temp_name = "TEMP_C";
                 args.cp_get_arrptr( &ptr_arr, &temp_name, &igrid );
-                float *temp = (float*) ptr_arr;     
+                //float *temp = (float*) ptr_arr;     
 
                 args.cp_get_xyzptr( &ptr_x, &ptr_y, &ptr_z, &igrid );
                 args.cp_get_dxyzptr( &ptr_dx, &ptr_dy, &ptr_dz, &igrid );
                 args.cp_get_ddxyzptr( &ptr_ddx, &ptr_ddy, &ptr_ddz, &igrid );
 
-                std::cout << "    vel_u=" << vel_u << ", vel_v=" << vel_v << ", vel_w=" << vel_w << std::endl;
-                std::cout << "    ptr_x=" << ptr_x << ", ptr_y=" << ptr_y << ", ptr_z=" << ptr_z << std::endl;
-                std::cout << "    ptr_dx=" << ptr_dx << ", ptr_dy=" << ptr_dy << ", ptr_dz=" << ptr_dz << std::endl;
-                std::cout << "    ptr_ddx=" << ptr_ddx << ", ptr_ddy=" << ptr_ddy << ", ptr_ddz=" << ptr_ddz << std::endl;
+                //std::cout << "    vel_u=" << vel_u << ", vel_v=" << vel_v << ", vel_w=" << vel_w << std::endl;
+                //std::cout << "    ptr_x=" << ptr_x << ", ptr_y=" << ptr_y << ", ptr_z=" << ptr_z << std::endl;
+                //std::cout << "    ptr_dx=" << ptr_dx << ", ptr_dy=" << ptr_dy << ", ptr_dz=" << ptr_dz << std::endl;
+                //std::cout << "    ptr_ddx=" << ptr_ddx << ", ptr_ddy=" << ptr_ddy << ", ptr_ddz=" << ptr_ddz << std::endl;
 
                 /*
                 float (*x_arr) = (float*) ptr_x;  // [0 - (ii-1)]
@@ -257,6 +264,7 @@ void execute(const MgletDataLink& args)
                 std::string numStr = std::to_string(igrid);
                 numStr = std::string(n_zero - std::min(n_zero, (int) numStr.length()), '0') + numStr;
                 std::string blockName = dataStr + numStr;
+                //print_if_root(args.myid, "  ", blockName);
                 std::cout << "    blockName=" << blockName << std::endl;
 
                 auto mesh = channel[blockName];
@@ -264,7 +272,7 @@ void execute(const MgletDataLink& args)
                 mdx = ( maxx - minx ) / ( ii - 4 );
                 mdy = ( maxy - miny ) / ( jj - 4 );
                 mdz = ( maxz - minz ) / ( kk - 4 );
-                std::cout << "    mdx=" << mdx << ", mdy=" << mdy << ", mdz=" << mdz << std::endl;
+                //std::cout << "    mdx=" << mdx << ", mdy=" << mdy << ", mdz=" << mdz << std::endl;
 
                 // start with coordsets
                 mesh["coordsets/coords/type"].set("uniform");
@@ -291,7 +299,7 @@ void execute(const MgletDataLink& args)
                 // number of value entries without boundary layer
                 const int nval = (ii-4)*(jj-4)*(kk-4);
 
-                std::cout << "    nval=" << nval << std::endl;
+                //std::cout << "    nval=" << nval << std::endl;
 
                 // velocity_x is cell-data
                 fields["u/association"].set("element");
@@ -300,34 +308,32 @@ void execute(const MgletDataLink& args)
                 fields["u/values"].set_external(vel_u, nval, 0, sizeof(float) );
 
                 // velocity_y is cell-data
-                fields["v/association"].set("element");
-                fields["v/topology"].set("mesh");
-                fields["v/volume_dependent"].set("false");
-                fields["v/values"].set_external(vel_v, nval, 0, sizeof(float) );
+                //fields["v/association"].set("element");
+                //fields["v/topology"].set("mesh");
+                //fields["v/volume_dependent"].set("false");
+                //fields["v/values"].set_external(vel_v, nval, 0, sizeof(float) );
 
                 // velocity_z is cell-data
-                fields["w/association"].set("element");
-                fields["w/topology"].set("mesh");
-                fields["w/volume_dependent"].set("false");
-                fields["w/values"].set_external(vel_w, nval, 0, sizeof(float) );
+                //fields["w/association"].set("element");
+                //fields["w/topology"].set("mesh");
+                //fields["w/volume_dependent"].set("false");
+                //fields["w/values"].set_external(vel_w, nval, 0, sizeof(float) );
 
                 // temp is cell-data
-                fields["temp/association"].set("element");
-                fields["temp/topology"].set("mesh");
-                fields["temp/volume_dependent"].set("false");
-                fields["temp/values"].set_external(temp, nval, 0, sizeof(float) );
+                //fields["temp/association"].set("element");
+                //fields["temp/topology"].set("mesh");
+                //fields["temp/volume_dependent"].set("false");
+                //fields["temp/values"].set_external(temp, nval, 0, sizeof(float) );
 
-                std::cout << "  -- end of grid --" << std::endl;
+                //std::cout << "  -- end of grid --" << std::endl;
             }
         }
     }
 
+    print_if_root(args.myid, "Execute done");
 
-    std::cout << "TEST" << std::endl;
-    // submitting the execution node
     catalyst_status err = catalyst_execute(conduit_cpp::c_node(&exec_params));
-    if (err != catalyst_status_ok)
-    {
+    if (err != catalyst_status_ok) {
         std::cerr << "Failed to execute Catalyst: " << err << std::endl;
     }
 }

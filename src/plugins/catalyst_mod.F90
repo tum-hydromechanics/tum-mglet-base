@@ -99,7 +99,7 @@ CONTAINS
             CALL cata_conf%get_value("/script", script_char)
         ELSE
             IF (.NOT. repr_logical) THEN
-                WRITE(*,*) "Specifiy Python script for Catalyst."
+                WRITE(*,*) "Specifiy script for Catalyst is required when not creating representative dataset."
                 CALL errr(__FILE__, __LINE__)
             ELSE
                 script_char = ""

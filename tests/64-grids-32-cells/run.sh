@@ -7,7 +7,7 @@ ACTION=$1
 
 if [[ "$ACTION" == "test" ]]; then
     MGLET_BIN=$2
-    mpirun -n 2 $MGLET_BIN 2>&1 | tee mglet.OUT
+    mpirun -n 5 $MGLET_BIN 2>&1 | tee mglet.OUT
 elif [[ "$ACTION" == "clean" ]]; then
     rm -rf LOGS fields.h5 ib_stencils.h5 probes.h5 snapshots.h5 mglet-perf-report.txt *.OUT
 else
