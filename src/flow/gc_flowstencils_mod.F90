@@ -1,10 +1,9 @@
 MODULE gc_flowstencils_mod
     USE bound_flow_mod
     USE core_mod
-    USE ib_mod
-
-    USE gc_createstencils_mod, ONLY: wmcheckneighbor, choosestencil, &
-        wmmultimatrix, wmaddcoefflist, wmindexlistn
+    USE ib_mod, ONLY: gc_t, parent, ftoc, wmindexlistn, findinterface2, &
+        maccur, wmcheckneighbor, choosestencil, wmmultimatrix, wmaddcoefflist, &
+        par_ftoc_norm
 
     IMPLICIT NONE (type, external)
     PRIVATE
@@ -43,16 +42,16 @@ CONTAINS
         ! Local variables
         INTEGER(intk) :: ilevel
         REAL(realk), POINTER, CONTIGUOUS :: bp(:), bu(:), bv(:), bw(:)
-        REAL(realk), POINTER, CONTIGUOUS :: au(:), av(:), aw(:)
+        REAL(realk), POINTER, CONTIGUOUS :: areau(:), areav(:), areaw(:)
 
         CALL get_fieldptr(bp, "BP")
         CALL get_fieldptr(bu, "BU")
         CALL get_fieldptr(bv, "BV")
         CALL get_fieldptr(bw, "BW")
 
-        CALL get_fieldptr(au, "AU")
-        CALL get_fieldptr(av, "AV")
-        CALL get_fieldptr(aw, "AW")
+        CALL get_fieldptr(areau, "AREAU")
+        CALL get_fieldptr(areav, "AREAV")
+        CALL get_fieldptr(areaw, "AREAW")
 
         ! Always allocate - createstencils should be called only once.
         ALLOCATE(fxpoli(nmygrids))
@@ -87,9 +86,9 @@ CONTAINS
         ALLOCATE(woldsolvel(nmygrids))
 
         DO ilevel = minlevel, maxlevel
-            CALL createstencils_level(ilevel, bp, bu, bv, bw, au, av, aw, &
-                gc%bzelltyp, gc%icells, gc%icellspointer, gc%bodyid, &
-                gc%nvecs, gc%ucell)
+            CALL createstencils_level(ilevel, bp, bu, bv, bw, &
+                areau, areav, areaw, gc%bzelltyp, gc%icells, &
+                gc%icellspointer, gc%bodyid, gc%nvecs, gc%ucell)
         END DO
 
         CALL setsdivfield()
@@ -135,13 +134,14 @@ CONTAINS
     END SUBROUTINE finish_flowstencils
 
 
-    SUBROUTINE createstencils_level(ilevel, bp, bu, bv, bw, au, av, aw, &
-            bzelltyp, icells, icellspointer, bodyid, nvecs, ucell)
+    SUBROUTINE createstencils_level(ilevel, bp, bu, bv, bw, &
+            areau, areav, areaw, bzelltyp, icells, &
+            icellspointer, bodyid, nvecs, ucell)
 
         ! Subroutine arguments
         INTEGER(intk), INTENT(in) :: ilevel
         REAL(realk), INTENT(in) :: bp(*), bu(*), bv(*), bw(*), &
-            au(*), av(*), aw(*)
+            areau(*), areav(*), areaw(*)
         INTEGER(intk), INTENT(in) :: bzelltyp(*)
         INTEGER(intk), CONTIGUOUS, INTENT(in) :: icells(:)
         INTEGER(intk), CONTIGUOUS, INTENT(in) :: icellspointer(:)
@@ -179,8 +179,8 @@ CONTAINS
             CALL get_mgbasb(bconds, igrid)
 
             CALL fluxcorrection(igrid, kk, jj, ii, ddx, ddy, ddz, &
-                bp(ip3), bu(ip3), bv(ip3), bw(ip3), au(ip3), av(ip3), &
-                aw(ip3), bzelltyp(ip3), icells(igrid), &
+                bp(ip3), bu(ip3), bv(ip3), bw(ip3), areau(ip3), areav(ip3), &
+                areaw(ip3), bzelltyp(ip3), icells(igrid), &
                 ucell(:, ipp:ipp+ncells-1))
 
             CALL fluxstencil(igrid, kk, jj, ii, x, y, z, xstag, ystag, &
@@ -197,8 +197,8 @@ CONTAINS
 
 
     SUBROUTINE fluxcorrection(igrid, kk, jj, ii, ddx, ddy, ddz, &
-            bp, bu, bv, bw, au, av, aw, bzelltyp, icells, ucell)
-        !----------------------------------------------------------------------
+            bp, bu, bv, bw, areau, areav, areaw, bzelltyp, icells, ucell)
+        ! ---------------------------------------------------------------------
         ! SUBROUTINE FLUXCORRECTION
         !
         !    description:
@@ -229,10 +229,7 @@ CONTAINS
         !
         !       acoeffstc = Fluss durch die Flaechen komplett im Koerper
         !
-        !----------------------------------------------------------------------
-
-        USE findinterface_mod, ONLY: findinterface2
-        USE ibconst_mod, ONLY: maccur
+        ! ---------------------------------------------------------------------
 
         ! Subroutine arguments
         INTEGER(intk), INTENT(in) :: igrid
@@ -241,8 +238,8 @@ CONTAINS
         REAL(realk), INTENT(in) :: bp(kk, jj, ii)
         REAL(realk), INTENT(in) :: bu(kk, jj, ii), bv(kk, jj, ii), &
             bw(kk, jj, ii)
-        REAL(realk), INTENT(in) :: au(kk, jj, ii), av(kk, jj, ii), &
-            aw(kk, jj, ii)
+        REAL(realk), INTENT(in) :: areau(kk, jj, ii), areav(kk, jj, ii), &
+            areaw(kk, jj, ii)
         INTEGER(intk), INTENT(in) :: bzelltyp(kk, jj, ii)
         INTEGER(intk), INTENT(in) :: icells
         REAL(realk), CONTIGUOUS, INTENT(in) :: ucell(:, :)
@@ -304,7 +301,7 @@ CONTAINS
                     dz = ddz(k)
 
                     ! found = 1 wenn Geschw. geblockt, aber Nachbargeschw. offen
-                    CALL findinterface2(k, j, i-1, kk, jj, ii , bu, found_dum)
+                    CALL findinterface2(k, j, i-1, kk, jj, ii, bu, found_dum)
                     cx2 = REAL(found_dum)
 
                     CALL findinterface2(k, j, i, kk, jj, ii, bu, found_dum)
@@ -487,24 +484,21 @@ CONTAINS
                         END IF
                     END IF
 
-                    sarea = ax1*au(k, j, i)*ddy(j)*ddz(k) &
-                        + ax2*au(k, j  , i-1)*ddy(j)*ddz(k) &
-                        + ay1*av(k, j, i)*ddx(i)*ddz(k) &
-                        + ay2*av(k, j-1, i)*ddx(i)*ddz(k) &
-                        + az1*aw(k, j, i)*ddx(i)*ddy(j) &
-                        + az2*aw(k-1, j, i)*ddx(i)*ddy(j)
+                    sarea = ax1*areau(k, j, i) + ax2*areau(k, j, i-1) &
+                          + ay1*areav(k, j, i) + ay2*areav(k, j-1, i) &
+                          + az1*areaw(k, j, i) + az2*areaw(k-1, j, i)
 
                     refarea = ((dx + dy + dz)/3.0)**2
                     ! Nur wenn seara > 0 werden die ax... mit den
                     ! tatsaechlichen Flächen belegt ansonsten sind sie
                     ! weiterhin 0 oder 1
                     IF (sarea > refarea*maccur) THEN
-                        ax1 = ax1*au(k, j, i)*ddy(j)*ddz(k)
-                        ax2 = ax2*au(k, j, i-1)*ddy(j)*ddz(k)
-                        ay1 = ay1*av(k, j, i)*ddx(i)*ddz(k)
-                        ay2 = ay2*av(k, j-1, i)*ddx(i)*ddz(k)
-                        az1 = az1*aw(k, j, i)*ddx(i)*ddy(j)
-                        az2 = az2*aw(k-1, j, i)*ddx(i)*ddy(j)
+                        ax1 = ax1*areau(k, j, i)
+                        ax2 = ax2*areau(k, j, i-1)
+                        ay1 = ay1*areav(k, j, i)
+                        ay2 = ay2*areav(k, j-1, i)
+                        az1 = az1*areaw(k, j, i)
+                        az2 = az2*areaw(k-1, j, i)
                     END IF
 
                     IF (pntxpoli + 2 > xpolisize) THEN
@@ -562,8 +556,6 @@ CONTAINS
     SUBROUTINE fluxstencil(igrid, kk, jj, ii, x, y, z, xstag, ystag, &
             zstag, bp, bzelltyp, bconds, icells, nvecs, ucell, &
             compon)
-
-        USE findinterface_mod, ONLY: findinterface2
 
         ! Subroutine arguments
         INTEGER(intk), INTENT(IN) :: igrid
@@ -1403,7 +1395,7 @@ CONTAINS
         TYPE(field_t), INTENT(inout) :: u, v, w
 
         ! Local variables
-        INTEGER(intk) :: ilevel, irepeat
+        INTEGER(intk) :: ilevel
 
         CALL start_timer(340)
 
@@ -1423,24 +1415,11 @@ CONTAINS
             CALL connect(ilevel, 1, v1=u, v2=v, v3=w, corners=.TRUE.)
         END DO
 
-        DO ilevel = maxlevel, minlevel, -1
-            DO irepeat = 1, 2
-                CALL ftoc(ilevel, u%arr, u%arr, 'U')
-                CALL ftoc(ilevel, v%arr, v%arr, 'V')
-                CALL ftoc(ilevel, w%arr, w%arr, 'W')
-
-                IF (ilevel > minlevel) THEN
-                    IF (irepeat == 1) THEN
-                        CALL connect(ilevel-1, 1, v1=u, v2=v, &
-                            v3=w, normal=.TRUE., forward=-1, ityp='Y')
-                    ELSE IF (irepeat == 2) THEN
-                        CALL connect(ilevel-1, 1, v1=u, v2=v, &
-                            v3=w, corners=.TRUE.)
-                    ELSE
-                        CALL errr(__FILE__, __LINE__)
-                    END IF
-                END IF
-            END DO
+        DO ilevel = maxlevel, minlevel+1, -1
+            CALL ftoc(ilevel, u%arr, u%arr, 'U')
+            CALL ftoc(ilevel, v%arr, v%arr, 'V')
+            CALL ftoc(ilevel, w%arr, w%arr, 'W')
+            CALL par_ftoc_norm(ilevel, u, v, w)
         END DO
 
         DO ilevel = minlevel, maxlevel
@@ -1758,7 +1737,7 @@ CONTAINS
             pntxpoli = 1
             DO cellcount = 1, nblgcells
                 ! not needing this one
-                !intcell = xpoli(pntxpoli)
+                ! intcell = xpoli(pntxpoli)
                 pntxpoli = pntxpoli + 1
 
                 stencils = xpoli(pntxpoli)
@@ -1799,7 +1778,7 @@ CONTAINS
             END DO
 
             ! Write cells
-            WRITE(unit,'("CELLS ", I0, 1X, I0)') nblgcells + nstencils*2, &
+            WRITE(unit, '("CELLS ", I0, 1X, I0)') nblgcells + nstencils*2, &
                 (nblgcells + nstencils)*2 + nstencils*3
 
             ! Points
@@ -1812,7 +1791,7 @@ CONTAINS
             pntxpoli = 1
             DO cellcount = 1, nblgcells
                 ! not needing this one
-                !intcell = xpoli(pntxpoli)
+                ! intcell = xpoli(pntxpoli)
                 pntxpoli = pntxpoli + 1
 
                 stencils = xpoli(pntxpoli)
@@ -1835,14 +1814,14 @@ CONTAINS
             END DO
 
             ! Write cell data stencils
-            WRITE(unit,'("CELL_DATA ", I0)') nblgcells+nstencils*2
-            WRITE(unit,'("SCALARS stencils int 1")')
-            WRITE(unit,'("LOOKUP_TABLE default")')
+            WRITE(unit, '("CELL_DATA ", I0)') nblgcells+nstencils*2
+            WRITE(unit, '("SCALARS stencils int 1")')
+            WRITE(unit, '("LOOKUP_TABLE default")')
 
             pntxpoli = 1
             DO cellcount = 1, nblgcells
                 ! not needing this one
-                !intcell = xpoli(pntxpoli)
+                ! intcell = xpoli(pntxpoli)
                 pntxpoli = pntxpoli + 1
 
                 stencils = xpoli(pntxpoli)
@@ -1856,9 +1835,9 @@ CONTAINS
             END DO
 
             pntxpoli = 1
-            DO cellcount = 1,nblgcells
+            DO cellcount = 1, nblgcells
                 ! not needing this one
-                !intcell = xpoli(pntxpoli)
+                ! intcell = xpoli(pntxpoli)
                 pntxpoli = pntxpoli + 1
 
                 stencils = xpoli(pntxpoli)
@@ -1871,14 +1850,14 @@ CONTAINS
             END DO
 
             ! Write cell data coefficient
-            WRITE(unit,'("SCALARS coefficient float 1")')
-            WRITE(unit,'("LOOKUP_TABLE default")')
+            WRITE(unit, '("SCALARS coefficient float 1")')
+            WRITE(unit, '("LOOKUP_TABLE default")')
 
             pntxpoli = 1
             pntxpolr = 1
             DO cellcount = 1, nblgcells
                 ! not needing this one
-                !intcell = xpoli(pntxpoli)
+                ! intcell = xpoli(pntxpoli)
                 pntxpoli = pntxpoli + 1
 
                 stencils = xpoli(pntxpoli)
@@ -1888,16 +1867,16 @@ CONTAINS
                 WRITE(unit, '(G0)') xpolr(pntxpolr+stencils)
 
                 DO n = 1, stencils
-                    !stcell = xpoli(pntxpoli)
+                    ! stcell = xpoli(pntxpoli)
                     pntxpoli = pntxpoli + 1
 
-                    !coeff = xpolr(pntxpolr)
+                    ! coeff = xpolr(pntxpolr)
                     ! stencil cell
                     WRITE(unit, '(G0)') xpolr(pntxpolr)
                     pntxpolr = pntxpolr + 1
                 END DO
 
-                !coeff = xpolr(pntxpolr)
+                ! coeff = xpolr(pntxpolr)
                 pntxpolr = pntxpolr + 1
             END DO
 
@@ -1905,23 +1884,23 @@ CONTAINS
             pntxpolr = 1
             DO cellcount = 1, nblgcells
                 ! not needing this one
-                !intcell = xpoli(pntxpoli)
+                ! intcell = xpoli(pntxpoli)
                 pntxpoli = pntxpoli + 1
 
                 stencils = xpoli(pntxpoli)
                 pntxpoli = pntxpoli + 1
 
                 DO n = 1, stencils
-                    !stcell = xpoli(pntxpoli)
+                    ! stcell = xpoli(pntxpoli)
                     pntxpoli = pntxpoli + 1
 
-                    !coeff = xpolr(pntxpolr)
+                    ! coeff = xpolr(pntxpolr)
                     ! >>> stencil cell
                     WRITE(unit, '(G0)') xpolr(pntxpolr)
                     pntxpolr = pntxpolr + 1
                 END DO
 
-                !coeff = xpolr(pntxpolr)
+                ! coeff = xpolr(pntxpolr)
                 pntxpolr = pntxpolr + 1
             END DO
 
@@ -1940,7 +1919,7 @@ CONTAINS
             END DO
 
             ! Write cells
-            WRITE(unit,'("CELLS ", I0, 1X, I0)') nblgcells, nblgcells*2
+            WRITE(unit, '("CELLS ", I0, 1X, I0)') nblgcells, nblgcells*2
 
             ! Points
             DO n = 1, nblgcells
@@ -1952,25 +1931,25 @@ CONTAINS
                 WRITE(unit, '("1")')
             END DO
 
-            WRITE(unit,'("CELL_DATA ", I0)') nblgcells
-            WRITE(unit,'(A)') 'SCALARS fluxsource float 1'
-            WRITE(unit,'(A)') 'LOOKUP_TABLE default'
+            WRITE(unit, '("CELL_DATA ", I0)') nblgcells
+            WRITE(unit, '(A)') 'SCALARS fluxsource float 1'
+            WRITE(unit, '(A)') 'LOOKUP_TABLE default'
             pntxpolr = 1
             DO n = 1, nblgcells
-                !ax1 = xpolr(pntxpolr)
+                ! ax1 = xpolr(pntxpolr)
                 pntxpolr = pntxpolr + 1
-                !ax2 = xpolr(pntxpolr)
+                ! ax2 = xpolr(pntxpolr)
                 pntxpolr = pntxpolr + 1
-                !ay1 = xpolr(pntxpolr)
+                ! ay1 = xpolr(pntxpolr)
                 pntxpolr = pntxpolr + 1
-                !ay2 = xpolr(pntxpolr)
+                ! ay2 = xpolr(pntxpolr)
                 pntxpolr = pntxpolr + 1
-                !az1 = xpolr(pntxpolr)
+                ! az1 = xpolr(pntxpolr)
                 pntxpolr = pntxpolr + 1
-                !az2 = xpolr(pntxpolr)
+                ! az2 = xpolr(pntxpolr)
                 pntxpolr = pntxpolr + 1
 
-                !acoeffstc = xpolr(pntxpolr)
+                ! acoeffstc = xpolr(pntxpolr)
                 WRITE(unit, '(G0)') xpolr(pntxpolr)
                 pntxpolr = pntxpolr + 1
             END DO

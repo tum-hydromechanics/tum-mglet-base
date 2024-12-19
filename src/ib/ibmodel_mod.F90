@@ -1,20 +1,8 @@
 MODULE ibmodel_mod
     USE core_mod, ONLY: realk, intk, field_t
-    USE blockbp_mod, ONLY: blockbp_t
 
     IMPLICIT NONE(type, external)
     PRIVATE
-
-    TYPE, ABSTRACT :: ibmodel_t
-        CHARACTER(len=16) :: type
-        CLASS(restrict_t), ALLOCATABLE :: restrict_op
-        CLASS(blockbp_t), ALLOCATABLE :: blockbp_op
-    CONTAINS
-        PROCEDURE(blockbp_i), DEFERRED :: blockbp
-        PROCEDURE(read_stencils_i), DEFERRED :: read_stencils
-        PROCEDURE(giteig_i), NOPASS, DEFERRED :: giteig
-        PROCEDURE(divcal_i), DEFERRED :: divcal
-    END TYPE ibmodel_t
 
     TYPE, ABSTRACT :: restrict_t
     CONTAINS
@@ -22,6 +10,16 @@ MODULE ibmodel_mod
         PROCEDURE(start_and_stop_i), NOPASS, DEFERRED :: start_and_stop
         PROCEDURE(restrict_i), DEFERRED :: restrict
     END TYPE restrict_t
+
+    TYPE, ABSTRACT :: ibmodel_t
+        CHARACTER(len=16) :: type
+        CLASS(restrict_t), ALLOCATABLE :: restrict_op
+    CONTAINS
+        PROCEDURE(blockbp_i), DEFERRED :: blockbp
+        PROCEDURE(read_stencils_i), DEFERRED :: read_stencils
+        PROCEDURE(giteig_i), NOPASS, DEFERRED :: giteig
+        PROCEDURE(divcal_i), DEFERRED :: divcal
+    END TYPE ibmodel_t
 
     ABSTRACT INTERFACE
         SUBROUTINE start_and_stop_i(ista, isto, jsta, jsto, &

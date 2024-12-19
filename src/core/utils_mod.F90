@@ -2,7 +2,6 @@ MODULE utils_mod
     USE err_mod, ONLY: errr
     USE precision_mod, ONLY: intk, realk
     USE qsort_mod, ONLY: sortix
-    USE comms_mod, ONLY: myid
 
     IMPLICIT NONE(type, external)
     PRIVATE
@@ -127,7 +126,7 @@ CONTAINS
                     END IF
                 ELSE
                     EXIT
-                ENDIF
+                END IF
             END DO
 
             ! Here always prefer the biggest if they are equal
@@ -185,7 +184,7 @@ CONTAINS
         CHARACTER(C_CHAR), DIMENSION(LEN(path)+1) :: c_path
 
         ! Add trailing C_NULL_CHAR to key
-        c_path = TRANSFER(path, c_path)
+        c_path(1:LEN(path)) = TRANSFER(path, c_path)
         c_path(LEN_TRIM(path)+1) = C_NULL_CHAR
 
         CALL create_directory_f(c_path)
@@ -218,7 +217,7 @@ CONTAINS
         ! Print sensible message if file does not exist
         INQUIRE(file=filename, EXIST=fileexist)
         IF (.NOT. fileexist) THEN
-            WRITE(*,*) "File does not exist: ", filename
+            WRITE(*, *) "File does not exist: ", filename
             CALL errr(__FILE__, __LINE__)
         END IF
 
@@ -264,7 +263,7 @@ CONTAINS
         ! Rewind to read from start, allocate array and read into it
         REWIND(unit)
         ALLOCATE(array(ncol, nrow))
-        READ(unit, *, iostat=ierr) ((array(i, j), i=1,ncol), j=1,nrow)
+        READ(unit, *, iostat=ierr) ((array(i, j), i=1, ncol), j=1, nrow)
         IF (ierr /= 0) CALL errr(__FILE__, __LINE__)
 
         CLOSE(unit)

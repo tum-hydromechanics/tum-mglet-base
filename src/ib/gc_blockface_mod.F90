@@ -1,50 +1,39 @@
 MODULE gc_blockface_mod
-    USE core_mod, ONLY: intk, realk, minlevel, field_t, &
-        maxlevel, nmygridslvl, mygridslvl, get_mgdims, get_ip3
+    USE core_mod, ONLY: intk, realk, field_t, nmygrids, mygrids, get_mgdims
     IMPLICIT NONE(type, external)
     PRIVATE
 
     PUBLIC :: blockface
 CONTAINS
-    SUBROUTINE blockface(knoten, bu, bv, bw)
+    SUBROUTINE blockface(knoten_f, bu_f, bv_f, bw_f)
         ! Subroutine arguments
-        TYPE(field_t), INTENT(inout) :: knoten
-        TYPE(field_t), INTENT(inout) :: bu, bv, bw
+        TYPE(field_t), INTENT(in) :: knoten_f
+        TYPE(field_t), INTENT(inout) :: bu_f, bv_f, bw_f
 
         ! Local variables
-        INTEGER(intk) :: ilevel
+        INTEGER(intk) :: i, igrid, kk, jj, ii
+        REAL(realk), POINTER, CONTIGUOUS :: knoten(:, :, :), bu(:, :, :), &
+            bv(:, :, :), bw(:, :, :)
 
-        DO ilevel = minlevel, maxlevel
-            CALL blockface_level(ilevel, knoten, bu, bv, bw)
+        DO i = 1, nmygrids
+            igrid = mygrids(i)
+            CALL get_mgdims(kk, jj, ii, igrid)
+
+            CALL knoten_f%get_ptr(knoten, igrid)
+            CALL bu_f%get_ptr(bu, igrid)
+            CALL bv_f%get_ptr(bv, igrid)
+            CALL bw_f%get_ptr(bw, igrid)
+
+            CALL blockface_grid(kk, jj, ii, knoten, bu, bv, bw)
         END DO
     END SUBROUTINE blockface
 
 
-    SUBROUTINE blockface_level(ilevel, knoten, bu, bv, bw)
-        ! Subroutine arguments
-        INTEGER(intk), INTENT(in) :: ilevel
-        TYPE(field_t), INTENT(inout) :: knoten
-        TYPE(field_t), INTENT(inout) :: bu, bv, bw
-
-        ! Local variables
-        INTEGER(intk) :: i, igrid, kk, jj, ii, ip3
-
-        DO i = 1, nmygridslvl(ilevel)
-            igrid = mygridslvl(i, ilevel)
-
-            CALL get_mgdims(kk, jj, ii, igrid)
-            CALL get_ip3(ip3, igrid)
-            CALL blockface_grid(kk, jj, ii, knoten%arr(ip3), &
-                bu%arr(ip3), bv%arr(ip3), bw%arr(ip3))
-        END DO
-    END SUBROUTINE blockface_level
-
-
     SUBROUTINE blockface_grid(kk, jj, ii, knoten, bu, bv, bw)
         ! Subroutine arguments
-        INTEGER(intk), INTENT(IN) :: kk, jj, ii
-        REAL(realk), INTENT(inout) :: knoten(kk, jj, ii)
-        REAL(realk), INTENT(OUT) :: bu(kk, jj, ii), bv(kk, jj, ii), &
+        INTEGER(intk), INTENT(in) :: kk, jj, ii
+        REAL(realk), INTENT(in) :: knoten(kk, jj, ii)
+        REAL(realk), INTENT(out) :: bu(kk, jj, ii), bv(kk, jj, ii), &
             bw(kk, jj, ii)
 
         ! Local variables

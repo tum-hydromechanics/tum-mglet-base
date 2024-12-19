@@ -223,7 +223,6 @@ CONTAINS
 
         DO i = 3, ii-2
             DO j = 3, jj-2
-                !$omp simd private(dxf, dyf, dzf)
                 DO k = 3, kk-2
                     dxf = 0.25*dx(i-1)*rddx(i)
                     ! dU/dX
@@ -436,7 +435,7 @@ CONTAINS
         ! |Sd| = SQRT(Sd_ij*Sd_ij)
         ! We need to take the off-diagonal terms twice due to symmetry,
         ! i.e. Sd12**2 + Sd21**2 = 2*Sd12**2
-        Sd_abs = SQRT(Sd00**2 + 2*Sd01**2 + 2*Sd02**2 \
+        Sd_abs = SQRT(Sd00**2 + 2*Sd01**2 + 2*Sd02**2 &
             + Sd11**2 + 2*Sd12**2 + Sd22**2)
 
 #if 0

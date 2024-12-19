@@ -33,20 +33,17 @@ MODULE gc_mod
         FINAL :: destructor
     END TYPE gc_t
 
-    INTERFACE gc_t
-        MODULE PROCEDURE :: constructor
-    END INTERFACE gc_t
-
     PUBLIC :: gc_t, constructor
 
 CONTAINS
-    FUNCTION constructor() RESULT(ib)
+    SUBROUTINE constructor(ib)
         ! Subroutine arguments
-        CLASS(ibmodel_t), ALLOCATABLE :: ib
+        CLASS(ibmodel_t), ALLOCATABLE, INTENT(out) :: ib
 
         ! Local variables
         REAL(realk), POINTER, CONTIGUOUS :: bp(:), bu(:), bv(:), bw(:)
-        REAL(realk), POINTER, CONTIGUOUS :: au(:), av(:), aw(:)
+        REAL(realk), POINTER, CONTIGUOUS :: areau(:), areav(:), areaw(:)
+        REAL(realk), POINTER, CONTIGUOUS :: volp(:)
 
         IF (myid == 0) THEN
             WRITE(*, '(A)') "Using 'ghostcell' immersed boundary method"
@@ -55,7 +52,6 @@ CONTAINS
 
         ALLOCATE(gc_t :: ib)
         ALLOCATE(gc_restrict_t :: ib%restrict_op)
-        ALLOCATE(gc_blockbp_t :: ib%blockbp_op)
 
         ib%type = "GHOSTCELL"
 
@@ -64,9 +60,10 @@ CONTAINS
         CALL set_field("BV")
         CALL set_field("BW")
 
-        CALL set_field("AU")
-        CALL set_field("AV")
-        CALL set_field("AW")
+        CALL set_field("AREAU", istag=1, units=[0, 2, 0, 0, 0, 0, 0])
+        CALL set_field("AREAV", jstag=1, units=[0, 2, 0, 0, 0, 0, 0])
+        CALL set_field("AREAW", kstag=1, units=[0, 2, 0, 0, 0, 0, 0])
+        CALL set_field("VOLP", units=[0, 3, 0, 0, 0, 0, 0], dwrite=.TRUE.)
 
         CALL set_field("SDIV")
 
@@ -75,18 +72,21 @@ CONTAINS
         CALL get_fieldptr(bv, "BV")
         CALL get_fieldptr(bw, "BW")
 
-        CALL get_fieldptr(au, "AU")
-        CALL get_fieldptr(av, "AV")
-        CALL get_fieldptr(aw, "AW")
+        CALL get_fieldptr(areau, "AREAU")
+        CALL get_fieldptr(areav, "AREAV")
+        CALL get_fieldptr(areaw, "AREAW")
+        CALL get_fieldptr(volp, "VOLP")
 
         bp = 1.0
         bu = 1.0
         bv = 1.0
         bw = 1.0
 
-        au = 1.0
-        av = 1.0
-        aw = 1.0
+        ! Negative values to check that values are overwritten later
+        areau = -1.0
+        areav = -1.0
+        areaw = -1.0
+        volp = -1.0
 
         SELECT TYPE(ib)
         TYPE IS (gc_t)
@@ -100,11 +100,12 @@ CONTAINS
         CLASS DEFAULT
             CALL errr(__FILE__, __LINE__)
         END SELECT
-    END FUNCTION constructor
+    END SUBROUTINE constructor
 
 
     SUBROUTINE destructor(this)
         TYPE(gc_t), INTENT(inout) :: this
+
         IF (ALLOCATED(this%restrict_op)) THEN
             DEALLOCATE(this%restrict_op)
         END IF
@@ -116,13 +117,11 @@ CONTAINS
         CLASS(gc_t), INTENT(inout) :: this
         LOGICAL, INTENT(out) :: stop_now
 
-        SELECT TYPE(blockbp_op => this%blockbp_op)
-        TYPE IS (gc_blockbp_t)
-            CALL blockbp_op%blockbp(this%icells, this%icellspointer, &
-                this%stencils, stop_now)
-        CLASS DEFAULT
-            CALL errr(__FILE__, __LINE__)
-        END SELECT
+        ! Local variables
+        TYPE(gc_blockbp_t) :: blockbp_op
+
+        CALL blockbp_op%blockbp(this%icells, this%icellspointer, &
+            this%stencils, stop_now)
     END SUBROUTINE blockbp
 
 
@@ -132,7 +131,9 @@ CONTAINS
 
         ! Local variables
         TYPE(field_t), POINTER :: bp, bu, bv, bw
-        TYPE(field_t), POINTER :: au, av, aw
+        TYPE(field_t), POINTER :: areau, areav, areaw
+        TYPE(field_t), POINTER :: volp
+        TYPE(gc_blockbp_t) :: blockbp_op
 
         CALL this%stencils%read()
 
@@ -144,13 +145,13 @@ CONTAINS
         CALL get_field(bw, "BW")
         CALL bubvbw(bp, bu, bv, bw)
 
-        CALL get_field(au, "AU")
-        CALL get_field(av, "AV")
-        CALL get_field(aw, "AW")
-        CALL this%stencils%get_auavaw(bu, bv, bw, au, av, aw)
+        CALL get_field(areau, "AREAU")
+        CALL get_field(areav, "AREAV")
+        CALL get_field(areaw, "AREAW")
+        CALL this%stencils%get_auavaw(bu, bv, bw, areau, areav, areaw)
 
         CALL this%stencils%get_icells(this%icells)
-        CALL this%blockbp_op%set_icellspointer(this%icells, this%icellspointer)
+        CALL blockbp_op%set_icellspointer(this%icells, this%icellspointer)
 
         this%ncells = SUM(this%icells)
         ALLOCATE(this%xpsw(3, this%ncells))
@@ -161,8 +162,12 @@ CONTAINS
         CALL this%stencils%get_intersected(this%icells, this%icellspointer, &
             this%bodyid, this%xpsw, this%ucell, this%bzelltyp)
 
+        CALL get_field(volp, "VOLP")
+        CALL this%stencils%calc_volp(this%bzelltyp, areau, areav, areaw, &
+            this%icells, this%icellspointer, this%xpsw, volp)
+
         ALLOCATE(this%nvecs(4, this%ncells))
-        CALL this%calc_nvecs(this%bzelltyp, au, av, aw, this%icells, &
+        CALL this%calc_nvecs(this%bzelltyp, areau, areav, areaw, this%icells, &
             this%icellspointer, this%xpsw, this%nvecs, this%arealist)
 
         ALLOCATE(this%stlnames, SOURCE=this%stencils%stlnames)
@@ -171,14 +176,14 @@ CONTAINS
     END SUBROUTINE read_stencils
 
 
-    SUBROUTINE calc_nvecs(this, bzelltyp, au, av, aw, icells, icellspointer, &
-            xpsw, nvecs, arealist)
+    SUBROUTINE calc_nvecs(this, bzelltyp, areau, areav, areaw, &
+            icells, icellspointer, xpsw, nvecs, arealist)
         ! Subroutine arguments
         CLASS(gc_t), INTENT(inout) :: this
         INTEGER(intk), INTENT(in) :: bzelltyp(*)
-        TYPE(field_t), INTENT(in) :: au
-        TYPE(field_t), INTENT(in) :: av
-        TYPE(field_t), INTENT(in) :: aw
+        TYPE(field_t), INTENT(in) :: areau
+        TYPE(field_t), INTENT(in) :: areav
+        TYPE(field_t), INTENT(in) :: areaw
         INTEGER(intk), INTENT(in) :: icells(:)
         INTEGER(intk), INTENT(in) :: icellspointer(:)
         REAL(realk), INTENT(in) :: xpsw(:, :)
@@ -201,7 +206,7 @@ CONTAINS
             CALL get_fieldptr(ddz, "DDZ", igrid)
 
             CALL this%calc_nvecs_grid(kk, jj, ii, ddx, ddy, ddz, &
-                bzelltyp(ip3), au%arr(ip3), av%arr(ip3), aw%arr(ip3), &
+                bzelltyp(ip3), areau%arr(ip3), areav%arr(ip3), areaw%arr(ip3), &
                 xpsw(:, ipp:ipp+ncells-1), nvecs(:, ipp:ipp+ncells-1), &
                 arealist(ipp:ipp+ncells-1))
         END DO
@@ -209,14 +214,14 @@ CONTAINS
 
 
     SUBROUTINE calc_nvecs_grid(kk, jj, ii, ddx, ddy, ddz, bzelltyp, &
-            au, av, aw, xpsw, nvecs, arealist)
+            areau, areav, areaw, xpsw, nvecs, arealist)
         ! Subroutine arguments
         INTEGER(intk), INTENT(in) :: kk, jj, ii
         REAL(realk), INTENT(in) :: ddx(ii), ddy(jj), ddz(kk)
         INTEGER(intk), INTENT(in) :: bzelltyp(kk, jj, ii)
-        REAL(realk), INTENT(in) :: au(kk, jj, ii)
-        REAL(realk), INTENT(in) :: av(kk, jj, ii)
-        REAL(realk), INTENT(in) :: aw(kk, jj, ii)
+        REAL(realk), INTENT(in) :: areau(kk, jj, ii)
+        REAL(realk), INTENT(in) :: areav(kk, jj, ii)
+        REAL(realk), INTENT(in) :: areaw(kk, jj, ii)
         REAL(realk), INTENT(in) :: xpsw(:, :)
         REAL(realk), INTENT(out) :: nvecs(:, :)
         REAL(realk), INTENT(out) :: arealist(:)
@@ -233,15 +238,14 @@ CONTAINS
                     IF (bzelltyp(k, j, i) >= 0) CYCLE
                     icell = -bzelltyp(k, j, i)
 
-                    area = SQRT( &
-                        (ddz(k)*ddy(j)*(au(k, j, i)-au(k, j, i-1)))**2 &
-                        + (ddx(i)*ddz(k)*(av(k, j, i)-av(k, j-1, i)))**2 &
-                        + (ddx(i)*ddy(j)*(aw(k, j, i)-aw(k-1, j, i)))**2)
+                    area = SQRT((areau(k, j, i)-areau(k, j, i-1))**2 &
+                              + (areav(k, j, i)-areav(k, j-1, i))**2 &
+                              + (areaw(k, j, i)-areaw(k-1, j, i))**2)
 
                     ! From calcauavaw
                     ! Referenzflaeche: Mittel der kartesischen
                     ! Flaechen aus allen drei Richtungen.
-                    cartarea = (1.0/3.0)*(ddx(i)*ddy(j) + &
+                    cartarea = (1.0/3.0) * (ddx(i)*ddy(j) + &
                         ddx(i)*ddz(k) + ddz(k)*ddy(j))
 
                     ! Kann vorkommen, dass Flaeche zu klein,
@@ -251,9 +255,9 @@ CONTAINS
                         ny = 0.0
                         nz = 0.0
                     ELSE
-                        nx = (au(k, j, i)-au(k, j, i-1))*ddz(k)*ddy(j)/area
-                        ny = (av(k, j, i)-av(k, j-1, i))*ddx(i)*ddz(k)/area
-                        nz = (aw(k, j, i)-aw(k-1, j, i))*ddx(i)*ddy(j)/area
+                        nx = (areau(k, j, i)-areau(k, j, i-1)) / area
+                        ny = (areav(k, j, i)-areav(k, j-1, i)) / area
+                        nz = (areaw(k, j, i)-areaw(k-1, j, i)) / area
                     END IF
 
                     arealist(icell) = area
@@ -332,8 +336,8 @@ CONTAINS
 
                 IF (use_sdiv) CALL sdiv_f%get_ptr(sdiv, igrid)
 
-                CALL this%divcal_grid(kk, jj, ii, fak, div_p, u_p, &
-                    v_p, w_p, rddx, rddy, rddz, bp, sdiv)
+                CALL this%divcal_grid(kk, jj, ii, fak, div_p, &
+                    u_p, v_p, w_p, rddx, rddy, rddz, bp, sdiv)
             END DO
         END DO
 

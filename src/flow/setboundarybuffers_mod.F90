@@ -1,5 +1,6 @@
 MODULE setboundarybuffers_mod
     USE core_mod
+    USE ib_mod, ONLY: ib
     USE flowcore_mod
 
     IMPLICIT NONE(type, external)
@@ -33,8 +34,21 @@ CONTAINS
         REAL(realk), POINTER, CONTIGUOUS :: dx(:), dy(:), dz(:)
         REAL(realk), POINTER, CONTIGUOUS :: ddy(:), ddz(:)
         REAL(realk), POINTER, CONTIGUOUS :: ubuf(:, :, :), vbuf(:, :, :), &
-            wbuf(:, :, :)
+            wbuf(:, :, :), bubuf(:, :, :)
+#ifdef _CRAYFTN
+        ! Cray ftn will pass the lower-bound of allocatable and pointers
+        ! all the way into a the dim->lower_bound CFI_cdesc_t structure.
+        ! For non-allocatable the lower bound is always 0, for pointer
+        ! and allocatable the lower_bound is 1. Ref. paragrah 18.5.3.3 of
+        ! the Fortran 2018 standard. I do not think tht Cray is
+        ! standard-conforming here, since the interface to the C-function
+        ! does not have the ALLOCATABLE attribute, so this is considered
+        ! a workaround for Cray.
+        REAL(realk), ALLOCATABLE :: xbuf(:), dxbuf(:)
+#else
         REAL(realk) :: xbuf(2), dxbuf(2)
+#endif
+        TYPE(field_t), POINTER :: bu
 
         ! Only works on FIX and OP1 boundaries, should do nothing otherwise
         ! For OP1 the velocity set is the velocity that is prescribed when
@@ -69,6 +83,11 @@ CONTAINS
             CALL get_fieldptr(ddy, "DDY", igrid)
             CALL get_fieldptr(ddz, "DDZ", igrid)
 
+#ifdef _CRAYFTN
+            ALLOCATE(xbuf(2))
+            ALLOCATE(dxbuf(2))
+#endif
+
             SELECT CASE (iface)
             CASE (1)
                 ! Front
@@ -93,6 +112,15 @@ CONTAINS
             vbuf = uinf(2)
             wbuf = uinf(3)
         END IF
+
+        ! Without IB or if the boundary condition is not FIX, we are done
+        IF (ib%type == "NONE" .OR. ctyp /= "FIX") RETURN
+
+        ! This multiplies with the open fraction of a cell in the FIX boundary
+        ! condition. This is done to ensure that the inflow is divergence free
+        CALL get_field(bu, "BU")
+        CALL bu%buffers%get_buffer(bubuf, igrid, iface)
+        ubuf = ubuf*bubuf
     END SUBROUTINE bfront
 
 
@@ -109,8 +137,14 @@ CONTAINS
         REAL(realk), POINTER, CONTIGUOUS :: dx(:), dy(:), dz(:)
         REAL(realk), POINTER, CONTIGUOUS :: ddx(:), ddz(:)
         REAL(realk), POINTER, CONTIGUOUS :: ubuf(:, :, :), vbuf(:, :, :), &
-            wbuf(:, :, :)
+            wbuf(:, :, :), bvbuf(:, :, :)
+#ifdef _CRAYFTN
+        ! See comment in bfront routine in this file
+        REAL(realk), ALLOCATABLE :: ybuf(:), dybuf(:)
+#else
         REAL(realk) :: ybuf(2), dybuf(2)
+#endif
+        TYPE(field_t), POINTER :: bv
 
         ! Only works on FIX and OP1 boundaries, should do nothing otherwise
         ! For OP1 the velocity set is the velocity that is prescribed when
@@ -145,6 +179,11 @@ CONTAINS
             CALL get_fieldptr(ddx, "DDX", igrid)
             CALL get_fieldptr(ddz, "DDZ", igrid)
 
+#ifdef _CRAYFTN
+            ALLOCATE(ybuf(2))
+            ALLOCATE(dybuf(2))
+#endif
+
             SELECT CASE (iface)
             CASE (3)
                 ! Right
@@ -169,6 +208,15 @@ CONTAINS
             vbuf = uinf(2)
             wbuf = uinf(3)
         END IF
+
+        ! Without IB or if the boundary condition is not FIX, we are done
+        IF (ib%type == "NONE" .OR. ctyp /= "FIX") RETURN
+
+        ! This multiplies with the open fraction of a cell in the FIX boundary
+        ! condition. This is done to ensure that the inflow is divergence free
+        CALL get_field(bv, "BV")
+        CALL bv%buffers%get_buffer(bvbuf, igrid, iface)
+        vbuf = vbuf*bvbuf
     END SUBROUTINE bright
 
 
@@ -185,8 +233,14 @@ CONTAINS
         REAL(realk), POINTER, CONTIGUOUS :: dx(:), dy(:), dz(:)
         REAL(realk), POINTER, CONTIGUOUS :: ddx(:), ddy(:)
         REAL(realk), POINTER, CONTIGUOUS :: ubuf(:, :, :), vbuf(:, :, :), &
-            wbuf(:, :, :)
+            wbuf(:, :, :), bwbuf(:, :, :)
+#ifdef _CRAYFTN
+        ! See comment in bfront routine in this file
+        REAL(realk), ALLOCATABLE :: zbuf(:), dzbuf(:)
+#else
         REAL(realk) :: zbuf(2), dzbuf(2)
+#endif
+        TYPE(field_t), POINTER :: bw
 
         ! Only works on FIX and OP1 boundaries, should do nothing otherwise
         ! For OP1 the velocity set is the velocity that is prescribed when
@@ -221,6 +275,11 @@ CONTAINS
             CALL get_fieldptr(ddx, "DDX", igrid)
             CALL get_fieldptr(ddy, "DDY", igrid)
 
+#ifdef _CRAYFTN
+            ALLOCATE(zbuf(2))
+            ALLOCATE(dzbuf(2))
+#endif
+
             SELECT CASE (iface)
             CASE (5)
                 ! Bottom
@@ -245,5 +304,14 @@ CONTAINS
             vbuf = uinf(2)
             wbuf = uinf(3)
         END IF
+
+        ! Without IB or if the boundary condition is not FIX, we are done
+        IF (ib%type == "NONE" .OR. ctyp /= "FIX") RETURN
+
+        ! This multiplies with the open fraction of a cell in the FIX boundary
+        ! condition. This is done to ensure that the inflow is divergence free
+        CALL get_field(bw, "BW")
+        CALL bw%buffers%get_buffer(bwbuf, igrid, iface)
+        wbuf = wbuf*bwbuf
     END SUBROUTINE bbottom
 END MODULE setboundarybuffers_mod

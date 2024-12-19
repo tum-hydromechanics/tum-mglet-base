@@ -2,7 +2,7 @@ name: mglet-build
 
 on:
   push:
-    branches: 
+    branches:
       - 'michael/**'
       - 'lukas/**'
       - 'yoshi/**'
@@ -28,9 +28,12 @@ jobs:
 
     strategy:
       matrix:
-        image: ["build-base-image:master"]
-        build: ["debug"]
+        image: ["intel-impi-image:sha-f052b7b", "gnu-ompi-image:date-20241106", "llvm-mpich-image:date-20241024"]
+        build: ["release", "debug"]
         prec: ["Single", "Double"]
+        exclude:
+          - image: "llvm-mpich-image:date-20241024"
+            build: "debug"
       fail-fast: false
 
     container:
@@ -45,7 +48,8 @@ jobs:
         source /root/.bashrc || true
         mkdir build
         cd build
-        TOOLCHAIN=${{ contains(matrix.image, 'base') && 'gnu' || 'intel' }}
+        IMAGE=${{ matrix.image }}
+        TOOLCHAIN=${IMAGE%%-*}
         cmake -GNinja --preset=${TOOLCHAIN}-${{ matrix.build }} -DMGLET_REAL64="${{ matrix.prec == 'Double' && 'ON' || 'OFF' }}" ..
         ninja
         ls -R
@@ -68,6 +72,6 @@ jobs:
         echo "Total test time: $DURATION sec" >> $GITHUB_STEP_SUMMARY
         CPUNAME=$(lscpu | grep 'Model name' | cut -f 2 -d ":" | awk '{$1=$1}1')
 
-        
+
         echo "CPU model name: $CPUNAME" >> $GITHUB_STEP_SUMMARY
         exit $EXITCODE

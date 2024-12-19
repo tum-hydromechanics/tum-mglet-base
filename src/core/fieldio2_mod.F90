@@ -345,7 +345,14 @@ CONTAINS
             ! 3D fields are "connected" to ensure that all ghost cell locations
             ! are updated before writing data to file to ease postprocessing
             IF (field%ndim == 3) THEN
-                CALL connect(ilevel, 2, s1=field, corners=.TRUE.)
+                SELECT TYPE (field)
+                TYPE IS (field_t)
+                    CALL connect(ilevel, 2, s1=field, corners=.TRUE.)
+                TYPE IS (intfield_t)
+                    CALL connect_int(ilevel, 2, s1=field, corners=.TRUE.)
+                CLASS DEFAULT
+                    CALL errr(__FILE__, __LINE__)
+                END SELECT
             END IF
         END DO
 
@@ -556,8 +563,8 @@ CONTAINS
         CALL h5sget_simple_extent_npoints_f(aspace_id, npoints, hdferr)
         IF (hdferr < 0) CALL errr(__FILE__, __LINE__)
         IF (npoints /= 1) THEN
-            WRITE(*,*) "Error opening attribute"
-            WRITE(*,*) "Number of elements in file: ", npoints
+            WRITE(*, *) "Error opening attribute"
+            WRITE(*, *) "Number of elements in file: ", npoints
             CALL errr(__FILE__, __LINE__)
         END IF
 
@@ -658,11 +665,11 @@ CONTAINS
                 ! the correct MPI type along
                 SELECT TYPE (buffer)
                 TYPE IS (REAL(realk))
-                    CALL MPI_Irecv(buffer(bufptr:bufptr+nelems-1), nelems, &
+                    CALL MPI_Irecv(buffer(bufptr), nelems, &
                         field%mpi_dtype, iproc, igrid, iogrcomm, &
                         recvreq(nrecv))
                 TYPE IS (INTEGER(ifk))
-                    CALL MPI_Irecv(buffer(bufptr:bufptr+nelems-1), nelems, &
+                    CALL MPI_Irecv(buffer(bufptr), nelems, &
                         field%mpi_dtype, iproc, igrid, iogrcomm, &
                         recvreq(nrecv))
                 END SELECT
@@ -725,10 +732,10 @@ CONTAINS
             ! the correct MPI type along
             SELECT TYPE (transposed)
             TYPE IS (REAL(realk))
-                CALL MPI_Isend(transposed(ptr:ptr+nelems-1), nelems, &
+                CALL MPI_Isend(transposed(ptr), nelems, &
                     field%mpi_dtype, 0, igrid, iogrcomm, sendreq(nsend))
             TYPE IS (INTEGER(ifk))
-                CALL MPI_Isend(transposed(ptr:ptr+nelems-1), nelems, &
+                CALL MPI_Isend(transposed(ptr), nelems, &
                     field%mpi_dtype, 0, igrid, iogrcomm, sendreq(nsend))
             END SELECT
         END DO
@@ -1147,7 +1154,7 @@ CONTAINS
             IF (ierr /= 0) CALL errr(__FILE__, __LINE__)
 
             IF (npoints /= count_m) THEN
-                WRITE(*,*) "npoints, count_m", npoints, count_m
+                WRITE(*, *) "npoints, count_m", npoints, count_m
                 CALL errr(__FILE__, __LINE__)
             END IF
 
@@ -1302,10 +1309,10 @@ CONTAINS
             CALL field%get_len(nelems, igrid)
             SELECT TYPE (field)
             TYPE IS (field_t)
-                CALL MPI_Irecv(field%arr(ptr:ptr+nelems-1), nelems, &
+                CALL MPI_Irecv(field%arr(ptr), nelems, &
                     field%mpi_dtype, 0, igrid, iogrcomm, recvreq(nrecv))
             TYPE IS (intfield_t)
-                CALL MPI_Irecv(field%arr(ptr:ptr+nelems-1), nelems, &
+                CALL MPI_Irecv(field%arr(ptr), nelems, &
                     field%mpi_dtype, 0, igrid, iogrcomm, recvreq(nrecv))
             END SELECT
         END DO
@@ -1327,11 +1334,11 @@ CONTAINS
                 nsend = nsend + 1
                 SELECT TYPE (buffer)
                 TYPE IS (REAL(realk))
-                    CALL MPI_Isend(buffer(bufptr:bufptr+nelems-1), nelems, &
+                    CALL MPI_Isend(buffer(bufptr), nelems, &
                         field%mpi_dtype, iproc, igrid, iogrcomm, &
                         sendreq(nsend))
                 TYPE IS (INTEGER(ifk))
-                    CALL MPI_Isend(buffer(bufptr:bufptr+nelems-1), nelems, &
+                    CALL MPI_Isend(buffer(bufptr), nelems, &
                         field%mpi_dtype, iproc, igrid, iogrcomm, &
                         sendreq(nsend))
                 END SELECT
@@ -1518,7 +1525,7 @@ CONTAINS
         IF (ierr /= 0) CALL errr(__FILE__, __LINE__)
 
         IF (npoints /= count_m) THEN
-            WRITE(*,*) "npoints, count_m", npoints, count_m
+            WRITE(*, *) "npoints, count_m", npoints, count_m
             CALL errr(__FILE__, __LINE__)
         END IF
     END SUBROUTINE select_hyperslab_data

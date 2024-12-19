@@ -66,7 +66,7 @@ MODULE rungekutta_mod
 CONTAINS
 
     SUBROUTINE init_2n(this, ctyp)
-        !Function arguments
+        ! Function arguments
         CLASS(rk_2n_t), INTENT(out) :: this
         CHARACTER(len=*), INTENT(in) :: ctyp
 
@@ -132,7 +132,7 @@ CONTAINS
         rk%b(1:rk%nrk) = [1.0/3.0, 15.0/16.0, 8.0/15.0]
 
         ! Compute C from A and B
-        !CALL rk%comp_c()
+        ! CALL rk%comp_c()
     END SUBROUTINE init_williamson
 
 

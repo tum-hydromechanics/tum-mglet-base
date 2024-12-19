@@ -8,7 +8,102 @@
 #include <random>
 #include <string>
 
+extern "C" {
 #include <ISO_Fortran_binding.h>
+}
+
+template <typename T>
+inline T ramp0(T timeph, T time1, T time2) {
+    T result;
+    if (timeph < time1) {
+        result = 0.0;
+    }
+    else if (timeph < time2) {
+        result = (timeph - time1)/(time2 - time1);
+    }
+    else {
+        result = 1.0;
+    }
+
+    return result;
+}
+
+
+template <typename T>
+struct ramp final : public exprtk::ifunction<T> {
+    using exprtk::ifunction<T>::operator();
+
+    ramp() : exprtk::ifunction<T>(3) {
+        exprtk::disable_has_side_effects(*this);
+    }
+
+    inline T operator()(const T& timeph, const T& time1, const T& time2) {
+        // ramp_time is the time it takers to ramp from 0 to 1, that is the
+        // time from time1 to time2
+        T ramp_time = time2 - time1;
+
+        // Time for transition, this is fixed to 10% of the ramp time
+        T trans_time = 0.1*ramp_time;
+
+        // Compute result without smoothing
+        T result = ramp0(timeph, time1, time2);
+
+        // Smooth transition from initial flat to slope is only done if
+        // time1 is >= than trans_time/2.0
+        T ts1 = time1 - trans_time/2.0;
+        T ts2 = time1 + trans_time/2.0;
+        if (timeph > ts1 && timeph < ts2 && time1 > trans_time/2.0) {
+            T delta = (timeph - ts1)/trans_time;
+            T end = ramp0(ts2, time1, time2);
+            result = end*delta*delta;
+        }
+
+        // Smooth transition from slope to flat again - always done
+        ts1 = time2 - trans_time/2.0;
+        ts2 = time2 + trans_time/2.0;
+        if (timeph > ts1 && timeph < ts2) {
+            T delta = (timeph - ts1)/trans_time - 1.0;
+            T start = 1.0 - ramp0(ts1, time1, time2);
+            result = 1.0 - start*delta*delta;
+        }
+
+        return result;
+    }
+};
+
+
+template <typename T>
+struct ramp_inf final : public exprtk::ifunction<T> {
+    using exprtk::ifunction<T>::operator();
+
+    ramp_inf() : exprtk::ifunction<T>(2) {
+        exprtk::disable_has_side_effects(*this);
+    }
+
+    inline T operator()(const T& timeph, const T& time1) {
+        // Compute result without smoothing
+        T result = timeph < time1 ? 0.0 : (timeph - time1);
+
+        // No smooth transition
+        if (time1 <= 0.0) {
+            return result;
+        }
+
+        // Time for transition, this is fixed to 10% of the flat plateou time
+        T trans_time = 0.1*time1;
+
+        // Smooth transition from initial flat to slope
+        T ts1 = time1 - trans_time/2.0;
+        T ts2 = time1 + trans_time/2.0;
+        if (timeph > ts1 && timeph < ts2) {
+            T delta = (timeph - ts1)/trans_time;
+            T end = ts2 - time1;
+            result = end*delta*delta;
+        }
+
+        return result;
+    }
+};
 
 
 template <typename T>
@@ -45,6 +140,12 @@ void eval_expr(CFI_cdesc_t* res, const char* name, const char* expr,
     symbol_table.add_constant("tu_level", tu_level);
     symbol_table.add_constant("timeph", timeph);
 
+    ramp<T> ramp_func;
+    symbol_table.add_function("ramp", ramp_func);
+
+    ramp_inf<T> ramp_inf_func;
+    symbol_table.add_function("ramp_inf", ramp_inf_func);
+
     symbol_table.add_variable("x", x_p);
     symbol_table.add_variable("y", y_p);
     symbol_table.add_variable("z", z_p);
@@ -68,13 +169,11 @@ void eval_expr(CFI_cdesc_t* res, const char* name, const char* expr,
     expression.register_symbol_table(symbol_table);
 
     parser_t parser;
-    if (!parser.compile(expr, expression))
-    {
+    if (!parser.compile(expr, expression)) {
         // See exprtk_simple_example_08.cpp for error handling
         printf("Error: %s\tExpression: %s\n", parser.error().c_str(), expr);
 
-        for (std::size_t i = 0; i < parser.error_count(); ++i)
-        {
+        for (std::size_t i = 0; i < parser.error_count(); ++i) {
             error_t error = parser.get_error(i);
             exprtk::parser_error::update_error(error, expr);
 
@@ -109,42 +208,54 @@ void eval_expr(CFI_cdesc_t* res, const char* name, const char* expr,
     CFI_index_t jj = y->dim[0].extent;
     CFI_index_t kk = z->dim[0].extent;
 
+    // GNU, Intel, NAG and Nvidia seems to set lower_bound to 0
+    // Cray set the lower_bound to 1. Our requirement here is that
+    // lower_bound is the same for all arrays passed in!
+    CFI_index_t lb = x->dim[0].lower_bound;
+    assert (y->dim[0].lower_bound == lb);
+    assert (z->dim[0].lower_bound == lb);
+
     // Check that all grid dimensions are as expected (boooooring...)
     assert (res->dim[0].extent == kk);
     assert (res->dim[1].extent == jj);
     assert (res->dim[2].extent == ii);
 
+    assert (res->dim[0].lower_bound == lb);
+    assert (res->dim[1].lower_bound == lb);
+    assert (res->dim[2].lower_bound == lb);
+
     assert (dx->dim[0].extent == ii);
     assert (dy->dim[0].extent == jj);
     assert (dz->dim[0].extent == kk);
+
+    assert (dx->dim[0].lower_bound == lb);
+    assert (dy->dim[0].lower_bound == lb);
+    assert (dz->dim[0].lower_bound == lb);
 
     assert (ddx->dim[0].extent == ii);
     assert (ddy->dim[0].extent == jj);
     assert (ddz->dim[0].extent == kk);
 
-    assert (res->dim[0].lower_bound == 0);
-    assert (res->dim[1].lower_bound == 0);
-    assert (res->dim[2].lower_bound == 0);
+    assert (ddx->dim[0].lower_bound == lb);
+    assert (ddy->dim[0].lower_bound == lb);
+    assert (ddz->dim[0].lower_bound == lb);
 
-    for (CFI_index_t i = 0; i < ii; i++)
-    {
-        for (CFI_index_t j = 0; j < jj; j++)
-        {
-            for (CFI_index_t k = 0; k < kk; k++)
-            {
+    for (CFI_index_t i = lb; i < ii+lb; i++) {
+        CFI_index_t sub_x[1] = {i};
+        x_p = *((T *) CFI_address(x, sub_x));
+        dx_p = *((T *) CFI_address(dx, sub_x));
+        ddx_p = *((T *) CFI_address(ddx, sub_x));
+
+        for (CFI_index_t j = lb; j < jj+lb; j++) {
+            CFI_index_t sub_y[1] = {j};
+            y_p = *((T *) CFI_address(y, sub_y));
+            dy_p = *((T *) CFI_address(dy, sub_y));
+            ddy_p = *((T *) CFI_address(ddy, sub_y));
+
+            for (CFI_index_t k = lb; k < kk+lb; k++) {
                 // The random value is updated for every cell and lies in the
                 // interval [0, 1.0)
                 randval_p = dis(rng);
-
-                CFI_index_t sub_x[1] = {i};
-                x_p = *((T *) CFI_address(x, sub_x));
-                dx_p = *((T *) CFI_address(dx, sub_x));
-                ddx_p = *((T *) CFI_address(ddx, sub_x));
-
-                CFI_index_t sub_y[1] = {j};
-                y_p = *((T *) CFI_address(y, sub_y));
-                dy_p = *((T *) CFI_address(dy, sub_y));
-                ddy_p = *((T *) CFI_address(ddy, sub_y));
 
                 CFI_index_t sub_z[1] = {k};
                 z_p = *((T *) CFI_address(z, sub_z));
