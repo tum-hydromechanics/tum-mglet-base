@@ -213,6 +213,8 @@ CONTAINS
 
         CALL pconf%get_value("/random_walk_mode", random_walk_mode, "uniform")
 
+        !- - - - - - - - - - - - - - - - - -
+
         CALL pconf%get_value("/truncation_limit", truncation_limit, 2.0)
 
         !- - - - - - - - - - - - - - - - - -

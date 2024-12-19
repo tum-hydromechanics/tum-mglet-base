@@ -736,10 +736,10 @@ MODULE particle_boundaries_mod
         CHARACTER(len = 3), INTENT(out) :: ctyp
 
         ! local variables
-        INTEGER(intk) :: ibocd
+        INTEGER(intk) :: ibocd, nbocd
         CHARACTER(len = 8) :: ctyp1, ctyp2
 
-
+        ! TODO: rework particle boundary initialization and storage
         ! SIO = Skalar-RB für Oberflächen der Domain, die durchströmt werden
         ! SWA = Skalar-RB auf Wänden (slip und no-slip)
 
@@ -751,10 +751,11 @@ MODULE particle_boundaries_mod
 
         CASE("SCAL")
 
-            ibocd = 2
+            nbocd = nboconds(iface, igrid)
+            ibocd = nbocd
             CALL get_bc_ctyp(ctyp2, ibocd, iface, igrid)
 
-            IF (ctyp2 == "SIO") THEN
+            IF (ctyp2 == "SIO" .OR. ctyp2 == "CON") THEN
                 ctyp = "CON"
             ELSEIF (ctyp2 == "SWA") THEN
                 ctyp = "REF"

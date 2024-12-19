@@ -87,13 +87,10 @@ CONTAINS    !===================================
             ALLOCATE(my_obstacles(0))
             IF (myid == 0) THEN
                 IF (TRIM(particle_terminal) == "normal" .OR. TRIM(particle_terminal) == "verbose") THEN
-                    WRITE(*, *) "WARNING: No file for reading obstacles detected!"
-                    WRITE(*, '()')
+                    WRITE(*, *) "ERROR: No file for reading obstacles detected!"
+                    CALL errr(__FILE__,__LINE__)
                 END IF
             END IF
-
-            RETURN
-
         END IF
 
         IF (myid == 0) THEN
@@ -186,7 +183,7 @@ CONTAINS    !===================================
                     obstacles_itm(counter)%x = obstacles_src(i)%x + (obstacles_src(j)%x - obstacles_src(i)%x) * obstacles_src(i)%radius / dist
                     obstacles_itm(counter)%y = obstacles_src(i)%y + (obstacles_src(j)%y - obstacles_src(i)%y) * obstacles_src(i)%radius / dist
                     obstacles_itm(counter)%z = obstacles_src(i)%z + (obstacles_src(j)%z - obstacles_src(i)%z) * obstacles_src(i)%radius / dist
-                    obstacles_itm(counter)%radius = radius_ratio * obstacles_src(i)%radius
+                    obstacles_itm(counter)%radius = radius_ratio * MAX(obstacles_src(i)%radius, obstacles_src(j)%radius)
 
                     counter = counter + 1
 
@@ -322,19 +319,21 @@ CONTAINS    !===================================
 
             DO igrid = 1, ngrid
 
-                WRITE(*,'(I0, " Obstacles registered for Grid ", I0, ".")') SIZE(my_obstacle_pointers(igrid)%grid_obstacles), igrid
-                WRITE(*, '()')
-
-                DO i = 1, SIZE(my_obstacle_pointers(igrid)%grid_obstacles)
-
-                    WRITE(*,'("Obstacle ", I0, ":")') my_obstacles(my_obstacle_pointers(igrid)%grid_obstacles(i))%iobst
-                    WRITE(*,'("x/y/z/r = ", 4F12.6)') my_obstacles(my_obstacle_pointers(igrid)%grid_obstacles(i))%x, &
-                    my_obstacles(my_obstacle_pointers(igrid)%grid_obstacles(i))%y, &
-                    my_obstacles(my_obstacle_pointers(igrid)%grid_obstacles(i))%z, &
-                    my_obstacles(my_obstacle_pointers(igrid)%grid_obstacles(i))%radius
+                IF (SIZE(my_obstacle_pointers(igrid)%grid_obstacles) > 0 .OR. TRIM(particle_terminal) == "verbose") THEN
+                    WRITE(*,'(I0, " Obstacles registered for Grid ", I0, ".")') SIZE(my_obstacle_pointers(igrid)%grid_obstacles), igrid
                     WRITE(*, '()')
+                END IF
 
-                END DO
+                IF (TRIM(particle_terminal) == "verbose") THEN
+                    DO i = 1, SIZE(my_obstacle_pointers(igrid)%grid_obstacles)
+                        WRITE(*,'("Obstacle ", I0, ":")') my_obstacles(my_obstacle_pointers(igrid)%grid_obstacles(i))%iobst
+                        WRITE(*,'("x/y/z/r = ", 4F12.6)') my_obstacles(my_obstacle_pointers(igrid)%grid_obstacles(i))%x, &
+                        my_obstacles(my_obstacle_pointers(igrid)%grid_obstacles(i))%y, &
+                        my_obstacles(my_obstacle_pointers(igrid)%grid_obstacles(i))%z, &
+                        my_obstacles(my_obstacle_pointers(igrid)%grid_obstacles(i))%radius
+                        WRITE(*, '()')
+                    END DO
+                END IF
 
             END DO
 
@@ -344,13 +343,12 @@ CONTAINS    !===================================
             END IF
         END IF
 
-
-        DEALLOCATE(counter_array)
-        DEALLOCATE(grid_processed)
-        DEALLOCATE(obstacles_src)
-        DEALLOCATE(is_relevant_src)
-        DEALLOCATE(obstacles_itm)
-        DEALLOCATE(is_relevant_itm)
+        IF(ALLOCATED(counter_array)) DEALLOCATE(counter_array)
+        IF(ALLOCATED(grid_processed)) DEALLOCATE(grid_processed)
+        IF(ALLOCATED(obstacles_src)) DEALLOCATE(obstacles_src)
+        IF(ALLOCATED(is_relevant_src)) DEALLOCATE(is_relevant_src)
+        IF(ALLOCATED(obstacles_itm)) DEALLOCATE(obstacles_itm)
+        IF(ALLOCATED(is_relevant_itm)) DEALLOCATE(is_relevant_itm)
 
         ! TODO: remove barrier?
         CALL MPI_Barrier(MPI_COMM_WORLD)
@@ -378,7 +376,6 @@ CONTAINS    !===================================
             END DO
             DEALLOCATE(my_obstacle_pointers)
         END IF
-
 
     END SUBROUTINE finish_obstacles
 
