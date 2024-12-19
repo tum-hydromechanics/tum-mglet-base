@@ -13,6 +13,11 @@
 #include <chrono>
 #include <cmath>
 
+#ifdef _MGLET_DOUBLE_PRECISION_
+typedef double real;
+#else
+typedef float real;
+#endif
 
 struct CatalystConfig {
     const char* file;
@@ -101,6 +106,11 @@ std::string format_with_zeros(unsigned input, unsigned num_chars) {
     return result;
 }
 
+void get_field_ptr(const char* field_name, const int igrid, const MgletDataLink& data_link, real* field_ptr) {
+    data_link.cp_get_arrptr( &field_ptr, &field_name, &igrid );
+}
+
+
 void initialize(const CatalystConfig& config)
 {
     print_if_root(config.myid, "CATALYST:");
@@ -146,222 +156,119 @@ void initialize(const CatalystConfig& config)
 //  - otherwise conduit will append an empty .vtp entry which will trigger an import error in paraview
 void execute(const MgletDataLink& args)
 {
-    // Conduit node for the execution
-    conduit_cpp::Node exec_params;
+    print_if_root(args.myid, "Executing Catalyst (timestep=", args.istep, ")");
 
-    // add cycle information
-    auto state = exec_params["catalyst/state"];
+    // Conduit node for the execution
+    conduit_cpp::Node exec_node;
+
+    // Add Catalyst state
+    auto state = exec_node["catalyst/state"];
     state["timestep"].set(args.istep);
     state["time"].set( (float) args.istep);
     state["multiblock"].set(1);
 
-    // opening one channel named "grid"
-    auto channel = exec_params["catalyst/channels/grid"];
+    // Opening grid channel as multimesh
+    auto channel = exec_node["catalyst/channels/grid"];
     channel["type"].set("multimesh");
 
-    //std::cout << "---------- Execute ----------" << std::endl;
-    //std::cout << "lvlmin=" << args.lvlmin << std::endl;
-    //std::cout << "lvlmax=" << args.lvlmax << std::endl;
-    //std::cout << "itstep=" << args.istep << std::endl;
-    //std::cout << "myid=" << args.myid << std::endl;
-
+    print_if_root(args.myid, "    Looping grids");
     // Loop levels independent of specific grid
-    for ( int ilvl = args.lvlmin; ilvl <= args.lvlmax; ilvl++ ) {
+    for (int ilvl = args.lvlmin; ilvl <= args.lvlmax; ilvl++) {
         // Get number of grids on specific ilvl
-        int ngridlvl = get_ngrids_lvl( args, ilvl );
+        int ngridlvl = get_ngrids_lvl(args, ilvl);
         // Loop through all grids on level ilvl
-        for ( int igrdlvl = 1; igrdlvl <= ngridlvl; igrdlvl++ ) {
-            // std::cout << igrdlvl << std::endl;
-
-            // grid properties
-            int igrid; int kk; int jj; int ii;
-
-            // pointers to arrays (3D and 1D)
-            void *ptr_arr = nullptr;
-            void *ptr_x = nullptr;
-            void *ptr_y = nullptr;
-            void *ptr_z = nullptr;
-            void *ptr_dx = nullptr;
-            void *ptr_dy = nullptr;
-            void *ptr_dz = nullptr;
-            void *ptr_ddx = nullptr;
-            void *ptr_ddy = nullptr;
-            void *ptr_ddz = nullptr;
-
+        for (int igrdlvl = 1; igrdlvl <= ngridlvl; igrdlvl++) {
+            // Get grid id from ngridlvl'th grid on each level
+            int igrid;
             args.cp_iterate_grids_lvl( &igrid, &igrdlvl, &ilvl );
-            std::cout << ".----------------------------------" << std::endl;
-
-            std::cout << igrid << std::endl;
-
-            //std::cout << "    igrid=" << igrid << std::endl;
-            //std::cout << "    ilvl=" << ilvl << std::endl;
-
-
-            if ( igrid > 0 ) {
-                // calls to MGLET routines
-
-                //print_if_root(args.myid, "  ilvl=", ilvl);
-                //print_if_root(args.myid, "  igrid=", igrid);
-
-
-                args.cp_mgdims( &kk, &jj, &ii, &igrid );
-                //std::cout << "    kk=" << kk << ", jj=" << jj << ", ii=" << ii << std::endl;
-
-                // casting of arrays
-
-#ifdef _MGLET_DOUBLE_PRECISION_
-                // casting arrc[ii][jj][kk] from arrf(kk,jj,ii)
-                // double (*arr)[jj][kk] = (double (*)[jj][kk]) ptr_arr;
-                double (***val_arr) = (double***) ptr_arr;
-                double (*x_arr) = (double*) x_arr;  // [0 - (ii-1)]
-                double (*y_arr) = (double*) y_arr;  // [0 - (jj-1)]
-                double (*z_arr) = (double*) z_arr;  // [0 - (kk-1)]
-                double (*dx_arr) = (double*) ptr_dx;  // [0 - (ii-1)]
-                double (*dy_arr) = (double*) ptr_dy;  // [0 - (jj-1)]
-                double (*dz_arr) = (double*) ptr_dz;  // [0 - (kk-1)]
-                double (*ddx_arr) = (double*) ptr_ddx;  // [0 - (ii-1)]
-                double (*ddy_arr) = (double*) ptr_ddy;  // [0 - (jj-1)]
-                double (*ddz_arr) = (double*) ptr_ddz;  // [0 - (kk-1)]
-                // grid bounding box
-                double minx; double maxx;
-                double miny; double maxy;
-                double minz; double maxz;
-                double mdx; double mdy; double mdz;
-#else
-                // casting arrc[ii][jj][kk] from arrf(kk,jj,ii)
-                // float (*val_arr)[jj][kk] = (float (*)[jj][kk]) ptr_arr;
-                // float (***val_arr) = (float***) ptr_arr;
-
-                // grid bounding box
-                float minx; float maxx;
-                float miny; float maxy;
-                float minz; float maxz;
-                float mdx; float mdy; float mdz;
-
-                args.cp_get_bbox( &minx, &maxx, &miny, &maxy, &minz, &maxz, &igrid );
-                //std::cout << "    minx=" << minx << ", maxx=" << maxx << std::endl;
-                //std::cout << "    miny=" << miny << ", maxy=" << maxy << std::endl;
-                //std::cout << "    minz=" << minz << ", maxz=" << maxz << std::endl;
-
-                char const *u_name = "U_C";
-                args.cp_get_arrptr( &ptr_arr, &u_name, &igrid );
-                float *vel_u = (float*) ptr_arr;
-
-                char const *v_name = "V_C";
-                args.cp_get_arrptr( &ptr_arr, &v_name, &igrid );
-                //float *vel_v = (float*) ptr_arr;
-
-                char const *w_name = "W_C";
-                args.cp_get_arrptr( &ptr_arr, &w_name, &igrid );
-                //float *vel_w = (float*) ptr_arr;          
-
-                args.cp_get_xyzptr( &ptr_x, &ptr_y, &ptr_z, &igrid );
-                args.cp_get_dxyzptr( &ptr_dx, &ptr_dy, &ptr_dz, &igrid );
-                args.cp_get_ddxyzptr( &ptr_ddx, &ptr_ddy, &ptr_ddz, &igrid );
-
-                //std::cout << "    vel_u=" << vel_u << ", vel_v=" << vel_v << ", vel_w=" << vel_w << std::endl;
-                //std::cout << "    ptr_x=" << ptr_x << ", ptr_y=" << ptr_y << ", ptr_z=" << ptr_z << std::endl;
-                //std::cout << "    ptr_dx=" << ptr_dx << ", ptr_dy=" << ptr_dy << ", ptr_dz=" << ptr_dz << std::endl;
-                //std::cout << "    ptr_ddx=" << ptr_ddx << ", ptr_ddy=" << ptr_ddy << ", ptr_ddz=" << ptr_ddz << std::endl;
-
-                /*
-                float (*x_arr) = (float*) ptr_x;  // [0 - (ii-1)]
-                float (*y_arr) = (float*) ptr_y;  // [0 - (jj-1)]
-                float (*z_arr) = (float*) ptr_z;  // [0 - (kk-1)]
-                float (*dx_arr) = (float*) ptr_dx;  // [0 - (ii-1)]
-                float (*dy_arr) = (float*) ptr_dy;  // [0 - (jj-1)]
-                float (*dz_arr) = (float*) ptr_dz;  // [0 - (kk-1)]
-                float (*ddx_arr) = (float*) ptr_ddx;  // [0 - (ii-1)]
-                float (*ddy_arr) = (float*) ptr_ddy;  // [0 - (jj-1)]
-                float (*ddz_arr) = (float*) ptr_ddz;  // [0 - (kk-1)]
-                */
-#endif
-
-/*
-                // now create the mesh.
-                int n_zero = 6;
-                std::string dataStr = "data/";
-                std::string numStr = std::to_string(igrid);
-                numStr = std::string(n_zero - std::min(n_zero, (int) numStr.length()), '0') + numStr;
-                std::string blockName = dataStr + numStr;
-                //print_if_root(args.myid, "  ", blockName);
-                std::cout << "    blockName=" << blockName << std::endl;
-*/
-                std::string rank_str = format_with_zeros(args.myid, RANK_NAME_SIZE);
-                std::string level_str = format_with_zeros(ilvl, LEVEL_NAME_SIZE);
-                std::string grid_str = format_with_zeros(igrid, GRID_NAME_SIZE);
-                std::string block_name = "data/" + rank_str + "-" + level_str + "-" + grid_str;
-                std::cout << block_name << std::endl;
-
-                auto mesh = channel[block_name];
-
-                mdx = ( maxx - minx ) / ( ii - 4 );
-                mdy = ( maxy - miny ) / ( jj - 4 );
-                mdz = ( maxz - minz ) / ( kk - 4 );
-                //std::cout << "    mdx=" << mdx << ", mdy=" << mdy << ", mdz=" << mdz << std::endl;
-
-                // start with coordsets
-                mesh["coordsets/coords/type"].set("uniform");
-
-                mesh["coordsets/coords/dims/i"].set(ii+1-4);
-                mesh["coordsets/coords/dims/j"].set(jj+1-4);
-                mesh["coordsets/coords/dims/k"].set(kk+1-4);
-
-                mesh["coordsets/coords/origin/x"].set(minx);
-                mesh["coordsets/coords/origin/y"].set(miny);
-                mesh["coordsets/coords/origin/z"].set(minz); 
-
-                mesh["coordsets/coords/spacing/dx"].set(mdx);
-                mesh["coordsets/coords/spacing/dy"].set(mdy);
-                mesh["coordsets/coords/spacing/dz"].set(mdz);
-
-                // Next, add topology
-                mesh["topologies/mesh/type"].set("uniform");
-                mesh["topologies/mesh/coordset"].set("coords");
-
-                // Finally, add fields.
-                auto fields = mesh["fields"];
-
-                // number of value entries without boundary layer
-                const int nval = (ii-4)*(jj-4)*(kk-4);
-
-                //std::cout << "    nval=" << nval << std::endl;
-
-                // velocity_x is cell-data
-                fields["u/association"].set("element");
-                fields["u/topology"].set("mesh");
-                fields["u/volume_dependent"].set("false");
-                fields["u/values"].set_external(vel_u, nval, 0, sizeof(float) );
-
-                // velocity_y is cell-data
-                //fields["v/association"].set("element");
-                //fields["v/topology"].set("mesh");
-                //fields["v/volume_dependent"].set("false");
-                //fields["v/values"].set_external(vel_v, nval, 0, sizeof(float) );
-
-                // velocity_z is cell-data
-                //fields["w/association"].set("element");
-                //fields["w/topology"].set("mesh");
-                //fields["w/volume_dependent"].set("false");
-                //fields["w/values"].set_external(vel_w, nval, 0, sizeof(float) );
-
-                // temp is cell-data
-                //fields["temp/association"].set("element");
-                //fields["temp/topology"].set("mesh");
-                //fields["temp/volume_dependent"].set("false");
-                //fields["temp/values"].set_external(temp, nval, 0, sizeof(float) );
-
-                //std::cout << "  -- end of grid --" << std::endl;
+            if (igrid <= 0) {
+                continue;
             }
+            // Get grid properties
+            int kk; int jj; int ii;
+            args.cp_mgdims( &kk, &jj, &ii, &igrid );
+
+            // Grid bounding box
+            real minx, maxx, miny, maxy, minz, maxz;
+            args.cp_get_bbox( &minx, &maxx, &miny, &maxy, &minz, &maxz, &igrid );
+
+            // Pointers to arrays (3D and 1D)
+            void *ptr_arr = nullptr;
+            // Velocity U
+            char const *u_name = "U_C";
+            args.cp_get_arrptr( &ptr_arr, &u_name, &igrid );
+            real *vel_u = (real*) ptr_arr;
+            // Velocity V
+            char const *v_name = "V_C";
+            args.cp_get_arrptr( &ptr_arr, &v_name, &igrid );
+            real *vel_v = (real*) ptr_arr;
+            // Velocity W
+            char const *w_name = "W_C";
+            args.cp_get_arrptr( &ptr_arr, &w_name, &igrid );
+            real *vel_w = (real*) ptr_arr;          
+
+            // Generate unique grid name depending on MPI rank, level and igrid
+            std::string rank_str = format_with_zeros(args.myid, RANK_NAME_SIZE);
+            std::string level_str = format_with_zeros(ilvl, LEVEL_NAME_SIZE);
+            std::string grid_str = format_with_zeros(igrid, GRID_NAME_SIZE);
+            std::string block_name = "data/" + rank_str + "-" + level_str + "-" + grid_str;
+            auto mesh = channel[block_name];
+
+            // Calculate grid spacing
+            real mdx = ( maxx - minx ) / ( ii - 4 );
+            real mdy = ( maxy - miny ) / ( jj - 4 );
+            real mdz = ( maxz - minz ) / ( kk - 4 );
+
+            // Set grid coordsets
+            mesh["coordsets/coords/type"].set("uniform");
+
+            mesh["coordsets/coords/dims/i"].set(ii + 1 - 4);
+            mesh["coordsets/coords/dims/j"].set(jj + 1 - 4);
+            mesh["coordsets/coords/dims/k"].set(kk + 1 - 4);
+
+            mesh["coordsets/coords/origin/x"].set(minx);
+            mesh["coordsets/coords/origin/y"].set(miny);
+            mesh["coordsets/coords/origin/z"].set(minz); 
+
+            mesh["coordsets/coords/spacing/dx"].set(mdx);
+            mesh["coordsets/coords/spacing/dy"].set(mdy);
+            mesh["coordsets/coords/spacing/dz"].set(mdz);
+
+            // Next, add topology
+            mesh["topologies/mesh/type"].set("uniform");
+            mesh["topologies/mesh/coordset"].set("coords");
+
+            // Finally, add fields.
+            auto fields = mesh["fields"];
+
+            // Number of value entries without boundary layer
+            const int nval = (ii - 4) * (jj - 4) * (kk - 4);
+
+            // Velocity in x is cell-data
+            fields["u/association"].set("element");
+            fields["u/topology"].set("mesh");
+            fields["u/volume_dependent"].set("false");
+            fields["u/values"].set_external(vel_u, nval, 0, sizeof(real) );
+
+            // Velocity in y is cell-data
+            fields["v/association"].set("element");
+            fields["v/topology"].set("mesh");
+            fields["v/volume_dependent"].set("false");
+            fields["v/values"].set_external(vel_v, nval, 0, sizeof(float) );
+
+            // Velocity in z is cell-data
+            fields["w/association"].set("element");
+            fields["w/topology"].set("mesh");
+            fields["w/volume_dependent"].set("false");
+            fields["w/values"].set_external(vel_w, nval, 0, sizeof(float) );
         }
     }
-
-    print_if_root(args.myid, "Execute done");
-
-    catalyst_status err = catalyst_execute(conduit_cpp::c_node(&exec_params));
+    print_if_root(args.myid, "    Passing node to Catalyst");
+    catalyst_status err = catalyst_execute(conduit_cpp::c_node(&exec_node));
     if (err != catalyst_status_ok) {
         std::cerr << "Failed to execute Catalyst: " << err << std::endl;
     }
+    print_if_root(args.myid, "    Catalyst Status Ok\n");
 }
 
 } // namespace catalyst_adaptor

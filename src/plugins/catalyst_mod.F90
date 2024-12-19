@@ -204,6 +204,7 @@ CONTAINS
         c_nscal = INT( 1, kind=C_INT )   ! TO DO (!!!)
         c_lvlmin = INT( minlevel, kind=C_INT )
         c_lvlmax = INT( maxlevel, kind=C_INT )
+        
 
         ! preparing the C-ordered fields
         CALL get_field(u_c_f, "U_C")

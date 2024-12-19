@@ -1,6 +1,7 @@
 
 #include "catalyst_adaptor.h"
 
+
 extern "C" void catalyst_init(const char* file, const char* impl, const char* path, bool* is_repr, int* myid ) {
     CatalystConfig config;
     config.file = file;
