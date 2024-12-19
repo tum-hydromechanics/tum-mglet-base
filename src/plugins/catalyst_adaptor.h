@@ -66,6 +66,9 @@ namespace catalyst_adaptor
 constexpr const char* REPR_DATASET_NAME = "dataout.vtm";
 constexpr const char* PIPELINE_TYPE = "io";
 constexpr const char* PIPELINE_CHANNEL = "grid";
+constexpr unsigned RANK_NAME_SIZE = 8;
+constexpr unsigned LEVEL_NAME_SIZE = 8;
+constexpr unsigned GRID_NAME_SIZE = 8;
 
 /// @brief Print to stdout if the specified rank is the MPI root
 /// @tparam ...Args Variadic template arguments
@@ -79,6 +82,23 @@ void print_if_root(int rank_id, Args&&... args) {
     std::ostringstream oss;
     (oss << ... << args);
     std::cout << oss.str() << std::endl;
+}
+
+/// @brief Creates a string with a maximum number of characters which contains a number and is left padded with 0s
+/// @param input Number that is contained within the result
+/// @param num_chars Maximum number of characters in string
+/// @return Padded string with 0s on the left and input on the right
+std::string format_with_zeros(unsigned input, unsigned num_chars) {
+    std::string input_str = std::to_string(input);
+    if (input_str.length() > num_chars) {
+        auto num_chars_str = std::to_string(num_chars);
+        auto error_message = "Input '" + input_str + "' is larger than allowed number of characters (" + num_chars_str + ")";
+        throw std::invalid_argument(error_message);
+    }
+    int leading_zeros = num_chars - input_str.length();
+    std::string result(leading_zeros, '0');
+    result += input_str;
+    return result;
 }
 
 void initialize(const CatalystConfig& config)
@@ -150,7 +170,7 @@ void execute(const MgletDataLink& args)
         // Get number of grids on specific ilvl
         int ngridlvl = get_ngrids_lvl( args, ilvl );
         // Loop through all grids on level ilvl
-        for ( int igrdlvl = 0; igrdlvl <= ngridlvl; igrdlvl++ ) {
+        for ( int igrdlvl = 1; igrdlvl <= ngridlvl; igrdlvl++ ) {
             // std::cout << igrdlvl << std::endl;
 
             // grid properties
@@ -169,6 +189,9 @@ void execute(const MgletDataLink& args)
             void *ptr_ddz = nullptr;
 
             args.cp_iterate_grids_lvl( &igrid, &igrdlvl, &ilvl );
+            std::cout << ".----------------------------------" << std::endl;
+
+            std::cout << igrid << std::endl;
 
             //std::cout << "    igrid=" << igrid << std::endl;
             //std::cout << "    ilvl=" << ilvl << std::endl;
@@ -254,6 +277,7 @@ void execute(const MgletDataLink& args)
                 */
 #endif
 
+/*
                 // now create the mesh.
                 int n_zero = 6;
                 std::string dataStr = "data/";
@@ -262,8 +286,14 @@ void execute(const MgletDataLink& args)
                 std::string blockName = dataStr + numStr;
                 //print_if_root(args.myid, "  ", blockName);
                 std::cout << "    blockName=" << blockName << std::endl;
+*/
+                std::string rank_str = format_with_zeros(args.myid, RANK_NAME_SIZE);
+                std::string level_str = format_with_zeros(ilvl, LEVEL_NAME_SIZE);
+                std::string grid_str = format_with_zeros(igrid, GRID_NAME_SIZE);
+                std::string block_name = "data/" + rank_str + "-" + level_str + "-" + grid_str;
+                std::cout << block_name << std::endl;
 
-                auto mesh = channel[blockName];
+                auto mesh = channel[block_name];
 
                 mdx = ( maxx - minx ) / ( ii - 4 );
                 mdy = ( maxy - miny ) / ( jj - 4 );

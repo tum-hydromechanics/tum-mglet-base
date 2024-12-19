@@ -73,7 +73,6 @@
 
     "catalyst": {
         "path": "/usr/local/lib/catalyst/",
-        "script": "catalyst_pipeline.py",
-        "repr": false
+        "repr": true
     }
 }
