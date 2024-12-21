@@ -296,7 +296,8 @@ MODULE particle_boundaries_mod
             END IF
 
             CALL move_to_boundary(temp_grid, x, y, z, &
-             dx_from_here, dy_from_here, dz_from_here, dx_step, dy_step, dz_step, iface, iobst_local)
+                dx_from_here, dy_from_here, dz_from_here, &
+                dx_step, dy_step, dz_step, iface, iobst_local)
 
             dx_eff = dx_eff + dx_step
             dy_eff = dy_eff + dy_step
@@ -437,8 +438,17 @@ MODULE particle_boundaries_mod
 
             d = b**2 - 4*a*c
 
-            IF (d < 0) THEN
-                CONTINUE
+            ! danger of divison by 0.0 or close to that
+            ! Would that mean that the particle stays in its position on the surface?
+            ! I am doing a dirty fix here - please, review carefully...
+
+
+            IF (d < EPSILON(0.0_realk)) THEN
+                CYCLE
+            END IF
+
+            IF (a < EPSILON(0.0_realk)) THEN
+                CYCLE
             END IF
 
             sa = (-b + SQRT(d)) / 2 / a
