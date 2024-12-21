@@ -493,15 +493,13 @@ CONTAINS
 
         ! local variables
         INTEGER(intk) :: i, iface, igrid
-        INTEGER(intk) :: iface1, iface2, iface3
-        INTEGER(intk) :: itypbc1, itypbc2, itypbc3
-        INTEGER(intk) :: iprocnbr, itypbc, inbrgrid
+        INTEGER(intk) :: iprocnbr
 
         INTEGER(int32), ALLOCATABLE :: maxTag(:)
         INTEGER(int32), ALLOCATABLE :: sendcounts(:), sdispls(:)
         INTEGER(int32), ALLOCATABLE :: recvcounts(:), rdispls(:)
 
-        INTEGER(intk) :: neighbours(26), neighbour
+        INTEGER(intk) :: neighbour
         INTEGER :: iexchange
 
         CALL start_timer(900)
@@ -761,7 +759,7 @@ CONTAINS
         ! if the distance to the grid "dist" is 0, the particle is still on the grid
         ! however, get_exit_face might still return (iface > 0) if the particle is exactly on any grid boundary
         ! if so, set iface to 0
-        IF (dist == 0) THEN
+        IF (ABS(dist) < eps) THEN
             iface = 0
         END IF
 

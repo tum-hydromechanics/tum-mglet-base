@@ -45,7 +45,6 @@ CONTAINS
 
         ! local variables ...
         INTEGER(intk) :: i
-        LOGICAL :: snapshots_exist
 
         CALL start_timer(900)
         CALL start_timer(950)

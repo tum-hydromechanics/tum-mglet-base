@@ -150,8 +150,8 @@ CONTAINS    !===================================
                         CASE ("normal")
                             CONTINUE
                         CASE ("verbose")
-                            WRITE(*,'("Warning on proc ", I0, ": Maximum Number of Particles has been registered on this Proccess.", &
-                             "Stopped reading ParticleDict.txt, so specified Particles might be unregistered." )') myid
+                            WRITE(*,'("Warning on proc ", I0, ": Maximum Number of Particles has been registered on this Proccess.")') myid
+                            WRITE(*,*) "Stopped reading ParticleDict.txt, so specified Particles might be unregistered."
                     END SELECT
                 END IF
                 EXIT

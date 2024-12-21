@@ -52,16 +52,14 @@ CONTAINS    !===================================
     SUBROUTINE read_obstacles()
 
         ! local variables
-        INTEGER(intk) :: unit, dict_len, iobst, igrid, i, j, k, counter, dummy
+        INTEGER(intk) :: unit, dict_len, iobst, igrid, i, j, counter, dummy
         INTEGER(intk) :: neighbours(26)
         INTEGER(intk), ALLOCATABLE :: counter_array(:) ! number of obstacles that is relevant on this process per grid
 
-        LOGICAL :: dcycle, dexit
         LOGICAL, ALLOCATABLE :: grid_processed(:) ! array to indicate if a grid has been considered for a certain obstacle already
         LOGICAL, ALLOCATABLE :: is_relevant_src(:), is_relevant_itm(:) ! indicates if an obstacle is relevant on this process
 
         REAL(realk) :: dist
-        REAL(realk) :: minx, maxx, miny, maxy, minz, maxz
 
         TYPE(obstacle_t), ALLOCATABLE :: obstacles_src(:), obstacles_itm(:)
 

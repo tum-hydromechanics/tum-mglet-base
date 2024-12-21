@@ -418,7 +418,7 @@ CONTAINS    !===================================
                 END DO
 
 
-                IF (SUM(slice_levels) /= 1.0) THEN
+                IF (ABS(SUM(slice_levels)-1.0) > EPSILON(1.0_realk)) THEN
 
                     IF (myid == 0) THEN
                         SELECT CASE (TRIM(particle_terminal))

@@ -46,7 +46,7 @@ CONTAINS    !===================================
 
         ! local variables
         INTEGER(intk) :: i, global_np, read_np
-        INTEGER(intk), ALLOCATABLE :: npart_arr(:), ipart_arr(:), igrid_arr(:)
+        INTEGER(intk), ALLOCATABLE :: ipart_arr(:), igrid_arr(:)
         REAL(realk), ALLOCATABLE :: x_arr(:), y_arr(:), z_arr(:)
 
         CALL start_timer(900)
@@ -339,7 +339,7 @@ CONTAINS    !===================================
 
         ! local variables
         INTEGER(intk), ALLOCATABLE :: init_npart_arr(:), npart_arr(:), itm_igrid_arr(:)!, particles_per_grid_counter(:)
-        INTEGER(intk) :: i, j, igrid, iproc, iobst, counter, grid_counter, part_counter, itm_npart, offset
+        INTEGER(intk) :: i, j, igrid, iproc, iobst, grid_counter, part_counter, itm_npart, offset
         REAL(realk), ALLOCATABLE :: my_grid_volume_fractions(:), proc_volume_fractions(:)
         REAL(realk), ALLOCATABLE :: itm_x_arr(:), itm_y_arr(:), itm_z_arr(:)
         REAL(realk) :: minx, maxx, miny, maxy, minz, maxz, dist, volume, myvolume, grid_rn

@@ -226,7 +226,7 @@ CONTAINS
     SUBROUTINE timeloop()
         ! Local variables
         LOGICAL :: stop_now, allow_checkpoint
-        INTEGER(intk) :: irk, pirk, exploded
+        INTEGER(intk) :: irk, exploded
         REAL(realk) :: cflmax
 
         IF (skip_timeloop) RETURN

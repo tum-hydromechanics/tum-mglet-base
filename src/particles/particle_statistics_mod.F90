@@ -64,8 +64,6 @@ CONTAINS
         ! local variables
         INTEGER(intk) :: igrid, i, j
         REAL(realk) :: minx, maxx, miny, maxy, minz, maxz
-        LOGICAL :: gridstat_exists
-
         !INQUIRE(directory = './Particle_Statistics', exist = gridstat_exists)
 !
         !IF (gridstat_exists) THEN
@@ -435,7 +433,7 @@ CONTAINS
         INTEGER(intk), INTENT(in) :: itstep
 
         ! local variables
-        INTEGER(intk) :: igrid, i, irt
+        INTEGER(intk) :: irt
 
         IF (slice_dir == "N") THEN
             RETURN

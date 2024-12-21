@@ -52,11 +52,11 @@ MODULE particle_boundaries_mod
     SUBROUTINE init_particle_boundaries()
 
         ! local variables
-        INTEGER(intk) :: igrid, ibocd, iface, jface, i, j
+        INTEGER(intk) :: igrid, iface, jface, i, j
         INTEGER(intk) :: neighbours(26)
         ! to store which boundary surfaces (faces 1-6) that define a lower order face (7-26) are of connect (or periodic) type:
         INTEGER(intk) :: connect_faces(4)
-        REAL(realk) :: minx, maxx, miny, maxy, minz, maxz, n_minx, n_maxx, n_miny, n_maxy, n_minz, n_maxz, magnitude
+        REAL(realk) :: magnitude
         CHARACTER(len=3) :: ctyp
         LOGICAL :: found
 
@@ -162,11 +162,11 @@ MODULE particle_boundaries_mod
                 END DO
 
                 magnitude = SQRT(particle_boundaries%face_normals(1, iface, igrid)**2 + &
-                 particle_boundaries%face_normals(2, iface, igrid)**2 + &
-                 particle_boundaries%face_normals(3, iface, igrid)**2)
+                    particle_boundaries%face_normals(2, iface, igrid)**2 + &
+                    particle_boundaries%face_normals(3, iface, igrid)**2)
 
                 DO j = 1, 3
-                    IF (magnitude == 0.0) THEN
+                    IF (magnitude < eps) THEN
                         particle_boundaries%face_normals(j, iface, igrid) = 0.0
                     ELSE
                         particle_boundaries%face_normals(j, iface, igrid) = particle_boundaries%face_normals(j, iface, igrid) / magnitude
@@ -245,14 +245,12 @@ MODULE particle_boundaries_mod
         INTEGER(intk), INTENT(inout), OPTIONAL :: temp_grid_prev
 
         ! local variables
-        INTEGER(intk) :: temp_grid, iface, iobst_local, grid_bc, destgrid, counter
-        INTEGER(intk) :: neighbours(26)
+        INTEGER(intk) :: temp_grid, iface, iobst_local, destgrid, counter
         INTEGER(intk) :: reflect(3)
         REAL(realk) :: x, y, z
         REAL(realk) :: dx_step, dy_step, dz_step
         REAL(realk) :: dx_from_here, dy_from_here, dz_from_here
         REAL(realk) :: epsilon
-        REAL(realk) :: n1, n2, n3
 
         CALL start_timer(924)
 
@@ -260,7 +258,7 @@ MODULE particle_boundaries_mod
         dy_eff = 0.0
         dz_eff = 0.0
 
-        IF (SQRT(dx**(2) + dy**(2) + dz**(2)) == 0) THEN
+        IF (SQRT(dx**(2) + dy**(2) + dz**(2)) < eps) THEN
             CALL stop_timer(924)
             RETURN
         END IF
@@ -486,7 +484,7 @@ MODULE particle_boundaries_mod
                 sa = 1.1
             ! if sa is 0, but the particle moves away from the boundary it is on
             ! => set sa to an arbitrary number higher than 1, so it wont get registered later
-            ELSEIF (sa == 0 .AND. r < SQRT((x + smin * dx - cx)**2 + (y + smin * dy - cy)**2 + (z + smin * dz - cz)**2)) THEN
+            ELSEIF (ABS(sa) < eps .AND. r < SQRT((x + smin * dx - cx)**2 + (y + smin * dy - cy)**2 + (z + smin * dz - cz)**2)) THEN
                 sa = 1.1
             END IF
 
@@ -496,7 +494,7 @@ MODULE particle_boundaries_mod
                 sb = 1.1
             ! if sb is 0, but the particle moves away from the boundary it is on
             ! => set sb to an arbitrary number higher than 1, so it wont get registered later
-            ELSEIF (sb == 0 .AND. r < SQRT((x + smin * dx - cx)**2 + (y + smin * dy - cy)**2 + (z + smin * dz - cz)**2)) THEN
+            ELSEIF (ABS(sb) < eps .AND. r < SQRT((x + smin * dx - cx)**2 + (y + smin * dy - cy)**2 + (z + smin * dz - cz)**2)) THEN
                 sb = 1.1
             END IF
 
@@ -517,14 +515,14 @@ MODULE particle_boundaries_mod
 
         IF (dx < 0) THEN
             lx = (minx - x)
-            IF(lx == 0) THEN
+            IF(ABS(lx) < eps) THEN
                 CALL get_exit_face(temp_grid, x, y, z, dist, iface)
                 RETURN
             END IF
             rx = dx * s / lx
         ELSEIF (0 < dx) THEN
             lx = (maxx - x)
-            IF(lx == 0) THEN
+            IF(ABS(lx) < eps) THEN
                 CALL get_exit_face(temp_grid, x, y, z, dist, iface)
                 RETURN
             END IF
@@ -535,14 +533,14 @@ MODULE particle_boundaries_mod
 
         IF (dy < 0) THEN
             ly = (miny - y)
-            IF(ly == 0) THEN
+            IF(ABS(ly) < eps) THEN
                 CALL get_exit_face(temp_grid, x, y, z, dist, iface)
                 RETURN
             END IF
             ry = dy * s / ly
         ELSEIF (0 < dy) THEN
             ly = (maxy - y)
-            IF(ly == 0) THEN
+            IF(ABS(ly) < eps) THEN
                 CALL get_exit_face(temp_grid, x, y, z, dist, iface)
                 RETURN
             END IF
@@ -553,14 +551,14 @@ MODULE particle_boundaries_mod
 
         IF (dz < 0) THEN
             lz = (minz - z)
-            IF(lz == 0) THEN
+            IF(ABS(lz) < eps) THEN
                 CALL get_exit_face(temp_grid, x, y, z, dist, iface)
                 RETURN
             END IF
             rz = dz * s / lz
         ELSEIF (0 < dz) THEN
             lz = (maxz - z)
-            IF(lz == 0) THEN
+            IF(ABS(lz) < eps) THEN
                 CALL get_exit_face(temp_grid, x, y, z, dist, iface)
                 RETURN
             END IF

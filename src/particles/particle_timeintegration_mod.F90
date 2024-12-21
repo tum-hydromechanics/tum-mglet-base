@@ -43,7 +43,7 @@ CONTAINS
 
         REAL(realk), ALLOCATABLE :: pdx_pot(:), pdy_pot(:), pdz_pot(:)
 
-        INTEGER(intk) :: igrid, i, j, ii, jj, kk, gfound, ig, temp_grid
+        INTEGER(intk) :: igrid, i, ii, jj, kk, gfound, ig, temp_grid
         REAL(realk) :: pu_adv, pv_adv, pw_adv, pu_diff, pv_diff, pw_diff
         REAL(realk) :: pdx_adv, pdy_adv, pdz_adv, pdx_diff, pdy_diff, pdz_diff, pdx_eff, pdy_eff, pdz_eff
 
