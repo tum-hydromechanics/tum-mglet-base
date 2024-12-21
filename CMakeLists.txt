@@ -2,6 +2,9 @@ cmake_minimum_required(VERSION 3.21)
 if(POLICY CMP0126)
     cmake_policy(SET CMP0126 NEW)
 endif()
+if(POLICY CMP0135)
+	cmake_policy(SET CMP0135 NEW)
+endif()
 
 # Set the project name
 project(mglet-base LANGUAGES C CXX Fortran)
@@ -53,6 +56,12 @@ else()
     message(STATUS "Compiling MGLET with 32 bit integers")
 endif()
 
+option(MGLET_OPENMP "Enable OpenMP (experimental)" OFF)
+if(MGLET_OPENMP)
+    message(STATUS "Enabling OpenMP")
+    find_package(OpenMP REQUIRED)
+endif()
+
 # CMake build options
 set(MGLET_ENVPREFIX "" CACHE STRING "Prefix for all MGLET environment variables")
 if(NOT MGLET_ENVPREFIX STREQUAL "")
@@ -102,19 +111,27 @@ add_compile_options("$<$<COMPILE_LANGUAGE:C>:${MGLET_C_FLAGS}>"
     "$<$<AND:$<COMPILE_LANGUAGE:Fortran>,$<STREQUAL:${CMAKE_Fortran_COMPILER_ID},IntelLLVM>>:-diag-disable 5268>"
 )
 
+if (MGLET_OPENMP)
+    add_compile_options("$<$<COMPILE_LANGUAGE:C>:${OpenMP_C_FLAGS}>"
+        "$<$<COMPILE_LANGUAGE:CXX>:${OpenMP_CXX_FLAGS}>"
+        "$<$<COMPILE_LANGUAGE:Fortran>:${OpenMP_Fortran_FLAGS}>"
+    )
+endif()
+
 # nlohman JSON parser library
 include(FetchContent)
 FetchContent_Declare(json
     URL https://github.com/nlohmann/json/releases/download/v3.11.3/json.tar.xz
+    URL_HASH SHA256=d6c65aca6b1ed68e7a182f4757257b107ae403032760ed6ef121c9d55e81757d
 )
-FetchContent_Populate(json)
+FetchContent_MakeAvailable(json)
 
 # Exprtk expression parser
 FetchContent_Declare(exprtk
-    GIT_REPOSITORY https://github.com/ArashPartow/exprtk
-    GIT_TAG f46bffcd6966d38a09023fb37ba9335214c9b959
+    GIT_REPOSITORY https://github.com/kmturbulenz/exprtk
+    GIT_TAG 48390febb53664cc3577d2329b63b45231037cb3
 )
-FetchContent_Populate(exprtk)
+FetchContent_MakeAvailable(exprtk)
 
 # Perform various compiler checks
 add_subdirectory("cmake")

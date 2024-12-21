@@ -1,7 +1,7 @@
 MODULE particle_interpolation_mod
 
     ! This module is responsible for:
-    ! Interpolation of the flow field to deduce the advective velocity of particles.
+    ! Interpolation of (staggered) fields at given point coordinates (particle location)
 
     USE particle_core_mod
 
@@ -9,85 +9,47 @@ MODULE particle_interpolation_mod
 
 CONTAINS    !===================================
 
-    SUBROUTINE get_particle_uvw(kk, jj, ii, particle, &
-                 p_u, p_v, p_w, u, v, w, x, y, z, dx, dy, dz, ddx, ddy, ddz)
-
-        ! subroutine arguments
-        INTEGER(intk), INTENT(in) :: kk, jj, ii
-        TYPE(baseparticle_t), INTENT(in) :: particle
-        REAL(realk), INTENT(out) :: p_u, p_v, p_w
-        REAL(realk), INTENT(in) :: u(kk, jj, ii), v(kk, jj, ii), w(kk, jj, ii)
-        REAL(realk), INTENT(in) :: x(ii), y(jj), z(kk)
-        REAL(realk), INTENT(in), OPTIONAL :: dx(ii), dy(jj), dz(kk), ddx(ii), ddy(jj), ddz(kk)
-
-        CALL start_timer(923)
-
-        IF (dinterp_particles .AND. PRESENT(dx) .AND. PRESENT(dy) .AND. PRESENT(dz) &
-         .AND. PRESENT(ddx) .AND. PRESENT(ddy) .AND. PRESENT(ddz)) THEN
-
-            CALL gobert_particle_uvw(kk, jj, ii, particle, &
-             p_u, p_v, p_w, u, v, w, x, y, z, dx, dy, dz, ddx, ddy, ddz)
-
-        ELSE
-
-            CALL nearest_particle_uvw(kk, jj, ii, particle, &
-             p_u, p_v, p_w, u, v, w, x, y, z)
-
-        END IF
-
-        CALL stop_timer(923)
-
-    END SUBROUTINE get_particle_uvw
-
-    !------------------------------
-
-    ! no interpolation of velocity, just the velocity components of the nearest staggered cells respectively
-    SUBROUTINE nearest_particle_uvw(kk, jj, ii, particle, p_u, p_v, p_w, &
-         u, v, w, x, y, z)
+    ! get nearest vector components of staggered component
+    ! no interpolation of vector components, just the values of the nearest staggered cells respectively
+    SUBROUTINE get_nearest_value(particle, kk, jj, ii, x, y, z, &
+         v1, v2, v3, p_v1, p_v2, p_v3)
 
         !subroutine_arguments
-        INTEGER(intk), INTENT(in) :: kk, jj, ii
         TYPE(baseparticle_t), INTENT(in) :: particle
-        REAL(realk), INTENT(out) :: p_u, p_v, p_w
-        REAL(realk), INTENT(in) :: u(kk, jj, ii), v(kk, jj, ii), w(kk, jj, ii)
+        INTEGER(intk), INTENT(in) :: kk, jj, ii
         REAL(realk), INTENT(in) :: x(ii), y(jj), z(kk)
+        REAL(realk), INTENT(in) :: v1(kk, jj, ii), v2(kk, jj, ii), v3(kk, jj, ii)
+        REAL(realk), INTENT(out) :: p_v1, p_v2, p_v3
 
         !local variables
         INTEGER(intk) :: p_istag, p_jstag, p_kstag
-
-        CALL start_timer(923)
 
         p_istag = MAX( 0_intk, NINT( SIGN( 1.0_realk, particle%x - x(particle%ijkcell(1)) ), intk ))
         p_jstag = MAX( 0_intk, NINT( SIGN( 1.0_realk, particle%y - x(particle%ijkcell(2)) ), intk ))
         p_kstag = MAX( 0_intk, NINT( SIGN( 1.0_realk, particle%z - x(particle%ijkcell(3)) ), intk ))
 
-        p_u = u(particle%ijkcell(3), particle%ijkcell(2), particle%ijkcell(1) + p_istag - 1)
-        p_v = v(particle%ijkcell(3), particle%ijkcell(2) + p_jstag - 1, particle%ijkcell(1))
-        p_w = w(particle%ijkcell(3) + p_kstag - 1, particle%ijkcell(2), particle%ijkcell(1))
+        p_v1 = v1(particle%ijkcell(3), particle%ijkcell(2), particle%ijkcell(1) + p_istag - 1)
+        p_v2 = v2(particle%ijkcell(3), particle%ijkcell(2) + p_jstag - 1, particle%ijkcell(1))
+        p_v3 = v3(particle%ijkcell(3) + p_kstag - 1, particle%ijkcell(2), particle%ijkcell(1))
 
-        CALL stop_timer(923)
+    END SUBROUTINE get_nearest_value
 
-    END SUBROUTINE nearest_particle_uvw
-
-    !------------------------------
-
+    ! linear and differntially conservative interpolation of staggered vector field
     ! from Gobert et. al, LAGRANGIAN SCALAR TRACKING FOR LAMINAR MICROMIXING AT HIGH SCHMIDT NUMBERS, 2006
-    SUBROUTINE gobert_particle_uvw(kk, jj, ii, particle, p_u, p_v, p_w, &
-         u, v, w, x, y, z, dx, dy, dz, ddx, ddy, ddz)
+    SUBROUTINE interpolate_lincon(particle, kk, jj, ii, x, y, z, dx, dy, dz, ddx, ddy, ddz, &
+         v1, v2, v3, p_v1, p_v2, p_v3)
 
         ! subroutine arguments
-        INTEGER(intk), INTENT(in) :: kk, jj, ii
         TYPE(baseparticle_t), INTENT(in) :: particle
-        REAL(realk), INTENT(out) :: p_u, p_v, p_w
-        REAL(realk), INTENT(in) :: u(kk, jj, ii), v(kk, jj, ii), w(kk, jj, ii)
+        INTEGER(intk), INTENT(in) :: kk, jj, ii
         REAL(realk), INTENT(in) :: x(ii), y(jj), z(kk), dx(ii), dy(jj), dz(kk), ddx(ii), ddy(jj), ddz(kk)
+        REAL(realk), INTENT(in) :: v1(kk, jj, ii), v2(kk, jj, ii), v3(kk, jj, ii)
+        REAL(realk), INTENT(out) :: p_v1, p_v2, p_v3 ! particle values in x/y/z direction (velocity or diffusion constant)
 
         ! local variables
         INTEGER(intk) :: p_i, p_j, p_k
         INTEGER(intk) :: p_ip, p_im, p_jp, p_jm, p_kp, p_km
         REAL(realk) :: p_x, p_y, p_z, alpha, beta, gamma, delta
-
-        CALL start_timer(923)
 
         !just for readability of the following expressions
         p_i = particle%ijkcell(1)
@@ -112,54 +74,53 @@ CONTAINS    !===================================
         p_z = particle%z
 
         ! u interpolation
-        alpha = (u(p_k, p_j, p_i) - u(p_k, p_j, p_im)) / ddx(p_i)
+        alpha = (v1(p_k, p_j, p_i) - v1(p_k, p_j, p_im)) / ddx(p_i)
 
-        beta = 0.25 * ((u(p_k, p_jp, p_i) + u(p_k, p_jp, p_im) - u(p_k, p_j, p_i) - u(p_k, p_j, p_im)) / dy(p_j) &
-         + (u(p_k, p_j, p_i) + u(p_k, p_j, p_im) - u(p_k, p_jm, p_i) - u(p_k, p_jm, p_im)) / dy(p_j -1))
+        beta = 0.25 * ((v1(p_k, p_jp, p_i) + v1(p_k, p_jp, p_im) - v1(p_k, p_j, p_i) - v1(p_k, p_j, p_im)) / dy(p_j) &
+         + (v1(p_k, p_j, p_i) + v1(p_k, p_j, p_im) - v1(p_k, p_jm, p_i) - v1(p_k, p_jm, p_im)) / dy(p_j -1))
 
-        gamma = 0.25 * ((u(p_kp, p_j, p_i) + u(p_kp, p_j, p_im) - u(p_k, p_j, p_i) - u(p_k, p_j, p_im)) / dz(p_k) &
-         + (u(p_k, p_j, p_i) + u(p_k, p_j, p_im) - u(p_km, p_j, p_i) - u(p_km, p_j, p_im)) / dz(p_km))
+        gamma = 0.25 * ((v1(p_kp, p_j, p_i) + v1(p_kp, p_j, p_im) - v1(p_k, p_j, p_i) - v1(p_k, p_j, p_im)) / dz(p_k) &
+         + (v1(p_k, p_j, p_i) + v1(p_k, p_j, p_im) - v1(p_km, p_j, p_i) - v1(p_km, p_j, p_im)) / dz(p_km))
 
-        delta = 0.5 * (u(p_k, p_j, p_i) + u(p_k, p_j, p_im) &
+        delta = 0.5 * (v1(p_k, p_j, p_i) + v1(p_k, p_j, p_im) &
          - alpha * (ddx(p_i) - dx(p_im)) - beta * (ddy(p_j) - dy(p_jm)) - gamma * (ddz(p_k) - dz(p_km)))
 
-        p_u = alpha * (p_x - x(p_i)) + beta * (p_y - y(p_j)) + gamma * (p_z - z(p_k)) + delta
+        p_v1 = alpha * (p_x - x(p_i)) + beta * (p_y - y(p_j)) + gamma * (p_z - z(p_k)) + delta
 
         ! v interpolation
-        alpha = (v(p_k, p_j, p_i) - v(p_k, p_jm, p_i)) / ddy(p_j)
+        alpha = (v2(p_k, p_j, p_i) - v2(p_k, p_jm, p_i)) / ddy(p_j)
 
-        beta = 0.25 * ((v(p_k, p_j, p_ip) + v(p_k, p_jm, p_ip) - v(p_k, p_j, p_i) - v(p_k, p_jm, p_i)) / dx(p_i) &
-         + (v(p_k, p_j, p_i) + v(p_k, p_jm, p_i) - v(p_k, p_j, p_im) - v(p_k, p_jm, p_im)) /dx(p_im))
+        beta = 0.25 * ((v2(p_k, p_j, p_ip) + v2(p_k, p_jm, p_ip) - v2(p_k, p_j, p_i) - v2(p_k, p_jm, p_i)) / dx(p_i) &
+         + (v2(p_k, p_j, p_i) + v2(p_k, p_jm, p_i) - v2(p_k, p_j, p_im) - v2(p_k, p_jm, p_im)) /dx(p_im))
 
-        gamma = 0.25 * ((v(p_kp, p_j, p_i) + v(p_kp, p_jm, p_i) - v(p_k, p_j, p_i) - v(p_k, p_jm, p_i)) / dz(p_k) &
-         + (v(p_k, p_j, p_i) + v(p_k, p_jm, p_i) - v(p_km, p_j, p_i) - v(p_km, p_jm, p_i)) / dz(p_km))
+        gamma = 0.25 * ((v2(p_kp, p_j, p_i) + v2(p_kp, p_jm, p_i) - v2(p_k, p_j, p_i) - v2(p_k, p_jm, p_i)) / dz(p_k) &
+         + (v2(p_k, p_j, p_i) + v2(p_k, p_jm, p_i) - v2(p_km, p_j, p_i) - v2(p_km, p_jm, p_i)) / dz(p_km))
 
-        delta = 0.5 * (v(p_k, p_j, p_i) + v(p_k, p_jm, p_i) &
+        delta = 0.5 * (v2(p_k, p_j, p_i) + v2(p_k, p_jm, p_i) &
          - alpha * (ddy(p_j) - dy(p_jm)) - beta * (ddx(p_i) - dx(p_im)) - gamma * (ddz(p_k) - dz(p_km)))
 
-        p_v = alpha * (p_y - y(p_j)) + beta * (p_x - x(p_i)) + gamma * (p_z - z(p_k)) + delta
+        p_v2 = alpha * (p_y - y(p_j)) + beta * (p_x - x(p_i)) + gamma * (p_z - z(p_k)) + delta
 
         ! w interpolation
-        alpha = (w(p_k, p_j, p_i) - w(p_km ,p_j ,p_i)) / ddz(p_k)
+        alpha = (v3(p_k, p_j, p_i) - v3(p_km ,p_j ,p_i)) / ddz(p_k)
 
-        beta = 0.25 * ((w(p_k, p_j, p_ip) + w(p_km, p_j, p_ip) - w(p_k, p_j, p_i) - w(p_km, p_j, p_i)) / dx(p_i) &
-         + (w(p_k, p_j, p_i) + w(p_km, p_j, p_i) - w(p_k, p_j, p_im) - w(p_km, p_j, p_im)) / dx(p_im))
+        beta = 0.25 * ((v3(p_k, p_j, p_ip) + v3(p_km, p_j, p_ip) - v3(p_k, p_j, p_i) - v3(p_km, p_j, p_i)) / dx(p_i) &
+         + (v3(p_k, p_j, p_i) + v3(p_km, p_j, p_i) - v3(p_k, p_j, p_im) - v3(p_km, p_j, p_im)) / dx(p_im))
 
-        gamma = 0.25 * ((w(p_k, p_jp, p_i) + w(p_km, p_jp, p_i) - w(p_k, p_j, p_i) - w(p_km, p_j, p_i)) / dy(p_j) &
-         + (w(p_k, p_j, p_i) + w(p_km, p_j, p_i) - w(p_k, p_jm, p_i) - w(p_km, p_jm, p_i)) / dy(p_jm))
+        gamma = 0.25 * ((v3(p_k, p_jp, p_i) + v3(p_km, p_jp, p_i) - v3(p_k, p_j, p_i) - v3(p_km, p_j, p_i)) / dy(p_j) &
+         + (v3(p_k, p_j, p_i) + v3(p_km, p_j, p_i) - v3(p_k, p_jm, p_i) - v3(p_km, p_jm, p_i)) / dy(p_jm))
 
-        delta = 0.5 * (w(p_k, p_j, p_i) + w(p_km, p_j, p_i) &
+        delta = 0.5 * (v3(p_k, p_j, p_i) + v3(p_km, p_j, p_i) &
          - alpha * (ddz(p_k) - dz(p_km)) - beta * (ddx(p_i) - dx(p_im)) - gamma * (ddy(p_j) - dy(p_jm)))
 
-        p_w = alpha * (p_z - z(p_k)) + beta * (p_x - x(p_i)) + gamma * (p_y - y(p_j)) + delta
+        p_v3 = alpha * (p_z - z(p_k)) + beta * (p_x - x(p_i)) + gamma * (p_y - y(p_j)) + delta
 
-        CALL stop_timer(923)
-
-    END SUBROUTINE gobert_particle_uvw
+    END SUBROUTINE interpolate_lincon
 
     !------------------------------
 
-    ! THIS ROUTINE IS NOT SUITABLE AS IT IS NOT MASS CONSERVATIVE (divergence of the interpolated velocity is not zero)
+    ! THIS ROUTINE IS NOT SUITABLE FOR VELOCITY INTERPOLATION,
+    ! AS IT IS NOT MASS CONSERVATIVE (divergence of the interpolated velocity is generally not zero)
     SUBROUTINE trilinear_particle_uvw(kk, jj, ii, particle, p_u, p_v, p_w, &
          xstag, ystag, zstag, u, v, w, x, y, z)
 
@@ -245,7 +206,7 @@ CONTAINS    !===================================
 
     !------------------------------
 
-    !Trilinear interpolation for a rectilinear grid !
+    ! trilinear interpolation for a rectilinear grid
     SUBROUTINE interp_trilinear(x, y, z, bbox, &
         f, f19, f20, f21, f22, f23, f24, f25, f26)
 
@@ -268,6 +229,8 @@ CONTAINS    !===================================
 
     END SUBROUTINE interp_trilinear
 
+    ! linear timeinterpolation of velicty field
+    ! (usage not recommended as conservation of mass and momentum might get lost)
     SUBROUTINE time_interpolate_field(crk, u_f, v_f, w_f, ubu_f, vbu_f, wbu_f, uli_f, vli_f, wli_f)
 
         ! subroutine arguments
@@ -281,8 +244,6 @@ CONTAINS    !===================================
         REAL(realk), POINTER, CONTIGUOUS, DIMENSION(:, :, :) :: u, v, w
         REAL(realk), POINTER, CONTIGUOUS, DIMENSION(:, :, :) :: ubu, vbu, wbu
         REAL(realk), POINTER, CONTIGUOUS, DIMENSION(:, :, :) :: uli, vli, wli
-
-        CALL start_timer(921)
 
         DO g = 1, nmygrids
             igrid = mygrids(g)
@@ -312,8 +273,6 @@ CONTAINS    !===================================
             END DO
 
         END DO
-
-        CALL stop_timer(921)
 
     END SUBROUTINE time_interpolate_field
 

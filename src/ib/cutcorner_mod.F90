@@ -44,9 +44,9 @@ CONTAINS
         TYPE(field_t), INTENT(inout) :: kanteu
         TYPE(field_t), INTENT(inout) :: kantev
         TYPE(field_t), INTENT(inout) :: kantew
-        INTEGER(intk), INTENT(out) :: triau(*)
-        INTEGER(intk), INTENT(out) :: triav(*)
-        INTEGER(intk), INTENT(out) :: triaw(*)
+        INTEGER(intk), INTENT(inout) :: triau(*)
+        INTEGER(intk), INTENT(inout) :: triav(*)
+        INTEGER(intk), INTENT(inout) :: triaw(*)
 
         ! Local variables
         INTEGER(intk) :: i, igrid, kk, jj, ii, ip3, ip3n
@@ -77,8 +77,8 @@ CONTAINS
 
 
     SUBROUTINE cutcorner_grid(kk, jj, ii, ntopol, ntrimax, xstag, ystag, &
-        zstag, ddx, ddy, ddz, topol, kanteu, kantev, kantew, triau, triav, &
-        triaw, exactedge)
+            zstag, ddx, ddy, ddz, topol, kanteu, kantev, kantew, triau, triav, &
+            triaw, exactedge)
 
         ! Subroutine arguments
         INTEGER(intk), INTENT(in) :: kk, jj, ii, ntopol, ntrimax
@@ -99,6 +99,8 @@ CONTAINS
         REAL(realk) :: x2, y2, z2, x3, y3, z3, betrag
         REAL(realk) :: length, eps
         REAL(realk) :: xmin, xmax, ymin, ymax, zmin, zmax
+        REAL(realk) :: xmin_grid, xmax_grid, ymin_grid, ymax_grid, &
+            zmin_grid, zmax_grid
         LOGICAL :: exactedge2, valid
 
         ! Initializing variables
@@ -116,6 +118,15 @@ CONTAINS
             exactedge2 = .FALSE.
         END IF
 
+        xmin_grid = xstag(1) - (2*maccur+1)*ddx(1)
+        xmax_grid = xstag(ii) + (2*maccur)*ddx(ii)
+
+        ymin_grid = ystag(1) - (2*maccur+1)*ddy(1)
+        ymax_grid = ystag(jj) + (2*maccur)*ddy(jj)
+
+        zmin_grid = zstag(1) - (2*maccur+1)*ddz(1)
+        zmax_grid = zstag(kk) + (2*maccur)*ddz(kk)
+
         ! Loop over all triangles and compute the intersections with the grid
         triangles: DO itri = 1, ntopol
 
@@ -130,21 +141,24 @@ CONTAINS
             z2 = topol(2, 3, itri)
             z3 = topol(3, 3, itri)
 
-            ! Triangle bounding box
-            xmin = MIN(x1, x2, x3)
-            xmax = MAX(x1, x2, x3)
-            ymin = MIN(y1, y2, y3)
-            ymax = MAX(y1, y2, y3)
-            zmin = MIN(z1, z2, z3)
-            zmax = MAX(z1, z2, z3)
-
             ! If triangle is outisde grid, skip triangle
-            IF (xmax < xstag(1) - (2*maccur+1)*ddx(1)) CYCLE
-            IF (xmin > xstag(ii) + (2*maccur)*ddx(ii)) CYCLE
-            IF (ymax < ystag(1) - (2*maccur+1)*ddy(1)) CYCLE
-            IF (ymin > ystag(jj) + (2*maccur)*ddy(jj)) CYCLE
-            IF (zmax < zstag(1) - (2*maccur+1)*ddz(1)) CYCLE
-            IF (zmin > zstag(kk) + (2*maccur)*ddz(kk)) CYCLE
+            xmin = MIN(x1, x2, x3)
+            IF (xmin > xmax_grid) CYCLE
+
+            xmax = MAX(x1, x2, x3)
+            IF (xmax < xmin_grid) CYCLE
+
+            ymin = MIN(y1, y2, y3)
+            IF (ymin > ymax_grid) CYCLE
+
+            ymax = MAX(y1, y2, y3)
+            IF (ymax < ymin_grid) CYCLE
+
+            zmin = MIN(z1, z2, z3)
+            IF (zmin > zmax_grid) CYCLE
+
+            zmax = MAX(z1, z2, z3)
+            IF (zmax < zmin_grid) CYCLE
 
             ! Check if trinagle is valid and compute area.
             CALL valid_triangle(valid, betrag, x1, y1, z1, x2, y2, z2, &
@@ -210,9 +224,9 @@ CONTAINS
             ! Zellen suchen, die das Dreieck schneiden
             ! Innerhalb der zuvor bestimmten Index-Grenzen
             ! wird nach Schnittpunkten gesucht
-            DO i = ntrilim(1,1), ntrilim(1,2)
-                DO j = ntrilim(2,1), ntrilim(2,2)
-                    DO k = ntrilim(3,1), ntrilim(3,2)
+            DO i = ntrilim(1, 1), ntrilim(1, 2)
+                DO j = ntrilim(2, 1), ntrilim(2, 2)
+                    DO k = ntrilim(3, 1), ntrilim(3, 2)
 
                         ! The length is the middle length when the cell has
                         ! different edge lengths.
@@ -231,7 +245,7 @@ CONTAINS
                             i, j, k, a, b, c, xp, yp, zp, &
                             x1, y1, z1, x2, y2, z2, x3, y3, z3, &
                             eps, xmin, xmax, ymin, ymax, zmin, zmax, &
-                            found, foundx, foundy, foundz, .FALSE.)
+                            found, foundx, foundy, foundz, exactedge2)
 
                         IF (foundx == 1) THEN
                             CALL insertcutpoint(kk, jj, ii, ntopol, ntrimax, &
@@ -346,9 +360,9 @@ CONTAINS
         INTEGER(intk) :: ind(3)
 
         ! ntrimax=2 in usual blocking, =1 in srep and calcvolumesexact
-        IF (-kanteu(k,j,i) < ntrimax) THEN
+        IF (-kanteu(k, j, i) < ntrimax) THEN
             kanteu(k, j, i) = kanteu(k, j, i) - 1.0_realk
-            triau(-INT(kanteu(k, j, i)),k, j, i) = itrineu
+            triau(-INT(kanteu(k, j, i)), k, j, i) = itrineu
         ELSE IF (ntrimax == 2) THEN
             ! In case of ntrimax=2, maximal two intersection points per corner
             ! are stored. The following code chooses, which ones to store.
@@ -458,7 +472,7 @@ CONTAINS
     PURE SUBROUTINE intinface(kk, jj, ii, xstag, ystag, zstag, ddx, ddy, ddz, &
             i, j, k, a, b, c, xp, yp, zp, &
             x1, y1, z1, x2, y2, z2, x3, y3, z3, &
-            eps, xmin, xmax, ymin, ymax, zmin, zmax,&
+            eps, xmin, xmax, ymin, ymax, zmin, zmax, &
             found, foundx, foundy, foundz, exactedge)
 
         ! Subroutine arguments
@@ -590,7 +604,7 @@ CONTAINS
                 IF ((s1 <= eps) .AND. (s2 <= eps) .AND. (s3 <= eps)) THEN
                     IF ((xx >= xmin-eps) .AND. (xx <= xmax+eps) .AND. &
                             (yy >= ymin-eps) .AND. (yy <= ymax+eps) .AND. &
-                            (zz >= zmin-eps) .AND. (zz <= zmax+eps) ) THEN
+                            (zz >= zmin-eps) .AND. (zz <= zmax+eps)) THEN
                         found  = 1
                         foundx = 1
                     END IF
@@ -656,7 +670,7 @@ CONTAINS
                 IF ((s1 <= eps) .AND. (s2 <= eps) .AND. (s3 <= eps)) THEN
                     IF ((xx >= xmin-eps) .AND. (xx <= xmax+eps) .AND. &
                             (yy >= ymin-eps) .AND. (yy <= ymax+eps).AND.&
-                            (zz >= zmin-eps) .AND. (zz <= zmax+eps) ) THEN
+                            (zz >= zmin-eps) .AND. (zz <= zmax+eps)) THEN
                         found  = 1
                         foundy = 1
                     END IF
@@ -718,7 +732,7 @@ CONTAINS
                 IF ((s1 <= eps) .AND. (s2 <= eps) .AND. (s3 <= eps)) THEN
                     IF ((xx >= xmin-eps) .AND. (xx <= xmax+eps) .AND. &
                             (yy >= ymin-eps) .AND. (yy <= ymax+eps) .AND. &
-                            (zz >= zmin-eps) .AND. (zz <= zmax+eps) ) THEN
+                            (zz >= zmin-eps) .AND. (zz <= zmax+eps)) THEN
                         found  = 1
                         foundz = 1
                     END IF

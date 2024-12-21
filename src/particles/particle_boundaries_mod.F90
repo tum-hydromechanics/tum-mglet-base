@@ -35,6 +35,8 @@ MODULE particle_boundaries_mod
         3, 2, 4, 5, &
         3, 2, 4, 6 /), SHAPE(facelist_b))
 
+    ! TODO: restructure type so that particle_boundaries is an array if size nmygrids
+    ! and each attribute has one dimension (that now holds igrid info) less
     TYPE :: particle_boundaries_t
 
         INTEGER(intk), ALLOCATABLE :: face_neighbours(:, :)
@@ -176,44 +178,39 @@ MODULE particle_boundaries_mod
             END DO
         END DO
 
-        SELECT CASE (TRIM(particle_terminal))
-            CASE ("none")
-                CONTINUE
-            CASE ("normal")
-                CONTINUE
-            CASE ("verbose")
-                IF (myid == 0) THEN
-                    DO igrid = 1, ngrid
-                        WRITE(*, *) "------ Boundaries, Grid:   ", igrid, "------"
-                        CALL get_particle_bc(igrid, 1, bc_coupling_mode, ctyp)
-                        WRITE(*, *) "FRONT:                ", ctyp
-                        CALL get_particle_bc(igrid, 2, bc_coupling_mode, ctyp)
-                        WRITE(*, *) "BACK:                 ", ctyp
-                        CALL get_particle_bc(igrid, 3, bc_coupling_mode, ctyp)
-                        WRITE(*, *) "RIGHT:                ", ctyp
-                        CALL get_particle_bc(igrid, 4, bc_coupling_mode, ctyp)
-                        WRITE(*, *) "LEFT:                 ", ctyp
-                        CALL get_particle_bc(igrid, 5, bc_coupling_mode, ctyp)
-                        WRITE(*, *) "BOTTOM:               ", ctyp
-                        CALL get_particle_bc(igrid, 6, bc_coupling_mode, ctyp)
-                        WRITE(*, *) "TOP:                  ", ctyp
-                        WRITE(*, *) " "
-                        WRITE(*, *) "FACES:"
-                        DO iface = 1, 26
-                            WRITE(*, *) "Face:                 ", iface
-                            WRITE(*, *) "Neigbhour grid:       ", particle_boundaries%face_neighbours(iface, igrid)
-                            WRITE(*,'("Normal vector: ")')
-                            WRITE(*, *) "n1                    ", particle_boundaries%face_normals(1, iface, igrid)
-                            WRITE(*, *) "n2                    ", particle_boundaries%face_normals(2, iface, igrid)
-                            WRITE(*, *) "n3                    ", particle_boundaries%face_normals(3, iface, igrid)
-                            WRITE(*, *) " "
-                        END DO
-                    END DO
+        IF (myid == 0) THEN
+            IF (TRIM(particle_terminal) == "verbose") THEN
+                DO igrid = 1, ngrid
+                    WRITE(*, *) "------ Boundaries, Grid:   ", igrid, "------"
+                    CALL get_particle_bc(igrid, 1, bc_coupling_mode, ctyp)
+                    WRITE(*, *) "FRONT:                ", ctyp
+                    CALL get_particle_bc(igrid, 2, bc_coupling_mode, ctyp)
+                    WRITE(*, *) "BACK:                 ", ctyp
+                    CALL get_particle_bc(igrid, 3, bc_coupling_mode, ctyp)
+                    WRITE(*, *) "RIGHT:                ", ctyp
+                    CALL get_particle_bc(igrid, 4, bc_coupling_mode, ctyp)
+                    WRITE(*, *) "LEFT:                 ", ctyp
+                    CALL get_particle_bc(igrid, 5, bc_coupling_mode, ctyp)
+                    WRITE(*, *) "BOTTOM:               ", ctyp
+                    CALL get_particle_bc(igrid, 6, bc_coupling_mode, ctyp)
+                    WRITE(*, *) "TOP:                  ", ctyp
                     WRITE(*, *) " "
-                END IF
-        END SELECT
+                    WRITE(*, *) "FACES:"
+                    DO iface = 1, 26
+                        WRITE(*, *) "Face:                 ", iface
+                        WRITE(*, *) "Neigbhour grid:       ", particle_boundaries%face_neighbours(iface, igrid)
+                        WRITE(*,'("Normal vector: ")')
+                        WRITE(*, *) "n1                    ", particle_boundaries%face_normals(1, iface, igrid)
+                        WRITE(*, *) "n2                    ", particle_boundaries%face_normals(2, iface, igrid)
+                        WRITE(*, *) "n3                    ", particle_boundaries%face_normals(3, iface, igrid)
+                        WRITE(*, *) " "
+                    END DO
+                END DO
+                WRITE(*, '()')
+            END IF
+        END IF
 
-        ! BARRIER ONLY FOR DEGUGGING -- TEMPORARY <----------------------------------------------- TODO : remove
+        ! TODO: remove?
         CALL MPI_Barrier(MPI_COMM_WORLD)
 
         CALL read_obstacles()
@@ -227,10 +224,16 @@ MODULE particle_boundaries_mod
 
     SUBROUTINE finish_particle_boundaries()
 
+        CALL start_timer(900)
+        CALL start_timer(910)
+
         CALL finish_obstacles()
 
-        DEALLOCATE(particle_boundaries%face_neighbours)
-        DEALLOCATE(particle_boundaries%face_normals)
+        IF (ALLOCATED(particle_boundaries%face_neighbours)) DEALLOCATE(particle_boundaries%face_neighbours)
+        IF (ALLOCATED(particle_boundaries%face_normals)) DEALLOCATE(particle_boundaries%face_normals)
+
+        CALL stop_timer(910)
+        CALL stop_timer(900)
 
     END SUBROUTINE finish_particle_boundaries
 
@@ -252,14 +255,11 @@ MODULE particle_boundaries_mod
         REAL(realk) :: dx_from_here, dy_from_here, dz_from_here
         REAL(realk) :: epsilon
 
-        CALL start_timer(924)
-
         dx_eff = 0.0
         dy_eff = 0.0
         dz_eff = 0.0
 
         IF (SQRT(dx**(2) + dy**(2) + dz**(2)) < eps) THEN
-            CALL stop_timer(924)
             RETURN
         END IF
 
@@ -282,29 +282,18 @@ MODULE particle_boundaries_mod
 
         iobst_local = 0
 
-        SELECT CASE (TRIM(particle_terminal))
-            CASE ("none")
-                CONTINUE
-            CASE ("normal")
-                CONTINUE
-            CASE ("verbose")
-                WRITE(*, *) "---------- MOVE PARTICLE ----------"
-                WRITE(*, '()')
-        END SELECT
+        IF (TRIM(particle_terminal) == "verbose") THEN
+            WRITE(*, *) "---------- MOVE PARTICLE ----------"
+            WRITE(*, '()')
+        END IF
 
         counter = 1
         DO WHILE (epsilon < SQRT(dx_from_here**(2) + dy_from_here**(2) + dz_from_here**(2)) .AND. counter <= 10)
 
-            SELECT CASE (TRIM(particle_terminal))
-                CASE ("none")
-                    CONTINUE
-                CASE ("normal")
-                    CONTINUE
-                CASE ("verbose")
-                    WRITE(*, *) "Way to go:"
-                    WRITE(*, *) "dx/dy/dz:", dx_from_here, dy_from_here, dz_from_here
-                    WRITE(*, '()')
-            END SELECT
+            IF (TRIM(particle_terminal) == "verbose") THEN
+                WRITE(*, *) "Way to go:"
+                WRITE(*, *) "dx/dy/dz:", dx_from_here, dy_from_here, dz_from_here
+            END IF
 
             CALL move_to_boundary(temp_grid, x, y, z, &
              dx_from_here, dy_from_here, dz_from_here, dx_step, dy_step, dz_step, iface, iobst_local)
@@ -315,14 +304,9 @@ MODULE particle_boundaries_mod
 
             IF (0 < iobst_local) THEN
 
-                SELECT CASE (TRIM(particle_terminal))
-                    CASE ("none")
-                        CONTINUE
-                    CASE ("normal")
-                        CONTINUE
-                    CASE ("verbose")
-                        WRITE(*, *) "Particle reflected at Obstacle ", my_obstacles(iobst_local)%iobst, "."
-                END SELECT
+                IF (TRIM(particle_terminal) == "verbose") THEN
+                    WRITE(*, *) "Particle reflected at Obstacle ", my_obstacles(iobst_local)%iobst, "."
+                END IF
 
                 CALL reflect_at_obstacle(iobst_local, x, y, z, dx_from_here, dy_from_here, dz_from_here)
 
@@ -330,14 +314,9 @@ MODULE particle_boundaries_mod
 
                 destgrid = particle_boundaries%face_neighbours(iface, temp_grid)
 
-                SELECT CASE (TRIM(particle_terminal))
-                    CASE ("none")
-                        CONTINUE
-                    CASE ("normal")
-                        CONTINUE
-                    CASE ("verbose")
-                        WRITE(*, *) "Particle moved to Grid face ", iface, "with Target Grid ", destgrid, "."
-                END SELECT
+                IF (TRIM(particle_terminal) == "verbose") THEN
+                    WRITE(*, *) "Particle moved to Grid face ", iface, "with Target Grid ", destgrid, "."
+                END IF
 
                 CALL reflect_at_boundary(dx_from_here, dy_from_here, dz_from_here, &
                 particle_boundaries%face_normals(1, iface, temp_grid), &
@@ -350,19 +329,14 @@ MODULE particle_boundaries_mod
 
             END IF
 
-            SELECT CASE (TRIM(particle_terminal))
-                CASE ("none")
-                    CONTINUE
-                CASE ("normal")
-                    CONTINUE
-                CASE ("verbose")
-                    WRITE(*, *) "Intermediate Location:"
-                    WRITE(*, *) "igrid:", temp_grid
-                    WRITE(*, *) "x:", x
-                    WRITE(*, *) "y:", y
-                    WRITE(*, *) "z:", z
-                    WRITE(*, '()')
-            END SELECT
+            IF (TRIM(particle_terminal) == "verbose") THEN
+                WRITE(*, *) "Intermediate Location:"
+                WRITE(*, *) "igrid:", temp_grid
+                WRITE(*, *) "x:", x
+                WRITE(*, *) "y:", y
+                WRITE(*, *) "z:", z
+                WRITE(*, '()')
+            END IF
 
             counter = counter + 1
 
@@ -376,8 +350,6 @@ MODULE particle_boundaries_mod
         temp_grid_prev = temp_grid
 
         CALL update_particle_cell(particle)
-
-        CALL stop_timer(924)
 
     END SUBROUTINE move_particle
 
@@ -453,16 +425,10 @@ MODULE particle_boundaries_mod
                 y = cy + (y - cy) * r / SQRT((x - cx)**2 + (y - cy)**2 + (z - cz)**2) + EPSILON(y)
                 z = cz + (z - cz) * r / SQRT((x - cx)**2 + (y - cy)**2 + (z - cz)**2) + EPSILON(z)
 
-                SELECT CASE (TRIM(particle_terminal))
-                    CASE ("none")
-                        CONTINUE
-                    CASE ("normal")
-                        WRITE(*, *) "WARNING: In move_to_boundary: Particle inside Obstacle. Particle artificially moved to Obstacle Surface."
-                        WRITE(*, '()')
-                    CASE ("verbose")
-                        WRITE(*, *) "WARNING: In move_to_boundary: Particle Inside Obstacle. Particle artificially moved to Obstacle Surface."
-                        WRITE(*, '()')
-                END SELECT
+                IF (TRIM(particle_terminal) == "normal" .OR. TRIM(particle_terminal) == "verbose") THEN
+                    WRITE(*, *) "WARNING: In move_to_boundary: Particle inside Obstacle. Particle artificially moved to Obstacle Surface."
+                    WRITE(*, '()')
+                END IF
             END IF
 
             ! sphere dependent coefficients
@@ -515,54 +481,57 @@ MODULE particle_boundaries_mod
 
         IF (dx < 0) THEN
             lx = (minx - x)
-            IF(ABS(lx) < eps) THEN
+            rx = dx * s / lx
+            ! if particle is at boundary in X dir (lx = 0) or particle is outside temp_grid (rx < 0.0),
+            ! get exit face and return; so if a particle is incorrectly outside a reflect boundary its
+            ! motion vector is reflected towards temp_grid
+            IF (ABS(lx) < eps .OR. rx < 0.0) THEN
                 CALL get_exit_face(temp_grid, x, y, z, dist, iface)
                 RETURN
             END IF
-            rx = dx * s / lx
         ELSEIF (0 < dx) THEN
             lx = (maxx - x)
-            IF(ABS(lx) < eps) THEN
+            rx = dx * s / lx
+            IF (ABS(lx) < eps .OR. rx < 0.0) THEN
                 CALL get_exit_face(temp_grid, x, y, z, dist, iface)
                 RETURN
             END IF
-            rx = dx * s / lx
         ELSE
             rx = 0.0_realk
         END IF
 
         IF (dy < 0) THEN
             ly = (miny - y)
-            IF(ABS(ly) < eps) THEN
+            ry = dy * s / ly
+            IF (ABS(ly) < eps .OR. ry < 0.0) THEN
                 CALL get_exit_face(temp_grid, x, y, z, dist, iface)
                 RETURN
             END IF
-            ry = dy * s / ly
         ELSEIF (0 < dy) THEN
             ly = (maxy - y)
-            IF(ABS(ly) < eps) THEN
+            ry = dy * s / ly
+            IF (ABS(ly) < eps .OR. ry < 0.0) THEN
                 CALL get_exit_face(temp_grid, x, y, z, dist, iface)
                 RETURN
             END IF
-            ry = dy * s / ly
         ELSE
             ry = 0.0_realk
         END IF
 
         IF (dz < 0) THEN
             lz = (minz - z)
-            IF(ABS(lz) < eps) THEN
+            rz = dz * s / lz
+            IF(ABS(lz) < eps .OR. rz < 0.0) THEN
                 CALL get_exit_face(temp_grid, x, y, z, dist, iface)
                 RETURN
             END IF
-            rz = dz * s / lz
         ELSEIF (0 < dz) THEN
             lz = (maxz - z)
-            IF(ABS(lz) < eps) THEN
+            rz = dz * s / lz
+            IF(ABS(lz) < eps .OR. rz < 0.0) THEN
                 CALL get_exit_face(temp_grid, x, y, z, dist, iface)
                 RETURN
             END IF
-            rz = dz * s / lz
         ELSE
             rz = 0.0_realk
         END IF
@@ -580,9 +549,7 @@ MODULE particle_boundaries_mod
             dz = dz - dz_to_b
 
             iface = 0
-
             RETURN
-
         END IF
 
         ! if the routine did not return yet, no obstacle will be hit before some grid boundary
@@ -767,10 +734,10 @@ MODULE particle_boundaries_mod
         CHARACTER(len = 3), INTENT(out) :: ctyp
 
         ! local variables
-        INTEGER(intk) :: ibocd
+        INTEGER(intk) :: ibocd, nbocd
         CHARACTER(len = 8) :: ctyp1, ctyp2
 
-
+        ! TODO: rework particle boundary initialization and storage
         ! SIO = Skalar-RB für Oberflächen der Domain, die durchströmt werden
         ! SWA = Skalar-RB auf Wänden (slip und no-slip)
 
@@ -782,10 +749,11 @@ MODULE particle_boundaries_mod
 
         CASE("SCAL")
 
-            ibocd = 2
+            nbocd = nboconds(iface, igrid)
+            ibocd = nbocd
             CALL get_bc_ctyp(ctyp2, ibocd, iface, igrid)
 
-            IF (ctyp2 == "SIO") THEN
+            IF (ctyp2 == "SIO" .OR. ctyp2 == "CON") THEN
                 ctyp = "CON"
             ELSEIF (ctyp2 == "SWA") THEN
                 ctyp = "REF"

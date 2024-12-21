@@ -33,6 +33,7 @@ add_library(core STATIC
     pvtk.c
     pvtk_mod.F90
     qsort_mod.F90
+    readstl.cxx
     readstl_mod.F90
     rungekutta_mod.F90
     shmem_mod.F90
@@ -40,7 +41,6 @@ add_library(core STATIC
     sort_wrapper.cxx
     statistics_mod.F90
     stencilio_mod.F90
-    stl_is_binary.c
     sym_name_mod.F90
     tensormath_mod.F90
     timekeeper_mod.F90
@@ -63,15 +63,19 @@ target_link_libraries(core
 
 # Set include directories for specific files
 set_source_files_properties(exprtk_wrapper.cxx PROPERTIES INCLUDE_DIRECTORIES
-    ${exprtk_SOURCE_DIR}
+    ${exprtk_SOURCE_DIR}/exprtk
 )
 set_source_files_properties(jsoncpp_wrapper.cxx PROPERTIES INCLUDE_DIRECTORIES
     ${json_SOURCE_DIR}/include
 )
 
-set_property(TARGET core PROPERTY CXX_STANDARD 14)
+set_property(TARGET core PROPERTY CXX_STANDARD 17)
 
 # Other neccesary compile flags
+set_source_files_properties(exprtk_wrapper.cxx PROPERTIES COMPILE_FLAGS
+    $<$<STREQUAL:"${CMAKE_CXX_COMPILER_ID}","GNU">:-Wno-implicit-fallthrough>
+)
+
 set_source_files_properties(comms_mod.F90 PROPERTIES COMPILE_FLAGS
     $<$<STREQUAL:"${CMAKE_Fortran_COMPILER_ID}","GNU">:-fall-intrinsics>
 )
@@ -88,10 +92,10 @@ set_source_files_properties(simdfunctions_mod.F90 PROPERTIES COMPILE_FLAGS
     $<$<STREQUAL:"${CMAKE_Fortran_COMPILER_ID}","GNU">:-Wno-compare-reals>
 )
 
-set_source_files_properties(stl_is_binary.c PROPERTIES COMPILE_FLAGS
-    $<$<STREQUAL:"${CMAKE_C_COMPILER_ID}","GNU">:-Wno-unused-result>
-)
-
 set_source_files_properties(utils_mod.F90 PROPERTIES COMPILE_FLAGS
     $<$<STREQUAL:"${CMAKE_Fortran_COMPILER_ID}","IntelLLVM">:"-nostand -warn nostderrors">
+)
+
+set_source_files_properties(readstl.cxx PROPERTIES COMPILE_DEFINITIONS
+    $<$<BOOL:${HAVE_CHARCONV}>:HAVE_CHARCONV=1>
 )

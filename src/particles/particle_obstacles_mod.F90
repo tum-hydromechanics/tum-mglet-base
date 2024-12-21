@@ -1,5 +1,8 @@
 MODULE particle_obstacles_mod
 
+    ! This module is responsible for:
+    ! Reading and storage of a sphere pack (obstacles that make up a porous domain)
+
     USE MPI_f08
     USE comms_mod
     USE grids_mod
@@ -10,6 +13,7 @@ MODULE particle_obstacles_mod
 
     IMPLICIT NONE
 
+    ! TODO: make an abstract parent class
     TYPE :: obstacle_t
 
         INTEGER(intk) :: iobst
@@ -34,14 +38,16 @@ MODULE particle_obstacles_mod
 
     END TYPE obstacle_pointer_t
 
-    ! list of all obstacles that are on any grid on this process or on any (obstacle) buffer zone of any grid on this process
+    ! list of all obstacles that are on any grid or neighbouring grid of this process
     TYPE(obstacle_t), ALLOCATABLE :: my_obstacles(:)
 
     ! list that holds one obstacle_pointer_t per grid (all grids, not limited to those on this process)
     TYPE(obstacle_pointer_t), ALLOCATABLE :: my_obstacle_pointers(:)
 
-    ! TODO: compute this from expected max particle displacement OR make this a config parameter
-    REAL(realk), PARAMETER :: overlap_factor = 0.1
+    ! TODO: change this value?
+    ! factor to compute the minimum distance between obstacles for which no intermediate obstacle is generated
+    ! using EPSILON(realk)
+    REAL(realk), PARAMETER :: min_space_factor = 100
 
     ! ratio of intermediate (filling) obstacles over readius of regular obstacles
     REAL(realk), PARAMETER :: radius_ratio = 0.348
@@ -52,6 +58,9 @@ CONTAINS    !===================================
     SUBROUTINE read_obstacles()
 
         ! local variables
+        TYPE(obstacle_t), ALLOCATABLE :: obstacles_src(:), obstacles_itm(:) ! temporary obtscle lists
+        !(src -> input/regular/source obstacles (read), itm -> intermediate/filling obstacles (generated))
+
         INTEGER(intk) :: unit, dict_len, iobst, igrid, i, j, counter, dummy
         INTEGER(intk) :: neighbours(26)
         INTEGER(intk), ALLOCATABLE :: counter_array(:) ! number of obstacles that is relevant on this process per grid
@@ -60,8 +69,6 @@ CONTAINS    !===================================
         LOGICAL, ALLOCATABLE :: is_relevant_src(:), is_relevant_itm(:) ! indicates if an obstacle is relevant on this process
 
         REAL(realk) :: dist
-
-        TYPE(obstacle_t), ALLOCATABLE :: obstacles_src(:), obstacles_itm(:)
 
         CHARACTER(12) :: dummy_char
 
@@ -77,36 +84,18 @@ CONTAINS    !===================================
         IF (.NOT. dread_obstacles) THEN
             ALLOCATE(my_obstacles(0))
             IF (myid == 0) THEN
-                SELECT CASE (TRIM(particle_terminal))
-                    CASE ("none")
-                        CONTINUE
-                    CASE ("normal")
-                        WRITE(*, *) "WARNING: No file for reading obstacles detected!"
-                        WRITE(*, '()')
-                    CASE ("verbose")
-                        WRITE(*, *) ' '
-                        WRITE(*, *) "WARNING: No file for reading obstacles detected!"
-                        WRITE(*, '()')
-                END SELECT
+                IF (TRIM(particle_terminal) == "normal" .OR. TRIM(particle_terminal) == "verbose") THEN
+                    WRITE(*, *) "ERROR: No file for reading obstacles detected!"
+                    CALL errr(__FILE__,__LINE__)
+                END IF
             END IF
-
-            RETURN
-
         END IF
 
         IF (myid == 0) THEN
-            SELECT CASE (TRIM(particle_terminal))
-                CASE ("none")
-                    CONTINUE
-                CASE ("normal")
-                    WRITE(*, '()')
-                    WRITE(*, '("READING OBSTACLES ...")')
-                    WRITE(*, '()')
-                CASE ("verbose")
-                    WRITE(*, '()')
-                    WRITE(*, '("READING OBSTACLES ...")')
-                    WRITE(*, '()')
-            END SELECT
+            IF (TRIM(particle_terminal) == "normal" .OR. TRIM(particle_terminal) == "verbose") THEN
+                WRITE(*, '("READING OBSTACLES ...")')
+                WRITE(*, '()')
+            END IF
         END IF
 
         ALLOCATE(counter_array(ngrid))
@@ -120,20 +109,12 @@ CONTAINS    !===================================
 
         IF (dict_len < 1) THEN
             IF (myid == 0) THEN
-                SELECT CASE (TRIM(particle_terminal))
-                    CASE ("none")
-                        CONTINUE
-                    CASE ("normal")
-                        WRITE(*, '()')
-                        WRITE(*, '("ERROR in particle_obstacles_mod: Number of Obstacles given in ObstaclesDict.txt must be an integer larger than 0.")')
-                        WRITE(*, '("If no Obstacles should be registered, set read_obst to FALSE.")')
-                        WRITE(*, '()')
-                    CASE ("verbose")
-                        WRITE(*, '()')
-                        WRITE(*, '("ERROR in particle_obstacles_mod: Number of Obstacles given in ObstaclesDict.txt must be an integer larger than 0.")')
-                        WRITE(*, '("If no Obstacles should be registered, set read_obst to FALSE.")')
-                        WRITE(*, '()')
-                END SELECT
+                IF (TRIM(particle_terminal) == "normal" .OR. TRIM(particle_terminal) == "verbose") THEN
+                    WRITE(*, '()')
+                    WRITE(*, '("ERROR in particle_obstacles_mod: Number of Obstacles given in ObstaclesDict.txt must be an integer larger than 0.")')
+                    WRITE(*, '("If no Obstacles should be registered, set read_obst to FALSE.")')
+                    WRITE(*, '()')
+                END IF
             END IF
             CALL errr(__FILE__, __LINE__)
         END IF
@@ -150,15 +131,10 @@ CONTAINS    !===================================
              obstacles_src(iobst)%z
 
             IF (myid == 0) THEN
-                SELECT CASE (TRIM(particle_terminal))
-                    CASE ("none")
-                        CONTINUE
-                    CASE ("normal")
-                        CONTINUE
-                    CASE ("verbose")
-                        WRITE(*,'("Obstacle read: x/y/z/r = ", 4F12.6)') obstacles_src(iobst)%x, obstacles_src(iobst)%y, &
-                         obstacles_src(iobst)%z, obstacles_src(iobst)%radius
-                END SELECT
+                IF (TRIM(particle_terminal) == "verbose") THEN
+                    WRITE(*,'("Obstacle read: x/y/z/r = ", 4F12.6)') obstacles_src(iobst)%x, obstacles_src(iobst)%y, &
+                     obstacles_src(iobst)%z, obstacles_src(iobst)%radius
+                END IF
             END IF
 
             obstacles_src(iobst)%iobst = iobst
@@ -179,7 +155,8 @@ CONTAINS    !===================================
                  (obstacles_src(i)%y - obstacles_src(j)%y)**2 + &
                  (obstacles_src(i)%z - obstacles_src(j)%z)**2)
 
-                IF (dist < (obstacles_src(i)%radius + obstacles_src(j)%radius + 10 * EPSILON(obstacles_src(i)%radius))) THEN
+                ! TODO: change minimum space between obstacles?
+                IF (dist < (obstacles_src(i)%radius + obstacles_src(j)%radius + min_space_factor * EPSILON(obstacles_src(i)%radius))) THEN
                     counter = counter + 1
                 END IF
 
@@ -198,13 +175,13 @@ CONTAINS    !===================================
                  (obstacles_src(i)%y - obstacles_src(j)%y)**2 + &
                  (obstacles_src(i)%z - obstacles_src(j)%z)**2)
 
-                IF (dist < (obstacles_src(i)%radius + obstacles_src(j)%radius + 10 * EPSILON(obstacles_src(i)%radius))) THEN
+                IF (dist < (obstacles_src(i)%radius + obstacles_src(j)%radius + min_space_factor * EPSILON(obstacles_src(i)%radius))) THEN
 
                     obstacles_itm(counter)%iobst = counter + dict_len
                     obstacles_itm(counter)%x = obstacles_src(i)%x + (obstacles_src(j)%x - obstacles_src(i)%x) * obstacles_src(i)%radius / dist
                     obstacles_itm(counter)%y = obstacles_src(i)%y + (obstacles_src(j)%y - obstacles_src(i)%y) * obstacles_src(i)%radius / dist
                     obstacles_itm(counter)%z = obstacles_src(i)%z + (obstacles_src(j)%z - obstacles_src(i)%z) * obstacles_src(i)%radius / dist
-                    obstacles_itm(counter)%radius = radius_ratio * obstacles_src(i)%radius
+                    obstacles_itm(counter)%radius = radius_ratio * MAX(obstacles_src(i)%radius, obstacles_src(j)%radius)
 
                     counter = counter + 1
 
@@ -213,7 +190,7 @@ CONTAINS    !===================================
             END DO
         END DO
 
-        ! count regular obstacles that are relevant for this process and dtermine for which grids they are relevant
+        ! count regular/source obstacles that are relevant for this process and determine for which grids they are relevant
         counter = 0
         DO iobst = 1, dict_len
 
@@ -232,13 +209,11 @@ CONTAINS    !===================================
                 CALL get_neighbours(neighbours, igrid)
 
                 DO j = 1, 26
-
                     IF (obstacles_src(iobst)%in_zone(neighbours(j)) .AND. .NOT. grid_processed(neighbours(j))) THEN
                         grid_processed(neighbours(j)) = .TRUE.
                         counter_array(neighbours(j)) = counter_array(neighbours(j)) + 1
                         is_relevant_src(iobst) = .TRUE.
                     END IF
-
                 END DO
 
                 IF (is_relevant_src(iobst)) THEN
@@ -249,7 +224,7 @@ CONTAINS    !===================================
 
         END DO
 
-        ! count intermediate/filling obstacles are relevant for this process and dtermine for which grids they are relevant
+        ! count intermediate/filling obstacles that are relevant for this process and determine for which grids they are relevant
         DO iobst = 1, SIZE(obstacles_itm)
 
             grid_processed = .FALSE.
@@ -267,13 +242,11 @@ CONTAINS    !===================================
                 CALL get_neighbours(neighbours, igrid)
 
                 DO j = 1, 26
-
                     IF (obstacles_itm(iobst)%in_zone(neighbours(j)) .AND. .NOT. grid_processed(neighbours(j))) THEN
                         grid_processed(neighbours(j)) = .TRUE.
                         counter_array(neighbours(j)) = counter_array(neighbours(j)) + 1
                         is_relevant_itm(iobst) = .TRUE.
                     END IF
-
                 END DO
 
                 IF (is_relevant_src(iobst)) THEN
@@ -301,18 +274,13 @@ CONTAINS    !===================================
                 my_obstacles(counter) = obstacles_src(iobst)
 
                 DO igrid = 1, ngrid
-
                     IF (obstacles_src(iobst)%in_zone(igrid)) THEN
-
                         my_obstacle_pointers(igrid)%grid_obstacles(counter_array(igrid)) = counter
-
                         counter_array(igrid) = counter_array(igrid) + 1
-
                     END IF
-
                 END DO
 
-            counter = counter + 1
+                counter = counter + 1
 
             END IF
 
@@ -326,121 +294,84 @@ CONTAINS    !===================================
                 my_obstacles(counter) = obstacles_itm(iobst)
 
                 DO igrid = 1, ngrid
-
                     IF (obstacles_itm(iobst)%in_zone(igrid)) THEN
-
                         my_obstacle_pointers(igrid)%grid_obstacles(counter_array(igrid)) = counter
-
                         counter_array(igrid) = counter_array(igrid) + 1
-
                     END IF
-
                 END DO
 
-            counter = counter + 1
+                counter = counter + 1
 
             END IF
 
         END DO
 
-        SELECT CASE (TRIM(particle_terminal))
-            CASE ("none")
-                CONTINUE
-            CASE ("normal")
+        IF (TRIM(particle_terminal) == "normal" .OR. TRIM(particle_terminal) == "verbose") THEN
+            IF (myid /= 0) THEN
+                CALL MPI_Recv(dummy, 1, mglet_mpi_int, myid - 1, 900, &
+                 MPI_COMM_WORLD, MPI_STATUS_IGNORE)
+            END IF
 
-                IF (myid /= 0) THEN
-                    CALL MPI_Recv(dummy, 1, mglet_mpi_int, myid - 1, 900, &
-                     MPI_COMM_WORLD, MPI_STATUS_IGNORE)
-                END IF
+            WRITE(*, '("Obstacels on Process ", I0, ":")') myid
+            WRITE(*, '()')
 
-                WRITE(*, '("Obstacels on Process ", I0, ":")') myid
-                WRITE(*, '()')
+            DO igrid = 1, ngrid
 
-                DO igrid = 1, ngrid
-
+                IF (SIZE(my_obstacle_pointers(igrid)%grid_obstacles) > 0 .OR. TRIM(particle_terminal) == "verbose") THEN
                     WRITE(*,'(I0, " Obstacles registered for Grid ", I0, ".")') SIZE(my_obstacle_pointers(igrid)%grid_obstacles), igrid
                     WRITE(*, '()')
+                END IF
 
+                IF (TRIM(particle_terminal) == "verbose") THEN
                     DO i = 1, SIZE(my_obstacle_pointers(igrid)%grid_obstacles)
-
                         WRITE(*,'("Obstacle ", I0, ":")') my_obstacles(my_obstacle_pointers(igrid)%grid_obstacles(i))%iobst
                         WRITE(*,'("x/y/z/r = ", 4F12.6)') my_obstacles(my_obstacle_pointers(igrid)%grid_obstacles(i))%x, &
                         my_obstacles(my_obstacle_pointers(igrid)%grid_obstacles(i))%y, &
                         my_obstacles(my_obstacle_pointers(igrid)%grid_obstacles(i))%z, &
                         my_obstacles(my_obstacle_pointers(igrid)%grid_obstacles(i))%radius
                         WRITE(*, '()')
-
                     END DO
-
-                END DO
-
-                IF (myid /= numprocs - 1) THEN
-                    CALL MPI_Send(dummy, 1, mglet_mpi_int, myid + 1, 900, &
-                     MPI_COMM_WORLD)
                 END IF
 
-                CALL MPI_Barrier(MPI_COMM_WORLD)
+            END DO
 
-            CASE ("verbose")
+            IF (myid /= numprocs - 1) THEN
+                CALL MPI_Send(dummy, 1, mglet_mpi_int, myid + 1, 900, &
+                 MPI_COMM_WORLD)
+            END IF
+        END IF
 
-                IF (myid /= 0) THEN
-                    CALL MPI_Recv(dummy, 1, mglet_mpi_int, myid - 1, 900, &
-                     MPI_COMM_WORLD, MPI_STATUS_IGNORE)
-                END IF
+        IF(ALLOCATED(counter_array)) DEALLOCATE(counter_array)
+        IF(ALLOCATED(grid_processed)) DEALLOCATE(grid_processed)
+        IF(ALLOCATED(obstacles_src)) DEALLOCATE(obstacles_src)
+        IF(ALLOCATED(is_relevant_src)) DEALLOCATE(is_relevant_src)
+        IF(ALLOCATED(obstacles_itm)) DEALLOCATE(obstacles_itm)
+        IF(ALLOCATED(is_relevant_itm)) DEALLOCATE(is_relevant_itm)
 
-                WRITE(*, '("Obstacels on Process ", I0, ":")') myid
-                WRITE(*, '()')
-
-                DO igrid = 1, ngrid
-
-                    WRITE(*,'(I0, " Obstacles registered for Grid ", I0, ".")') SIZE(my_obstacle_pointers(igrid)%grid_obstacles), igrid
-                    WRITE(*, '()')
-
-                    DO i = 1, SIZE(my_obstacle_pointers(igrid)%grid_obstacles)
-
-                        WRITE(*,'("Obstacle ", I0, ":")') my_obstacles(my_obstacle_pointers(igrid)%grid_obstacles(i))%iobst
-                        WRITE(*,'("x/y/z/r = ", 4F12.6)') my_obstacles(my_obstacle_pointers(igrid)%grid_obstacles(i))%x, &
-                        my_obstacles(my_obstacle_pointers(igrid)%grid_obstacles(i))%y, &
-                        my_obstacles(my_obstacle_pointers(igrid)%grid_obstacles(i))%z, &
-                        my_obstacles(my_obstacle_pointers(igrid)%grid_obstacles(i))%radius
-                        WRITE(*, '()')
-
-                    END DO
-
-                END DO
-
-                IF (myid /= numprocs - 1) THEN
-                    CALL MPI_Send(dummy, 1, mglet_mpi_int, myid + 1, 900, &
-                     MPI_COMM_WORLD)
-                END IF
-
-                CALL MPI_Barrier(MPI_COMM_WORLD)
-
-        END SELECT
-
-        DEALLOCATE(obstacles_src)
+        ! TODO: remove barrier?
+        CALL MPI_Barrier(MPI_COMM_WORLD)
 
         IF (myid == 0) THEN
-            SELECT CASE (TRIM(particle_terminal))
-                CASE ("none")
-                    CONTINUE
-                CASE ("normal")
-                    WRITE(*, '()')
-                    WRITE(*, '("READING OF OBSTACLES SUCCESSFULLY COMPLETED.")')
-                    WRITE(*, '()')
-                CASE ("verbose")
-                    WRITE(*, '()')
-                    WRITE(*, '("READING OF OBSTACLES SUCCESSFULLY COMPLETED.")')
-                    WRITE(*, '()')
-            END SELECT
+            IF (TRIM(particle_terminal) == "normal" .OR. TRIM(particle_terminal) == "verbose") THEN
+                WRITE(*, '("READING OF OBSTACLES SUCCESSFULLY COMPLETED.")')
+                WRITE(*, '()')
+            END IF
         END IF
 
     END SUBROUTINE read_obstacles
 
     SUBROUTINE finish_obstacles()
 
-        IF (dread_obstacles) THEN
-            DEALLOCATE(my_obstacles)
+        ! local variables
+        INTEGER(intk) :: i
+
+        IF (ALLOCATED(my_obstacles)) DEALLOCATE(my_obstacles)
+        IF (ALLOCATED(my_obstacle_pointers)) THEN
+            DO i = 1, SIZE(my_obstacle_pointers)
+                IF (ALLOCATED(my_obstacle_pointers(i)%grid_obstacles)) THEN
+                    DEALLOCATE(my_obstacle_pointers(i)%grid_obstacles)
+                END IF
+            END DO
             DEALLOCATE(my_obstacle_pointers)
         END IF
 

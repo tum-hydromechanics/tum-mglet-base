@@ -6,6 +6,7 @@ MODULE ib_mod
     USE ctof_mod
     USE cutcorner_mod
     USE filling_mod, ONLY: fillfluid
+    USE findinterface_mod
     USE flzelle_mod
     USE freekante_mod, ONLY: freekante
     USE freepressure_mod, ONLY: freepressure
@@ -13,6 +14,7 @@ MODULE ib_mod
     USE gc_blockbpfeld_mod, ONLY: blockbpfeld
     USE gc_blockbp_mod, ONLY: blockluecken_closetoboundary
     USE gc_blockface_mod, ONLY: blockface
+    USE gc_createstencils_mod
     USE gc_totwasser_mod, ONLY: totwasser
     USE gc_zelltyp_mod, ONLY: zelltyp
     USE ibconst_mod
@@ -20,6 +22,7 @@ MODULE ib_mod
     USE knotenundkanten_mod
     USE openbubvbw_mod, ONLY: openbubvbw
     USE parent_mod
+    USE par_ftoc_mod
     USE punktekoordinaten_mod
     USE topol_mod
     USE gc_mod, gc_constructor => constructor
@@ -41,6 +44,7 @@ CONTAINS
         CALL init_ctof()
         CALL init_ftoc()
         CALL init_parent()
+        CALL init_par_ftoc()
 
         CALL set_finecell()
 
@@ -49,6 +53,7 @@ CONTAINS
 
 
     SUBROUTINE finish_ib()
+        CALL finish_par_ftoc()
         CALL finish_parent()
         CALL finish_ftoc()
         CALL finish_ctof()

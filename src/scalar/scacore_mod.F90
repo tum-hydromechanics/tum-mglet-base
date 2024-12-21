@@ -16,11 +16,22 @@ MODULE scacore_mod
         REAL(realk) :: value
     END TYPE scalar_bc_t
 
+    TYPE :: scalar_source_t
+        ! Actual value or sourceterm, either as absolute value or
+        ! proportionality factor
+        REAL(realk) :: value
+
+        ! Fieldname for proportionality factor
+        CHARACTER(len=nchar_name) :: field
+    END TYPE scalar_source_t
+
     TYPE :: scalar_t
         CHARACTER(len=nchar_name) :: name
         REAL(realk) :: prmol
+        INTEGER(intk) :: units(7)
         INTEGER(intk) :: kayscrawford
         TYPE(scalar_bc_t), ALLOCATABLE :: geometries(:)
+        TYPE(scalar_source_t), ALLOCATABLE :: sources(:)
     CONTAINS
         PROCEDURE :: prt
     END TYPE scalar_t
@@ -35,7 +46,7 @@ MODULE scacore_mod
     TYPE(scalar_t), ALLOCATABLE, PROTECTED :: scalar(:)
 
     PUBLIC :: init_scacore, finish_scacore, scalar_t, scalar, nsca, prturb, &
-      has_scalar, solve_scalar, maskbt
+        has_scalar, solve_scalar, maskbt, scalar_source_t
 
 CONTAINS
     SUBROUTINE init_scacore()
@@ -44,11 +55,12 @@ CONTAINS
         ! None...
 
         ! Local variables
-        TYPE(config_t) :: scaconf, sc
-        TYPE(field_t), POINTER :: t, bt
-        INTEGER(intk) :: l, n, nstl, itype
+        TYPE(config_t) :: scaconf, sc, source
+        TYPE(field_t), POINTER :: t, t_old, bt
+        INTEGER(intk) :: l, n, nstl, itype, nsource
         CHARACTER(len=mglet_filename_max + 64) :: jsonptr
         CHARACTER(len=16) :: type
+        CHARACTER(len=10240) :: initial_expr
         LOGICAL :: kayscrawford
         REAL(realk) :: rvalue
 
@@ -89,6 +101,13 @@ CONTAINS
 
             CALL sc%get_value("/prmol", scalar(l)%prmol)
 
+            ! Retrieving the scalar units (noisy output for test)
+            IF (sc%exists("/units")) THEN
+                CALL sc%get_array("/units", scalar(l)%units)
+            ELSE
+                scalar(l)%units = 0
+            END IF
+
             ! The parameters.json should have a logical, but it is easier
             ! to integrate computations with an integer
             CALL sc%get_value("/kayscrawford", kayscrawford, .FALSE.)
@@ -109,7 +128,7 @@ CONTAINS
                     CASE("flux")
                         itype = 1
                     CASE DEFAULT
-                        WRITE(*,*) "Invalid type: ", type
+                        WRITE(*, *) "Invalid type: ", type
                         CALL errr(__FILE__, __LINE__)
                     END SELECT
                     scalar(l)%geometries(n)%flag = itype
@@ -120,6 +139,23 @@ CONTAINS
                     scalar(l)%geometries(n)%value = rvalue
                 END DO
             END SELECT
+
+            ! Read source terms
+            IF (sc%exists("/sources")) THEN
+                CALL sc%get_size("/sources", nsource)
+            ELSE
+                nsource = 0
+            END IF
+            ALLOCATE(scalar(l)%sources(nsource))
+            DO n = 1, nsource
+                WRITE(jsonptr, '("/sources/", I0)') n-1
+                CALL sc%get(source, jsonptr)
+
+                CALL source%get_value("/value", scalar(l)%sources(n)%value)
+                CALL source%get_value("/field", scalar(l)%sources(n)%field, "")
+
+                CALL source%finish()
+            END DO
 
             CALL sc%finish()
         END DO
@@ -136,8 +172,8 @@ CONTAINS
 
         ! Declare fields
         DO l = 1, nsca
-            CALL set_field(scalar(l)%name, dread=dread, required=dcont, &
-                dwrite=dwrite, buffers=.TRUE.)
+            CALL set_field(scalar(l)%name, units=scalar(l)%units, dread=dread, &
+                required=dcont, dwrite=dwrite, buffers=.TRUE.)
 
             ! Get field, set PRMOL and scalar index as attribute
             CALL get_field(t, scalar(l)%name)
@@ -150,9 +186,27 @@ CONTAINS
             ! To store previous time value
             CALL set_field(TRIM(scalar(l)%name)//"_OLD")
 
+            ! Scalar initial condition
+            WRITE(jsonptr, '("/scalars/", I0, "/initial_value")') l-1
+            IF (scaconf%exists(jsonptr)) THEN
+                IF (scaconf%is_char(jsonptr)) THEN
+                    CALL scaconf%get_value(jsonptr, initial_expr)
+                    CALL set_initial_expr(t, initial_expr)
+                ELSE
+                    CALL scaconf%get_value(jsonptr, rvalue)
+                    CALL set_initial_value(t, rvalue)
+                END IF
+
+                CALL get_field(t_old, TRIM(scalar(l)%name)//"_OLD")
+                t_old%arr = t%arr
+            ELSE
+                CALL scaconf%set_value(jsonptr, 0.0_realk)
+            END IF
+
             IF (myid == 0) THEN
-                WRITE(*, '(2X, "Scalar:               ", A, " prmol: ", G0)') &
-                    scalar(l)%name, scalar(l)%prmol
+                WRITE(*, '(2X, "Scalar:               ", A, " prmol: ", G0, ' &
+                    //'"   unit: [", 7I3, " ]")') &
+                    scalar(l)%name, scalar(l)%prmol, scalar(l)%units
             END IF
         END DO
 
@@ -199,7 +253,7 @@ CONTAINS
                     - 0.0441*gtgmol**2*(1.0 - exp(-5.165/gtgmol))
             ELSE
                 kayscrawford = this%prmol
-            ENDIF
+            END IF
             prt = kayscrawford
         END IF
     END FUNCTION prt
@@ -247,4 +301,60 @@ CONTAINS
             END DO
         END DO
     END SUBROUTINE maskbt_grid
+
+
+    SUBROUTINE set_initial_value(sca_f, val)
+        ! Subroutine arguments
+        TYPE(field_t), INTENT(inout) :: sca_f
+        REAL(realk), INTENT(in) :: val
+
+        ! Local variables
+        INTEGER(intk) :: igrid
+        REAL(realk), POINTER, CONTIGUOUS :: t(:, :, :)
+
+        DO igrid = 1, nmygrids
+            CALL sca_f%get_ptr(t, igrid)
+            t = val
+        END DO
+    END SUBROUTINE set_initial_value
+
+
+    SUBROUTINE set_initial_expr(sca_f, expr)
+        ! Subroutine arguments
+        TYPE(field_t), INTENT(inout) :: sca_f
+        CHARACTER(LEN=*), INTENT(IN) :: expr
+
+        ! Local variables
+        INTEGER(intk) :: i, igrid
+        REAL(realk), PARAMETER :: zero = 0.0_realk
+        REAL(realk), POINTER, CONTIGUOUS :: t(:, :, :)
+        REAL(realk), POINTER, CONTIGUOUS :: x(:), y(:), z(:)
+        REAL(realk), POINTER, CONTIGUOUS :: dx(:), dy(:), dz(:)
+        REAL(realk), POINTER, CONTIGUOUS :: ddx(:), ddy(:), ddz(:)
+
+        DO i = 1, nmygrids
+            igrid = mygrids(i)
+
+            CALL sca_f%get_ptr(t, igrid)
+
+            CALL get_fieldptr(x, "X", igrid)
+            CALL get_fieldptr(y, "Y", igrid)
+            CALL get_fieldptr(z, "Z", igrid)
+
+            CALL get_fieldptr(dx, "DX", igrid)
+            CALL get_fieldptr(dy, "DY", igrid)
+            CALL get_fieldptr(dz, "DZ", igrid)
+
+            CALL get_fieldptr(ddx, "DDX", igrid)
+            CALL get_fieldptr(ddy, "DDY", igrid)
+            CALL get_fieldptr(ddz, "DDZ", igrid)
+
+            ! rho, gmol, tu_level, timeph are zero
+            ! This allows the "t" field to be set as an expression of spatial
+            ! coordinates only - not other fields.
+            CALL initial_condition(t, "t", expr, zero, zero, zero, zero, &
+                x, y, z, dx, dy, dz, ddx, ddy, ddz)
+        END DO
+    END SUBROUTINE set_initial_expr
+
 END MODULE scacore_mod

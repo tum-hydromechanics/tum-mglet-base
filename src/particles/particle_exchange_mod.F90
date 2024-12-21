@@ -1,6 +1,8 @@
 MODULE particle_exchange_mod
 
     USE, INTRINSIC :: ISO_C_BINDING
+    USE MPI_f08
+    USE comms_mod
 
     USE particle_list_mod
     USE particle_statistics_mod
@@ -16,6 +18,7 @@ MODULE particle_exchange_mod
     ! Particle type (not a class, as otherwise polymorphism implied)
     TYPE(baseparticle_t), ALLOCATABLE :: sendBufParticle(:)
     TYPE(baseparticle_t), ALLOCATABLE :: recvBufParticle(:)
+    INTEGER(intk), ALLOCATABLE :: sendind(:)
 
     ! Sizes of the buffers
     INTEGER(intk) :: sizeSendBuf
@@ -121,17 +124,18 @@ CONTAINS
         INTEGER(intk), INTENT(in) :: itstep
 
         !local variables
-        INTEGER(intk) :: i, j, iproc, pos, num
+        INTEGER(intk) :: i, j, iproc, pos, num, dummy
         INTEGER(intk) :: destgrid, destproc, iface
         INTEGER(intk) :: iprocnbr, cSend, cRecv
         INTEGER(intk) :: active_np_old  ! for safety checks
+        INTEGER(intk) :: err_local = 0
 
         ! we use "intk" instead of "ifk" (limits numbers)
         ! INTEGER(intk), ALLOCATABLE :: npsend(:)
-        INTEGER(intk), ALLOCATABLE :: sendind(:)
+        ! INTEGER(intk), ALLOCATABLE :: sendind(:)
 
         CALL start_timer(900)
-        CALL start_timer(930)
+        CALL start_timer(940)
 
         IF (.NOT. isInit) THEN
             WRITE(*,*) 'Particle connect not initialized'
@@ -147,13 +151,17 @@ CONTAINS
 
             ! jumping inactive particles
             IF (particle_list%particles(i)%state < 1) THEN
+                IF (TRIM(particle_terminal) == "normal" .OR. TRIM(particle_terminal) == "verbose") THEN
+                        WRITE(*, '("WARNING on proc ", I0, ": Particle list entry ", I0, " unexpectately holds and inactive Partcle!")') myid, i
+                END IF
+                err_local = 1
                 CYCLE
             END IF
 
             ! for particle slice statistics (must be called before update_coordinates !!!)
-            CALL stop_timer(930)
+            CALL stop_timer(940)
             CALL associate_new_slice(particle_list%particles(i), itstep)
-            CALL start_timer(930)
+            CALL start_timer(940)
 
             ! setting the destination of particle (quo vadis, particle?)
             CALL get_target_grid(particle_list%particles(i), destgrid, destproc, iface)
@@ -176,9 +184,9 @@ CONTAINS
             ELSE
 
                 ! for particle statistics
-                CALL stop_timer(930)
+                CALL stop_timer(940)
                 CALL deregister_particle(particle_list%particles(i), itstep)
-                CALL start_timer(930)
+                CALL start_timer(940)
 
                 ! particle changes the grid
                 IF (destproc == myid) THEN
@@ -188,9 +196,9 @@ CONTAINS
                     CALL set_particle_cell(particle_list%particles(i))
 
                     ! for particle statistics
-                    CALL stop_timer(930)
+                    CALL stop_timer(940)
                     CALL register_particle(particle_list%particles(i), itstep)
-                    CALL start_timer(930)
+                    CALL start_timer(940)
 
                 ELSE
 
@@ -263,10 +271,6 @@ CONTAINS
                 CYCLE
             END IF
 
-            ! collect indices of particles list entries that will be empty after MPI send
-            sendind(j) = i
-            j = j + 1
-
             ! buffer is filled
             DO iproc = 1, iSend
                 IF ( sendConns(1, iproc) == particle_list%particles(i)%iproc ) THEN
@@ -292,8 +296,14 @@ CONTAINS
                     particle_list%particles(i)%state = -1
                     particle_list%active_np = particle_list%active_np - 1
 
+                    ! collect indices of particles list entries that will be empty after MPI send
+                    sendind(j) = i
+                    j = j + 1
+
                 END IF
             END DO
+
+
         END DO
 
         ! resetting after incrementation
@@ -321,7 +331,6 @@ CONTAINS
         ! WRITE(*,*) myid, 'npsend:', npsend, 'to', sendConns(1, 1:iSend), 'nprecv:', nprecv, 'from', recvConns(2, 1:iRecv)
 
         ! --- step 5: Finishing the communication of particle numbers. Done.
-
 
         ! displacements for start of section for one source
         ndisprecv = -1; ndisprecv(1) = 1
@@ -383,7 +392,6 @@ CONTAINS
 
         ! --- step 7: The communication has been launched (not finished!). Open.
 
-
         ! checking if communication done (one call should suffice...)
         CALL MPI_Waitall(cSend, sendreqs, MPI_STATUSES_IGNORE)
         CALL MPI_Waitall(cRecv, recvreqs, MPI_STATUSES_IGNORE)
@@ -407,9 +415,9 @@ CONTAINS
                 CALL set_particle_cell(recvBufParticle(i))
 
                 ! for gridstat
-                CALL stop_timer(930)
+                CALL stop_timer(940)
                 CALL register_particle(recvBufParticle(i), itstep)
-                CALL start_timer(930)
+                CALL start_timer(940)
 
             END DO
         END IF
@@ -423,56 +431,60 @@ CONTAINS
 
         ! Some safety checks
 
-        ! BARRIER ONLY FOR DEGUGGING -- TEMPORARY <----------------------------------------------- TODO : remove
-        CALL MPI_Barrier(MPI_COMM_WORLD)
-
-        SELECT CASE (TRIM(particle_terminal))
-            CASE ("none")
-                CONTINUE
-            CASE ("normal")
-                CALL print_list_status(particle_list)
-                WRITE(*, '()')
-            CASE ("verbose")
-                CALL print_list_status(particle_list)
-                WRITE(*, '()')
-        END SELECT
+        IF (TRIM(particle_terminal) == "verbose") THEN
+            IF (myid /= 0) THEN
+                CALL MPI_Recv(dummy, 1, mglet_mpi_int, myid - 1, 900, &
+                MPI_COMM_WORLD, MPI_STATUS_IGNORE)
+            END IF
+            CALL print_list_status(particle_list)
+            WRITE(*, '()')
+            IF (myid /= numprocs - 1) THEN
+                CALL MPI_Send(dummy, 1, mglet_mpi_int, myid + 1, 900, &
+                MPI_COMM_WORLD)
+            END IF
+        END IF
 
         IF (particle_list%active_np < active_np_old + sizeRecvBuf - sizeSendBuf) THEN
-            SELECT CASE (TRIM(particle_terminal))
-                    CASE ("none")
-                        CONTINUE
-                    CASE ("normal")
-                        WRITE(*, '("WARNING on proc ", I0, ": Particle list holds FEWER particles than expected!")') myid
-                    CASE ("verbose")
-                        WRITE(*, '("WARNING on proc ", I0, ": Particle list holds FEWER particles than expected!")') myid
-            END SELECT
+            IF (TRIM(particle_terminal) == "normal" .OR. TRIM(particle_terminal) == "verbose") THEN
+                WRITE(*, '("WARNING on proc ", I0, ": Particle list holds FEWER particles than expected!")') myid
+            END IF
+            ! TODO: call error?
+            !err_local = 1
         END IF
 
         IF (particle_list%active_np > active_np_old + sizeRecvBuf - sizeSendBuf) THEN
-            SELECT CASE (TRIM(particle_terminal))
-                    CASE ("none")
-                        CONTINUE
-                    CASE ("normal")
-                        WRITE(*, '("WARNING on proc ", I0, ": Particle list holds MORE particles than expected!")') myid
-                    CASE ("verbose")
-                        WRITE(*, '("WARNING on proc ", I0, ": Particle list holds MORE particles than expected!")') myid
-            END SELECT
+            IF (TRIM(particle_terminal) == "normal" .OR. TRIM(particle_terminal) == "verbose") THEN
+                WRITE(*, '("WARNING on proc ", I0, ": Particle list holds MORE particles than expected!")') myid
+            END IF
+            ! TODO: call error?
+            !err_local = 1
         END IF
 
         IF (particle_list%ifinal /= particle_list%active_np) THEN
-            SELECT CASE (TRIM(particle_terminal))
-                    CASE ("none")
-                        CONTINUE
-                    CASE ("normal")
-                        WRITE(*, '("WARNING on proc ", I0, ": my_particle_list%active_np (", I0, ") does not coincide with my_particle_list%ifinal (", I0, ")" )') &
-                        myid, particle_list%active_np, particle_list%ifinal
-                    CASE ("verbose")
-                        WRITE(*, '("WARNING on proc ", I0, ": my_particle_list%active_np (", I0, ") does not coincide with my_particle_list%ifinal (", I0, ")" )') &
-                        myid, particle_list%active_np, particle_list%ifinal
-            END SELECT
+            IF (TRIM(particle_terminal) == "normal" .OR. TRIM(particle_terminal) == "verbose") THEN
+                WRITE(*, '("WARNING on proc ", I0, ": my_particle_list%active_np (", I0, ") does not coincide with my_particle_list%ifinal (", I0, ")" )') &
+                 myid, particle_list%active_np, particle_list%ifinal
+            END IF
+            ! TODO: call error?
+            !err_local = 1
         END IF
-
         ! --- step 9: Received particles have been copied into list. Done.
+
+        ! TODO: make the following error gathering conditional for compilation as a debugging feature
+        ! CALL MPI_Barrier(MPI_COMM_WORLD)
+        ! CALL MPI_Allreduce(err_local, err_global, 1, mglet_mpi_int, MPI_MAX, MPI_COMM_WORLD)
+        ! IF (err_global == 0) THEN
+        !     CALL write_particle_list_txt(itstep)
+        !     CALL write_buffer(itstep, "Send")
+        !     CALL write_buffer(itstep, "Recv")
+        ! ELSE
+        !     CALL write_particle_list_txt(itstep, "err")
+        !     CALL write_buffer(itstep, "Send", "err")
+        !     CALL write_buffer(itstep, "Recv", "err")
+        ! END IF
+        ! IF (err_global == 1) THEN
+        !     CALL errr(__FILE__, __LINE__)
+        ! END IF
 
         DEALLOCATE(sendBufParticle)
         DEALLOCATE(recvBufParticle)
@@ -480,20 +492,16 @@ CONTAINS
 
         ! --- step 10: Clearing the buffers. Done.
 
-        ! BARRIER ONLY FOR DEGUGGING -- TEMPORARY <----------------------------------------------- TODO : remove
-        CALL MPI_Barrier(MPI_COMM_WORLD)
-
-        CALL stop_timer(930)
+        CALL stop_timer(940)
         CALL stop_timer(900)
 
     END SUBROUTINE exchange_particles
-
 
     SUBROUTINE init_particle_exchange()
 
         ! local variables
         INTEGER(intk) :: i, iface, igrid
-        INTEGER(intk) :: iprocnbr
+        INTEGER(intk) :: iprocnbr, dummy
 
         INTEGER(int32), ALLOCATABLE :: maxTag(:)
         INTEGER(int32), ALLOCATABLE :: sendcounts(:), sdispls(:)
@@ -584,7 +592,7 @@ CONTAINS
         iRecv = nRecv
 
         ! JULIUS: whats the point the following (up to  CALL create_particle_mpitype)?
-        ! Would sendConn(1,i) = recvCon(2,i) / sendConn(2,i) = recvCon(1,i) not suffice? And why is sendConn needed anyways if symmetric to recvConn?
+        ! Wouldnt sendConn(1,i) = recvCon(2,i) / sendConn(2,i) = recvCon(1,i) suffice? And why is sendConn needed anyways if symmetric to recvConn?
 
         ! Calculate sdispl offset (send)
         DO i=1,numprocs-1
@@ -623,27 +631,25 @@ CONTAINS
             sendConns(1, 1), recvcounts, rdispls, MPI_INTEGER, &
             MPI_COMM_WORLD)
 
-        ! only for debugging, doesnt even work reliable (?)
-        DO i = 0, numprocs - 1
-
-            IF (myid == i) THEN
-
-                WRITE(*,*) 'I am proc:', myid
-                WRITE(*,*) 'I own grids: '
-
-                WRITE(*,*) mygrids(:)
-
-                WRITE(*,*) ' - I receive from the following ', iRecv, 'processes (recvConns):'
-                WRITE(*,*) recvConns(2, 1:iRecv)
-
-                WRITE(*,*) ' - I send to the following ', iSend, 'processes (sendConns):'
-                WRITE(*,*) sendConns(1, 1:iSend)
-
+        ! TODO: barrier needed ?
+        IF (TRIM(particle_terminal) == "normal" .OR. TRIM(particle_terminal) == "verbose") THEN
+            IF (myid /= 0) THEN
+                CALL MPI_Recv(dummy, 1, mglet_mpi_int, myid - 1, 900, &
+                MPI_COMM_WORLD, MPI_STATUS_IGNORE)
             END IF
-
-            CALL MPI_Barrier(MPI_COMM_WORLD)
-
-        END DO
+            WRITE(*,*) 'I am proc:', myid
+            WRITE(*,*) 'I own grids: '
+            WRITE(*,*) mygrids(:)
+            WRITE(*,*) ' - I receive from the following ', iRecv, 'processes (recvConns):'
+            WRITE(*,*) recvConns(2, 1:iRecv)
+            WRITE(*,*) ' - I send to the following ', iSend, 'processes (sendConns):'
+            WRITE(*,*) sendConns(1, 1:iSend)
+            WRITE(*, '()')
+            IF (myid /= numprocs - 1) THEN
+                CALL MPI_Send(dummy, 1, mglet_mpi_int, myid + 1, 900, &
+                MPI_COMM_WORLD)
+            END IF
+        END IF
 
         nRecv = 0
 
@@ -663,11 +669,11 @@ CONTAINS
         CALL create_particle_mpitype(particle_mpitype)
         isInit = .TRUE.
 
-        !DEALLOCATE(maxTag)
-        !DEALLOCATE(sendcounts)
-        !DEALLOCATE(sdispls)
-        !DEALLOCATE(recvcounts)
-        !DEALLOCATE(rdispls)
+        DEALLOCATE(maxTag)
+        DEALLOCATE(sendcounts)
+        DEALLOCATE(sdispls)
+        DEALLOCATE(recvcounts)
+        DEALLOCATE(rdispls)
 
         CALL stop_timer(910)
         CALL stop_timer(900)
@@ -676,6 +682,8 @@ CONTAINS
 
     SUBROUTINE finish_particle_exchange()
 
+        CALL start_timer(900)
+        CALL start_timer(910)
         isInit = .FALSE.
 
         DEALLOCATE(sendConns)
@@ -689,6 +697,9 @@ CONTAINS
         DEALLOCATE(ndispsend)
         DEALLOCATE(nprecv)
         DEALLOCATE(ndisprecv)
+
+        CALL stop_timer(910)
+        CALL stop_timer(900)
 
     END SUBROUTINE finish_particle_exchange
 
@@ -743,7 +754,6 @@ CONTAINS
         INTEGER(intk), INTENT(out) :: iface
 
         ! local variables
-        INTEGER(intk) :: neighbours(26)
         REAL(realk) :: minx, maxx, miny, maxy, minz, maxz, dist
 
         ! getting the box of last grid the particla
@@ -768,18 +778,13 @@ CONTAINS
             destgrid = particle%igrid
             destproc = particle%iproc
 
-            SELECT CASE (TRIM(particle_terminal))
-                CASE ("none")
-                    CONTINUE
-                CASE ("normal")
-                    CONTINUE
-                CASE ("verbose")
-                    WRITE(*, '("Proc ", I0 ," Destination Proc: ", I0)') myid, destproc
-                    WRITE(*, '("Proc ", I0 ," Destination Grid: ", I0)') myid, destgrid
-                    IF (myid == 0) THEN
-                        WRITE(*, *) " "
-                    END IF
-            END SELECT
+            IF (TRIM(particle_terminal) == "verbose") THEN
+                WRITE(*, '("Proc ", I0 ," Destination Proc: ", I0)') myid, destproc
+                WRITE(*, '("Proc ", I0 ," Destination Grid: ", I0)') myid, destgrid
+                IF (myid == 0) THEN
+                    WRITE(*, *) " "
+                END IF
+            END IF
 
             IF (destproc /= myid) THEN
                 WRITE(*,*) 'Inconsistent particle parameters'
@@ -788,22 +793,16 @@ CONTAINS
 
         ELSE IF (iface > 0) THEN
             ! particle moves across grid boundary
-            CALL get_neighbours(neighbours, particle%igrid)
-            destgrid = neighbours(iface)
+            destgrid = particle_boundaries%face_neighbours(iface, particle%igrid)
             destproc = idprocofgrd(destgrid)
 
-            SELECT CASE (TRIM(particle_terminal))
-                CASE ("none")
-                    CONTINUE
-                CASE ("normal")
-                    CONTINUE
-                CASE ("verbose")
-                    WRITE(*, '("Destination Proc: ", I0)') destproc
-                    WRITE(*, '("Destination grid: ", I0)') destgrid
-                    IF (myid == 0) THEN
-                        WRITE(*, *) " "
-                    END IF
-            END SELECT
+            IF (TRIM(particle_terminal) == "verbose") THEN
+                WRITE(*, '("Destination Proc: ", I0)') destproc
+                WRITE(*, '("Destination grid: ", I0)') destgrid
+                IF (myid == 0) THEN
+                    WRITE(*, *) " "
+                END IF
+            END IF
 
             IF (destproc == myid) THEN
                 destproc = particle%iproc
@@ -872,6 +871,7 @@ CONTAINS
     END SUBROUTINE create_particle_mpitype
 
     ! copy particles from recieve Buffer into passed particle list
+    ! ifinal not adapted yet
     SUBROUTINE integrate_particles(particle_list, sendind)
 
         ! subroutine argument
@@ -882,9 +882,7 @@ CONTAINS
         INTEGER(intk) :: i, j
 
         IF (sizeSendBuf == 0 .AND. sizeRecvBuf == 0) THEN
-
             RETURN
-
         END IF
 
         particle_list%active_np = particle_list%active_np + sizeRecvBuf
@@ -906,15 +904,15 @@ CONTAINS
                 particle_list%particles(sendind(i)) = recvBufParticle(i)
             END DO
 
-            ! i = MAX(1, sizeRecvBuf + 1)
+            ! i = sizeRecvBuf + 1
             DO i = i, sizeSendBuf
 
-                IF (particle_list%ifinal == sendind(i)) THEN
-                    particle_list%ifinal = particle_list%ifinal - 1
+                IF (particle_list%ifinal < sendind(i)) THEN
                     EXIT
                 END IF
 
-                IF (particle_list%ifinal < sendind(i)) THEN
+                IF (particle_list%ifinal == sendind(i)) THEN
+                    particle_list%ifinal = particle_list%ifinal - 1
                     EXIT
                 END IF
 
@@ -942,5 +940,66 @@ CONTAINS
         END IF
 
     END SUBROUTINE integrate_particles
+
+    ! ! for debugging
+    ! SUBROUTINE write_buffer(itstep, btyp, suffix)
+
+    !     ! subroutine arguments
+    !     INTEGER(intk), INTENT(in) :: itstep
+    !     CHARACTER(len = 4), INTENT(in) :: btyp ! "Send" or "Recv"
+    !     CHARACTER(len = 3), INTENT(in), OPTIONAL :: suffix
+
+    !     ! local varibales
+    !     CHARACTER(len = mglet_filename_max) :: filename
+    !     INTEGER(intk) :: unit, i
+    !     LOGICAL :: exists
+
+    !     IF (PRESENT(suffix)) THEN
+    !         WRITE(filename,'(A, "Buffer-", I0, "-", A, ".txt")') btyp, myid, suffix
+    !     ELSE
+    !         WRITE(filename,'(A, "Buffer-", I0, ".txt")') btyp, myid
+    !     END IF
+
+    !     INQUIRE(file = TRIM(filename), exist = exists)
+
+    !     IF (exists) THEN
+    !         OPEN(newunit = unit, file = TRIM(filename), status = 'OLD', action = 'WRITE')
+    !     ELSE
+    !         OPEN(newunit = unit, file = TRIM(filename), status = 'NEW', action = 'WRITE')
+    !     END IF
+
+    !     WRITE(unit, '(A, "Buffer ", I0, " - Timestep ", I0)') btyp, myid, itstep
+    !     WRITE(unit, '(" ")')
+    !     WRITE(unit, '("PARTICLES")')
+
+    !     IF (btyp == "Send") THEN
+    !         DO i = 1, SIZE(sendBufParticle)
+    !                 WRITE(unit, '("sendind = ", I0)') sendind(i)
+    !                 WRITE(unit, '("ipart = ", I9, ", iproc", I3, ", igrid = ", I3, ", state = ", I3)') sendBufParticle(i)%ipart, &
+    !                 sendBufParticle(i)%iproc, sendBufParticle(i)%igrid, sendBufParticle(i)%state
+    !                 WRITE(unit, '("i/j/k cell :", 3I9)') sendBufParticle(i)%ijkcell(1), &
+    !                 sendBufParticle(i)%ijkcell(2), sendBufParticle(i)%ijkcell(3)
+    !                 WRITE(unit, '("x/y/z      :", 3F9.6)') sendBufParticle(i)%x, &
+    !                 sendBufParticle(i)%y, sendBufParticle(i)%z
+    !                 WRITE(unit, '(" ")')
+    !         END DO
+    !     ELSEIF (btyp == "Recv") THEN
+    !         DO i = 1, SIZE(recvBufParticle)
+    !                 WRITE(unit, '("ipart = ", I9, ", iproc", I3, ", igrid = ", I3, ", state = ", I3)') recvBufParticle(i)%ipart, &
+    !                 recvBufParticle(i)%iproc, recvBufParticle(i)%igrid, recvBufParticle(i)%state
+    !                 WRITE(unit, '("i/j/k cell :", 3I9)') recvBufParticle(i)%ijkcell(1), &
+    !                 recvBufParticle(i)%ijkcell(2), recvBufParticle(i)%ijkcell(3)
+    !                 WRITE(unit, '("x/y/z      :", 3F9.6)') recvBufParticle(i)%x, &
+    !                 recvBufParticle(i)%y, recvBufParticle(i)%z
+    !                 WRITE(unit, '(" ")')
+    !         END DO
+    !     ELSE
+    !         WRITE(*, '("Unknown Particle Buffer Type")')
+    !         CALL errr(__FILE__, __LINE__)
+    !     END IF
+
+    !     CLOSE(unit)
+
+    ! END SUBROUTINE write_buffer
 
 END MODULE particle_exchange_mod

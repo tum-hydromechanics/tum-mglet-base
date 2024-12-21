@@ -85,7 +85,8 @@ CONTAINS
                 WRITE(*, '(2X, A)') TRIM(uinf_expr(2))
                 WRITE(*, '("  Using expression for W:")')
                 WRITE(*, '(2X, A)') TRIM(uinf_expr(3))
-                WRITE(*, '("  Expression is time-dependent: ", L1)') uinf_is_time
+                WRITE(*, '("  Expression is time-dependent: ", L1)') &
+                    uinf_is_time
                 WRITE(*, '()')
             END IF
         ELSE
@@ -130,8 +131,8 @@ CONTAINS
             required=dread, dwrite=dwrite, buffers=.TRUE.)
         CALL set_field("P", units=units_p, dread=dread, &
             required=dread, dwrite=dwrite, buffers=.TRUE.)
-        CALL set_field("G", units=units_g, dread=dread, &
-            required=dread, dwrite=dwrite, buffers=.TRUE.)
+        CALL set_field("G", units=units_g, dread=.FALSE., &
+            dwrite=dwrite, buffers=.TRUE.)
 
         ! For RK time integration
         CALL set_field("DU", istag=1)

@@ -35,8 +35,10 @@ MODULE particle_core_mod
         !sitstep is the timestep at which a particle entered its current slice (for residence time tracking)
         INTEGER(c_intk) :: sitstep = 0
 
-        INTEGER(c_intk) :: ijkcell(3)
+        ! TODO: rename into ijk(3) ?
+        INTEGER(c_intk) :: ijkcell(3) = 0
 
+        ! TODO: store coordinates as xyz(3) ?
         REAL(c_realk) :: x = 0.0
         REAL(c_realk) :: y = 0.0
         REAL(c_realk) :: z = 0.0
@@ -46,7 +48,7 @@ MODULE particle_core_mod
     PUBLIC :: set_particle, set_particle_igrid, set_particle_cell, &
               update_particle_cell, print_particle_status
 
-CONTAINS    !===================================
+CONTAINS
 
     SUBROUTINE set_particle(particle, ipart, x, y, z, iproc, igrid, ijkcell, gitstep, sitstep)
 
@@ -100,6 +102,7 @@ CONTAINS    !===================================
 
     !-----------------------------------
 
+    ! determine the grid that a particle is on from its coordinates
     SUBROUTINE set_particle_igrid(particle)
 
         ! subroutine arguments
@@ -111,15 +114,10 @@ CONTAINS    !===================================
         REAL(realk) :: minx, maxx, miny, maxy, minz, maxz
 
         IF (particle%state < 1) THEN
-            SELECT CASE (TRIM(particle_terminal))
-                CASE ("none")
-                    CONTINUE
-                CASE ("normal")
-                    CONTINUE
-                CASE ("verbose")
-                    WRITE(*, *) "WARNING: In get_p_ijkcell: Tried to locate particle that is not active!"
-                    WRITE(*, '()')
-            END SELECT
+            IF (TRIM(particle_terminal) == "normal" .OR. TRIM(particle_terminal) == "verbose") THEN
+                WRITE(*, *) "WARNING: In get_p_ijkcell: Tried to locate particle that is not active!"
+                WRITE(*, '()')
+            END IF
             RETURN
         END IF
 
@@ -152,21 +150,17 @@ CONTAINS    !===================================
         ! if particle is not found, deactivate particle
         particle%state = found
 
-        SELECT CASE (TRIM(particle_terminal))
-            CASE ("none")
-                CONTINUE
-            CASE ("normal")
-                CONTINUE
-            CASE ("verbose")
-                WRITE(*, '("WARNING: In get_p_igrid: Particle ", I0, " could not be found on any grid, process ", I0, " owns!")') &
-                 particle%ipart, particle%iproc
-                WRITE(*, '()')
-        END SELECT
+        IF (TRIM(particle_terminal) == "normal" .OR. TRIM(particle_terminal) == "verbose") THEN
+            WRITE(*, '("WARNING: In get_p_igrid: Particle ", I0, " could not be found on any grid, process ", I0, " owns!")') &
+             particle%ipart, particle%iproc
+            WRITE(*, '()')
+        END IF
 
     END SUBROUTINE set_particle_igrid
 
     !-----------------------------------
 
+    ! determine the pressurce cell that a particle is on from its coordinates and grid
     SUBROUTINE set_particle_cell(particle)
 
         ! subroutine arguments
@@ -181,18 +175,11 @@ CONTAINS    !===================================
         REAL(realk) :: minx, maxx, miny, maxy, minz, maxz
 
         IF (particle%state < 1) THEN
-            SELECT CASE (TRIM(particle_terminal))
-                CASE ("none")
-                    CONTINUE
-                CASE ("normal")
-                    CONTINUE
-                CASE ("verbose")
-                    WRITE(*,*) ' '
-                    WRITE(*, *) "WARNING: In get_p_ijkcell: Tried to locate particle that is not active!"
-            END SELECT
-
+            IF (TRIM(particle_terminal) == "normal" .OR. TRIM(particle_terminal) == "verbose") THEN
+                WRITE(*, *) "WARNING: In get_p_ijkcell: Tried to locate particle that is not active!"
+                WRITE(*, '()')
+            END IF
             RETURN
-
         END IF
 
         CALL get_bbox(minx, maxx, miny, maxy, minz, maxz, particle%igrid)
@@ -201,21 +188,12 @@ CONTAINS    !===================================
         IF (particle%x + EPSILON(particle%x) < minx .OR. particle%x - EPSILON(particle%x) > maxx .OR. &
          particle%y + EPSILON(particle%y) < miny .OR. particle%y - EPSILON(particle%y) > maxy .OR. &
          particle%z + EPSILON(particle%z) < minz .OR. particle%z - EPSILON(particle%z) > maxz) THEN
-            SELECT CASE (TRIM(particle_terminal))
-                CASE ("none")
-                    CONTINUE
-                CASE ("normal")
-                    WRITE(*, '("WARNING: Coordinates of particle ", I0 ," do not lie within boundaries of particle grid ", I0)') &
-                     particle%ipart, particle%igrid
-                    CONTINUE
-                CASE ("verbose")
-                    WRITE(*,*) ' '
-                    WRITE(*, '("WARNING: Coordinates of particle ", I0 ," do not lie within boundaries of particle grid ", I0)') &
-                     particle%ipart, particle%igrid
-            END SELECT
-
+            IF (TRIM(particle_terminal) == "normal" .OR. TRIM(particle_terminal) == "verbose") THEN
+                WRITE(*, '("WARNING: Coordinates of particle ", I0 ," do not lie within boundaries of particle grid ", I0)') &
+                 particle%ipart, particle%igrid
+                WRITE(*, '()')
+            END IF
             !CALL set_particle_igrid(particle)
-
         END IF
 
         CALL get_field(x_f, "X")
@@ -226,7 +204,7 @@ CONTAINS    !===================================
         CALL z_f%get_ptr(z, particle%igrid)
         CALL get_mgdims(kk, jj, ii, particle%igrid)
 
-        ! the following assumes that the x/y/z values are sorted such that for any i < j and any direction x_k, x_k(i) < x_k(j) !
+        ! the following assumes that the grid coordinates X/Y/Z are each sorted such that for any i < j and any direction x_k, x_k(i) < x_k(j) !
         ! the following procedure is capable of handling stretched grids!
 
         ! find nearest x(i):
@@ -344,6 +322,7 @@ CONTAINS    !===================================
 
     !-----------------------------------
 
+    ! determine the pressurce cell that a particle is on from its coordinates, grid and previous presuure cell
     SUBROUTINE update_particle_cell(particle)
 
         ! subroutine arguments
@@ -358,15 +337,10 @@ CONTAINS    !===================================
         INTEGER(intk) :: k, j, i, kk, jj, ii, istep, jstep, kstep
 
         IF (particle%state < 1) THEN
-            SELECT CASE (TRIM(particle_terminal))
-                CASE ("none")
-                    CONTINUE
-                CASE ("normal")
-                    CONTINUE
-                CASE ("verbose")
-                    WRITE(*, *) "WARNING: In update_p_ijkcell: Tried to locate particle that is not active!"
-                    WRITE(*, '()')
-            END SELECT
+            IF (TRIM(particle_terminal) == "normal" .OR. TRIM(particle_terminal) == "verbose") THEN
+                WRITE(*, *) "WARNING: In update_p_ijkcell: Tried to locate particle that is not active!"
+                WRITE(*, '()')
+            END IF
             RETURN
         END IF
 
@@ -389,7 +363,7 @@ CONTAINS    !===================================
         CALL get_mgdims(kk, jj, ii, particle%igrid)
         CALL get_bbox(minx, maxx, miny, maxy, minz, maxz, particle%igrid)
 
-        ! the following assumes that the x/y/z grid coordinates are sorted such that for any i < j and any direction x, x(i) < x(j) !
+        ! the following assumes that the grid coordinates X/Y/Z are each sorted such that for any i < j and any direction x, x(i) < x(j) !
         ! the following procedure is capable of handling stretched grids!
 
         ! find nearest x:
@@ -444,6 +418,7 @@ CONTAINS    !===================================
 
     !-----------------------------------
 
+    ! write particle status in terminal
     SUBROUTINE print_particle_status(particle)
 
         ! subroutine arguments

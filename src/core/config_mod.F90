@@ -84,10 +84,10 @@ MODULE config_mod
         SUBROUTINE json_dump(handle, res, ierr) BIND(C)
             IMPORT :: c_ptr, c_int, c_char
             TYPE(C_PTR), VALUE :: handle
-#if __GNUC__ < 12
-            CHARACTER(len=1, kind=c_char), ALLOCATABLE :: res(:)
+#if defined __GNUC__ && __GNUC__ < 12
+            CHARACTER(len=1, kind=c_char), ALLOCATABLE, INTENT(inout) :: res(:)
 #else
-            CHARACTER(len=:, kind=c_char), ALLOCATABLE :: res(:)
+            CHARACTER(len=:, kind=c_char), ALLOCATABLE, INTENT(inout) :: res(:)
 #endif
             INTEGER(C_INT), INTENT(OUT) :: ierr
         END SUBROUTINE json_dump
@@ -208,7 +208,7 @@ MODULE config_mod
             IMPORT :: c_ptr, c_char, c_int, c_float, c_size_t
             TYPE(C_PTR), VALUE :: handle
             CHARACTER(C_CHAR), INTENT(IN) :: key(*)
-            !REAL(C_FLOAT), INTENT(INOUT) :: arr(:)
+            ! REAL(C_FLOAT), INTENT(INOUT) :: arr(:)
             TYPE(C_PTR), VALUE :: arr
             INTEGER(C_SIZE_T), INTENT(IN), VALUE :: length
             INTEGER(C_INT), INTENT(OUT) :: ierr
@@ -219,7 +219,7 @@ MODULE config_mod
             IMPORT :: c_ptr, c_char, c_int, c_float, c_size_t
             TYPE(C_PTR), VALUE :: handle
             CHARACTER(C_CHAR), INTENT(IN) :: key(*)
-            !REAL(C_INT64_T), INTENT(INOUT) :: arr(:)
+            ! REAL(C_INT64_T), INTENT(INOUT) :: arr(:)
             TYPE(C_PTR), VALUE :: arr
             INTEGER(C_SIZE_T), INTENT(IN), VALUE :: length
             INTEGER(C_INT), INTENT(OUT) :: ierr
@@ -230,7 +230,7 @@ MODULE config_mod
             IMPORT :: c_ptr, c_char, c_int, c_float, c_size_t
             TYPE(C_PTR), VALUE :: handle
             CHARACTER(C_CHAR), INTENT(IN) :: key(*)
-            !REAL(C_FLOAT), INTENT(INOUT) :: arr(:)
+            ! REAL(C_FLOAT), INTENT(INOUT) :: arr(:)
             TYPE(C_PTR), VALUE :: arr
             INTEGER(C_SIZE_T), INTENT(IN), VALUE :: length
             INTEGER(C_INT), INTENT(OUT) :: ierr
@@ -241,7 +241,7 @@ MODULE config_mod
             IMPORT :: c_ptr, c_char, c_int, c_double, c_size_t
             TYPE(C_PTR), VALUE :: handle
             CHARACTER(C_CHAR), INTENT(IN) :: key(*)
-            !REAL(C_DOUBLE), INTENT(INOUT) :: arr(:)
+            ! REAL(C_DOUBLE), INTENT(INOUT) :: arr(:)
             TYPE(C_PTR), VALUE :: arr
             INTEGER(C_SIZE_T), INTENT(IN), VALUE :: length
             INTEGER(C_INT), INTENT(OUT) :: ierr
@@ -278,7 +278,7 @@ CONTAINS
         ! Local variables
         INTEGER(c_int) :: ierr
         CHARACTER(C_CHAR), DIMENSION(LEN(filename)+1) :: c_filename
-        c_filename = TRANSFER(filename, c_filename)
+        c_filename(1:LEN(filename)) = TRANSFER(filename, c_filename)
         c_filename(LEN_TRIM(filename)+1) = C_NULL_CHAR
 
         this%handle = C_NULL_PTR
@@ -298,7 +298,7 @@ CONTAINS
         CHARACTER(C_CHAR), DIMENSION(LEN(key)+1) :: c_key
 
         ! Add trailing C_NULL_CHAR to key
-        c_key = TRANSFER(key, c_key)
+        c_key(1:LEN(key)) = TRANSFER(key, c_key)
         c_key(LEN_TRIM(key)+1) = C_NULL_CHAR
 
         new%handle = C_NULL_PTR
@@ -310,7 +310,7 @@ CONTAINS
     SUBROUTINE dump(this, result)
         ! Function arguments
         CLASS(config_t), INTENT(inout) :: this
-#if __GNUC__ < 12
+#if defined __GNUC__ && __GNUC__ < 12
         CHARACTER(kind=C_CHAR, len=1), ALLOCATABLE, INTENT(out) :: result(:)
 #else
         CHARACTER(kind=C_CHAR, len=:), ALLOCATABLE, INTENT(out) :: result(:)
@@ -335,7 +335,7 @@ CONTAINS
         CLASS(config_t), INTENT(inout) :: this
 
         ! Local variables
-#if __GNUC__ < 12
+#if defined __GNUC__ && __GNUC__ < 12
         CHARACTER(kind=C_CHAR, len=1), ALLOCATABLE :: jsondump(:)
 #else
         CHARACTER(kind=C_CHAR, len=:), ALLOCATABLE :: jsondump(:)
@@ -369,7 +369,7 @@ CONTAINS
         CHARACTER(C_CHAR), DIMENSION(LEN(key)+1) :: c_key
 
         ! Add trailing C_NULL_CHAR to key
-        c_key = TRANSFER(key, c_key)
+        c_key(1:LEN(key)) = TRANSFER(key, c_key)
         c_key(LEN_TRIM(key)+1) = C_NULL_CHAR
 
         IF (PRESENT(found)) found = .FALSE.
@@ -392,7 +392,7 @@ CONTAINS
         CHARACTER(C_CHAR), DIMENSION(LEN(key)+1) :: c_key
 
         ! Add trailing C_NULL_CHAR to key
-        c_key = TRANSFER(key, c_key)
+        c_key(1:LEN(key)) = TRANSFER(key, c_key)
         c_key(LEN_TRIM(key)+1) = C_NULL_CHAR
 
         IF (PRESENT(found)) found = .FALSE.
@@ -415,7 +415,7 @@ CONTAINS
         CHARACTER(C_CHAR), DIMENSION(LEN(key)+1) :: c_key
 
         ! Add trailing C_NULL_CHAR to key
-        c_key = TRANSFER(key, c_key)
+        c_key(1:LEN(key)) = TRANSFER(key, c_key)
         c_key(LEN_TRIM(key)+1) = C_NULL_CHAR
 
         IF (PRESENT(found)) found = .FALSE.
@@ -438,7 +438,7 @@ CONTAINS
         CHARACTER(C_CHAR), DIMENSION(LEN(key)+1) :: c_key
 
         ! Add trailing C_NULL_CHAR to key
-        c_key = TRANSFER(key, c_key)
+        c_key(1:LEN(key)) = TRANSFER(key, c_key)
         c_key(LEN_TRIM(key)+1) = C_NULL_CHAR
 
         IF (PRESENT(found)) found = .FALSE.
@@ -462,7 +462,7 @@ CONTAINS
         CHARACTER(C_CHAR), DIMENSION(LEN(key)+1) :: c_key
 
         ! Add trailing C_NULL_CHAR to key
-        c_key = TRANSFER(key, c_key)
+        c_key(1:LEN(key)) = TRANSFER(key, c_key)
         c_key(LEN_TRIM(key)+1) = C_NULL_CHAR
 
         IF (PRESENT(found)) found = .FALSE.
@@ -488,7 +488,7 @@ CONTAINS
         CHARACTER(c_char), DIMENSION(LEN(key)+1) :: c_key
 
         ! Add trailing C_NULL_CHAR to key
-        c_key = TRANSFER(key, c_key)
+        c_key(1:LEN(key)) = TRANSFER(key, c_key)
         c_key(LEN_TRIM(key)+1) = C_NULL_CHAR
 
         maxlen = LEN(cval)
@@ -520,7 +520,7 @@ CONTAINS
         CHARACTER(C_CHAR), DIMENSION(LEN(key)+1) :: c_key
 
         ! Add trailing C_NULL_CHAR to key
-        c_key = TRANSFER(key, c_key)
+        c_key(1:LEN(key)) = TRANSFER(key, c_key)
         c_key(LEN_TRIM(key)+1) = C_NULL_CHAR
 
         CALL json_set_int(this%handle, c_key, val, ierr)
@@ -539,7 +539,7 @@ CONTAINS
         CHARACTER(C_CHAR), DIMENSION(LEN(key)+1) :: c_key
 
         ! Add trailing C_NULL_CHAR to key
-        c_key = TRANSFER(key, c_key)
+        c_key(1:LEN(key)) = TRANSFER(key, c_key)
         c_key(LEN_TRIM(key)+1) = C_NULL_CHAR
 
         CALL json_set_int64(this%handle, c_key, val, ierr)
@@ -558,7 +558,7 @@ CONTAINS
         CHARACTER(C_CHAR), DIMENSION(LEN(key)+1) :: c_key
 
         ! Add trailing C_NULL_CHAR to key
-        c_key = TRANSFER(key, c_key)
+        c_key(1:LEN(key)) = TRANSFER(key, c_key)
         c_key(LEN_TRIM(key)+1) = C_NULL_CHAR
 
         CALL json_set_float(this%handle, c_key, val, ierr)
@@ -577,7 +577,7 @@ CONTAINS
         CHARACTER(C_CHAR), DIMENSION(LEN(key)+1) :: c_key
 
         ! Add trailing C_NULL_CHAR to key
-        c_key = TRANSFER(key, c_key)
+        c_key(1:LEN(key)) = TRANSFER(key, c_key)
         c_key(LEN_TRIM(key)+1) = C_NULL_CHAR
 
         CALL json_set_double(this%handle, c_key, val, ierr)
@@ -597,7 +597,7 @@ CONTAINS
         LOGICAL(c_bool) :: c_bool_val
 
         ! Add trailing C_NULL_CHAR to key
-        c_key = TRANSFER(key, c_key)
+        c_key(1:LEN(key)) = TRANSFER(key, c_key)
         c_key(LEN_TRIM(key)+1) = C_NULL_CHAR
 
         c_bool_val = LOGICAL(val, kind=c_bool)
@@ -618,11 +618,11 @@ CONTAINS
         CHARACTER(c_char), DIMENSION(LEN(key)+1) :: c_key
 
         ! Add trailing C_NULL_CHAR to key
-        c_key = TRANSFER(key, c_key)
+        c_key(1:LEN(key)) = TRANSFER(key, c_key)
         c_key(LEN_TRIM(key)+1) = C_NULL_CHAR
 
         ! Add trailing C_NULL_CHAR to cval
-        c_cval = TRANSFER(cval, c_cval)
+        c_cval(1:LEN(cval)) = TRANSFER(cval, c_cval)
         c_cval(LEN_TRIM(cval)+1) = C_NULL_CHAR
 
         CALL json_set_char(this%handle, c_key, c_cval, ierr)
@@ -643,7 +643,7 @@ CONTAINS
         CHARACTER(C_CHAR), DIMENSION(LEN(key)+1) :: c_key
 
         ! Add trailing C_NULL_CHAR to key
-        c_key = TRANSFER(key, c_key)
+        c_key(1:LEN(key)) = TRANSFER(key, c_key)
         c_key(LEN_TRIM(key)+1) = C_NULL_CHAR
 
         length = SIZE(arr)
@@ -667,7 +667,7 @@ CONTAINS
         CHARACTER(C_CHAR), DIMENSION(LEN(key)+1) :: c_key
 
         ! Add trailing C_NULL_CHAR to key
-        c_key = TRANSFER(key, c_key)
+        c_key(1:LEN(key)) = TRANSFER(key, c_key)
         c_key(LEN_TRIM(key)+1) = C_NULL_CHAR
 
         length = SIZE(arr)
@@ -691,7 +691,7 @@ CONTAINS
         CHARACTER(C_CHAR), DIMENSION(LEN(key)+1) :: c_key
 
         ! Add trailing C_NULL_CHAR to key
-        c_key = TRANSFER(key, c_key)
+        c_key(1:LEN(key)) = TRANSFER(key, c_key)
         c_key(LEN_TRIM(key)+1) = C_NULL_CHAR
 
         length = SIZE(arr)
@@ -715,7 +715,7 @@ CONTAINS
         CHARACTER(C_CHAR), DIMENSION(LEN(key)+1) :: c_key
 
         ! Add trailing C_NULL_CHAR to key
-        c_key = TRANSFER(key, c_key)
+        c_key(1:LEN(key)) = TRANSFER(key, c_key)
         c_key(LEN_TRIM(key)+1) = C_NULL_CHAR
 
         length = SIZE(arr)
@@ -738,7 +738,7 @@ CONTAINS
         CHARACTER(C_CHAR), DIMENSION(LEN(key)+1) :: c_key
 
         ! Add trailing C_NULL_CHAR to key
-        c_key = TRANSFER(key, c_key)
+        c_key(1:LEN(key)) = TRANSFER(key, c_key)
         c_key(LEN_TRIM(key)+1) = C_NULL_CHAR
 
         c_exists = .FALSE.
@@ -758,7 +758,8 @@ CONTAINS
         CHARACTER(len=*), INTENT(in) :: key
 
         ! https://github.com/nlohmann/json/blob/develop/include/nlohmann/detail/value_t.hpp
-        is_int = this%is_type(key, 6)
+        is_int = this%is_type(key, 5) ! = signed int
+        ! is_int = this%is_type(key, 6) ! = unsigned int
     END FUNCTION is_int
 
 
@@ -968,7 +969,7 @@ CONTAINS
         CHARACTER(C_CHAR), DIMENSION(LEN(key)+1) :: c_key
 
         ! Add trailing C_NULL_CHAR to key
-        c_key = TRANSFER(key, c_key)
+        c_key(1:LEN(key)) = TRANSFER(key, c_key)
         c_key(LEN_TRIM(key)+1) = C_NULL_CHAR
 
         CALL json_get_size(this%handle, c_key, c_size, ierr)
@@ -1024,7 +1025,7 @@ CONTAINS
         CHARACTER(C_CHAR), DIMENSION(LEN(key)+1) :: c_key
 
         ! Add trailing C_NULL_CHAR to key
-        c_key = TRANSFER(key, c_key)
+        c_key(1:LEN(key)) = TRANSFER(key, c_key)
         c_key(LEN_TRIM(key)+1) = C_NULL_CHAR
 
         exists = .FALSE.
