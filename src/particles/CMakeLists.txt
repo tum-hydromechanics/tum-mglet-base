@@ -12,6 +12,7 @@ add_library(particles STATIC
     particle_interpolation_mod.F90
     particle_fields_mod.F90
     particle_timeintegration_mod.F90
+    particle_io_mod.F90
     particle_mod.F90
 )
 
