@@ -209,6 +209,12 @@ CONTAINS    !===================================
                 CALL get_neighbours(neighbours, igrid)
 
                 DO j = 1, 26
+
+                    ! Check if neighbor position occpied by grid
+                    IF (neighbours(j) < 1) THEN
+                        CYCLE
+                    END IF
+
                     IF (obstacles_src(iobst)%in_zone(neighbours(j)) .AND. .NOT. grid_processed(neighbours(j))) THEN
                         grid_processed(neighbours(j)) = .TRUE.
                         counter_array(neighbours(j)) = counter_array(neighbours(j)) + 1
