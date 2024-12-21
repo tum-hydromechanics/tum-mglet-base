@@ -10,6 +10,7 @@ MODULE particle_mod
     USE particle_statistics_mod
     USE particle_snapshot_mod
     USE particle_fields_mod
+    USE particle_io_mod
 
     IMPLICIT NONE(type, external)
 
@@ -102,7 +103,10 @@ CONTAINS
 
     END SUBROUTINE init_particles
 
+
     SUBROUTINE finish_particles()
+
+        TYPE(particle_io_t) :: io_tool
 
         CALL finish_particle_snapshots()
 
@@ -113,6 +117,9 @@ CONTAINS
         CALL finish_particle_exchange()
 
         CALL finish_particle_boundaries()
+
+        CALL io_tool%init("myTestFile.h5")
+        CALL io_tool%write_particles_io()
 
         CALL finish_particle_list()
 
