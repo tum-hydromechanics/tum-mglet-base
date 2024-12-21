@@ -117,8 +117,6 @@ CONTAINS
 
     SUBROUTINE finish_particles()
 
-        TYPE(particle_io_t) :: io_tool
-
         CALL finish_particle_snapshots()
 
         CALL finish_particle_statistics()
@@ -129,14 +127,13 @@ CONTAINS
 
         CALL finish_particle_boundaries()
 
-        ! stupid test inserted...
-        CALL io_tool%init("myTestFile.h5")
+        ! stupid test case for read / write
 
         WRITE(*,*) "Writing the particles"
-        CALL io_tool%write_particles_io()
+        CALL write_particles_h5("all_particles.h5")
 
         WRITE(*,*) "Reading the particles"
-        CALL io_tool%read_particles_io()
+        CALL read_particles_h5("all_particles.h5")
 
         CALL finish_particle_list()
 

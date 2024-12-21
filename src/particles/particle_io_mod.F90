@@ -14,89 +14,63 @@ MODULE particle_io_mod
     ! int_stencils_t = INTEGER(intk), ALLOCATABLE :: arr(:) with destructor
     ! real_stencils_t = REAL(realk), ALLOCATABLE :: arr(:) with destructor
 
-    TYPE :: particle_io_t
+    TYPE(int_stencils_t), ALLOCATABLE :: states_lists(:)
 
-        TYPE(int_stencils_t), ALLOCATABLE :: states_lists(:)
+    TYPE(int_stencils_t), ALLOCATABLE :: ipart_lists(:)
+    TYPE(int_stencils_t), ALLOCATABLE :: igrid_lists(:)
+    TYPE(int_stencils_t), ALLOCATABLE :: islice_lists(:)
 
-        TYPE(int_stencils_t), ALLOCATABLE :: ipart_lists(:)
-        TYPE(int_stencils_t), ALLOCATABLE :: igrid_lists(:)
-        TYPE(int_stencils_t), ALLOCATABLE :: islice_lists(:)
+    TYPE(int_stencils_t), ALLOCATABLE :: gitstep_lists(:)
+    TYPE(int_stencils_t), ALLOCATABLE :: sitstep_lists(:)
 
-        TYPE(int_stencils_t), ALLOCATABLE :: gitstep_lists(:)
-        TYPE(int_stencils_t), ALLOCATABLE :: sitstep_lists(:)
+    TYPE(real_stencils_t), ALLOCATABLE :: x_lists(:)
+    TYPE(real_stencils_t), ALLOCATABLE :: y_lists(:)
+    TYPE(real_stencils_t), ALLOCATABLE :: z_lists(:)
 
-        TYPE(real_stencils_t), ALLOCATABLE :: x_lists(:)
-        TYPE(real_stencils_t), ALLOCATABLE :: y_lists(:)
-        TYPE(real_stencils_t), ALLOCATABLE :: z_lists(:)
+    INTEGER(intk), ALLOCATABLE :: nparticle(:)
 
-        INTEGER(intk), ALLOCATABLE :: nparticle(:)
 
-        CHARACTER(len=mglet_filename_max) :: file
-
-    CONTAINS
-
-        PROCEDURE, PUBLIC :: init
-        PROCEDURE, PUBLIC :: write_particles_io
-        PROCEDURE, PUBLIC :: read_particles_io
-        PROCEDURE :: write_particles_list
-        PROCEDURE :: read_particles_list
-
-    END TYPE particle_io_t
-
-    PUBLIC :: particle_io_t
+    PUBLIC :: write_particles_h5, read_particles_h5
 
 CONTAINS
 
-    SUBROUTINE init(this, filename)
+    SUBROUTINE read_particles_h5(filename)
+
         ! Subroutine arguments
-        CLASS(particle_io_t), INTENT(inout) :: this
         CHARACTER(*), INTENT(in) :: filename
 
+        ! Local variables
+        INTEGER(hid_t) :: file_id
+
         ! Function body
-        this%file = filename
+        CALL hdf5common_open(filename, 'r', file_id)
+        CALL read_particles_list(file_id, my_particle_list)
+        CALL hdf5common_close(file_id)
 
-    END SUBROUTINE init
+    END SUBROUTINE read_particles_h5
 
 
 
-    SUBROUTINE read_particles_io(this)
+    SUBROUTINE write_particles_h5(filename)
 
         ! Subroutine arguments
-        CLASS(particle_io_t), INTENT(inout) :: this
+        CHARACTER(*), INTENT(in) :: filename
 
         ! Local variables
         INTEGER(hid_t) :: file_id
 
         ! Function body
-        CALL hdf5common_open(this%file, 'r', file_id)
-        CALL this%read_particles_list(file_id, my_particle_list)
+        CALL hdf5common_open(filename, 'w', file_id)
+        CALL write_particles_list(file_id, my_particle_list)
         CALL hdf5common_close(file_id)
 
-    END SUBROUTINE read_particles_io
+    END SUBROUTINE write_particles_h5
 
 
 
-    SUBROUTINE write_particles_io(this)
-
-        ! Subroutine arguments
-        CLASS(particle_io_t), INTENT(inout) :: this
-
-        ! Local variables
-        INTEGER(hid_t) :: file_id
-
-        ! Function body
-        CALL hdf5common_open(this%file, 'w', file_id)
-        CALL this%write_particles_list(file_id, my_particle_list)
-        CALL hdf5common_close(file_id)
-
-    END SUBROUTINE write_particles_io
-
-
-
-    SUBROUTINE write_particles_list(this, file_id, plist)
+    SUBROUTINE write_particles_list(file_id, plist)
 
         ! Subroutine arguments
-        CLASS(particle_io_t), INTENT(inout) :: this
         INTEGER(hid_t), INTENT(in) :: file_id
         TYPE(particle_list_t), INTENT(inout) :: plist
 
@@ -107,23 +81,23 @@ CONTAINS
         ! Function body
 
         ! Allocating one array for each grid on process
-        IF (.NOT. ALLOCATED(this%nparticle)) THEN
-           ALLOCATE(this%nparticle(nmygrids))
-           this%nparticle = 0
+        IF (.NOT. ALLOCATED(nparticle)) THEN
+           ALLOCATE(nparticle(nmygrids))
+           nparticle = 0
         END IF
 
-        ALLOCATE(this%states_lists(nmygrids))
+        ALLOCATE(states_lists(nmygrids))
 
-        ALLOCATE(this%ipart_lists(nmygrids))
-        ALLOCATE(this%igrid_lists(nmygrids))
-        ALLOCATE(this%islice_lists(nmygrids))
+        ALLOCATE(ipart_lists(nmygrids))
+        ALLOCATE(igrid_lists(nmygrids))
+        ALLOCATE(islice_lists(nmygrids))
 
-        ALLOCATE(this%gitstep_lists(nmygrids))
-        ALLOCATE(this%sitstep_lists(nmygrids))
+        ALLOCATE(gitstep_lists(nmygrids))
+        ALLOCATE(sitstep_lists(nmygrids))
 
-        ALLOCATE(this%x_lists(nmygrids))
-        ALLOCATE(this%y_lists(nmygrids))
-        ALLOCATE(this%z_lists(nmygrids))
+        ALLOCATE(x_lists(nmygrids))
+        ALLOCATE(y_lists(nmygrids))
+        ALLOCATE(z_lists(nmygrids))
 
         ! Counting the particles per grid
         CALL plist%defragment()
@@ -133,7 +107,7 @@ CONTAINS
                 DO ig = 1, nmygrids
                     igrid = mygrids(ig)
                     IF ( plist%particles(ip)%igrid == igrid ) THEN
-                        this%nparticle(ig) = this%nparticle(ig) + 1
+                        nparticle(ig) = nparticle(ig) + 1
                         ! EXIT
                     END IF
                 END DO
@@ -146,19 +120,19 @@ CONTAINS
 
         ! Allocating space for the particles on each grid
         DO ig = 1, nmygrids
-            npart = this%nparticle(ig)
-            ALLOCATE(this%states_lists(ig)%arr(npart))
+            npart = nparticle(ig)
+            ALLOCATE(states_lists(ig)%arr(npart))
 
-            ALLOCATE(this%ipart_lists(ig)%arr(npart))
-            ALLOCATE(this%igrid_lists(ig)%arr(npart))
-            ALLOCATE(this%islice_lists(ig)%arr(npart))
+            ALLOCATE(ipart_lists(ig)%arr(npart))
+            ALLOCATE(igrid_lists(ig)%arr(npart))
+            ALLOCATE(islice_lists(ig)%arr(npart))
 
-            ALLOCATE(this%gitstep_lists(ig)%arr(npart))
-            ALLOCATE(this%sitstep_lists(ig)%arr(npart))
+            ALLOCATE(gitstep_lists(ig)%arr(npart))
+            ALLOCATE(sitstep_lists(ig)%arr(npart))
 
-            ALLOCATE(this%x_lists(ig)%arr(npart))
-            ALLOCATE(this%y_lists(ig)%arr(npart))
-            ALLOCATE(this%z_lists(ig)%arr(npart))
+            ALLOCATE(x_lists(ig)%arr(npart))
+            ALLOCATE(y_lists(ig)%arr(npart))
+            ALLOCATE(z_lists(ig)%arr(npart))
         END DO
 
         ! Inserting the particle data
@@ -173,18 +147,18 @@ CONTAINS
                     icount(ig) = icount(ig) + 1
                     ic = icount(ig)
 
-                    this%states_lists(ig)%arr(ic) = plist%particles(ip)%state
+                    states_lists(ig)%arr(ic) = plist%particles(ip)%state
 
-                    this%ipart_lists(ig)%arr(ic) = plist%particles(ip)%ipart
-                    this%igrid_lists(ig)%arr(ic) = plist%particles(ip)%igrid
-                    this%islice_lists(ig)%arr(ic) = plist%particles(ip)%islice
+                    ipart_lists(ig)%arr(ic) = plist%particles(ip)%ipart
+                    igrid_lists(ig)%arr(ic) = plist%particles(ip)%igrid
+                    islice_lists(ig)%arr(ic) = plist%particles(ip)%islice
 
-                    this%gitstep_lists(ig)%arr(ic) = plist%particles(ip)%gitstep
-                    this%sitstep_lists(ig)%arr(ic) = plist%particles(ip)%sitstep
+                    gitstep_lists(ig)%arr(ic) = plist%particles(ip)%gitstep
+                    sitstep_lists(ig)%arr(ic) = plist%particles(ip)%sitstep
 
-                    this%x_lists(ig)%arr(ic) = plist%particles(ip)%x
-                    this%y_lists(ig)%arr(ic) = plist%particles(ip)%y
-                    this%z_lists(ig)%arr(ic) = plist%particles(ip)%z
+                    x_lists(ig)%arr(ic) = plist%particles(ip)%x
+                    y_lists(ig)%arr(ic) = plist%particles(ip)%y
+                    z_lists(ig)%arr(ic) = plist%particles(ip)%z
 
                     ! EXIT
                 END IF
@@ -192,7 +166,7 @@ CONTAINS
         END DO
 
         DO ig = 1, nmygrids
-            IF ( this%nparticle(ig) /= icount(ig) ) THEN
+            IF ( nparticle(ig) /= icount(ig) ) THEN
                 igrid = mygrids(ig)
                 WRITE(*,*) "Not all slots filled in igrid = ", igrid
                 CALL errr(__FILE__, __LINE__)
@@ -203,43 +177,42 @@ CONTAINS
 
         ! Using stencils infrastructure for parallel I/O
         ! (functions manage all grids of process)
-        CALL stencilio_write(file_id, 'state', this%states_lists)
+        CALL stencilio_write(file_id, 'state', states_lists)
 
-        CALL stencilio_write(file_id, 'ipart', this%ipart_lists)
-        CALL stencilio_write(file_id, 'igrid', this%igrid_lists)
-        CALL stencilio_write(file_id, 'islice', this%islice_lists)
+        CALL stencilio_write(file_id, 'ipart', ipart_lists)
+        CALL stencilio_write(file_id, 'igrid', igrid_lists)
+        CALL stencilio_write(file_id, 'islice', islice_lists)
 
-        CALL stencilio_write(file_id, 'gitstep', this%gitstep_lists)
-        CALL stencilio_write(file_id, 'sitstep', this%sitstep_lists)
+        CALL stencilio_write(file_id, 'gitstep', gitstep_lists)
+        CALL stencilio_write(file_id, 'sitstep', sitstep_lists)
 
-        CALL stencilio_write(file_id, 'x', this%x_lists)
-        CALL stencilio_write(file_id, 'y', this%y_lists)
-        CALL stencilio_write(file_id, 'z', this%z_lists)
+        CALL stencilio_write(file_id, 'x', x_lists)
+        CALL stencilio_write(file_id, 'y', y_lists)
+        CALL stencilio_write(file_id, 'z', z_lists)
 
         ! Deallocate all allocated attribute arrays
-        DEALLOCATE(this%nparticle)
+        DEALLOCATE(nparticle)
 
-        DEALLOCATE(this%states_lists)
+        DEALLOCATE(states_lists)
 
-        DEALLOCATE(this%ipart_lists)
-        DEALLOCATE(this%igrid_lists)
-        DEALLOCATE(this%islice_lists)
+        DEALLOCATE(ipart_lists)
+        DEALLOCATE(igrid_lists)
+        DEALLOCATE(islice_lists)
 
-        DEALLOCATE(this%gitstep_lists)
-        DEALLOCATE(this%sitstep_lists)
+        DEALLOCATE(gitstep_lists)
+        DEALLOCATE(sitstep_lists)
 
-        DEALLOCATE(this%x_lists)
-        DEALLOCATE(this%y_lists)
-        DEALLOCATE(this%z_lists)
+        DEALLOCATE(x_lists)
+        DEALLOCATE(y_lists)
+        DEALLOCATE(z_lists)
 
     END SUBROUTINE write_particles_list
 
 
 
-    SUBROUTINE read_particles_list(this, file_id, plist)
+    SUBROUTINE read_particles_list(file_id, plist)
 
         ! Subroutine arguments
-        CLASS(particle_io_t), INTENT(inout) :: this
         INTEGER(hid_t), INTENT(in) :: file_id
         TYPE(particle_list_t), INTENT(inout) :: plist
 
@@ -247,39 +220,39 @@ CONTAINS
         INTEGER(intk) :: ig, igrid, npart, n, addlen, cpart, i
 
         ! Function body
-        ALLOCATE(this%states_lists(nmygrids))
+        ALLOCATE(states_lists(nmygrids))
 
-        ALLOCATE(this%ipart_lists(nmygrids))
-        ALLOCATE(this%igrid_lists(nmygrids))
-        ALLOCATE(this%islice_lists(nmygrids))
+        ALLOCATE(ipart_lists(nmygrids))
+        ALLOCATE(igrid_lists(nmygrids))
+        ALLOCATE(islice_lists(nmygrids))
 
-        ALLOCATE(this%gitstep_lists(nmygrids))
-        ALLOCATE(this%sitstep_lists(nmygrids))
+        ALLOCATE(gitstep_lists(nmygrids))
+        ALLOCATE(sitstep_lists(nmygrids))
 
-        ALLOCATE(this%x_lists(nmygrids))
-        ALLOCATE(this%y_lists(nmygrids))
-        ALLOCATE(this%z_lists(nmygrids))
+        ALLOCATE(x_lists(nmygrids))
+        ALLOCATE(y_lists(nmygrids))
+        ALLOCATE(z_lists(nmygrids))
 
         ! Using stencils infrastructure for parallel I/O
         ! (functions manage all grids of process)
-        CALL stencilio_read(file_id, 'state', this%states_lists)
+        CALL stencilio_read(file_id, 'state', states_lists)
 
-        CALL stencilio_read(file_id, 'ipart', this%ipart_lists)
-        CALL stencilio_read(file_id, 'igrid', this%igrid_lists)
-        CALL stencilio_read(file_id, 'islice', this%islice_lists)
+        CALL stencilio_read(file_id, 'ipart', ipart_lists)
+        CALL stencilio_read(file_id, 'igrid', igrid_lists)
+        CALL stencilio_read(file_id, 'islice', islice_lists)
 
-        CALL stencilio_read(file_id, 'gitstep', this%gitstep_lists)
-        CALL stencilio_read(file_id, 'sitstep', this%sitstep_lists)
+        CALL stencilio_read(file_id, 'gitstep', gitstep_lists)
+        CALL stencilio_read(file_id, 'sitstep', sitstep_lists)
 
-        CALL stencilio_read(file_id, 'x', this%x_lists)
-        CALL stencilio_read(file_id, 'y', this%y_lists)
-        CALL stencilio_read(file_id, 'z', this%z_lists)
+        CALL stencilio_read(file_id, 'x', x_lists)
+        CALL stencilio_read(file_id, 'y', y_lists)
+        CALL stencilio_read(file_id, 'z', z_lists)
 
         ! Determine the number of particles
         npart = 0
         DO ig = 1, nmygrids
-            IF (ALLOCATED(this%states_lists(ig)%arr)) THEN
-                n = SIZE(this%states_lists(ig)%arr)
+            IF (ALLOCATED(states_lists(ig)%arr)) THEN
+                n = SIZE(states_lists(ig)%arr)
                 npart = npart + n
             END IF
         END DO
@@ -293,15 +266,15 @@ CONTAINS
         cpart = 0
         DO ig = 1, nmygrids
 
-            IF (.NOT. ALLOCATED(this%states_lists(ig)%arr)) THEN
+            IF (.NOT. ALLOCATED(states_lists(ig)%arr)) THEN
                 CYCLE
             END IF
 
-            DO i = 1, SIZE(this%states_lists(ig)%arr)
+            DO i = 1, SIZE(states_lists(ig)%arr)
 
                 ! Checking consistency
                 igrid = mygrids(ig)
-                IF (this%igrid_lists(ig)%arr(i) /= igrid) THEN
+                IF (igrid_lists(ig)%arr(i) /= igrid) THEN
                     WRITE(*,*) "Particle for wrong grid read in"
                     CALL errr(__FILE__, __LINE__)
                 END IF
@@ -310,18 +283,18 @@ CONTAINS
                 cpart = cpart + 1
 
                 ! Inserting the particle data
-                plist%particles(cpart)%state = this%states_lists(ig)%arr(i)
+                plist%particles(cpart)%state = states_lists(ig)%arr(i)
 
-                plist%particles(cpart)%ipart = this%ipart_lists(ig)%arr(i)
-                plist%particles(cpart)%igrid = this%igrid_lists(ig)%arr(i)
-                plist%particles(cpart)%islice = this%islice_lists(ig)%arr(i)
+                plist%particles(cpart)%ipart = ipart_lists(ig)%arr(i)
+                plist%particles(cpart)%igrid = igrid_lists(ig)%arr(i)
+                plist%particles(cpart)%islice = islice_lists(ig)%arr(i)
 
-                plist%particles(cpart)%gitstep = this%gitstep_lists(ig)%arr(i)
-                plist%particles(cpart)%sitstep = this%sitstep_lists(ig)%arr(i)
+                plist%particles(cpart)%gitstep = gitstep_lists(ig)%arr(i)
+                plist%particles(cpart)%sitstep = sitstep_lists(ig)%arr(i)
 
-                plist%particles(cpart)%x = this%x_lists(ig)%arr(i)
-                plist%particles(cpart)%y = this%y_lists(ig)%arr(i)
-                plist%particles(cpart)%z = this%z_lists(ig)%arr(i)
+                plist%particles(cpart)%x = x_lists(ig)%arr(i)
+                plist%particles(cpart)%y = y_lists(ig)%arr(i)
+                plist%particles(cpart)%z = z_lists(ig)%arr(i)
 
             END DO
 
@@ -333,18 +306,18 @@ CONTAINS
         END IF
 
         ! Deallocate all allocated attribute arrays
-        DEALLOCATE(this%states_lists)
+        DEALLOCATE(states_lists)
 
-        DEALLOCATE(this%ipart_lists)
-        DEALLOCATE(this%igrid_lists)
-        DEALLOCATE(this%islice_lists)
+        DEALLOCATE(ipart_lists)
+        DEALLOCATE(igrid_lists)
+        DEALLOCATE(islice_lists)
 
-        DEALLOCATE(this%gitstep_lists)
-        DEALLOCATE(this%sitstep_lists)
+        DEALLOCATE(gitstep_lists)
+        DEALLOCATE(sitstep_lists)
 
-        DEALLOCATE(this%x_lists)
-        DEALLOCATE(this%y_lists)
-        DEALLOCATE(this%z_lists)
+        DEALLOCATE(x_lists)
+        DEALLOCATE(y_lists)
+        DEALLOCATE(z_lists)
 
     END SUBROUTINE read_particles_list
 
