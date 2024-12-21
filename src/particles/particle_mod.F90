@@ -129,8 +129,14 @@ CONTAINS
 
         CALL finish_particle_boundaries()
 
+        ! stupid test inserted...
         CALL io_tool%init("myTestFile.h5")
+
+        WRITE(*,*) "Writing the particles"
         CALL io_tool%write_particles_io()
+
+        WRITE(*,*) "Reading the particles"
+        CALL io_tool%read_particles_io()
 
         CALL finish_particle_list()
 
