@@ -61,7 +61,7 @@ CONTAINS    !===================================
         TYPE(obstacle_t), ALLOCATABLE :: obstacles_src(:), obstacles_itm(:) ! temporary obtscle lists
         !(src -> input/regular/source obstacles (read), itm -> intermediate/filling obstacles (generated))
 
-        INTEGER(intk) :: unit, dict_len, iobst, igrid, i, j, k, counter, dummy
+        INTEGER(intk) :: unit, dict_len, iobst, igrid, h, i, j, k, counter, dummy
         INTEGER(intk) :: neighbours(26)
         INTEGER(intk), ALLOCATABLE :: counter_array(:) ! number of obstacles that is relevant on this process per grid
 
@@ -84,20 +84,8 @@ CONTAINS    !===================================
         INQUIRE(file = 'ObstaclesDict.txt', exist = dread_obstacles)
 
         IF (.NOT. dread_obstacles) THEN
-            ALLOCATE(my_obstacles(0))
-            IF (myid == 0) THEN
-                IF (TRIM(particle_terminal) == "normal" .OR. TRIM(particle_terminal) == "verbose") THEN
-                    WRITE(*, *) "ERROR: No file for reading obstacles detected!"
-                    CALL errr(__FILE__,__LINE__)
-                END IF
-            END IF
-        END IF
-
-        IF (myid == 0) THEN
-            IF (TRIM(particle_terminal) == "normal" .OR. TRIM(particle_terminal) == "verbose") THEN
-                WRITE(*, '("READING OBSTACLES ...")')
-                WRITE(*, '()')
-            END IF
+            WRITE(*, *) "ERROR: No file for reading obstacles detected!"
+            CALL errr(__FILE__,__LINE__)
         END IF
 
         ALLOCATE(counter_array(ngrid))
@@ -110,36 +98,38 @@ CONTAINS    !===================================
         READ(unit, fmt = *) dummy_char, dummy_char, dummy_char, dict_len
 
         IF (dict_len < 1) THEN
-            IF (myid == 0) THEN
-                IF (TRIM(particle_terminal) == "normal" .OR. TRIM(particle_terminal) == "verbose") THEN
-                    WRITE(*, '()')
-                    WRITE(*, '("ERROR in particle_obstacles_mod: Number of Obstacles given in ObstaclesDict.txt must be an integer larger than 0.")')
-                    WRITE(*, '("If no Obstacles should be registered, set read_obst to FALSE.")')
-                    WRITE(*, '()')
-                END IF
-            END IF
+            WRITE(*, '("ERROR in particle_obstacles_mod: Number of Obstacles given in ObstaclesDict.txt must be an integer larger than 0.")')
+            WRITE(*, '("If no Obstacles should be registered, set read_obst to FALSE.")')
+            WRITE(*, '()')
             CALL errr(__FILE__, __LINE__)
+        END IF
+
+        IF (myid == 0) THEN
+            IF (TRIM(particle_terminal) == "normal" .OR. TRIM(particle_terminal) == "verbose") THEN
+                WRITE(*, '("READING ", I0, " OBSTACLES:")') dict_len
+                WRITE(*, '()')
+            END IF
         END IF
 
         ALLOCATE(obstacles_src(dict_len))
         ALLOCATE(is_relevant_src(dict_len))
         is_relevant_src = .FALSE.
 
-        DO iobst = 1, dict_len
+        DO h = 1, dict_len
 
             READ(unit, fmt = *) dummy_char
 
-            READ(unit, fmt = *) obstacles_src(iobst)%radius, obstacles_src(iobst)%x, obstacles_src(iobst)%y, &
-             obstacles_src(iobst)%z
+            READ(unit, fmt = *) obstacles_src(h)%radius, obstacles_src(h)%x, obstacles_src(h)%y, &
+             obstacles_src(h)%z
 
             IF (myid == 0) THEN
                 IF (TRIM(particle_terminal) == "verbose") THEN
-                    WRITE(*,'("Obstacle read: x/y/z/r = ", 4F12.6)') obstacles_src(iobst)%x, obstacles_src(iobst)%y, &
-                     obstacles_src(iobst)%z, obstacles_src(iobst)%radius
+                    WRITE(*,'("Obstacle read: x/y/z/r = ", 4F12.6)') obstacles_src(h)%x, obstacles_src(h)%y, &
+                     obstacles_src(h)%z, obstacles_src(h)%radius
                 END IF
             END IF
 
-            obstacles_src(iobst)%iobst = iobst
+            obstacles_src(h)%iobst = h
 
         END DO
 
@@ -194,7 +184,7 @@ CONTAINS    !===================================
 
         ! count regular/source obstacles that are relevant for this process and determine for which grids they are relevant
         counter = 0
-        DO iobst = 1, dict_len
+        DO h = 1, dict_len
 
             grid_processed = .FALSE.
 
@@ -202,23 +192,25 @@ CONTAINS    !===================================
 
                 igrid = mygrids(i)
 
-                IF (obstacles_src(iobst)%in_zone(igrid) .AND. .NOT. grid_processed(igrid)) THEN
+                IF (obstacles_src(h)%in_zone(igrid) .AND. .NOT. grid_processed(igrid)) THEN
                     grid_processed(igrid) = .TRUE.
                     counter_array(igrid) = counter_array(igrid) + 1
-                    is_relevant_src(iobst) = .TRUE.
+                    is_relevant_src(h) = .TRUE.
                 END IF
 
                 CALL get_neighbours(neighbours, igrid)
 
                 DO j = 1, 26
-                    IF (obstacles_src(iobst)%in_zone(neighbours(j)) .AND. .NOT. grid_processed(neighbours(j))) THEN
+                    IF (neighbours(j) < 1 .OR. neighbours(j) > ngrid) THEN
+                        CYCLE
+                    ELSEIF (obstacles_src(h)%in_zone(neighbours(j)) .AND. .NOT. grid_processed(neighbours(j))) THEN
                         grid_processed(neighbours(j)) = .TRUE.
                         counter_array(neighbours(j)) = counter_array(neighbours(j)) + 1
-                        is_relevant_src(iobst) = .TRUE.
+                        is_relevant_src(h) = .TRUE.
                     END IF
                 END DO
 
-                IF (is_relevant_src(iobst)) THEN
+                IF (is_relevant_src(h)) THEN
                     counter = counter + 1
                 END IF
 
@@ -227,7 +219,7 @@ CONTAINS    !===================================
         END DO
 
         ! count intermediate/filling obstacles that are relevant for this process and determine for which grids they are relevant
-        DO iobst = 1, SIZE(obstacles_itm)
+        DO h = 1, SIZE(obstacles_itm)
 
             grid_processed = .FALSE.
 
@@ -235,23 +227,25 @@ CONTAINS    !===================================
 
                 igrid = mygrids(i)
 
-                IF (obstacles_itm(iobst)%in_zone(igrid) .AND. .NOT. grid_processed(igrid)) THEN
+                IF (obstacles_itm(h)%in_zone(igrid) .AND. .NOT. grid_processed(igrid)) THEN
                     grid_processed(igrid) = .TRUE.
                     counter_array(igrid) = counter_array(igrid) + 1
-                    is_relevant_itm(iobst) = .TRUE.
+                    is_relevant_itm(h) = .TRUE.
                 END IF
 
                 CALL get_neighbours(neighbours, igrid)
 
                 DO j = 1, 26
-                    IF (obstacles_itm(iobst)%in_zone(neighbours(j)) .AND. .NOT. grid_processed(neighbours(j))) THEN
+                    IF (neighbours(j) < 1 .OR. neighbours(j) > ngrid) THEN
+                        CYCLE
+                    ELSEIF (obstacles_itm(h)%in_zone(neighbours(j)) .AND. .NOT. grid_processed(neighbours(j))) THEN
                         grid_processed(neighbours(j)) = .TRUE.
                         counter_array(neighbours(j)) = counter_array(neighbours(j)) + 1
-                        is_relevant_itm(iobst) = .TRUE.
+                        is_relevant_itm(h) = .TRUE.
                     END IF
                 END DO
 
-                IF (is_relevant_src(iobst)) THEN
+                IF (is_relevant_itm(h)) THEN
                     counter = counter + 1
                 END IF
 
@@ -268,18 +262,47 @@ CONTAINS    !===================================
         counter_array = 1
         counter = 1
 
-        ! copy relevant obstacles for this process into heap memory
-        DO iobst = 1, dict_len
+        ! copy relevant input/source obstacles for this process into heap memory
+        DO h = 1, dict_len
 
-            IF (is_relevant_src(iobst)) THEN
+            IF (is_relevant_src(h)) THEN
 
-                my_obstacles(counter) = obstacles_src(iobst)
+                my_obstacles(counter) = obstacles_src(h)
 
-                DO igrid = 1, ngrid
-                    IF (obstacles_src(iobst)%in_zone(igrid)) THEN
+                grid_processed = .FALSE.
+
+                DO i = 1, nmygrids
+
+                    igrid = mygrids(i)
+
+                    IF (obstacles_src(h)%in_zone(igrid) .AND. .NOT. grid_processed(igrid)) THEN
+                        grid_processed(igrid) = .TRUE.
+                        IF (counter_array(igrid) > SIZE(my_obstacle_pointers(igrid)%grid_obstacles)) THEN
+                            CALL errr(__FILE__, __LINE__)
+                        END IF
                         my_obstacle_pointers(igrid)%grid_obstacles(counter_array(igrid)) = counter
                         counter_array(igrid) = counter_array(igrid) + 1
                     END IF
+
+                    CALL get_neighbours(neighbours, igrid)
+
+                    DO j = 1, 26
+                        IF (neighbours(j) < 1 .OR. neighbours(j) > ngrid) THEN
+                            CYCLE
+                        ELSEIF (obstacles_src(h)%in_zone(neighbours(j)) .AND. .NOT. grid_processed(neighbours(j))) THEN
+                        grid_processed(neighbours(j)) = .TRUE.
+                        IF (counter_array(neighbours(j)) > SIZE(my_obstacle_pointers(neighbours(j))%grid_obstacles)) THEN
+                            CALL errr(__FILE__, __LINE__)
+                        END IF
+                        my_obstacle_pointers(neighbours(j))%grid_obstacles(counter_array(neighbours(j))) = counter
+                        counter_array(neighbours(j)) = counter_array(neighbours(j)) + 1
+                        END IF
+                    END DO
+
+                    IF (is_relevant_itm(h)) THEN
+                        counter = counter + 1
+                    END IF
+
                 END DO
 
                 counter = counter + 1
@@ -289,20 +312,47 @@ CONTAINS    !===================================
         END DO
 
         ! copy relevant intermediate/filling obstacles for this process into heap memory
-        DO iobst = 1, SIZE(obstacles_itm)
+        DO h = 1, SIZE(obstacles_itm)
 
-            IF (is_relevant_itm(iobst)) THEN
+            IF (is_relevant_itm(h)) THEN
 
-                my_obstacles(counter) = obstacles_itm(iobst)
+                my_obstacles(counter) = obstacles_itm(h)
 
-                DO igrid = 1, ngrid
-                    IF (obstacles_itm(iobst)%in_zone(igrid)) THEN
+                grid_processed = .FALSE.
+
+                DO i = 1, nmygrids
+
+                    igrid = mygrids(i)
+
+                    IF (obstacles_itm(h)%in_zone(igrid) .AND. .NOT. grid_processed(igrid)) THEN
+                        grid_processed(igrid) = .TRUE.
+                        IF (counter_array(igrid) > SIZE(my_obstacle_pointers(igrid)%grid_obstacles)) THEN
+                            CALL errr(__FILE__, __LINE__)
+                        END IF
                         my_obstacle_pointers(igrid)%grid_obstacles(counter_array(igrid)) = counter
                         counter_array(igrid) = counter_array(igrid) + 1
                     END IF
-                END DO
 
-                counter = counter + 1
+                    CALL get_neighbours(neighbours, igrid)
+
+                    DO j = 1, 26
+                        IF (neighbours(j) < 1 .OR. neighbours(j) > ngrid) THEN
+                            CYCLE
+                        ELSEIF (obstacles_itm(h)%in_zone(neighbours(j)) .AND. .NOT. grid_processed(neighbours(j))) THEN
+                        grid_processed(neighbours(j)) = .TRUE.
+                        IF (counter_array(neighbours(j)) > SIZE(my_obstacle_pointers(neighbours(j))%grid_obstacles)) THEN
+                            CALL errr(__FILE__, __LINE__)
+                        END IF
+                        my_obstacle_pointers(neighbours(j))%grid_obstacles(counter_array(neighbours(j))) = counter
+                        counter_array(neighbours(j)) = counter_array(neighbours(j)) + 1
+                        END IF
+                    END DO
+
+                    IF (is_relevant_itm(h)) THEN
+                        counter = counter + 1
+                    END IF
+
+                END DO
 
             END IF
 
@@ -319,7 +369,8 @@ CONTAINS    !===================================
 
             DO igrid = 1, ngrid
 
-                IF (SIZE(my_obstacle_pointers(igrid)%grid_obstacles) > 0 .OR. TRIM(particle_terminal) == "verbose") THEN
+                IF ((SIZE(my_obstacle_pointers(igrid)%grid_obstacles) > 0 .AND. TRIM(particle_terminal) == "normal") &
+                 .OR. TRIM(particle_terminal) == "verbose") THEN
                     WRITE(*,'(I0, " Obstacles registered for Grid ", I0, ".")') SIZE(my_obstacle_pointers(igrid)%grid_obstacles), igrid
                     WRITE(*, '()')
                 END IF
@@ -378,6 +429,12 @@ CONTAINS    !===================================
         END IF
 
     END SUBROUTINE finish_obstacles
+
+
+    ! write obstacles vtk to validate if they have been registered properly
+    SUBROUTINE write_obstacles()
+
+    END SUBROUTINE
 
     LOGICAL FUNCTION in_zone(this, igrid, overlap_f) result(res)
 
