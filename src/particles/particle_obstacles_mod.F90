@@ -3,11 +3,14 @@ MODULE particle_obstacles_mod
     ! This module is responsible for:
     ! Reading and storage of a sphere pack (obstacles that make up a porous domain)
 
+    ! TODO: optimize this module
+
     USE MPI_f08
     USE comms_mod
     USE grids_mod
     USE field_mod
     USE fields_mod
+    USE utils_mod
 
     USE particle_utils_mod
 
@@ -16,16 +19,16 @@ MODULE particle_obstacles_mod
     ! TODO: make an abstract parent class
     TYPE :: obstacle_t
 
-        INTEGER(intk) :: iobst
+        INTEGER(intk) :: iobst = -1
 
-        REAL(realk) :: x
-        REAL(realk) :: y
-        REAL(realk) :: z
+        REAL(realk) :: x = 0.0
+        REAL(realk) :: y = 0.0
+        REAL(realk) :: z = 0.0
 
-        REAL(realk) :: radius
+        REAL(realk) :: radius = 0.0
 
         CONTAINS
-            PROCEDURE :: in_zone
+            PROCEDURE :: in_grid_zone
 
     END TYPE obstacle_t
 
@@ -47,7 +50,7 @@ MODULE particle_obstacles_mod
     ! TODO: change this value?
     ! factor to compute the minimum distance between obstacles for which no intermediate obstacle is generated
     ! using EPSILON(realk)
-    REAL(realk), PARAMETER :: min_space_factor = 100
+    REAL(realk), PARAMETER :: min_space = 0.05
 
     ! ratio of intermediate (filling) obstacles over readius of regular obstacles
     REAL(realk), PARAMETER :: radius_ratio = 0.348
@@ -63,6 +66,7 @@ CONTAINS    !===================================
 
         INTEGER(intk) :: unit, dict_len, iobst, igrid, h, i, j, k, counter, dummy
         INTEGER(intk) :: neighbours(26)
+        INTEGER(intk), ALLOCATABLE :: proc_neigbhours(:) ! array to store all grids ONCE that are neighbours to any grid of this proc
         INTEGER(intk), ALLOCATABLE :: counter_array(:) ! number of obstacles that is relevant on this process per grid
 
         LOGICAL :: dcycle, dexit
@@ -73,8 +77,6 @@ CONTAINS    !===================================
         REAL(realk) :: minx, maxx, miny, maxy, minz, maxz
 
         CHARACTER(12) :: dummy_char
-
-        ! TODO: optimize this routine
 
         IF (.NOT. dread_obstacles) THEN
             ALLOCATE(my_obstacles(0))
@@ -88,10 +90,39 @@ CONTAINS    !===================================
             CALL errr(__FILE__,__LINE__)
         END IF
 
+        ALLOCATE(grid_processed(ngrid))
+
+        grid_processed = .FALSE.
+        counter = 0
+        DO i = 1, nmygrids
+            igrid = mygrids(i)
+            CALL get_neighbours(neighbours, igrid)
+            DO j = 1, 26
+                IF (neighbours(j) < 1 .OR. neighbours(j) > ngrid) THEN
+                    CYCLE
+                ELSEIF (idprocofgrd(neighbours(j)) /= myid .AND. .NOT. grid_processed(neighbours(j))) THEN
+                    grid_processed(neighbours(j)) = .TRUE.
+                    counter = counter + 1
+                END IF
+            END DO
+        END DO
+
+        ALLOCATE(proc_neigbhours(counter))
+
+        counter = 1
+        DO i = 1, ngrid
+            IF (grid_processed(i)) THEN
+                IF (counter > SIZE(proc_neigbhours)) THEN
+                    CALL errr(__FILE__,__LINE__)
+                END IF
+                proc_neigbhours(counter) = i
+                counter = counter + 1
+            END IF
+        END DO
+
         ALLOCATE(counter_array(ngrid))
         counter_array = 0
         ALLOCATE(my_obstacle_pointers(ngrid))
-        ALLOCATE(grid_processed(ngrid))
 
         OPEN(newunit = unit, file = 'ObstaclesDict.txt', status = 'OLD', action = 'READ')
 
@@ -148,7 +179,7 @@ CONTAINS    !===================================
                  (obstacles_src(i)%z - obstacles_src(j)%z)**2)
 
                 ! TODO: change minimum space between obstacles?
-                IF (dist < (obstacles_src(i)%radius + obstacles_src(j)%radius + min_space_factor * EPSILON(obstacles_src(i)%radius))) THEN
+                IF (dist < (obstacles_src(i)%radius + obstacles_src(j)%radius + min_space + EPSILON(obstacles_src(i)%radius))) THEN
                     counter = counter + 1
                 END IF
 
@@ -167,7 +198,7 @@ CONTAINS    !===================================
                  (obstacles_src(i)%y - obstacles_src(j)%y)**2 + &
                  (obstacles_src(i)%z - obstacles_src(j)%z)**2)
 
-                IF (dist < (obstacles_src(i)%radius + obstacles_src(j)%radius + min_space_factor * EPSILON(obstacles_src(i)%radius))) THEN
+                IF (dist < (obstacles_src(i)%radius + obstacles_src(j)%radius + min_space + EPSILON(obstacles_src(i)%radius))) THEN
 
                     obstacles_itm(counter)%iobst = counter + dict_len
                     obstacles_itm(counter)%x = obstacles_src(i)%x + (obstacles_src(j)%x - obstacles_src(i)%x) * obstacles_src(i)%radius / dist
@@ -186,26 +217,18 @@ CONTAINS    !===================================
         counter = 0
         DO h = 1, dict_len
 
-            grid_processed = .FALSE.
+                DO i = 1, nmygrids
+                    igrid = mygrids(i)
+                    IF (obstacles_src(h)%in_grid_zone(igrid)) THEN
+                        counter_array(igrid) = counter_array(igrid) + 1
+                        is_relevant_src(h) = .TRUE.
+                    END IF
+                END DO
 
-            DO i = 1, nmygrids
-
-                igrid = mygrids(i)
-
-                IF (obstacles_src(h)%in_zone(igrid) .AND. .NOT. grid_processed(igrid)) THEN
-                    grid_processed(igrid) = .TRUE.
-                    counter_array(igrid) = counter_array(igrid) + 1
-                    is_relevant_src(h) = .TRUE.
-                END IF
-
-                CALL get_neighbours(neighbours, igrid)
-
-                DO j = 1, 26
-                    IF (neighbours(j) < 1 .OR. neighbours(j) > ngrid) THEN
-                        CYCLE
-                    ELSEIF (obstacles_src(h)%in_zone(neighbours(j)) .AND. .NOT. grid_processed(neighbours(j))) THEN
-                        grid_processed(neighbours(j)) = .TRUE.
-                        counter_array(neighbours(j)) = counter_array(neighbours(j)) + 1
+                DO i = 1, SIZE(proc_neigbhours)
+                    igrid = proc_neigbhours(i)
+                    IF (obstacles_src(h)%in_grid_zone(igrid)) THEN
+                        counter_array(igrid) = counter_array(igrid) + 1
                         is_relevant_src(h) = .TRUE.
                     END IF
                 END DO
@@ -214,42 +237,30 @@ CONTAINS    !===================================
                     counter = counter + 1
                 END IF
 
-            END DO
-
         END DO
 
         ! count intermediate/filling obstacles that are relevant for this process and determine for which grids they are relevant
         DO h = 1, SIZE(obstacles_itm)
 
-            grid_processed = .FALSE.
-
             DO i = 1, nmygrids
-
                 igrid = mygrids(i)
-
-                IF (obstacles_itm(h)%in_zone(igrid) .AND. .NOT. grid_processed(igrid)) THEN
-                    grid_processed(igrid) = .TRUE.
+                IF (obstacles_itm(h)%in_grid_zone(igrid)) THEN
                     counter_array(igrid) = counter_array(igrid) + 1
                     is_relevant_itm(h) = .TRUE.
                 END IF
-
-                CALL get_neighbours(neighbours, igrid)
-
-                DO j = 1, 26
-                    IF (neighbours(j) < 1 .OR. neighbours(j) > ngrid) THEN
-                        CYCLE
-                    ELSEIF (obstacles_itm(h)%in_zone(neighbours(j)) .AND. .NOT. grid_processed(neighbours(j))) THEN
-                        grid_processed(neighbours(j)) = .TRUE.
-                        counter_array(neighbours(j)) = counter_array(neighbours(j)) + 1
-                        is_relevant_itm(h) = .TRUE.
-                    END IF
-                END DO
-
-                IF (is_relevant_itm(h)) THEN
-                    counter = counter + 1
-                END IF
-
             END DO
+
+            DO i = 1, SIZE(proc_neigbhours)
+                igrid = proc_neigbhours(i)
+                IF (obstacles_itm(h)%in_grid_zone(igrid)) THEN
+                    counter_array(igrid) = counter_array(igrid) + 1
+                    is_relevant_itm(h) = .TRUE.
+                END IF
+            END DO
+
+            IF (is_relevant_itm(h)) THEN
+                counter = counter + 1
+            END IF
 
         END DO
 
@@ -269,40 +280,26 @@ CONTAINS    !===================================
 
                 my_obstacles(counter) = obstacles_src(h)
 
-                grid_processed = .FALSE.
-
                 DO i = 1, nmygrids
-
                     igrid = mygrids(i)
-
-                    IF (obstacles_src(h)%in_zone(igrid) .AND. .NOT. grid_processed(igrid)) THEN
-                        grid_processed(igrid) = .TRUE.
+                    IF (obstacles_src(h)%in_grid_zone(igrid)) THEN
                         IF (counter_array(igrid) > SIZE(my_obstacle_pointers(igrid)%grid_obstacles)) THEN
                             CALL errr(__FILE__, __LINE__)
                         END IF
                         my_obstacle_pointers(igrid)%grid_obstacles(counter_array(igrid)) = counter
                         counter_array(igrid) = counter_array(igrid) + 1
                     END IF
+                END DO
 
-                    CALL get_neighbours(neighbours, igrid)
-
-                    DO j = 1, 26
-                        IF (neighbours(j) < 1 .OR. neighbours(j) > ngrid) THEN
-                            CYCLE
-                        ELSEIF (obstacles_src(h)%in_zone(neighbours(j)) .AND. .NOT. grid_processed(neighbours(j))) THEN
-                        grid_processed(neighbours(j)) = .TRUE.
-                        IF (counter_array(neighbours(j)) > SIZE(my_obstacle_pointers(neighbours(j))%grid_obstacles)) THEN
+                DO i = 1, SIZE(proc_neigbhours)
+                    igrid = proc_neigbhours(i)
+                    IF (obstacles_src(h)%in_grid_zone(igrid)) THEN
+                        IF (counter_array(igrid) > SIZE(my_obstacle_pointers(igrid)%grid_obstacles)) THEN
                             CALL errr(__FILE__, __LINE__)
                         END IF
-                        my_obstacle_pointers(neighbours(j))%grid_obstacles(counter_array(neighbours(j))) = counter
-                        counter_array(neighbours(j)) = counter_array(neighbours(j)) + 1
-                        END IF
-                    END DO
-
-                    IF (is_relevant_itm(h)) THEN
-                        counter = counter + 1
+                        my_obstacle_pointers(igrid)%grid_obstacles(counter_array(igrid)) = counter
+                        counter_array(igrid) = counter_array(igrid) + 1
                     END IF
-
                 END DO
 
                 counter = counter + 1
@@ -318,47 +315,35 @@ CONTAINS    !===================================
 
                 my_obstacles(counter) = obstacles_itm(h)
 
-                grid_processed = .FALSE.
-
                 DO i = 1, nmygrids
-
                     igrid = mygrids(i)
-
-                    IF (obstacles_itm(h)%in_zone(igrid) .AND. .NOT. grid_processed(igrid)) THEN
-                        grid_processed(igrid) = .TRUE.
+                    IF (obstacles_itm(h)%in_grid_zone(igrid)) THEN
                         IF (counter_array(igrid) > SIZE(my_obstacle_pointers(igrid)%grid_obstacles)) THEN
                             CALL errr(__FILE__, __LINE__)
                         END IF
                         my_obstacle_pointers(igrid)%grid_obstacles(counter_array(igrid)) = counter
                         counter_array(igrid) = counter_array(igrid) + 1
                     END IF
+                END DO
 
-                    CALL get_neighbours(neighbours, igrid)
-
-                    DO j = 1, 26
-                        IF (neighbours(j) < 1 .OR. neighbours(j) > ngrid) THEN
-                            CYCLE
-                        ELSEIF (obstacles_itm(h)%in_zone(neighbours(j)) .AND. .NOT. grid_processed(neighbours(j))) THEN
-                        grid_processed(neighbours(j)) = .TRUE.
-                        IF (counter_array(neighbours(j)) > SIZE(my_obstacle_pointers(neighbours(j))%grid_obstacles)) THEN
+                DO i = 1, SIZE(proc_neigbhours)
+                    igrid = proc_neigbhours(i)
+                    IF (obstacles_itm(h)%in_grid_zone(igrid)) THEN
+                        IF (counter_array(igrid) > SIZE(my_obstacle_pointers(igrid)%grid_obstacles)) THEN
                             CALL errr(__FILE__, __LINE__)
                         END IF
-                        my_obstacle_pointers(neighbours(j))%grid_obstacles(counter_array(neighbours(j))) = counter
-                        counter_array(neighbours(j)) = counter_array(neighbours(j)) + 1
-                        END IF
-                    END DO
-
-                    IF (is_relevant_itm(h)) THEN
-                        counter = counter + 1
+                        my_obstacle_pointers(igrid)%grid_obstacles(counter_array(igrid)) = counter
+                        counter_array(igrid) = counter_array(igrid) + 1
                     END IF
-
                 END DO
+
+                counter = counter + 1
 
             END IF
 
         END DO
 
-        IF (TRIM(particle_terminal) == "normal" .OR. TRIM(particle_terminal) == "verbose") THEN
+        IF (TRIM(particle_terminal) == "verbose") THEN
             IF (myid /= 0) THEN
                 CALL MPI_Recv(dummy, 1, mglet_mpi_int, myid - 1, 900, &
                  MPI_COMM_WORLD, MPI_STATUS_IGNORE)
@@ -394,15 +379,18 @@ CONTAINS    !===================================
             END IF
         END IF
 
-        IF(ALLOCATED(counter_array)) DEALLOCATE(counter_array)
-        IF(ALLOCATED(grid_processed)) DEALLOCATE(grid_processed)
-        IF(ALLOCATED(obstacles_src)) DEALLOCATE(obstacles_src)
-        IF(ALLOCATED(is_relevant_src)) DEALLOCATE(is_relevant_src)
-        IF(ALLOCATED(obstacles_itm)) DEALLOCATE(obstacles_itm)
-        IF(ALLOCATED(is_relevant_itm)) DEALLOCATE(is_relevant_itm)
+        ! the following vtk output is optional and can be removed
+        CALL write_obstacles()
+        CALL write_grids(mygrids, nmygrids, "   ")
+        CALL write_grids(proc_neigbhours, SIZE(proc_neigbhours), "nbr")
 
-        ! TODO: remove barrier?
-        CALL MPI_Barrier(MPI_COMM_WORLD)
+        IF (ALLOCATED(proc_neigbhours)) DEALLOCATE(proc_neigbhours)
+        IF (ALLOCATED(counter_array)) DEALLOCATE(counter_array)
+        IF (ALLOCATED(grid_processed)) DEALLOCATE(grid_processed)
+        IF (ALLOCATED(obstacles_src)) DEALLOCATE(obstacles_src)
+        IF (ALLOCATED(is_relevant_src)) DEALLOCATE(is_relevant_src)
+        IF (ALLOCATED(obstacles_itm)) DEALLOCATE(obstacles_itm)
+        IF (ALLOCATED(is_relevant_itm)) DEALLOCATE(is_relevant_itm)
 
         IF (myid == 0) THEN
             IF (TRIM(particle_terminal) == "normal" .OR. TRIM(particle_terminal) == "verbose") THEN
@@ -430,57 +418,250 @@ CONTAINS    !===================================
 
     END SUBROUTINE finish_obstacles
 
-
+    ! TODO: merge this with particle snapshots writing or use library
     ! write obstacles vtk to validate if they have been registered properly
     SUBROUTINE write_obstacles()
 
-    END SUBROUTINE
+        ! local variables
+        INTEGER(intk) :: h, i, j, k, unit, igrid
+        REAL(realk) :: minx, maxx, miny, maxy, minz, maxz
+        CHARACTER(len = mglet_filename_max) :: filename, my_nobst_char, igrid_char
 
-    LOGICAL FUNCTION in_zone(this, igrid, overlap_f) result(res)
+        IF (myid == 0) THEN
+            CALL create_directory("Particle_Obstacles") ! ! ! realtive to working directory ! ! !
+        END IF
+
+        CALL MPI_Barrier(MPI_COMM_WORLD)
+
+        ! write obstacles (one file per proc)
+        WRITE(filename, '("Particle_Obstacles/obstacles_proc", I0, ".vtp")') myid
+
+        WRITE(my_nobst_char, '(I0)') SIZE(my_obstacles)
+
+        OPEN(newunit = unit, file = TRIM(filename), status = 'NEW', action = 'WRITE')
+
+        WRITE(unit, '(A)') '<?xml version="1.0"?>'
+        WRITE(unit, '(A)') '<VTKFile type="PolyData" version="0.1" byte_order="LittleEndian">'
+        WRITE(unit, '(A)') '  <PolyData>'
+        WRITE(unit, '(A)') '    <Piece NumberOfPoints="' // TRIM(my_nobst_char) // &
+                              '" NumberOfVerts="0" NumberOfLines="0" NumberOfStrips="0" NumberOfPolys="0">'
+        WRITE(unit, '(A)') '      <PointData Name="obstacles">'
+        WRITE(unit, '(A)') '        <DataArray type="Int32" format="ascii" NumberOfComponents="1" Name="iobst">'
+
+        DO i = 1, SIZE(my_obstacles)
+            WRITE(unit, '("          ")', advance="no")
+            WRITE(unit, '(I0)') my_obstacles(i)%iobst
+        END DO
+
+        WRITE(unit, '(A)') '        </DataArray>'
+        WRITE(unit, '(A)') '        <DataArray type="Float32" format="ascii" NumberOfComponents="1" Name="radius">'
+
+        DO i = 1, SIZE(my_obstacles)
+            WRITE(unit, '("          ")', advance="no")
+            WRITE(unit,  vtk_float_format) my_obstacles(i)%radius
+        END DO
+
+        WRITE(unit, '(A)') '        </DataArray>'
+        WRITE(unit, '(A)') '      </PointData>'
+        WRITE(unit, '(A)') '      <Points>'
+        WRITE(unit, '(A)') '        <DataArray type="Float32" NumberOfComponents="3">'
+
+        DO i = 1, SIZE(my_obstacles)
+            WRITE(unit, '("        ")', advance="no")
+            WRITE(unit, vtk_float_format, advance="no") my_obstacles(i)%x
+            WRITE(unit, '(A)', advance="no") ' '
+            WRITE(unit, vtk_float_format, advance="no") my_obstacles(i)%y
+            WRITE(unit, '(A)', advance="no") ' '
+            WRITE(unit, vtk_float_format, advance="yes") my_obstacles(i)%z
+        END DO
+
+        WRITE(unit, '(A)') '        </DataArray>'
+        WRITE(unit, '(A)') '      </Points>'
+        WRITE(unit, '(A)') '    </Piece>'
+        WRITE(unit, '(A)') '  </PolyData>'
+        WRITE(unit, '(A)') '</VTKFile>'
+
+        CLOSE(unit)
+
+    END SUBROUTINE write_obstacles
+
+    SUBROUTINE write_grids(grids, n, prefix)
+
+        ! subroutine arguments
+        INTEGER(intk), INTENT(in) :: n
+        INTEGER(intk), INTENT(in) :: grids(n)
+        CHARACTER(len = 3), INTENT(in) :: prefix
+
+        ! local variables
+        INTEGER(intk) :: h, i, j, k, unit, igrid
+        REAL(realk) :: minx, maxx, miny, maxy, minz, maxz
+        CHARACTER(len = mglet_filename_max) :: filename, my_nobst_char, igrid_char
+
+        ! also write all grids into VTK (one proc per file)
+        WRITE(filename, '("Particle_Obstacles/", A, "grids_proc", I0, ".vtp")') TRIM(prefix), myid
+
+        OPEN(newunit = unit, file = TRIM(filename), status = 'NEW', action = 'WRITE')
+
+        WRITE(unit, '(A)') '<?xml version="1.0"?>'
+        WRITE(unit, '(A)') '<VTKFile type="PolyData" version="0.1" byte_order="LittleEndian">'
+        WRITE(unit, '(A)') '  <PolyData>'
+
+        DO i = 1, n
+
+            igrid = grids(i)
+            CALL get_bbox(minx, maxx, miny, maxy, minz, maxz, igrid)
+
+            WRITE(igrid_char, '(I0)') igrid
+
+            WRITE(unit, '(A)') '    <Piece Name="grid'  // TRIM(igrid_char) // &
+             '" NumberOfPoints="8" NumberOfVerts="0" NumberOfLines="0" NumberOfStrips="0" NumberOfPolys="6">'
+            WRITE(unit, '(A)') '      <Points Name="grid_corners">'
+            WRITE(unit, '(A)') '        <DataArray type="Float32" format="ascii" NumberOfComponents="3" Name="grid_corners">'
+
+            ! dirty ...
+            WRITE(unit, '("          ")', advance="no")
+            WRITE(unit, vtk_float_format, advance="no") minx
+            WRITE(unit, '(A)', advance="no") ' '
+            WRITE(unit, vtk_float_format, advance="no") miny
+            WRITE(unit, '(A)', advance="no") ' '
+            WRITE(unit, vtk_float_format, advance="yes") minz
+
+            WRITE(unit, '("          ")', advance="no")
+            WRITE(unit, vtk_float_format, advance="no") minx
+            WRITE(unit, '(A)', advance="no") ' '
+            WRITE(unit, vtk_float_format, advance="no") miny
+            WRITE(unit, '(A)', advance="no") ' '
+            WRITE(unit, vtk_float_format, advance="yes") maxz
+
+            WRITE(unit, '("          ")', advance="no")
+            WRITE(unit, vtk_float_format, advance="no") minx
+            WRITE(unit, '(A)', advance="no") ' '
+            WRITE(unit, vtk_float_format, advance="no") maxy
+            WRITE(unit, '(A)', advance="no") ' '
+            WRITE(unit, vtk_float_format, advance="yes") minz
+
+            WRITE(unit, '("          ")', advance="no")
+            WRITE(unit, vtk_float_format, advance="no") minx
+            WRITE(unit, '(A)', advance="no") ' '
+            WRITE(unit, vtk_float_format, advance="no") maxy
+            WRITE(unit, '(A)', advance="no") ' '
+            WRITE(unit, vtk_float_format, advance="yes") maxz
+
+            WRITE(unit, '("          ")', advance="no")
+            WRITE(unit, vtk_float_format, advance="no") maxx
+            WRITE(unit, '(A)', advance="no") ' '
+            WRITE(unit, vtk_float_format, advance="no") miny
+            WRITE(unit, '(A)', advance="no") ' '
+            WRITE(unit, vtk_float_format, advance="yes") minz
+
+            WRITE(unit, '("          ")', advance="no")
+            WRITE(unit, vtk_float_format, advance="no") maxx
+            WRITE(unit, '(A)', advance="no") ' '
+            WRITE(unit, vtk_float_format, advance="no") miny
+            WRITE(unit, '(A)', advance="no") ' '
+            WRITE(unit, vtk_float_format, advance="yes") maxz
+
+            WRITE(unit, '("          ")', advance="no")
+            WRITE(unit, vtk_float_format, advance="no") maxx
+            WRITE(unit, '(A)', advance="no") ' '
+            WRITE(unit, vtk_float_format, advance="no") maxy
+            WRITE(unit, '(A)', advance="no") ' '
+            WRITE(unit, vtk_float_format, advance="yes") minz
+
+            WRITE(unit, '("          ")', advance="no")
+            WRITE(unit, vtk_float_format, advance="no") maxx
+            WRITE(unit, '(A)', advance="no") ' '
+            WRITE(unit, vtk_float_format, advance="no") maxy
+            WRITE(unit, '(A)', advance="no") ' '
+            WRITE(unit, vtk_float_format, advance="yes") maxz
+
+            WRITE(unit, '(A)') '        </DataArray>'
+            WRITE(unit, '(A)') '      </Points>'
+            WRITE(unit, '(A)') '      <Polys Name="grid_faces">'
+            WRITE(unit, '(A)') '        <DataArray type="Int32" Name="connectivity">'
+
+            WRITE(unit, '("         ")', advance="no")
+            WRITE(unit, '(4I2)', advance="yes") 0, 1, 3, 2
+
+            WRITE(unit, '("         ")', advance="no")
+            WRITE(unit, '(4I2)', advance="yes") 4, 5, 7, 6
+
+            WRITE(unit, '("         ")', advance="no")
+            WRITE(unit, '(4I2)', advance="yes") 0, 1, 5, 4
+
+            WRITE(unit, '("         ")', advance="no")
+            WRITE(unit, '(4I2)', advance="yes") 2, 3, 7, 6
+
+            WRITE(unit, '("         ")', advance="no")
+            WRITE(unit, '(4I2)', advance="yes") 0, 2, 6, 4
+
+            WRITE(unit, '("         ")', advance="no")
+            WRITE(unit, '(4I2)', advance="yes") 1, 3, 7, 5
+
+            WRITE(unit, '(A)') '        </DataArray>'
+            WRITE(unit, '(A)') '        <DataArray type="Int32" Name="offsets">'
+
+            WRITE(unit, '("         ")', advance="no")
+            WRITE(unit, '(6I3)', advance="yes") 4, 8, 12, 16, 20, 24
+
+            WRITE(unit, '(A)') '        </DataArray>'
+            WRITE(unit, '(A)') '      </Polys>'
+            WRITE(unit, '(A)') '    </Piece>'
+
+        END DO
+
+        WRITE(unit, '(A)') '  </PolyData>'
+        WRITE(unit, '(A)') '</VTKFile>'
+
+        CLOSE(unit)
+
+    END SUBROUTINE write_grids
+
+    LOGICAL FUNCTION in_grid_zone(this, igrid, overlap) result(res)
 
         ! subroutine arguments
         CLASS(obstacle_t), INTENT(in) :: this
         INTEGER(intk), INTENT(in) :: igrid
-        REAL(realk), OPTIONAL, INTENT(in) :: overlap_f
+        REAL(realk), OPTIONAL, INTENT(in) :: overlap
 
         ! local variables
         REAL(realk) :: minx, maxx, miny, maxy, minz, maxz
-        REAL(realk) :: of = 0.0
+        REAL(realk) :: ol = 0.0
 
-        IF (PRESENT(overlap_f)) THEN
-            of = overlap_f
+        IF (PRESENT(overlap)) THEN
+            ol = overlap
         END IF
 
         res = .FALSE.
 
         CALL get_bbox(minx, maxx, miny, maxy, minz, maxz, igrid)
 
-        IF(maxx + (maxx - minx) * of + this%radius + EPSILON(maxx) < this%x) THEN
+        IF(maxx + ol + this%radius + EPSILON(maxx) < this%x) THEN
             RETURN
         END IF
 
-        IF(minx - (maxx - minx) * of - this%radius - EPSILON(minx) > this%x) THEN
+        IF(minx - ol - this%radius - EPSILON(minx) > this%x) THEN
             RETURN
         END IF
 
-        IF(maxy + (maxy - miny) * of + this%radius + EPSILON(maxy) < this%y) THEN
+        IF(maxy + ol + this%radius + EPSILON(maxy) < this%y) THEN
             RETURN
         END IF
 
-        IF(miny - (maxy - miny) * of - this%radius - EPSILON(miny) > this%y) THEN
+        IF(miny - ol - this%radius - EPSILON(miny) > this%y) THEN
             RETURN
         END IF
 
-        IF(maxz + (maxz - minz) * of + this%radius + EPSILON(maxz) < this%z) THEN
+        IF(maxz + ol + this%radius + EPSILON(maxz) < this%z) THEN
             RETURN
         END IF
 
-        IF(minz - (maxz - minz) * of - this%radius - EPSILON(minz) > this%z) THEN
+        IF(minz - ol - this%radius - EPSILON(minz) > this%z) THEN
             RETURN
         END IF
 
         res = .TRUE.
 
-    END FUNCTION in_zone
+    END FUNCTION in_grid_zone
 
 END MODULE particle_obstacles_mod

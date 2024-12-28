@@ -24,6 +24,8 @@ MODULE particle_config_mod
     LOGICAL :: dwrite_psnapshots
     INTEGER(intk) :: psnapshot_step
 
+    CHARACTER(len = 7) :: vtk_float_format = '(F10.6)'
+
     ! RANDOM NUMBER GENERATION
     LOGICAL :: dput_seed
     INTEGER(int32), ALLOCATABLE :: particle_seed(:)
@@ -106,7 +108,7 @@ CONTAINS
 
         !- - - - - - - - - - - - - - - - - -
 
-        CALL pconf%get_value("/snapshot_step", psnapshot_step, 0)
+        CALL pconf%get_value("/snapshot_step", psnapshot_step, -1)
 
         dwrite_psnapshots = .TRUE.
         IF (psnapshot_step < 1_intk) THEN
@@ -118,7 +120,7 @@ CONTAINS
                 END IF
             END IF
 
-            psnapshot_step = 0
+            psnapshot_step = -1
             dwrite_psnapshots = .FALSE.
 
         END IF
