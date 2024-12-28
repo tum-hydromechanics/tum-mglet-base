@@ -14,9 +14,8 @@ MODULE particle_snapshot_mod
         INTEGER(intk) :: iproc
         INTEGER(intk) :: nprocs
 
-        INTEGER(intk) :: itstep
         !should depend on the domain lengths and be determined in init_psnapshots
-        CHARACTER(7) :: coordinate_format = '(F12.6)'
+        CHARACTER(7) :: coordinate_format
 
         INTEGER(intk) :: nsnapshots
         ! stores the number of particles for each snapshot; will be allocated to length = nsnapshots
@@ -24,10 +23,10 @@ MODULE particle_snapshot_mod
         ! stores the integer of all timesteps for which a particle snapshot will be produced
         INTEGER(intk), ALLOCATABLE :: timesteps(:)
         ! stores the time for each snapshot; will be allocated to length = nsnapshots
-        REAL(realk), ALLOCATABLE :: times(:)
+        REAL(realk), ALLOCATABLE :: phtimes(:)
 
         ! stores the id (starting from 1 and rising contiguously) of the current snapshot
-        INTEGER(intk) :: counter = 0_intk
+        INTEGER(intk) :: counter = 0
 
     END TYPE psnapshot_info_t
 
@@ -37,13 +36,14 @@ CONTAINS
 
     !------------------------------
 
-    SUBROUTINE init_psnapshots(mtstep, dt)
+    SUBROUTINE init_psnapshots(ittot, mtstep, dt)
 
-        ! subroutine arguments ...
-        INTEGER(intk) :: mtstep
-        REAL(realk) :: dt
+        ! subroutine arguments
+        INTEGER(intk), INTENT(in) :: ittot
+        INTEGER(intk), INTENT(in) :: mtstep
+        REAL(realk), INTENT(in) :: dt
 
-        ! local variables ...
+        ! local variables
         INTEGER(intk) :: i
         LOGICAL :: snapshots_exist
 
@@ -53,22 +53,8 @@ CONTAINS
        !INQUIRE(directory = './Particle_Snapshots', exist = snapshots_exist)
 
        !IF (snapshots_exist) THEN
-
-       !    IF (myid == 0) THEN
-       !        SELECT CASE (TRIM(particle_terminal))
-       !            CASE ("none")
-       !                CONTINUE
-       !            CASE ("normal")
-       !                WRITE(*, *) ' '
-       !                WRITE(*, *) "ERROR: Directory Particle_Snaphots already exists. Terminating Process!"
-       !            CASE ("verbose")
-       !                WRITE(*, *) ' '
-       !                WRITE(*, *) "ERROR: Directory Particle_Snaphots already exists. Terminating Process!"
-       !        END SELECT
-       !    END IF
-
+       !    WRITE(*, *) "ERROR: Directory Particle_Snaphots already exists. Terminating Process!"
        !    CALL errr(__FILE__, __LINE__)
-
        !END IF
 
         IF (myid == 0) THEN
@@ -79,53 +65,41 @@ CONTAINS
 
         psnapshot_info%iproc = myid
         psnapshot_info%nprocs = numprocs
-        psnapshot_info%itstep = psnapshot_step
+        psnapshot_info%coordinate_format = vtk_float_format
 
-        IF (psnapshot_info%itstep == 1_intk) THEN
-
-            psnapshot_info%nsnapshots = mtstep + 1
-
+        IF (psnapshot_step == 1) THEN
+            psnapshot_info%nsnapshots = mtstep + 1_intk
         ELSE
-
-            psnapshot_info%nsnapshots = CEILING(REAL(mtstep / psnapshot_info%itstep), intk) + 1_intk
-
+            psnapshot_info%nsnapshots = CEILING(REAL(mtstep / psnapshot_step) - 100 * EPSILON(1.0_realk), intk) + 1_intk
         END IF
 
         ALLOCATE(psnapshot_info%nparticles(psnapshot_info%nsnapshots))
         ALLOCATE(psnapshot_info%timesteps(psnapshot_info%nsnapshots))
-        ALLOCATE(psnapshot_info%times(psnapshot_info%nsnapshots))
+        ALLOCATE(psnapshot_info%phtimes(psnapshot_info%nsnapshots))
 
-        psnapshot_info%timesteps(1) = 0_intk
-        psnapshot_info%timesteps(psnapshot_info%nsnapshots) = mtstep
-
+        psnapshot_info%timesteps(1) = ittot
+        psnapshot_info%timesteps(psnapshot_info%nsnapshots) = ittot + mtstep
 
         DO i = 2, psnapshot_info%nsnapshots - 1
-
-            ! assumes that dt is constant for the whole run
-            psnapshot_info%timesteps(i) = (i - 1_intk) * psnapshot_info%itstep
-
+            psnapshot_info%timesteps(i) = psnapshot_info%timesteps(i - 1) + psnapshot_step
         END DO
 
         IF (myid == 0) THEN
             IF (TRIM(particle_terminal) == "normal" .OR. TRIM(particle_terminal) == "verbose") THEN
                 WRITE(*,*) 'Writing Particle Snapshots for timesteps: '
                 WRITE(*,*) ' '
-
+                WRITE(*, '(I0, " + ")', advance="yes") ittot
                 DO i = 2, psnapshot_info%nsnapshots
-
                     IF (MOD(i - 1_intk, 10) == 0) THEN
-
-                        WRITE(*, '(I0)', advance="yes") psnapshot_info%timesteps(i)
-
+                        WRITE(*, '(I0, ",")', advance="yes") psnapshot_info%timesteps(i) - ittot
                     ELSE
-
-                        WRITE(*, '(I0)', advance="no") psnapshot_info%timesteps(i)
+                        WRITE(*, '(I0, ",")', advance="no") psnapshot_info%timesteps(i) - ittot
                         WRITE(*, '(A)', advance="no") ' '
-
                     END IF
 
                 END DO
-                WRITE(*,*) ' '
+                WRITE(*, '()')
+                WRITE(*, '()')
             END IF
         END IF
 
@@ -136,16 +110,16 @@ CONTAINS
 
     !------------------------------
 
-    SUBROUTINE write_psnapshot(itstep, timeph)
+    SUBROUTINE write_psnapshot(ittot, timeph)
 
         ! subroutine arguments
-        INTEGER(intk), INTENT(in) :: itstep
+        INTEGER(intk), INTENT(in) :: ittot
         REAL(realk), INTENT(in) :: timeph
 
         CALL start_timer(900)
         CALL start_timer(960)
 
-        IF (psnapshot_info%timesteps(psnapshot_info%counter + 1) == itstep) THEN
+        IF (psnapshot_info%timesteps(psnapshot_info%counter + 1) == ittot) THEN
 
             psnapshot_info%counter = psnapshot_info%counter + 1_intk
 
@@ -174,7 +148,7 @@ CONTAINS
 
         IF (myid == 0) THEN
 
-            WRITE(subfolder, '("Particle_Snapshots/snapshot", I0)') psnapshot_info%counter - 1_intk
+            WRITE(subfolder, '("Particle_Snapshots/snapshot", I0)') psnapshot_info%timesteps(psnapshot_info%counter)
             CALL create_directory(TRIM(subfolder)) ! ! ! realtive to working directory ! ! !
 
             DO i = 1, numprocs - 1
@@ -203,7 +177,7 @@ CONTAINS
         CHARACTER(len = mglet_filename_max) :: subfolder, filename, active_np_char
         !CHARACTER(:), ALLOCATABLE :: active_np_char
 
-        WRITE(subfolder, '("Particle_Snapshots/snapshot", I0)') psnapshot_info%counter - 1_intk
+        WRITE(subfolder, '("Particle_Snapshots/snapshot", I0)') psnapshot_info%timesteps(psnapshot_info%counter)
 
         WRITE(filename, '(A, "/piece", I0, ".vtp")') TRIM(subfolder), myid
 
@@ -273,11 +247,11 @@ CONTAINS
         INTEGER(intk) :: proc, unit
         CHARACTER(len = mglet_filename_max) :: filename, piece
 
-        psnapshot_info%times(psnapshot_info%counter) = timeph
+        psnapshot_info%phtimes(psnapshot_info%counter) = timeph
 
         IF (myid == 0) THEN
 
-            WRITE(filename,'("Particle_Snapshots/snapshot", I0, ".pvtp")') (psnapshot_info%counter - 1_intk)
+            WRITE(filename,'("Particle_Snapshots/snapshot", I0, ".pvtp")') psnapshot_info%timesteps(psnapshot_info%counter)
 
             OPEN(newunit = unit, file = TRIM(filename), status = 'NEW', action = 'WRITE')
 
@@ -293,7 +267,7 @@ CONTAINS
 
             DO proc = 0, numprocs - 1
 
-                WRITE(piece, '("snapshot", I0, "/piece", I0, ".vtp")') (psnapshot_info%counter - 1_intk), proc
+                WRITE(piece, '("snapshot", I0, "/piece", I0, ".vtp")') psnapshot_info%timesteps(psnapshot_info%counter), proc
                 WRITE(unit, '(A)') '    <Piece Source="' // TRIM(piece) // '"/>'
 
             END DO
@@ -329,8 +303,8 @@ CONTAINS
 
             DO i = 1, psnapshot_info%nsnapshots
 
-                WRITE(unit, '("timestep ", I0, ": time = ")', advance = "no") i - 1
-                WRITE(unit, psnapshot_info%coordinate_format) psnapshot_info%times(i)
+                WRITE(unit, '("timestep ", I0, ": time = ")', advance = "no") psnapshot_info%timesteps(i)
+                WRITE(unit, psnapshot_info%coordinate_format) psnapshot_info%phtimes(i)
 
             END DO
 
@@ -352,7 +326,7 @@ CONTAINS
 
         IF (ALLOCATED(psnapshot_info%nparticles)) DEALLOCATE(psnapshot_info%nparticles)
         IF (ALLOCATED(psnapshot_info%timesteps)) DEALLOCATE(psnapshot_info%timesteps)
-        IF (ALLOCATED(psnapshot_info%times)) DEALLOCATE(psnapshot_info%times)
+        IF (ALLOCATED(psnapshot_info%phtimes)) DEALLOCATE(psnapshot_info%phtimes)
 
         CALL stop_timer(960)
         CALL stop_timer(900)

@@ -189,8 +189,8 @@ CONTAINS
 
         ! Initialize particle snapshots
         IF (dsim_particles .AND. dwrite_psnapshots) THEN
-            CALL init_psnapshots(mtstep, dt) ! <------------------------------------particles
-            CALL write_psnapshot(mtstep, dt)
+            CALL init_psnapshots(ittot, mtstep, dt) ! <------------------------------------particles
+            CALL write_psnapshot(ittot, dt)
         END IF
 
         ! Initialize Grid Partile Statistics
@@ -286,7 +286,7 @@ CONTAINS
 
             ! Particle Snapshots
             IF (dsim_particles .AND. dwrite_psnapshots) THEN ! <------------------------------------particles
-                CALL write_psnapshot(itstep, timeph)
+                CALL write_psnapshot(ittot, timeph)
             END IF
 
             ! Print to terminal (itinfo frequency)
