@@ -6,6 +6,7 @@ MODULE particle_dict_mod
     USE grids_mod
 
     USE particle_config_mod
+    USE particle_core_mod
 
     IMPLICIT NONE
 

@@ -634,7 +634,7 @@ CONTAINS
             MPI_COMM_WORLD)
 
         ! TODO: barrier needed ?
-        IF (TRIM(particle_terminal) == "normal" .OR. TRIM(particle_terminal) == "verbose") THEN
+        IF (TRIM(particle_terminal) == "verbose") THEN
             IF (myid /= 0) THEN
                 CALL MPI_Recv(dummy, 1, mglet_mpi_int, myid - 1, 900, &
                 MPI_COMM_WORLD, MPI_STATUS_IGNORE)

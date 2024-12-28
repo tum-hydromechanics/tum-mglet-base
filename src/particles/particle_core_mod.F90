@@ -12,6 +12,8 @@ MODULE particle_core_mod
 
     IMPLICIT NONE
 
+    INTEGER(intk) :: particle_level
+
     INTEGER(c_intk), PARAMETER :: particle_mpi_elems = 11
 
     ! C binding for MPI compatability!
@@ -49,6 +51,14 @@ MODULE particle_core_mod
               update_particle_cell, print_particle_status
 
 CONTAINS
+
+    SUBROUTINE init_particle_core()
+
+        ! set level on which particles will be handeled
+        ! (for now, as simple as possible)
+        particle_level = maxlevel
+
+    END SUBROUTINE init_particle_core
 
     SUBROUTINE set_particle(particle, ipart, x, y, z, iproc, igrid, ijkcell, gitstep, sitstep)
 

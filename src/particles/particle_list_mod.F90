@@ -44,7 +44,7 @@ CONTAINS    !===================================
     SUBROUTINE init_particle_list()
 
         ! local variables
-        INTEGER(intk) :: i, global_np, read_np
+        INTEGER(intk) :: i, global_np, read_np, dummy
         INTEGER(intk), ALLOCATABLE :: npart_arr(:), ipart_arr(:), igrid_arr(:)
         REAL(realk), ALLOCATABLE :: x_arr(:), y_arr(:), z_arr(:)
 
@@ -101,7 +101,7 @@ CONTAINS    !===================================
 
             IF (myid == 0) THEN
                 IF (TRIM(particle_terminal) == "normal" .OR. TRIM(particle_terminal) == "verbose") THEN
-                    WRITE(*, '("INITIALIZING PARTICLE(S) ...")')
+                    WRITE(*, '("INITIALIZING PARTICLE(S): ")')
                     WRITE(*, '()')
                 END IF
             END IF
@@ -142,8 +142,15 @@ CONTAINS    !===================================
         END IF
 
         IF (TRIM(particle_terminal) == "normal" .OR. TRIM(particle_terminal) == "verbose") THEN
-            WRITE(*, *) "Particle list of length ", my_particle_list%max_np, " initialized on process ", myid, "."
-            WRITE(*, '()')
+            IF (myid /= 0) THEN
+                CALL MPI_Recv(dummy, 1, mglet_mpi_int, myid - 1, 900, &
+                 MPI_COMM_WORLD, MPI_STATUS_IGNORE)
+            END IF
+            CALL print_list_status(my_particle_list)
+            IF (myid /= numprocs - 1) THEN
+                CALL MPI_Send(dummy, 1, mglet_mpi_int, myid + 1, 900, &
+                 MPI_COMM_WORLD)
+            END IF
         END IF
 
         ! TODO : remove ?
@@ -465,17 +472,9 @@ CONTAINS    !===================================
             END IF
         END IF
 
+        ! TODO: remove Bcast?
         CALL MPI_Bcast(npart_arr, numprocs, mglet_mpi_int, &
          0, MPI_COMM_WORLD)
-
-        DO iproc = 0, numprocs - 1
-            IF (myid == 0) THEN
-                IF (TRIM(particle_terminal) == "normal" .OR. TRIM(particle_terminal) == "verbose") THEN
-                    WRITE(*, *) npart_arr(iproc), " particles assigned to process ", iproc, "."
-                    WRITE(*, '()')
-                END IF
-            END IF
-        END DO
 
         ! move already generated positions to the final output array
         ALLOCATE(ipart_arr(npart_arr(myid)))
@@ -575,10 +574,7 @@ CONTAINS    !===================================
 
         WRITE(*, *) "Particle list status on process ", myid, ": max_np = ", &
          particle_list%max_np, ", active_np = ", particle_list%active_np, ", ifinal = ", particle_list%ifinal
-
-        IF (myid == 0) THEN
-            WRITE(*, '()')
-        END IF
+        WRITE(*, '()')
 
     END SUBROUTINE print_list_status
 
