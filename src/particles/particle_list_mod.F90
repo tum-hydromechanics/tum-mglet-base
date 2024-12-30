@@ -73,8 +73,8 @@ CONTAINS    !===================================
 
                 DO i = 1, read_np
 
-                    CALL set_particle(my_particle_list%particles(i), &
-                     ipart = ipart_arr(i), x = x_arr(i), y = y_arr(i), z = z_arr(i), igrid = igrid_arr(i))
+                    CALL set_particle(particle = my_particle_list%particles(i), ipart = ipart_arr(i), &
+                     x = x_arr(i), y = y_arr(i), z = z_arr(i), igrid = igrid_arr(i))
 
                     my_particle_list%active_np = my_particle_list%active_np + 1
 
@@ -118,9 +118,8 @@ CONTAINS    !===================================
 
             DO i = 1, SIZE(ipart_arr)
 
-                CALL set_particle(my_particle_list%particles(i), &
-                    ipart = ipart_arr(i), x = x_arr(i), y = y_arr(i), z = z_arr(i), &
-                    igrid = igrid_arr(i))
+                CALL set_particle(particle = my_particle_list%particles(i), ipart = ipart_arr(i), &
+                 x = x_arr(i), y = y_arr(i), z = z_arr(i), igrid = igrid_arr(i))
 
                     my_particle_list%active_np = my_particle_list%active_np + 1
 

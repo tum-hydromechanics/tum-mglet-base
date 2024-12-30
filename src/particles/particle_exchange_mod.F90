@@ -115,12 +115,13 @@ CONTAINS
 !
 !    END SUBROUTINE prepare_particle_exchange
 
-    SUBROUTINE exchange_particles(particle_list, itstep)
+    SUBROUTINE exchange_particles(particle_list, ittot, itstep)
 
         IMPLICIT NONE
 
         ! subroutine argument
         TYPE(particle_list_t), INTENT(inout) :: particle_list
+        INTEGER(intk), INTENT(in) :: ittot
         INTEGER(intk), INTENT(in) :: itstep
 
         !local variables
@@ -160,7 +161,7 @@ CONTAINS
 
             ! for particle slice statistics (must be called before update_coordinates !!!)
             CALL stop_timer(940)
-            CALL associate_new_slice(particle_list%particles(i), itstep)
+            CALL associate_new_slice(particle_list%particles(i), ittot, itstep)
             CALL start_timer(940)
 
             ! setting the destination of particle (quo vadis, particle?)
@@ -185,7 +186,7 @@ CONTAINS
 
                 ! for particle statistics
                 CALL stop_timer(940)
-                CALL deregister_particle(particle_list%particles(i), itstep)
+                CALL deregister_particle(particle_list%particles(i), ittot, itstep)
                 CALL start_timer(940)
 
                 ! particle changes the grid
@@ -474,13 +475,13 @@ CONTAINS
         ! CALL MPI_Barrier(MPI_COMM_WORLD)
         ! CALL MPI_Allreduce(err_local, err_global, 1, mglet_mpi_int, MPI_MAX, MPI_COMM_WORLD)
         ! IF (err_global == 0) THEN
-        !     CALL write_particle_list_txt(itstep)
-        !     CALL write_buffer(itstep, "Send")
-        !     CALL write_buffer(itstep, "Recv")
+        !     CALL write_particle_list_txt(ittot)
+        !     CALL write_buffer(ittot, "Send")
+        !     CALL write_buffer(ittot, "Recv")
         ! ELSE
-        !     CALL write_particle_list_txt(itstep, "err")
-        !     CALL write_buffer(itstep, "Send", "err")
-        !     CALL write_buffer(itstep, "Recv", "err")
+        !     CALL write_particle_list_txt(ittot, "err")
+        !     CALL write_buffer(ittot, "Send", "err")
+        !     CALL write_buffer(ittot, "Recv", "err")
         ! END IF
         ! IF (err_global == 1) THEN
         !     CALL errr(__FILE__, __LINE__)
@@ -945,10 +946,10 @@ CONTAINS
     END SUBROUTINE integrate_particles
 
     ! for debugging
-    SUBROUTINE write_buffer(itstep, btyp, suffix)
+    SUBROUTINE write_buffer(ittot, btyp, suffix)
 
         ! subroutine arguments
-        INTEGER(intk), INTENT(in) :: itstep
+        INTEGER(intk), INTENT(in) :: ittot
         CHARACTER(len = 4), INTENT(in) :: btyp ! "Send" or "Recv"
         CHARACTER(len = 3), INTENT(in), OPTIONAL :: suffix
 
@@ -971,7 +972,7 @@ CONTAINS
             OPEN(newunit = unit, file = TRIM(filename), status = 'NEW', action = 'WRITE')
         END IF
 
-        WRITE(unit, '(A, "Buffer ", I0, " - Timestep ", I0)') btyp, myid, itstep
+        WRITE(unit, '(A, "Buffer ", I0, " - Timestep ", I0)') btyp, myid, ittot
         WRITE(unit, '(" ")')
         WRITE(unit, '("PARTICLES")')
 

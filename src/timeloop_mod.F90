@@ -195,7 +195,7 @@ CONTAINS
 
         ! Initialize Grid Partile Statistics
         IF (dsim_particles) THEN ! <------------------------------------particles
-            CALL init_particle_statistics()
+            CALL init_particle_statistics(mtstep)
         END IF
 
     END SUBROUTINE init_timeloop
@@ -217,7 +217,7 @@ CONTAINS
         END IF
 
         IF (dsim_particles) THEN ! <------------------------------------particles
-            CALL write_particle_statistics()
+            CALL write_particle_statistics(mtstep)
         END IF
 
         CALL finish_statistics()
@@ -268,7 +268,7 @@ CONTAINS
                 ! timeintegration of particles
                 CALL timeintegrate_particles(itstep, dt)
                 ! migration of particles across grids and partly across MPI ranks (procs)
-                CALL exchange_particles(my_particle_list, itstep)
+                CALL exchange_particles(my_particle_list, ittot, itstep)
             END IF
 
             ! Timeintegrate, _before_ time is globally incremented

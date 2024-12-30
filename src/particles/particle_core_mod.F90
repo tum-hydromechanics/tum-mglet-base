@@ -32,10 +32,10 @@ MODULE particle_core_mod
         INTEGER(c_intk) :: igrid = -1
         INTEGER(c_intk) :: islice = -1
 
-        !gitstep is the timestep at which a particle entered its current grid (for residence time tracking)
-        INTEGER(c_intk) :: gitstep = 0
-        !sitstep is the timestep at which a particle entered its current slice (for residence time tracking)
-        INTEGER(c_intk) :: sitstep = 0
+        !gitstep is the timestep at which a particle entered its current grid (for residence time tracking) !!! corresponding to ittot !!!
+        INTEGER(c_intk) :: gitstep = -1
+        !sitstep is the timestep at which a particle entered its current slice (for residence time tracking) !!! corresponding to ittot !!!
+        INTEGER(c_intk) :: sitstep = -1
 
         ! TODO: rename into ijk(3) ?
         INTEGER(c_intk) :: ijkcell(3) = 0
@@ -60,7 +60,7 @@ CONTAINS
 
     END SUBROUTINE init_particle_core
 
-    SUBROUTINE set_particle(particle, ipart, x, y, z, iproc, igrid, ijkcell, gitstep, sitstep)
+    SUBROUTINE set_particle(particle, ipart, x, y, z, iproc, igrid, islice, ijkcell, gitstep, sitstep)
 
         ! subroutine arguments
         TYPE(baseparticle_t), INTENT(inout) :: particle
@@ -68,6 +68,7 @@ CONTAINS
         REAL(realk), INTENT(in) :: x, y, z
         INTEGER(intk), INTENT(in), OPTIONAL :: iproc
         INTEGER(intk), INTENT(in), OPTIONAL :: igrid
+        INTEGER(intk), INTENT(in), OPTIONAL :: islice
         INTEGER(intk), INTENT(in), OPTIONAL :: ijkcell(3)
         INTEGER(intk), INTENT(in), OPTIONAL :: gitstep, sitstep
 
@@ -90,6 +91,12 @@ CONTAINS
             CALL set_particle_igrid(particle)
         END IF
 
+        IF (PRESENT(islice)) THEN
+            particle%islice = islice
+        ELSE
+            particle%islice = -1
+        END IF
+
         IF (PRESENT(ijkcell)) THEN
             particle%ijkcell = ijkcell
         ELSEIF (particle%state >= 1) THEN
@@ -99,13 +106,13 @@ CONTAINS
         IF (PRESENT(gitstep)) THEN
             particle%gitstep = gitstep
         ELSE
-            particle%gitstep = 0
+            particle%gitstep = -1
         END IF
 
         IF (PRESENT(sitstep)) THEN
             particle%sitstep = sitstep
         ELSE
-            particle%sitstep = 0
+            particle%sitstep = -1
         END IF
 
     END SUBROUTINE set_particle

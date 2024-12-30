@@ -199,43 +199,45 @@ CONTAINS
             CALL stop_timer(921)
 
             ! --- DIFFSUION ---
-            CALL start_timer(923)
 
-            IF (dturb_diff) THEN
-                CALL diffx_f%get_ptr(diffx, my_particle_list%particles(i)%igrid)
-                CALL diffy_f%get_ptr(diffy, my_particle_list%particles(i)%igrid)
-                CALL diffz_f%get_ptr(diffz, my_particle_list%particles(i)%igrid)
-            END IF
+            IF (ddiffusion) THEN
+                CALL start_timer(923)
 
-            IF (TRIM(particle_terminal) == "verbose") THEN
-                WRITE(*,'("---------- Particle Diffusion ----------")')
-                WRITE(*, '()')
-            END IF
-
-            IF (dturb_diff) THEN
-                IF (dinterp_pdiffsuion) THEN
-                    CALL interpolate_lincon(my_particle_list%particles(i), kk, jj, ii, x, y, z, dx, dy, dz, ddx, ddy, ddz, &
-                    diffx, diffy, diffz, p_diffx, p_diffy, p_diffz)
-                ELSE
-                    CALL get_nearest_value(my_particle_list%particles(i), kk, jj, ii, x, y, z, &
-                    diffx, diffy, diffz, p_diffx, p_diffy, p_diffz)
+                IF (dturb_diff) THEN
+                    CALL diffx_f%get_ptr(diffx, my_particle_list%particles(i)%igrid)
+                    CALL diffy_f%get_ptr(diffy, my_particle_list%particles(i)%igrid)
+                    CALL diffz_f%get_ptr(diffz, my_particle_list%particles(i)%igrid)
                 END IF
-            ELSE
-                p_diffx = D(1)
-                p_diffy = D(2)
-                p_diffz = D(3)
+
+                IF (TRIM(particle_terminal) == "verbose") THEN
+                    WRITE(*,'("---------- Particle Diffusion ----------")')
+                    WRITE(*, '()')
+                END IF
+
+                IF (dturb_diff) THEN
+                    IF (dinterp_pdiffsuion) THEN
+                        CALL interpolate_lincon(my_particle_list%particles(i), kk, jj, ii, x, y, z, dx, dy, dz, ddx, ddy, ddz, &
+                        diffx, diffy, diffz, p_diffx, p_diffy, p_diffz)
+                    ELSE
+                        CALL get_nearest_value(my_particle_list%particles(i), kk, jj, ii, x, y, z, &
+                        diffx, diffy, diffz, p_diffx, p_diffy, p_diffz)
+                    END IF
+                ELSE
+                    p_diffx = D(1)
+                    p_diffy = D(2)
+                    p_diffz = D(3)
+                END IF
+
+                CALL stop_timer(923)
+
+                CALL start_timer(924)
+                CALL generate_diffusive_displacement(dt, p_diffx, p_diffy, p_diffz, pdx_diff, pdy_diff, pdz_diff)
+                CALL stop_timer(924)
+
+                CALL start_timer(925)
+                CALL move_particle(my_particle_list%particles(i), pdx_diff, pdy_diff, pdz_diff, pdx_eff, pdy_eff, pdz_eff, temp_grid)
+                CALL stop_timer(925)
             END IF
-
-            CALL stop_timer(923)
-
-            CALL start_timer(924)
-            CALL generate_diffusive_displacement(dt, p_diffx, p_diffy, p_diffz, pdx_diff, pdy_diff, pdz_diff)
-            CALL stop_timer(924)
-
-            CALL start_timer(925)
-            CALL move_particle(my_particle_list%particles(i), pdx_diff, pdy_diff, pdz_diff, pdx_eff, pdy_eff, pdz_eff, temp_grid)
-            CALL stop_timer(925)
-
         END DO
 
         ! TODO: print out particle statistics (terminal)

@@ -40,7 +40,7 @@ MODULE particle_config_mod
     LOGICAL :: dinterp_padvection = .TRUE.
 
     ! DIFFUSION / RANDOM WALK
-    LOGICAL :: ddiffusion
+    LOGICAL :: ddiffusion = .TRUE.
     LOGICAL :: dturb_diff
     LOGICAL :: dinterp_pdiffsuion = .TRUE.
     CHARACTER(len = 16) :: random_walk_mode
@@ -48,7 +48,9 @@ MODULE particle_config_mod
     REAL(realk) :: D(3) = 0.0_realk
 
     ! STATISTICS (GRID AND SLICE SAMPLES)
-    INTEGER(intk) :: nsamples
+    LOGICAL :: dgridstat = .FALSE.
+    INTEGER(intk) :: rt_ittot_start
+    INTEGER(intk) :: rt_tstep_max ! maximum residence time as number of timesteps
     CHARACTER(len = 1) :: slice_dir = "N" ! X, Y, Z or N for None ! MAX ONE DIRECTION !
     INTEGER(intk) :: nslice_levels
     INTEGER(intk), ALLOCATABLE :: nslices(:)
@@ -205,6 +207,8 @@ CONTAINS
 
         != = = = = = = = = = DIFFUSION = = = = = = = = = =
 
+        ddiffusion = .TRUE.
+
         CALL pconf%get_value("/dturb_diff", dturb_diff, .FALSE.)
 
         !- - - - - - - - - - - - - - - - - -
@@ -278,18 +282,22 @@ CONTAINS
         CALL fort7%get(timeconf_temp, "/time")
         CALL timeconf_temp%get_value("/mtstep", mtstep_temp)
 
-        CALL pconf%get_value("/nsamples", nsamples, mtstep_temp)
+        CALL pconf%get_value("/dgridstat", dgridstat, .FALSE.)
 
-        IF (nsamples < mtstep_temp) THEN
+        CALL pconf%get_value("/rt_ittot_start", rt_ittot_start, 0)
+
+        CALL pconf%get_value("/rt_tstep_max", rt_tstep_max, mtstep_temp)
+
+        IF (rt_tstep_max < mtstep_temp) THEN
 
             IF (myid == 0) THEN
                 IF (TRIM(particle_terminal) == "normal" .OR. TRIM(particle_terminal) == "verbose") THEN
-                    WRITE(*, *) "WARNING: The number of samples must be an integer greater or equal to mtstep. Using nsamples = mtstep instead."
+                    WRITE(*, *) "WARNING: The max number of residence timesteps must be an integer greater or equal to mtstep. Using rt_tstep_max = mtstep instead."
                     WRITE(*, '()')
                 END IF
             END IF
 
-            nsamples = mtstep_temp
+            rt_tstep_max = mtstep_temp
 
         END IF
 
@@ -479,7 +487,9 @@ CONTAINS
                     END IF
                     ! STATISTICS
                     WRITE(*, '("    Statistics:")')
-                    WRITE(*, '("        Number of Stat. Samples:          ", I12)') nsamples
+                    WRITE(*, '("        Collecting Grid Statistics:       ", L12)') dgridstat
+                    WRITE(*, '("        Start Timesstep for Statistics:   ", I12)') rt_ittot_start
+                    WRITE(*, '("        Max Number of Res. Timessteps:    ", I12)') rt_tstep_max
                     WRITE(*, '("        Slice Direction:                  ", A12)') slice_dir
                     IF (slice_dir == "X" .OR. slice_dir == "Y" .OR. slice_dir == "Z") THEN
                     WRITE(*, '("        Number of Slice Levels:           ", I12)') nslice_levels

@@ -40,31 +40,37 @@ MODULE particle_statistics_mod
 
     END TYPE slicestat_collector_t
 
-    TYPE(gridstat_collector_t), ALLOCATABLE :: my_collector_list(:)
-    TYPE(slicestat_collector_t), ALLOCATABLE :: my_scollector_list(:)
+    TYPE(gridstat_collector_t), ALLOCATABLE :: my_gridcol_list(:)
+    TYPE(slicestat_collector_t), ALLOCATABLE :: my_slicecol_list(:)
 
 CONTAINS
 
-    SUBROUTINE init_particle_statistics()
+    SUBROUTINE init_particle_statistics(mtstep)
+
+        ! subroutine arguments
+        INTEGER(intk), INTENT(in) :: mtstep
 
         CALL start_timer(900)
         CALL start_timer(950)
 
-        CALL init_particle_gridstat()
+        CALL init_particle_gridstat(mtstep)
 
-        CALL init_particle_slicestat()
+        CALL init_particle_slicestat(mtstep)
 
         CALL stop_timer(950)
         CALL stop_timer(900)
 
     END SUBROUTINE init_particle_statistics
 
-    SUBROUTINE init_particle_gridstat()
+    SUBROUTINE init_particle_gridstat(mtstep)
+
+        ! subroutine arguments
+        INTEGER(intk), INTENT(in) :: mtstep
 
         ! local variables
-        INTEGER(intk) :: igrid, i, j
+        INTEGER(intk) :: igrid, i
         REAL(realk) :: minx, maxx, miny, maxy, minz, maxz
-        LOGICAL :: gridstat_exists
+        !LOGICAL :: gridstat_exists
 
         ! TODO: inquire for directories ?
         !INQUIRE(directory = './Particle_Statistics', exist = gridstat_exists)
@@ -88,40 +94,60 @@ CONTAINS
 !
         !END IF
 
+        IF (.NOT. dgridstat) THEN
+            RETURN
+        END IF
+
         ! allocate collector list
-        ALLOCATE(my_collector_list(nmygrids))
+        ALLOCATE(my_gridcol_list(nmygrids))
 
         ! allocate arrays of the individual collectors
         DO i = 1, nmygrids
 
             igrid = mygrids(i)
 
-            my_collector_list(i)%igrid = igrid
+            my_gridcol_list(i)%igrid = igrid
 
             CALL get_bbox(minx, maxx, miny, maxy, minz, maxz, igrid)
 
-            my_collector_list(i)%grid_volume = (maxx - minx) * (maxy -miny) * (maxz - minz)
+            my_gridcol_list(i)%grid_volume = (maxx - minx) * (maxy -miny) * (maxz - minz)
 
-            ALLOCATE(my_collector_list(i)%np_counter(nsamples + 1))
-            my_collector_list(i)%np_counter = 0
+            ALLOCATE(my_gridcol_list(i)%np_counter(mtstep + 1))
+            my_gridcol_list(i)%np_counter = 0
 
-            ALLOCATE(my_collector_list(i)%rt_counter(nsamples))
-            my_collector_list(i)%rt_counter = 0
-
-            ! initialize first entry of np_counter (count the number of particles in each grid at t = 0 resprectively)
-            DO j = 1, my_particle_list%ifinal
-
-                IF (my_particle_list%particles(j)%igrid == igrid) THEN
-
-                    my_collector_list(i)%np_counter(1) = my_collector_list(i)%np_counter(1) + 1
-
-                END IF
-
-            END DO
+            ALLOCATE(my_gridcol_list(i)%rt_counter(rt_tstep_max))
+            my_gridcol_list(i)%rt_counter = 0
 
         END DO
 
+        CALL start_np_counter()
+
     END SUBROUTINE init_particle_gridstat
+
+    SUBROUTINE start_np_counter()
+
+        ! local variables
+        INTEGER(intk) :: igrid, i, j
+
+        IF (.NOT. dgridstat) THEN
+            RETURN
+        END IF
+
+        DO i = 1, nmygrids
+            igrid = mygrids(i)
+            ! initialize first entry of np_counter (count the number of particles in each grid at itstep = 0 resprectively)
+            DO j = 1, my_particle_list%ifinal
+                IF (my_particle_list%particles(i)%gitstep >= 0 .AND. &
+                 my_particle_list%particles(i)%gitstep < rt_ittot_start) THEN
+                    CALL errr(__FILE__,__LINE__)
+                END IF
+                IF (my_particle_list%particles(j)%igrid == my_gridcol_list(i)%igrid) THEN
+                    my_gridcol_list(i)%np_counter(1) = my_gridcol_list(i)%np_counter(1) + 1
+                END IF
+            END DO
+        END DO
+
+    END SUBROUTINE start_np_counter
 
     SUBROUTINE advance_np_counter(itstep)
 
@@ -131,24 +157,33 @@ CONTAINS
         ! local variables
         INTEGER(intk) :: i
 
+        IF (.NOT. dgridstat) THEN
+            RETURN
+        END IF
+
         CALL start_timer(950)
 
         DO i = 1, nmygrids
-            my_collector_list(i)%np_counter(itstep + 1) = my_collector_list(i)%np_counter(itstep)
+            my_gridcol_list(i)%np_counter(itstep + 1) = my_gridcol_list(i)%np_counter(itstep)
         END DO
 
         CALL stop_timer(950)
 
     END SUBROUTINE advance_np_counter
 
-    SUBROUTINE deregister_particle(particle, itstep)
+    SUBROUTINE deregister_particle(particle, ittot, itstep)
 
         ! subroutine arguments
         TYPE(baseparticle_t), INTENT(inout) :: particle
+        INTEGER(intk), INTENT(in) :: ittot
         INTEGER(intk), INTENT(in) :: itstep
 
         ! local variables
-        INTEGER(intk) :: igrid, i, irt
+        INTEGER(intk) :: igrid, i, rt_tstep
+
+        IF (.NOT. dgridstat) THEN
+            RETURN
+        END IF
 
         CALL start_timer(950)
 
@@ -158,17 +193,31 @@ CONTAINS
 
             IF (particle%igrid == igrid) THEN
 
-                my_collector_list(i)%np_counter(itstep + 1) = my_collector_list(i)%np_counter(itstep + 1) - 1
+                my_gridcol_list(i)%np_counter(itstep + 1) = my_gridcol_list(i)%np_counter(itstep + 1) - 1
 
-                irt = itstep - particle%gitstep
+                IF (ittot >= rt_ittot_start) THEN
 
-                my_collector_list(i)%rt_counter(irt) = my_collector_list(i)%rt_counter(irt) + 1
+                    IF (particle%gitstep >= 0) THEN
+                        rt_tstep = ittot - particle%gitstep
+
+                        IF (rt_tstep > SIZE(my_gridcol_list(i)%rt_counter) .OR. rt_tstep < 1) THEN
+                            WRITE(*, '("WARNING in Particle Statistics (Grids)")')
+                            WRITE(*, '("On Proc ", I0, ": Residence time of particle ", I0," is too large or too small!")') &
+                             myid, particle%ipart
+                            WRITE(*, '("rt_tstep ", I0, "; size(rt_counter)", I0)') rt_tstep, SIZE(my_gridcol_list(i)%rt_counter)
+                        ELSE
+                            my_gridcol_list(i)%rt_counter(rt_tstep) = my_gridcol_list(i)%rt_counter(rt_tstep) + 1
+                        END IF
+                    END IF
+
+                    particle%gitstep = ittot
+                    EXIT
+
+                END IF
 
             END IF
 
         END DO
-
-        particle%gitstep = itstep
 
         CALL stop_timer(950)
 
@@ -183,6 +232,10 @@ CONTAINS
         ! local variables
         INTEGER(intk) :: igrid, i
 
+        IF (.NOT. dgridstat) THEN
+            RETURN
+        END IF
+
         CALL start_timer(950)
 
         DO i = 1, nmygrids
@@ -190,9 +243,8 @@ CONTAINS
             igrid = mygrids(i)
 
             IF (particle%igrid == igrid) THEN
-
-                my_collector_list(i)%np_counter(itstep + 1) = my_collector_list(i)%np_counter(itstep + 1) + 1
-
+                my_gridcol_list(i)%np_counter(itstep + 1) = my_gridcol_list(i)%np_counter(itstep + 1) + 1
+                EXIT
             END IF
 
         END DO
@@ -201,7 +253,10 @@ CONTAINS
 
     END SUBROUTINE register_particle
 
-    SUBROUTINE init_particle_slicestat()
+    SUBROUTINE init_particle_slicestat(mtstep)
+
+        ! subroutine arguments
+        INTEGER(intk), INTENT(in) :: mtstep
 
         ! local variables
         INTEGER(intk) :: igrid, i, j, k, counter, dummy
@@ -211,7 +266,7 @@ CONTAINS
         !TYPE(MPI_Request) :: request
 
         IF (slice_dir == "N") THEN
-            ALLOCATE(my_scollector_list(0))
+            ALLOCATE(my_slicecol_list(0))
             RETURN
         END IF
 
@@ -242,7 +297,7 @@ CONTAINS
                     global_max = global_z1
         END SELECT
 
-        ALLOCATE(my_scollector_list(SUM(nslices)))
+        ALLOCATE(my_slicecol_list(SUM(nslices)))
 
         ! determine slice limits
         counter = 1
@@ -250,16 +305,16 @@ CONTAINS
         DO i = 1, SIZE(nslices)
             DO j = 1, nslices(i)
 
-                my_scollector_list(counter)%llim = lim
+                my_slicecol_list(counter)%llim = lim
                 lim = lim + (global_max - global_min) * slice_levels(i) / nslices(i)
 
                 IF (counter == SUM(nslices)) THEN
-                    my_scollector_list(counter)%ulim = global_max
+                    my_slicecol_list(counter)%ulim = global_max
                 ELSE
-                    my_scollector_list(counter)%ulim = lim
+                    my_slicecol_list(counter)%ulim = lim
                 END IF
 
-                ! check if this slice does have any overlapping volume with any grid on this process
+                ! check if this slice does overlap with any grid on this process
                 DO k = 1, nmygrids
 
                     igrid = mygrids(k)
@@ -277,20 +332,20 @@ CONTAINS
                                 grid_max = maxz
                     END SELECT
 
-                    IF (grid_min > my_scollector_list(counter)%ulim .OR. grid_max < my_scollector_list(counter)%llim) THEN
+                    IF (grid_min > my_slicecol_list(counter)%ulim .OR. grid_max < my_slicecol_list(counter)%llim) THEN
                         CYCLE
                     ELSE
-                        my_scollector_list(counter)%is_active = .TRUE.
+                        my_slicecol_list(counter)%is_active = .TRUE.
                         ! neighbouring slices that do not overlap with any grid also have to be active for residence time tracking!
                         IF (counter == 1) THEN
-                            my_scollector_list(SUM(nslices))%is_active = .TRUE.
-                            my_scollector_list(counter + 1)%is_active = .TRUE.
+                            my_slicecol_list(SUM(nslices))%is_active = .TRUE.
+                            my_slicecol_list(counter + 1)%is_active = .TRUE.
                         ELSEIF (counter == SUM(nslices)) THEN
-                            my_scollector_list(counter - 1)%is_active = .TRUE.
-                            my_scollector_list(1)%is_active = .TRUE.
+                            my_slicecol_list(counter - 1)%is_active = .TRUE.
+                            my_slicecol_list(1)%is_active = .TRUE.
                         ELSE
-                            my_scollector_list(counter - 1)%is_active = .TRUE.
-                            my_scollector_list(counter + 1)%is_active = .TRUE.
+                            my_slicecol_list(counter - 1)%is_active = .TRUE.
+                            my_slicecol_list(counter + 1)%is_active = .TRUE.
                         END IF
 
                         EXIT
@@ -302,39 +357,40 @@ CONTAINS
             END DO
         END DO
 
-        DO i = 1, SIZE(my_scollector_list)
-            IF (my_scollector_list(i)%is_active) THEN
-                ALLOCATE(my_scollector_list(i)%np_counter(nsamples + 1))
-                my_scollector_list(i)%np_counter = 0
-                ALLOCATE(my_scollector_list(i)%rt_counter(nsamples))
-                my_scollector_list(i)%rt_counter = 0
+        DO i = 1, SIZE(my_slicecol_list)
+            IF (my_slicecol_list(i)%is_active) THEN
+                ALLOCATE(my_slicecol_list(i)%np_counter(mtstep + 1))
+                my_slicecol_list(i)%np_counter = 0
+                ALLOCATE(my_slicecol_list(i)%rt_counter(rt_tstep_max))
+                my_slicecol_list(i)%rt_counter = 0
             ELSE
                 IF (myid /= 0) THEN
-                    ALLOCATE(my_scollector_list(i)%np_counter(0))
-                    ALLOCATE(my_scollector_list(i)%rt_counter(0))
+                    ALLOCATE(my_slicecol_list(i)%np_counter(0))
+                    ALLOCATE(my_slicecol_list(i)%rt_counter(0))
                 END IF
             END IF
         END DO
 
         IF (TRIM(particle_terminal) == "normal" .OR. TRIM(particle_terminal) == "verbose") THEN
 
-            CALL MPI_Barrier(MPI_COMM_WORLD)
-
             IF (myid /= 0) THEN
                 CALL MPI_Recv(dummy, 1, mglet_mpi_int, myid - 1, 900, &
                 MPI_COMM_WORLD, MPI_STATUS_IGNORE)
             END IF
 
-            WRITE(*, '("Slice Statistics Collector of Length ", I0, " allocated on Proccess ", I0)') SIZE(my_scollector_list), myid
+            WRITE(*, '("Slice Statistics Collector of Length ", I0, " allocated on Proccess ", I0)') SIZE(my_slicecol_list), myid
             WRITE(*, '()')
 
             IF (myid /= numprocs - 1) THEN
                 CALL MPI_Send(dummy, 1, mglet_mpi_int, myid + 1, 900, &
                 MPI_COMM_WORLD)
             END IF
+
         END IF
 
         CALL assign_initial_slice(my_particle_list)
+
+        CALL MPI_Barrier(MPI_COMM_WORLD)
 
     END SUBROUTINE init_particle_slicestat
 
@@ -352,6 +408,10 @@ CONTAINS
         END IF
 
         DO i = 1, particle_list%ifinal
+            IF (particle_list%particles(i)%sitstep >= 0 .AND. &
+             particle_list%particles(i)%sitstep < rt_ittot_start) THEN
+                CALL errr(__FILE__,__LINE__)
+            END IF
             SELECT CASE(slice_dir)
                 CASE("X")
                         p_coord = particle_list%particles(i)%x
@@ -360,25 +420,32 @@ CONTAINS
                 CASE("Z")
                         p_coord = particle_list%particles(i)%z
             END SELECT
-            DO islice = 1, SIZE(my_scollector_list)
-                IF (my_scollector_list(islice)%llim <= p_coord .AND. &
-                 p_coord <= my_scollector_list(islice)%ulim) THEN
-                    particle_list%particles(i)%islice = islice
-                    my_scollector_list(islice)%np_counter(1) = my_scollector_list(islice)%np_counter(1) + 1
+            sliceloop: DO islice = 1, SIZE(my_slicecol_list)
+                IF (my_slicecol_list(islice)%llim <= p_coord .AND. p_coord <= my_slicecol_list(islice)%ulim) THEN
+                    IF (particle_list%particles(i)%islice <= 0) THEN
+                        particle_list%particles(i)%islice = islice
+                    ELSEIF (particle_list%particles(i)%islice /= islice) THEN
+                        WRITE(*, '("ERROR on proc ", I0, ": Unexpected initial value of islice for particle ", I0)') &
+                             myid, particle_list%particles(i)%ipart
+                        CALL errr(__FILE__,__LINE__)
+                    END IF
+                    my_slicecol_list(islice)%np_counter(1) = my_slicecol_list(islice)%np_counter(1) + 1
+                    EXIT sliceloop
                 END IF
-            END DO
+            END DO sliceloop
         END DO
 
     END SUBROUTINE assign_initial_slice
 
-    SUBROUTINE associate_new_slice(particle, itstep)
+    SUBROUTINE associate_new_slice(particle, ittot, itstep)
 
         ! subroutine arguments
         TYPE(baseparticle_t), INTENT(inout) :: particle
+        INTEGER(intk), INTENT(in) :: ittot
         INTEGER(intk), INTENT(in) :: itstep
 
         ! local variables
-        INTEGER(intk) :: igrid, i, irt
+        INTEGER(intk) :: igrid, i, rt_tstep
         REAL(realk) :: p_coord
 
         IF (slice_dir == "N") THEN
@@ -396,47 +463,70 @@ CONTAINS
                     p_coord = particle%z
         END SELECT
 
-        IF (p_coord < my_scollector_list(particle%islice)%llim) THEN
-
-            irt = itstep - particle%sitstep
-            my_scollector_list(particle%islice)%rt_counter(irt) = &
-             my_scollector_list(particle%islice)%rt_counter(irt) + 1
-
-            particle%sitstep = itstep
+        IF (p_coord < my_slicecol_list(particle%islice)%llim) THEN
 
             IF (particle%islice == 1) THEN
-                particle%islice = SIZE(my_scollector_list)
+                particle%islice = SIZE(my_slicecol_list)
             ELSE
                 particle%islice = particle%islice - 1
             END IF
 
-        ELSEIF (p_coord > my_scollector_list(particle%islice)%ulim) THEN
+            IF (ittot >= rt_ittot_start) THEN
+                IF (particle%sitstep >= 0) THEN
+                    rt_tstep = ittot - particle%sitstep
+                    IF (rt_tstep > SIZE(my_slicecol_list(particle%islice)%rt_counter) .OR. rt_tstep < 1) THEN
+                        WRITE(*, '("WARNING in Particle Statistics (Slices)")')
+                        WRITE(*, '("On Proc ", I0, ": Residence time of particle ", I0," is too large or too small!")') &
+                         myid, particle%ipart
+                        WRITE(*, '("rt_tstep ", I0, "; size(rt_counter)", I0)') rt_tstep, SIZE(my_slicecol_list(particle%islice)%rt_counter)
+                    ELSE
+                        my_slicecol_list(particle%islice)%rt_counter(rt_tstep) = &
+                        my_slicecol_list(particle%islice)%rt_counter(rt_tstep) + 1
+                    END IF
+                END IF
 
-            irt = itstep - particle%sitstep
-            my_scollector_list(particle%islice)%rt_counter(irt) = &
-             my_scollector_list(particle%islice)%rt_counter(irt) + 1
+                particle%sitstep = ittot
+            END IF
 
-            particle%sitstep = itstep
+        ELSEIF (p_coord > my_slicecol_list(particle%islice)%ulim) THEN
 
-            IF (particle%islice == SIZE(my_scollector_list)) THEN
+            IF (particle%islice == SIZE(my_slicecol_list)) THEN
                 particle%islice = 1
             ELSE
                 particle%islice = particle%islice + 1
             END IF
 
+            IF (ittot >= rt_ittot_start) THEN
+                IF (particle%sitstep >= 0) THEN
+                    rt_tstep = ittot - particle%sitstep
+                    IF (rt_tstep > SIZE(my_slicecol_list(particle%islice)%rt_counter) .OR. rt_tstep < 1) THEN
+                        WRITE(*, '("WARNING in Particle Statistics (Slices)")')
+                        WRITE(*, '("On Proc ", I0, ": Residence time of particle ", I0," is too large or too small!")') &
+                         myid, particle%ipart
+                        WRITE(*, '("rt_tstep ", I0, "; size(rt_counter)", I0)') rt_tstep, SIZE(my_slicecol_list(particle%islice)%rt_counter)
+                    ELSE
+                        my_slicecol_list(particle%islice)%rt_counter(rt_tstep) = &
+                        my_slicecol_list(particle%islice)%rt_counter(rt_tstep) + 1
+                    END IF
+                END IF
+
+                particle%sitstep = ittot
+            END IF
+
         END IF
 
-        my_scollector_list(particle%islice)%np_counter(itstep + 1) = &
-         my_scollector_list(particle%islice)%np_counter(itstep + 1) + 1
+        my_slicecol_list(particle%islice)%np_counter(itstep + 1) = &
+         my_slicecol_list(particle%islice)%np_counter(itstep + 1) + 1
 
         CALL stop_timer(950)
 
     END SUBROUTINE associate_new_slice
 
-    SUBROUTINE merge_slicestat(islice)
+    SUBROUTINE merge_slicestat(islice, mtstep)
 
         ! subroutine arguments
         INTEGER(intk), INTENT(in) :: islice
+        INTEGER(intk), INTENT(in) :: mtstep
 
         ! local variables
         INTEGER(intk) :: i, j, counter, buffer_len, dsend
@@ -451,11 +541,11 @@ CONTAINS
             RETURN
         END IF
 
-        IF (myid == 0 .AND. .NOT. my_scollector_list(islice)%is_active) THEN
-            ALLOCATE(my_scollector_list(islice)%np_counter(nsamples + 1))
-            my_scollector_list(islice)%np_counter = 0
-            ALLOCATE(my_scollector_list(islice)%rt_counter(nsamples))
-            my_scollector_list(islice)%rt_counter = 0
+        IF (myid == 0 .AND. .NOT. my_slicecol_list(islice)%is_active) THEN
+            ALLOCATE(my_slicecol_list(islice)%np_counter(mtstep + 1))
+            my_slicecol_list(islice)%np_counter = 0
+            ALLOCATE(my_slicecol_list(islice)%rt_counter(rt_tstep_max))
+            my_slicecol_list(islice)%rt_counter = 0
         END IF
 
         ALLOCATE(recv_req(numprocs -1))
@@ -464,14 +554,14 @@ CONTAINS
         drecv = 0
         dsend = 0
 
-        IF (my_scollector_list(islice)%is_active) THEN
+        IF (my_slicecol_list(islice)%is_active) THEN
             dsend = 1
         END IF
 
         IF (myid /= 0) THEN
-                CALL MPI_Isend(dsend, 1, mglet_mpi_int, 0, 9401, &
-                 MPI_COMM_WORLD, send_req)
-                CALL MPI_Wait(send_req, MPI_STATUS_IGNORE)
+            CALL MPI_Isend(dsend, 1, mglet_mpi_int, 0, 9401, &
+             MPI_COMM_WORLD, send_req)
+            CALL MPI_Wait(send_req, MPI_STATUS_IGNORE)
         ELSEIF (myid == 0) THEN
             DO i = 1, numprocs - 1
                 CALL MPI_Irecv(drecv(i), 1, mglet_mpi_int, i, 9401, &
@@ -481,7 +571,7 @@ CONTAINS
         END IF
 
 
-        buffer_len = 2 * nsamples + 1
+        buffer_len = mtstep + 1 + rt_tstep_max
         ALLOCATE(buffer(buffer_len))
         buffer = 0
 
@@ -490,14 +580,14 @@ CONTAINS
             IF (dsend == 1) THEN
                 ! fill buffer
                 counter = 1
-                DO j = 1, nsamples + 1
-                    buffer(j) = my_scollector_list(islice)%np_counter(counter)
+                DO j = 1, mtstep + 1
+                    buffer(j) = my_slicecol_list(islice)%np_counter(counter)
                     counter = counter + 1
                 END DO
 
                 counter = 1
-                DO j = nsamples + 2, buffer_len
-                    buffer(j) = my_scollector_list(islice)%rt_counter(counter)
+                DO j = mtstep + 2, buffer_len
+                    buffer(j) = my_slicecol_list(islice)%rt_counter(counter)
                     counter = counter + 1
                 END DO
 
@@ -522,14 +612,14 @@ CONTAINS
                     !CALL MPI_Wait(recv_req(i), MPI_STATUS_IGNORE)
 
                     counter = 1
-                    DO j = 1, nsamples + 1
-                        my_scollector_list(islice)%np_counter(counter) = my_scollector_list(islice)%np_counter(counter) + buffer(j)
+                    DO j = 1, mtstep + 1
+                        my_slicecol_list(islice)%np_counter(counter) = my_slicecol_list(islice)%np_counter(counter) + buffer(j)
                         counter = counter + 1
                     END DO
 
                     counter = 1
-                    DO j = nsamples + 2, buffer_len
-                        my_scollector_list(islice)%rt_counter(counter) = my_scollector_list(islice)%rt_counter(counter) + buffer(j)
+                    DO j = mtstep + 2, buffer_len
+                        my_slicecol_list(islice)%rt_counter(counter) = my_slicecol_list(islice)%rt_counter(counter) + buffer(j)
                         counter = counter + 1
                     END DO
 
@@ -554,12 +644,12 @@ CONTAINS
         ! subroutine arguments
         INTEGER(intk), INTENT(in) :: islice
 
-        IF (.NOT. ALLOCATED(my_scollector_list)) RETURN
+        IF (.NOT. ALLOCATED(my_slicecol_list)) RETURN
 
-        IF (islice < 1 .OR. islice > SIZE(my_scollector_list)) RETURN
+        IF (islice < 1 .OR. islice > SIZE(my_slicecol_list)) RETURN
 
-        IF (ALLOCATED(my_scollector_list(islice)%np_counter)) DEALLOCATE(my_scollector_list(islice)%np_counter)
-        IF (ALLOCATED(my_scollector_list(islice)%rt_counter)) DEALLOCATE(my_scollector_list(islice)%rt_counter)
+        IF (ALLOCATED(my_slicecol_list(islice)%np_counter)) DEALLOCATE(my_slicecol_list(islice)%np_counter)
+        IF (ALLOCATED(my_slicecol_list(islice)%rt_counter)) DEALLOCATE(my_slicecol_list(islice)%rt_counter)
 
     END SUBROUTINE deallocate_slicestat
 
@@ -568,16 +658,19 @@ CONTAINS
         ! subroutine arguments
         INTEGER(intk), INTENT(in) :: i
 
-        IF (.NOT. ALLOCATED(my_collector_list)) RETURN
+        IF (.NOT. ALLOCATED(my_gridcol_list)) RETURN
 
-        IF (i < 1 .OR. i > SIZE(my_collector_list)) RETURN
+        IF (i < 1 .OR. i > SIZE(my_gridcol_list)) RETURN
 
-        IF (ALLOCATED(my_collector_list(i)%np_counter)) DEALLOCATE(my_collector_list(i)%np_counter)
-        IF (ALLOCATED(my_collector_list(i)%rt_counter)) DEALLOCATE(my_collector_list(i)%rt_counter)
+        IF (ALLOCATED(my_gridcol_list(i)%np_counter)) DEALLOCATE(my_gridcol_list(i)%np_counter)
+        IF (ALLOCATED(my_gridcol_list(i)%rt_counter)) DEALLOCATE(my_gridcol_list(i)%rt_counter)
 
     END SUBROUTINE deallocate_gridstat
 
-    SUBROUTINE write_particle_statistics()
+    SUBROUTINE write_particle_statistics(mtstep)
+
+        ! subroutine arguments
+        INTEGER(intk), INTENT(in) :: mtstep
 
         ! local variables
         INTEGER(intk) :: islice
@@ -589,8 +682,8 @@ CONTAINS
 
         CALL write_gridstat_files()
 
-        DO islice = 1, SIZE(my_scollector_list)
-            CALL merge_slicestat(islice)
+        DO islice = 1, SIZE(my_slicecol_list)
+            CALL merge_slicestat(islice, mtstep)
             CALL write_slicestat_file(islice)
         END DO
 
@@ -616,21 +709,21 @@ CONTAINS
 
         DO i = 1, nmygrids
 
-            WRITE(filename,'("Particle_Statistics/Grid", I0, ".txt")') my_collector_list(i)%igrid
+            WRITE(filename,'("Particle_Statistics/Grid", I0, ".txt")') my_gridcol_list(i)%igrid
 
             OPEN(newunit = unit, file = TRIM(filename), status = 'NEW', action = 'WRITE')
 
-            WRITE(unit, '("IGRID: ", I0)') my_collector_list(i)%igrid
+            WRITE(unit, '("IGRID: ", I0)') my_gridcol_list(i)%igrid
 
-            WRITE(unit, '("GRID VOLUME: ", F12.6)') my_collector_list(i)%grid_volume
+            WRITE(unit, '("GRID VOLUME: ", F12.6)') my_gridcol_list(i)%grid_volume
 
             WRITE(unit, '("NPART TIMELINE:")')
 
-            DO j = 1, SIZE(my_collector_list(i)%np_counter)
+            DO j = 1, SIZE(my_gridcol_list(i)%np_counter)
 
-                WRITE(unit, '(I0)', advance = "no") my_collector_list(i)%np_counter(j)
+                WRITE(unit, '(I0)', advance = "no") my_gridcol_list(i)%np_counter(j)
 
-                IF (j /= SIZE(my_collector_list(i)%np_counter)) THEN
+                IF (j /= SIZE(my_gridcol_list(i)%np_counter)) THEN
                     WRITE(unit, '(", ")', advance = "no")
                     IF (MOD(j, 10) == 0) THEN
                         WRITE(unit, '("")', advance = "yes")
@@ -643,11 +736,11 @@ CONTAINS
 
             WRITE(unit, '("RT DISTRIBUTION:")')
 
-            DO j = 1, SIZE(my_collector_list(i)%rt_counter)
+            DO j = 1, SIZE(my_gridcol_list(i)%rt_counter)
 
-                WRITE(unit, '(I0)', advance = "no") my_collector_list(i)%rt_counter(j)
+                WRITE(unit, '(I0)', advance = "no") my_gridcol_list(i)%rt_counter(j)
 
-                IF (j /= SIZE(my_collector_list(i)%rt_counter)) THEN
+                IF (j /= SIZE(my_gridcol_list(i)%rt_counter)) THEN
                     WRITE(unit, '(", ")', advance = "no")
                     IF (MOD(j, 10) == 0) THEN
                         WRITE(unit, '("")', advance = "yes")
@@ -679,13 +772,13 @@ CONTAINS
 
             WRITE(unit, '("ISLICE: ", I0)') islice
 
-            WRITE(unit, '("SLICE LIMITS: ", 2F20.17)') my_scollector_list(islice)%llim, my_scollector_list(islice)%ulim
+            WRITE(unit, '("SLICE LIMITS: ", 2F20.17)') my_slicecol_list(islice)%llim, my_slicecol_list(islice)%ulim
 
             WRITE(unit, '("NPART TIMELINE:")')
 
-            DO j = 1, SIZE(my_scollector_list(islice)%np_counter)
-                WRITE(unit, '(I0)', advance = "no") my_scollector_list(islice)%np_counter(j)
-                IF (j /= SIZE(my_scollector_list(islice)%np_counter)) THEN
+            DO j = 1, SIZE(my_slicecol_list(islice)%np_counter)
+                WRITE(unit, '(I0)', advance = "no") my_slicecol_list(islice)%np_counter(j)
+                IF (j /= SIZE(my_slicecol_list(islice)%np_counter)) THEN
                     WRITE(unit, '(", ")', advance = "no")
                     IF (MOD(j, 10) == 0) THEN
                         WRITE(unit, '("")', advance = "yes")
@@ -697,10 +790,10 @@ CONTAINS
 
             WRITE(unit, '("RT DISTRIBUTION:")')
 
-            DO j = 1, SIZE(my_scollector_list(islice)%rt_counter)
-                WRITE(unit, '(I0)', advance = "no") my_scollector_list(islice)%rt_counter(j)
+            DO j = 1, SIZE(my_slicecol_list(islice)%rt_counter)
+                WRITE(unit, '(I0)', advance = "no") my_slicecol_list(islice)%rt_counter(j)
 
-                IF (j /= SIZE(my_scollector_list(islice)%rt_counter)) THEN
+                IF (j /= SIZE(my_slicecol_list(islice)%rt_counter)) THEN
                     WRITE(unit, '(", ")', advance = "no")
                     IF (MOD(j, 10) == 0) THEN
                         WRITE(unit, '("")', advance = "yes")
@@ -723,18 +816,18 @@ CONTAINS
         CALL start_timer(900)
         CALL start_timer(950)
 
-        IF (ALLOCATED(my_collector_list)) THEN
-            DO i = 1, SIZE(my_collector_list)
+        IF (ALLOCATED(my_gridcol_list)) THEN
+            DO i = 1, SIZE(my_gridcol_list)
                 CALL deallocate_gridstat(i)
             END DO
-            DEALLOCATE(my_collector_list)
+            DEALLOCATE(my_gridcol_list)
         END IF
 
-        IF (ALLOCATED(my_scollector_list)) THEN
-            DO i = 1, SIZE(my_scollector_list)
+        IF (ALLOCATED(my_slicecol_list)) THEN
+            DO i = 1, SIZE(my_slicecol_list)
                 CALL deallocate_slicestat(i)
             END DO
-            DEALLOCATE(my_scollector_list)
+            DEALLOCATE(my_slicecol_list)
         END IF
 
         CALL stop_timer(950)
