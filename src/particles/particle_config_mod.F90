@@ -22,7 +22,10 @@ MODULE particle_config_mod
     CHARACTER(len = 7) :: particle_terminal
     LOGICAL :: dwrite_npcfield
     LOGICAL :: dwrite_psnapshots
+
     INTEGER(intk) :: psnapshot_step
+    INTEGER(intk) :: psnapshot_np
+    INTEGER(intk) :: psnapshot_write_all_particles_tag = -99
 
     CHARACTER(len = 7) :: vtk_float_format = '(F10.6)'
 
@@ -117,12 +120,29 @@ CONTAINS
 
             IF (myid == 0) THEN
                 IF (TRIM(particle_terminal) == "normal" .OR. TRIM(particle_terminal) == "verbose") THEN
-                    WRITE(*, *) "WARNING: Snapshot step should be an integer greater or equal to 1. Not writing Particle Snapshots."
+                    WRITE(*, *) "WARNING: snapshot_step should be an integer greater or equal to 1. Not writing Particle Snapshots."
                     WRITE(*, '()')
                 END IF
             END IF
 
             psnapshot_step = -1
+            dwrite_psnapshots = .FALSE.
+
+        END IF
+
+        CALL pconf%get_value("/snapshot_np", psnapshot_np, psnapshot_write_all_particles_tag)
+
+        IF (psnapshot_step < 1_intk .AND. psnapshot_step /= psnapshot_write_all_particles_tag) THEN
+
+            IF (myid == 0) THEN
+                IF (TRIM(particle_terminal) == "normal" .OR. TRIM(particle_terminal) == "verbose") THEN
+                    WRITE(*, *) "WARNING: snapshot_np should be an integer greater or equal to 1, or ", &
+                     psnapshot_write_all_particles_tag, " (to indicate that all particles are to be written). Not writing Particle Snapshots."
+                    WRITE(*, '()')
+                END IF
+            END IF
+
+            psnapshot_np = -1
             dwrite_psnapshots = .FALSE.
 
         END IF
@@ -456,7 +476,12 @@ CONTAINS
                     WRITE(*, '("        Writing NPC Field:                ", L12)') dwrite_npcfield
                     WRITE(*, '("        Writing Particle Snapshots:       ", L12)') dwrite_psnapshots
                     IF (dwrite_psnapshots) THEN
-                    WRITE(*, '("        Particle Snapshot Step:           ", I12)') psnapshot_step
+                    WRITE(*, '("        Snapshot Step:                    ", I12)') psnapshot_step
+                    IF (psnapshot_np == psnapshot_write_all_particles_tag) THEN
+                    WRITE(*, '("        Snapshot - Number of Particles:   ", A13)') "All Particles"
+                    ELSE
+                    WRITE(*, '("        Snapshot - Number of Particles:   ", I12)') psnapshot_np
+                    END IF
                     END IF
                     ! PARTICLE LIST
                     WRITE(*, '("    Particle List:")')
@@ -465,7 +490,7 @@ CONTAINS
                     WRITE(*, '("        Max Particle List Length:         ", I12)') plist_len
                     END IF
                     IF (.NOT. dread_particles_dict) THEN
-                    WRITE(*, '("        Initial number of Particles:      ", I12)') init_npart
+                    WRITE(*, '("        Initial Number of Particles:      ", I12)') init_npart
                     END IF
                     ! ADVECTION
                     WRITE(*, '("    Advection:")')

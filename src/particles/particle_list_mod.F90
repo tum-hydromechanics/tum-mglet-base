@@ -37,6 +37,8 @@ MODULE particle_list_mod
 
     TYPE(particle_list_t) :: my_particle_list
 
+    INTEGER(intk) :: global_np
+
     PUBLIC :: my_particle_list
 
 CONTAINS    !===================================
@@ -44,7 +46,7 @@ CONTAINS    !===================================
     SUBROUTINE init_particle_list()
 
         ! local variables
-        INTEGER(intk) :: i, global_np, read_np, dummy
+        INTEGER(intk) :: i, read_np, dummy
         INTEGER(intk), ALLOCATABLE :: npart_arr(:), ipart_arr(:), igrid_arr(:)
         REAL(realk), ALLOCATABLE :: x_arr(:), y_arr(:), z_arr(:)
 
@@ -56,7 +58,9 @@ CONTAINS    !===================================
         IF (dread_particles_dict) THEN
 
             ! all arguments that are passed as particle list attributes are input only
-            CALL read_particles(dread_particles_dict, global_np, ipart_arr, igrid_arr, x_arr, y_arr, z_arr, read_np)
+            CALL read_particles(dread_particles_dict, ipart_arr, igrid_arr, x_arr, y_arr, z_arr, read_np)
+
+            CALL MPI_Allreduce(read_np, global_np, 1, mglet_mpi_int, MPI_SUM, MPI_COMM_WORLD)
 
             IF (dread_particles_dict) THEN
 
@@ -129,6 +133,8 @@ CONTAINS    !===================================
                 END IF
 
             END DO
+
+            CALL MPI_Allreduce(my_particle_list%active_np, global_np, 1, mglet_mpi_int, MPI_SUM, MPI_COMM_WORLD)
 
             my_particle_list%ifinal = my_particle_list%active_np
 

@@ -14,16 +14,16 @@ MODULE particle_dict_mod
 
 CONTAINS
 
-    SUBROUTINE read_particles(dread_particles_dict, dict_len, ipart_arr, igrid_arr, x_arr, y_arr, z_arr, read_np)
+    SUBROUTINE read_particles(dread_particles_dict, ipart_arr, igrid_arr, x_arr, y_arr, z_arr, read_np)
 
         !subroutine arguments
         LOGICAL, INTENT(inout) :: dread_particles_dict
-        INTEGER(intk), INTENT(out) :: dict_len, read_np
+        INTEGER(intk), INTENT(out) :: read_np
         INTEGER(intk), ALLOCATABLE, INTENT(inout) :: ipart_arr(:), igrid_arr(:)
         REAL(realk), ALLOCATABLE, INTENT(inout) :: x_arr(:), y_arr(:), z_arr(:)
 
         !local variables
-        INTEGER(intk) :: i, ipart, igrid, unit
+        INTEGER(intk) :: i, ipart, igrid, unit, dict_len
         REAL(realk) :: xtemp, ytemp, ztemp
         REAL(realk) :: minx, maxx, miny, maxy, minz, maxz
 

@@ -14,8 +14,13 @@ MODULE particle_snapshot_mod
         INTEGER(intk) :: iproc
         INTEGER(intk) :: nprocs
 
-        !should depend on the domain lengths and be determined in init_psnapshots
+        ! should depend on the domain lengths and be determined in init_psnapshots
         CHARACTER(7) :: coordinate_format
+
+        ! particles to write in snapshots
+        INTEGER(intk) :: global_np
+        INTEGER(intk) :: pstep
+        INTEGER(intk), ALLOCATABLE :: particle_ids(:)
 
         INTEGER(intk) :: nsnapshots
         ! stores the number of particles for each snapshot; will be allocated to length = nsnapshots
@@ -63,10 +68,29 @@ CONTAINS
 
         CALL MPI_Barrier(MPI_COMM_WORLD)
 
+        ! metainfo
         psnapshot_info%iproc = myid
         psnapshot_info%nprocs = numprocs
         psnapshot_info%coordinate_format = vtk_float_format
 
+        ! particle info
+        ! the following assumes that all ids within [1, 2, ..., global_np - 1, global_np] are assigned to particles unambiguously
+        IF (psnapshot_np >= global_np .OR. psnapshot_np == psnapshot_write_all_particles_tag) THEN
+            psnapshot_info%global_np = global_np
+            ALLOCATE(psnapshot_info%particle_ids(0))
+        ELSEIF (psnapshot_np > 1) THEN
+            psnapshot_info%global_np = psnapshot_np
+            psnapshot_info%pstep = NINT(REAL(global_np / psnapshot_np))
+            ALLOCATE(psnapshot_info%particle_ids(psnapshot_info%global_np))
+            psnapshot_info%particle_ids(1) = 1
+            DO i = 2, SIZE(psnapshot_info%particle_ids)
+                psnapshot_info%particle_ids(i) = MIN(1 + (i - 1) * psnapshot_info%pstep, global_np)
+            END DO
+        ELSE
+            CALL errr(__FILE__, __LINE__)
+        END IF
+
+        ! time info
         IF (psnapshot_step == 1) THEN
             psnapshot_info%nsnapshots = mtstep + 1_intk
         ELSE
@@ -86,7 +110,7 @@ CONTAINS
 
         IF (myid == 0) THEN
             IF (TRIM(particle_terminal) == "normal" .OR. TRIM(particle_terminal) == "verbose") THEN
-                WRITE(*,*) 'Writing Particle Snapshots for timesteps: '
+                WRITE(*,*) "Writing Particle Snapshots with ", psnapshot_info%global_np, " particles at timesteps: "
                 WRITE(*,*) ' '
                 WRITE(*, '(I0, " + ")', advance="yes") ittot
                 DO i = 2, psnapshot_info%nsnapshots
@@ -173,35 +197,56 @@ CONTAINS
     SUBROUTINE write_psnapshot_piece()
 
         ! local variables
-        INTEGER(intk) :: i, unit
-        CHARACTER(len = mglet_filename_max) :: subfolder, filename, active_np_char
-        !CHARACTER(:), ALLOCATABLE :: active_np_char
+        INTEGER(intk) :: i, j, jstart, counter, unit
+        CHARACTER(len = mglet_filename_max) :: subfolder, filename, np_char
+        LOGICAL, ALLOCATABLE :: dwrite_particle(:)
 
         WRITE(subfolder, '("Particle_Snapshots/snapshot", I0)') psnapshot_info%timesteps(psnapshot_info%counter)
 
         WRITE(filename, '(A, "/piece", I0, ".vtp")') TRIM(subfolder), myid
 
-        !ALLOCATE(CHARACTER(CEILING(LOG10(REAL(my_particle_list%max_np))) :: active_np_char)
-        WRITE(active_np_char, '(I0)') my_particle_list%active_np
+        ALLOCATE(dwrite_particle(my_particle_list%ifinal))
+        IF (psnapshot_info%global_np /= global_np) THEN
+            dwrite_particle = .FALSE.
+            counter = 0
+            DO i = 1, my_particle_list%ifinal
+                jstart = FLOOR(REAL((my_particle_list%particles(i)%ipart - 1)) / psnapshot_info%pstep) + 1
+                DO j = jstart, SIZE(psnapshot_info%particle_ids)
+                    IF (psnapshot_info%particle_ids(j) == my_particle_list%particles(i)%ipart) THEN
+                        dwrite_particle(i) = .TRUE.
+                        counter = counter + 1
+                    ELSEIF (psnapshot_info%particle_ids(j) > my_particle_list%particles(i)%ipart) THEN
+                        EXIT
+                    END IF
+                END DO
+            END DO
+        ELSE
+            dwrite_particle = .TRUE.
+            counter = my_particle_list%active_np
+        END IF
+
+        WRITE(np_char, '(I0)') counter !my_particle_list%active_np
 
         OPEN(newunit = unit, file = TRIM(filename), status = 'NEW', action = 'WRITE')
 
         WRITE(unit, '(A)') '<?xml version="1.0"?>'
         WRITE(unit, '(A)') '<VTKFile type="PolyData" version="0.1" byte_order="LittleEndian">'
         WRITE(unit, '(A)') '  <PolyData>'
-        WRITE(unit, '(A)') '    <Piece NumberOfPoints="' // TRIM(active_np_char) // &
+        WRITE(unit, '(A)') '    <Piece NumberOfPoints="' // TRIM(np_char) // &
                               '" NumberOfVerts="0" NumberOfLines="0" NumberOfStrips="0" NumberOfPolys="0">'
         WRITE(unit, '(A)') '      <PointData Name="particle_id">'
         WRITE(unit, '(A)') '        <DataArray type="Int32" format="ascii" NumberOfComponents="1" Name="particle_id">'
 
         DO i = 1, my_particle_list%ifinal
 
-            !IF ( my_particle_list%particles(i)%state < 1 ) THEN
-            !    CYCLE
-            !END IF
+            IF ( my_particle_list%particles(i)%state < 1 ) THEN
+                CYCLE
+            END IF
 
-            WRITE(unit, '("          ")', advance="no")
-            WRITE(unit, '(I0)') my_particle_list%particles(i)%ipart
+            IF (dwrite_particle(i)) THEN
+                WRITE(unit, '("          ")', advance="no")
+                WRITE(unit, '(I0)') my_particle_list%particles(i)%ipart
+            END IF
 
         END DO
 
@@ -216,12 +261,14 @@ CONTAINS
                 CYCLE
             END IF
 
-            WRITE(unit, '("        ")', advance="no")
-            WRITE(unit, psnapshot_info%coordinate_format, advance="no") my_particle_list%particles(i)%x
-            WRITE(unit, '(A)', advance="no") ' '
-            WRITE(unit, psnapshot_info%coordinate_format, advance="no") my_particle_list%particles(i)%y
-            WRITE(unit, '(A)', advance="no") ' '
-            WRITE(unit, psnapshot_info%coordinate_format, advance="yes") my_particle_list%particles(i)%z
+            IF (dwrite_particle(i)) THEN
+                WRITE(unit, '("        ")', advance="no")
+                WRITE(unit, psnapshot_info%coordinate_format, advance="no") my_particle_list%particles(i)%x
+                WRITE(unit, '(A)', advance="no") ' '
+                WRITE(unit, psnapshot_info%coordinate_format, advance="no") my_particle_list%particles(i)%y
+                WRITE(unit, '(A)', advance="no") ' '
+                WRITE(unit, psnapshot_info%coordinate_format, advance="yes") my_particle_list%particles(i)%z
+            END IF
 
         END DO
 
@@ -324,6 +371,7 @@ CONTAINS
         CALL start_timer(900)
         CALL start_timer(960)
 
+        IF (ALLOCATED(psnapshot_info%particle_ids)) DEALLOCATE(psnapshot_info%particle_ids)
         IF (ALLOCATED(psnapshot_info%nparticles)) DEALLOCATE(psnapshot_info%nparticles)
         IF (ALLOCATED(psnapshot_info%timesteps)) DEALLOCATE(psnapshot_info%timesteps)
         IF (ALLOCATED(psnapshot_info%phtimes)) DEALLOCATE(psnapshot_info%phtimes)
