@@ -55,6 +55,8 @@ MODULE particle_obstacles_mod
     ! ratio of intermediate (filling) obstacles over readius of regular obstacles
     REAL(realk), PARAMETER :: radius_ratio = 0.348
 
+    REAL(realk), PROTECTED :: aura
+
 CONTAINS    !===================================
 
     ! CAUTION: each process reads all obstacles
@@ -89,6 +91,9 @@ CONTAINS    !===================================
             WRITE(*, *) "ERROR: No file for reading obstacles detected!"
             CALL errr(__FILE__,__LINE__)
         END IF
+
+        ! TODO: rethink this value quantitavely
+        aura = SQRT(EPSILON(dist)) ! here, dist is just an arbitrary dummy argument of real(realk) type
 
         ALLOCATE(grid_processed(ngrid))
 
