@@ -2,6 +2,7 @@ MODULE particle_timeintegration_mod
 
     USE fields_mod
 
+    USE particle_runtimestat_mod
     USE particle_list_mod
     USE particle_interpolation_mod
     USE particle_diffusion_mod
@@ -48,7 +49,8 @@ CONTAINS
 
         INTEGER(intk) :: igrid, i, j, ii, jj, kk, gfound, ig, temp_grid
         REAL(realk) :: pu_adv, pv_adv, pw_adv, p_diffx, p_diffy, p_diffz
-        REAL(realk) :: pdx_adv, pdy_adv, pdz_adv, pdx_diff, pdy_diff, pdz_diff, pdx_eff, pdy_eff, pdz_eff
+        REAL(realk) :: pdx_adv, pdy_adv, pdz_adv, pdx_diff, pdy_diff, pdz_diff
+        REAL(realk) :: pdx_eff_tot, pdy_eff_tot, pdz_eff_tot, pdx_eff, pdy_eff, pdz_eff
 
         INTEGER(intk) :: irk
         REAL(realk) :: A, B
@@ -154,8 +156,14 @@ CONTAINS
             CALL v_f%get_ptr(v, igrid)
             CALL w_f%get_ptr(w, igrid)
 
-            DO irk = 1, prkscheme%nrk
+            ! for particle runtime statistics (terminal output)
+            IF (TRIM(particle_terminal) == "normal" .OR. TRIM(particle_terminal) == "verbose") THEN
+                pdx_eff_tot = 0.0
+                pdy_eff_tot = 0.0
+                pdz_eff_tot = 0.0
+            END IF
 
+            DO irk = 1, prkscheme%nrk
 
                 CALL prkscheme%get_coeffs(A, B, irk)
 
@@ -179,7 +187,7 @@ CONTAINS
                 IF (TRIM(particle_terminal) == "verbose") THEN
                     WRITE(*,'("---------- Advection RK Step: ", I0, " ----------")') irk
                     WRITE(*,'("Intermediate Velocity ", F12.9, " ", F12.9, " ", F12.9)') pu_adv, pv_adv, pw_adv
-                    WRITE(*,'("Intermediate Displacement ", F12.9, " ", F12.9, " ", F12.9)') pdx_adv, pdy_adv, pdz_adv
+                    WRITE(*,'("Intermediate (potential) Displacement ", F12.9, " ", F12.9, " ", F12.9)') pdx_adv, pdy_adv, pdz_adv
                     WRITE(*, '()')
                 END IF
                 CALL stop_timer(921)
@@ -193,6 +201,16 @@ CONTAINS
                 pdx_pot(i) = pdx_eff / B
                 pdy_pot(i) = pdy_eff / B
                 pdz_pot(i) = pdz_eff / B
+
+                IF (TRIM(particle_terminal) == "normal" .OR. TRIM(particle_terminal) == "verbose") THEN
+                    ! for particle runtime statistics (terminal output)
+                    pdx_eff_tot = pdx_eff_tot + pdx_eff
+                    pdy_eff_tot = pdy_eff_tot + pdy_eff
+                    pdz_eff_tot = pdz_eff_tot + pdz_eff
+                    psim_max_adv_dx = MAX(psim_max_adv_dx, pdx_eff_tot)
+                    psim_max_adv_dy = MAX(psim_max_adv_dy, pdy_eff_tot)
+                    psim_max_adv_dz = MAX(psim_max_adv_dz, pdz_eff_tot)
+                END IF
 
             END DO
 
@@ -237,10 +255,30 @@ CONTAINS
                 CALL start_timer(925)
                 CALL move_particle(my_particle_list%particles(i), pdx_diff, pdy_diff, pdz_diff, pdx_eff, pdy_eff, pdz_eff, temp_grid)
                 CALL stop_timer(925)
-            END IF
-        END DO
 
-        ! TODO: print out particle statistics (terminal)
+                ! for particle runtime statistics (terminal output)
+                IF (TRIM(particle_terminal) == "normal" .OR. TRIM(particle_terminal) == "verbose") THEN
+                    pdx_eff_tot = pdx_eff_tot + pdx_eff
+                    pdy_eff_tot = pdy_eff_tot + pdy_eff
+                    pdz_eff_tot = pdz_eff_tot + pdz_eff
+                    psim_max_dif_dx = MAX(psim_max_dif_dx, pdx_eff)
+                    psim_max_dif_dy = MAX(psim_max_dif_dy, pdy_eff)
+                    psim_max_dif_dz = MAX(psim_max_dif_dx, pdz_eff)
+                END IF
+
+            END IF
+
+            ! for particle runtime statistics (terminal output)
+            IF (TRIM(particle_terminal) == "normal" .OR. TRIM(particle_terminal) == "verbose") THEN
+                IF (psim_max_disp < SQRT(pdx_eff_tot**2 + pdy_eff_tot**2 + pdz_eff_tot**2)) THEN
+                    psim_max_dx = pdx_eff_tot
+                    psim_max_dy = pdy_eff_tot
+                    psim_max_dz = pdz_eff_tot
+                    psim_max_disp = SQRT(pdx_eff_tot**2 + pdy_eff_tot**2 + pdz_eff_tot**2)
+                END IF
+            END IF
+
+        END DO
 
         DEALLOCATE(pdx_pot)
         DEALLOCATE(pdy_pot)

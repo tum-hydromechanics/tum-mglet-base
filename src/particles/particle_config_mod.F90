@@ -478,7 +478,7 @@ CONTAINS
                     IF (dwrite_psnapshots) THEN
                     WRITE(*, '("        Snapshot Step:                    ", I12)') psnapshot_step
                     IF (psnapshot_np == psnapshot_write_all_particles_tag) THEN
-                    WRITE(*, '("        Snapshot - Number of Particles:   ", A13)') "All Particles"
+                    WRITE(*, '("        Snapshot - Number of Particles:  ", A13)') "All Particles"
                     ELSE
                     WRITE(*, '("        Snapshot - Number of Particles:   ", I12)') psnapshot_np
                     END IF

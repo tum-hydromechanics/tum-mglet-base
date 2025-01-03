@@ -300,6 +300,10 @@ CONTAINS
                 CALL itinfo_flow(itstep, ittot, timeph, dt, cflmax, exploded)
                 IF (myid == 0) WRITE(*, '()')
 
+                IF (dsim_particles) THEN ! itinfo for particles works differently than the other itinfo procedures and is improvable!
+                    CALL itinfo_particles() ! <------------------------------------particles
+                    IF (myid == 0) WRITE(*, '()')
+                END IF
                 ! Call plugins
                 CALL itinfo_plugins(itstep, ittot, timeph, dt)
             END IF

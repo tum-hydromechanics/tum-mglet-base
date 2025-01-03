@@ -4,6 +4,7 @@ MODULE particle_exchange_mod
     USE MPI_f08
     USE comms_mod
 
+    USE particle_runtimestat_mod, ONLY: psim_n_sent
     USE particle_list_mod
     USE particle_statistics_mod
 
@@ -258,6 +259,10 @@ CONTAINS
         sizeSendBuf = SUM(npsend)
         ALLOCATE(sendind(sizeSendBuf))
         ALLOCATE(sendBufParticle(sizeSendBuf))
+
+        IF (TRIM(particle_terminal) == "normal" .OR. TRIM(particle_terminal) == "verbose") THEN
+            psim_n_sent = psim_n_sent + SUM(npsend)
+        END IF
 
         ! JULIUS: would be nice to not iterate over the whole particle list twice. Maybe there is a way to allocate sendind before the first iteration?
         ! Maybe use sending from previous exchnage ?

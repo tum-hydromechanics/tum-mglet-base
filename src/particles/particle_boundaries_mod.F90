@@ -4,6 +4,8 @@ MODULE particle_boundaries_mod
     USE core_mod !TODO: specify
 
     USE particle_obstacles_mod
+    USE particle_runtimestat_mod, ONLY: psim_n_replaced_tot, &
+     psim_n_bcerr, psim_max_bcerr
 
     IMPLICIT NONE
 
@@ -48,11 +50,6 @@ MODULE particle_boundaries_mod
     TYPE(particle_boundaries_t) :: particle_boundaries
 
     CHARACTER(len = 4) :: bc_coupling_mode = "SCAL" ! must be "FLOW", "SCAL" or "PART"
-
-    ! RUNTIME STATISTICS / NOTIFICATIONS
-    INTEGER(intk) :: psim_n_replaced_tot = 0
-    INTEGER(intk) :: psim_n_bcerr = 0
-    REAL(realk) :: psim_max_bcerr = 0.0
 
     CONTAINS
 
@@ -322,7 +319,9 @@ MODULE particle_boundaries_mod
                 x = particle%x
                 y = particle%y
                 z = particle%z
-                psim_n_replaced_tot = psim_n_replaced_tot + 1
+                IF (TRIM(particle_terminal) == "normal" .OR. TRIM(particle_terminal) == "verbose") THEN
+                    psim_n_replaced_tot = psim_n_replaced_tot + 1
+                END IF
                 dreplace = .FALSE.
             END IF
 
@@ -490,8 +489,10 @@ MODULE particle_boundaries_mod
                     WRITE(*, '()')
                 END IF
 
-                psim_max_bcerr = MAX(psim_max_bcerr, (r - dist_to_center))
-                psim_n_bcerr = psim_n_bcerr + 1
+                IF (TRIM(particle_terminal) == "normal" .OR. TRIM(particle_terminal) == "verbose") THEN
+                    psim_max_bcerr = MAX(psim_max_bcerr, (r - dist_to_center))
+                    psim_n_bcerr = psim_n_bcerr + 1
+                END IF
 
                 IF ((r - dist_to_center) > aura) THEN
                     IF (TRIM(particle_terminal) == "normal") THEN

@@ -6,6 +6,7 @@ MODULE particle_mod
 
     USE fields_mod
 
+    USE particle_runtimestat_mod
     USE particle_timeintegration_mod
     USE particle_statistics_mod
     USE particle_snapshot_mod
