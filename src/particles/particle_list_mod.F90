@@ -47,7 +47,7 @@ CONTAINS    !===================================
 
         ! local variables
         INTEGER(intk) :: i, read_np, dummy
-        INTEGER(intk), ALLOCATABLE :: npart_arr(:), ipart_arr(:), igrid_arr(:)
+        INTEGER(intk), ALLOCATABLE :: ipart_arr(:), igrid_arr(:)
         REAL(realk), ALLOCATABLE :: x_arr(:), y_arr(:), z_arr(:)
 
         CALL start_timer(900)
@@ -290,7 +290,7 @@ CONTAINS    !===================================
 
         ! local variables
         INTEGER(intk), ALLOCATABLE :: init_npart_arr(:), npart_arr(:), itm_igrid_arr(:)!, particles_per_grid_counter(:)
-        INTEGER(intk) :: i, j, igrid, iproc, iobst, counter, grid_counter, part_counter, itm_npart, offset
+        INTEGER(intk) :: i, j, counter, igrid, iproc, iobst, grid_counter, part_counter, itm_npart, offset
         REAL(realk), ALLOCATABLE :: my_grid_volume_fractions(:), proc_volume_fractions(:)
         REAL(realk), ALLOCATABLE :: itm_x_arr(:), itm_y_arr(:), itm_z_arr(:)
         REAL(realk) :: minx, maxx, miny, maxy, minz, maxz, dist, volume, myvolume, grid_rn
@@ -384,9 +384,14 @@ CONTAINS    !===================================
         END DO
         ! until here, no particles have actually been initialized
 
+        ALLOCATE(npart_arr(0:numprocs-1))
+        npart_arr = 0
+
         ! generate and distribute particles among all grids this process owns proportianally to the volume fraction of each grid
+        counter = 1
         part_counter = 1
-        DO i = 1, init_npart_arr(myid)
+        ! the while loop ensures that at least 1 particle on any process is initialized here (assuming init_npart > 0)
+        DO WHILE(part_counter <= MIN(1, init_npart_arr(myid)) .OR. counter <= init_npart_arr(myid))
 
             valid_location = .TRUE.
 
@@ -434,18 +439,19 @@ CONTAINS    !===================================
                 part_counter = part_counter + 1
             END IF
 
+            counter = counter + 1
+
         END DO
 
         ! gather number of particles that have been initialized at a valid location on each process
-        ALLOCATE(npart_arr(0:numprocs-1))
-        npart_arr = 0
-
         CALL MPI_Gather(part_counter - 1, 1, mglet_mpi_int, &
          npart_arr, 1, mglet_mpi_int, 0, MPI_COMM_WORLD)
 
         ! compute the final number of particles that is to be initialized on each process respectively
         IF (myid == 0) THEN
             itm_npart = SUM(npart_arr)
+
+            IF (itm_npart < 1) CALL errr(__FILE__, __LINE__)
 
             DO iproc = 1, numprocs - 1
                 npart_arr(iproc) = INT(npart_arr(iproc) * init_npart / itm_npart, intk)

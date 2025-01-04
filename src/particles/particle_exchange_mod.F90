@@ -474,23 +474,26 @@ CONTAINS
             ! TODO: call error?
             !err_local = 1
         END IF
+
         ! --- step 9: Received particles have been copied into list. Done.
+        CALL MPI_Barrier(MPI_COMM_WORLD)! obsolete (?)
 
         ! TODO: make the following error gathering conditional for compilation as a debugging feature
-        ! CALL MPI_Barrier(MPI_COMM_WORLD)
-        ! CALL MPI_Allreduce(err_local, err_global, 1, mglet_mpi_int, MPI_MAX, MPI_COMM_WORLD)
-        ! IF (err_global == 0) THEN
-        !     CALL write_particle_list_txt(ittot)
-        !     CALL write_buffer(ittot, "Send")
-        !     CALL write_buffer(ittot, "Recv")
-        ! ELSE
-        !     CALL write_particle_list_txt(ittot, "err")
-        !     CALL write_buffer(ittot, "Send", "err")
-        !     CALL write_buffer(ittot, "Recv", "err")
-        ! END IF
-        ! IF (err_global == 1) THEN
-        !     CALL errr(__FILE__, __LINE__)
-        ! END IF
+        IF (TRIM(particle_terminal) == "verbose") THEN
+            CALL MPI_Allreduce(err_local, err_global, 1, mglet_mpi_int, MPI_MAX, MPI_COMM_WORLD)
+            IF (err_global == 0) THEN
+                CALL write_particle_list_txt(ittot)
+                CALL write_buffer(ittot, "Send")
+                CALL write_buffer(ittot, "Recv")
+            ELSE
+                CALL write_particle_list_txt(ittot, "err")
+                CALL write_buffer(ittot, "Send", "err")
+                CALL write_buffer(ittot, "Recv", "err")
+            END IF
+            IF (err_global == 1) THEN
+                CALL errr(__FILE__, __LINE__)
+            END IF
+        END IF
 
         DEALLOCATE(sendBufParticle)
         DEALLOCATE(recvBufParticle)
@@ -507,15 +510,13 @@ CONTAINS
 
         ! local variables
         INTEGER(intk) :: i, iface, igrid, dummy
-        INTEGER(intk) :: iface1, iface2, iface3
-        INTEGER(intk) :: itypbc1, itypbc2, itypbc3
-        INTEGER(intk) :: iprocnbr, itypbc, inbrgrid
+        INTEGER(intk) :: iprocnbr
 
         INTEGER(int32), ALLOCATABLE :: maxTag(:)
         INTEGER(int32), ALLOCATABLE :: sendcounts(:), sdispls(:)
         INTEGER(int32), ALLOCATABLE :: recvcounts(:), rdispls(:)
 
-        INTEGER(intk) :: neighbours(26), neighbour
+        INTEGER(intk) :: neighbour
         INTEGER :: iexchange
 
         CALL start_timer(900)
@@ -762,7 +763,6 @@ CONTAINS
         INTEGER(intk), INTENT(out) :: iface
 
         ! local variables
-        INTEGER(intk) :: neighbours(26)
         REAL(realk) :: minx, maxx, miny, maxy, minz, maxz, dist
 
         ! getting the box of last grid the particla
@@ -778,7 +778,7 @@ CONTAINS
         ! if the distance to the grid "dist" is 0, the particle is still on the grid
         ! however, get_exit_face might still return (iface > 0) if the particle is exactly on any grid boundary
         ! if so, set iface to 0
-        IF (dist == 0) THEN
+        IF (dist <= 0.0_realk) THEN
             iface = 0
         END IF
 

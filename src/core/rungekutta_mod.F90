@@ -359,9 +359,6 @@ CONTAINS
         ! Subroutine arguments
         CLASS(bt_rk_t), INTENT(out) :: rk
 
-        ! local variables
-        INTEGER(intk) :: i, j
-
         ! Set to zero
         rk%c = 0.0
         rk%a = 0.0
@@ -381,9 +378,6 @@ CONTAINS
 
         ! Subroutine arguments
         CLASS(bt_rk_t), INTENT(out) :: rk
-
-        ! local variables
-        INTEGER(intk) :: i, j
 
         ! Set to zero
         rk%c = 0.0

@@ -129,8 +129,8 @@ CONTAINS
             IF (SIZE(ipart_arr) == read_np) THEN
                 IF (ipart < dict_len) THEN
                     IF (TRIM(particle_terminal) == "normal" .OR. TRIM(particle_terminal) == "verbose") THEN
-                        WRITE(*,'("Warning on proc ", I0, ": Maximum Number of Particles has been registered on this Proccess.", &
-                         "Stopped reading ParticleDict.txt, so specified Particles might be unregistered." )') myid
+                        WRITE(*,'("Warning on proc ", I0, ": Maximum Number of Particles has been registered on this Proccess.")') myid
+                        WRITE(*, '("Stopped reading ParticleDict.txt, so specified Particles might be unregistered.")')
                         WRITE(*, '()')
                     END IF
                 END IF

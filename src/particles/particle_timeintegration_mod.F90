@@ -47,8 +47,8 @@ CONTAINS
 
         REAL(realk), ALLOCATABLE :: pdx_pot(:), pdy_pot(:), pdz_pot(:)
 
-        INTEGER(intk) :: igrid, i, j, ii, jj, kk, gfound, ig, temp_grid
-        REAL(realk) :: pu_adv, pv_adv, pw_adv, p_diffx, p_diffy, p_diffz
+        INTEGER(intk) :: igrid, i, ii, jj, kk, gfound, ig, temp_grid
+        REAL(realk) :: pu_adv, pv_adv, pw_adv, Dturb1, Dturb2, Dturb3
         REAL(realk) :: pdx_adv, pdy_adv, pdz_adv, pdx_diff, pdy_diff, pdz_diff
         REAL(realk) :: pdx_eff_tot, pdy_eff_tot, pdz_eff_tot, pdx_eff, pdy_eff, pdz_eff
 
@@ -163,6 +163,10 @@ CONTAINS
                 pdz_eff_tot = 0.0
             END IF
 
+            Dturb1 = 0.0
+            Dturb2 = 0.0
+            Dturb3 = 0.0
+
             DO irk = 1, prkscheme%nrk
 
                 CALL prkscheme%get_coeffs(A, B, irk)
@@ -207,9 +211,9 @@ CONTAINS
                     pdx_eff_tot = pdx_eff_tot + pdx_eff
                     pdy_eff_tot = pdy_eff_tot + pdy_eff
                     pdz_eff_tot = pdz_eff_tot + pdz_eff
-                    psim_max_adv_dx = MAX(psim_max_adv_dx, pdx_eff_tot)
-                    psim_max_adv_dy = MAX(psim_max_adv_dy, pdy_eff_tot)
-                    psim_max_adv_dz = MAX(psim_max_adv_dz, pdz_eff_tot)
+                    psim_max_adv_dx = MAX(psim_max_adv_dx, ABS(pdx_eff_tot))
+                    psim_max_adv_dy = MAX(psim_max_adv_dy, ABS(pdy_eff_tot))
+                    psim_max_adv_dz = MAX(psim_max_adv_dz, ABS(pdz_eff_tot))
                 END IF
 
             END DO
@@ -235,21 +239,17 @@ CONTAINS
                 IF (dturb_diff) THEN
                     IF (dinterp_pdiffsuion) THEN
                         CALL interpolate_lincon(my_particle_list%particles(i), kk, jj, ii, x, y, z, dx, dy, dz, ddx, ddy, ddz, &
-                        diffx, diffy, diffz, p_diffx, p_diffy, p_diffz)
+                        diffx, diffy, diffz, Dturb1, Dturb2, Dturb3)
                     ELSE
                         CALL get_nearest_value(my_particle_list%particles(i), kk, jj, ii, x, y, z, &
-                        diffx, diffy, diffz, p_diffx, p_diffy, p_diffz)
+                        diffx, diffy, diffz, Dturb1, Dturb2, Dturb3)
                     END IF
-                ELSE
-                    p_diffx = D(1)
-                    p_diffy = D(2)
-                    p_diffz = D(3)
                 END IF
 
                 CALL stop_timer(923)
 
                 CALL start_timer(924)
-                CALL generate_diffusive_displacement(dt, p_diffx, p_diffy, p_diffz, pdx_diff, pdy_diff, pdz_diff)
+                CALL generate_diffusive_displacement(dt, Dturb1 + D(1), Dturb2 + D(2), Dturb3 + D(3), pdx_diff, pdy_diff, pdz_diff)
                 CALL stop_timer(924)
 
                 CALL start_timer(925)
@@ -261,9 +261,9 @@ CONTAINS
                     pdx_eff_tot = pdx_eff_tot + pdx_eff
                     pdy_eff_tot = pdy_eff_tot + pdy_eff
                     pdz_eff_tot = pdz_eff_tot + pdz_eff
-                    psim_max_dif_dx = MAX(psim_max_dif_dx, pdx_eff)
-                    psim_max_dif_dy = MAX(psim_max_dif_dy, pdy_eff)
-                    psim_max_dif_dz = MAX(psim_max_dif_dx, pdz_eff)
+                    psim_max_dif_dx = MAX(psim_max_dif_dx, ABS(pdx_eff))
+                    psim_max_dif_dy = MAX(psim_max_dif_dy, ABS(pdy_eff))
+                    psim_max_dif_dz = MAX(psim_max_dif_dx, ABS(pdz_eff))
                 END IF
 
             END IF

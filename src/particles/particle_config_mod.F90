@@ -8,6 +8,7 @@ MODULE particle_config_mod
     USE err_mod
     USE precision_mod
     USE timer_mod
+    USE utils_mod
 
     IMPLICIT NONE
 
@@ -288,7 +289,7 @@ CONTAINS
 
         !- - - - - - - - - - - - - - - - - -
 
-        IF (D(1) == 0.0 .AND. D(2) == 0.0 .AND. D(3) == 0.0 .AND. .NOT. dturb_diff) THEN
+        IF (D(1) <= EPSILON(D(1)) .AND. D(2) <= EPSILON(D(2)) .AND. D(3) <= EPSILON(D(3)) .AND. .NOT. dturb_diff) THEN
             ddiffusion = .FALSE.
             dput_seed = .FALSE.
         END IF
@@ -439,7 +440,7 @@ CONTAINS
                 END DO
 
 
-                IF (SUM(slice_levels) /= 1.0) THEN
+                IF (.NOT. reals_are_equal(SUM(slice_levels), 1.0_realk)) THEN
 
                     IF (myid == 0) THEN
                         IF (TRIM(particle_terminal) == "normal" .OR. TRIM(particle_terminal) == "verbose") THEN

@@ -187,16 +187,19 @@ CONTAINS
         ! Initialize statistics
         CALL init_statistics()
 
+        ! Initialize Grid Partile Diffusion, Timeintegration and Statistics
+        IF (dsim_particles) THEN ! <------------------------------------particles
+            CALL init_particle_diffusion()
+            CALL init_particle_timeintegration()
+            CALL init_particle_statistics(mtstep)
+        END IF
+
         ! Initialize particle snapshots
         IF (dsim_particles .AND. dwrite_psnapshots) THEN
             CALL init_psnapshots(ittot, mtstep, dt) ! <------------------------------------particles
             CALL write_psnapshot(ittot, dt)
         END IF
 
-        ! Initialize Grid Partile Statistics
-        IF (dsim_particles) THEN ! <------------------------------------particles
-            CALL init_particle_statistics(mtstep)
-        END IF
 
     END SUBROUTINE init_timeloop
 
@@ -226,7 +229,7 @@ CONTAINS
     SUBROUTINE timeloop()
         ! Local variables
         LOGICAL :: stop_now, allow_checkpoint
-        INTEGER(intk) :: irk, pirk, exploded
+        INTEGER(intk) :: irk, exploded
         REAL(realk) :: cflmax
 
         IF (skip_timeloop) RETURN
@@ -290,7 +293,7 @@ CONTAINS
             END IF
 
             ! Print to terminal (itinfo frequency)
-            !
+
             ! Comes _before_ general plugin postprocessing, to have the
             ! terminal output _after_ the general itinfo information
             exploded = 0

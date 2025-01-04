@@ -193,7 +193,7 @@ CONTAINS
 
         IF (particle%state < 1) THEN
             IF (TRIM(particle_terminal) == "normal" .OR. TRIM(particle_terminal) == "verbose") THEN
-                WRITE(*, *) "WARNING: In get_p_ijkcell: Tried to locate particle that is not active!"
+                WRITE(*, *) "WARNING: In set_particle_cell: Tried to locate particle that is not active!"
                 WRITE(*, '()')
             END IF
             RETURN
@@ -206,7 +206,7 @@ CONTAINS
          particle%y + EPSILON(particle%y) < miny .OR. particle%y - EPSILON(particle%y) > maxy .OR. &
          particle%z + EPSILON(particle%z) < minz .OR. particle%z - EPSILON(particle%z) > maxz) THEN
             IF (TRIM(particle_terminal) == "normal" .OR. TRIM(particle_terminal) == "verbose") THEN
-                WRITE(*, '("WARNING: Coordinates of particle ", I0 ," do not lie within boundaries of particle grid ", I0)') &
+                WRITE(*, '("WARNING: In set_particle_cell: Coordinates of particle ", I0 ," do not lie within boundaries of particle grid ", I0)') &
                  particle%ipart, particle%igrid
                 WRITE(*, '()')
             END IF
@@ -380,57 +380,63 @@ CONTAINS
         CALL get_mgdims(kk, jj, ii, particle%igrid)
         CALL get_bbox(minx, maxx, miny, maxy, minz, maxz, particle%igrid)
 
+        IF (particle%ijkcell(1) < 1 .OR. particle%ijkcell(1) > ii) CALL errr(__FILE__, __LINE__)
+        IF (particle%ijkcell(2) < 1 .OR. particle%ijkcell(2) > jj) CALL errr(__FILE__, __LINE__)
+        IF (particle%ijkcell(3) < 1 .OR. particle%ijkcell(3) > kk) CALL errr(__FILE__, __LINE__)
+
         ! the following assumes that the grid coordinates X/Y/Z are each sorted such that for any i < j and any direction x, x(i) < x(j) !
         ! the following procedure is capable of handling stretched grids!
 
         ! find nearest x:
         istep = INT(SIGN(1.0_realk, particle%x - x(particle%ijkcell(1))), intk)
 
-        i = particle%ijkcell(1) + istep
+        i = MIN(MAX(particle%ijkcell(1) + istep, 1_intk), ii)
 
         diff_old = ABS(x(particle%ijkcell(1)) - particle%x)
         diff_new = ABS(x(i) - particle%x)
 
         DO WHILE (diff_new < diff_old)
             i = i + istep
+            IF (i < 1_intk .OR. i > ii) EXIT
             diff_old = diff_new
             diff_new = ABS(x(i) - particle%x)
         END DO
 
-        particle%ijkcell(1) = MIN(MAX(i - istep, 1), ii)
+        particle%ijkcell(1) = MIN(MAX(i - istep, 1_intk), ii) ! MIN/MAX should be obsolete here
 
         ! find nearest y:
         jstep = INT(SIGN(1.0_realk, particle%y - y(particle%ijkcell(2))), intk)
 
-        j = particle%ijkcell(2) + jstep
+        j = MIN(MAX(particle%ijkcell(2) + jstep, 1_intk), jj)
 
         diff_old = ABS(y(particle%ijkcell(2)) - particle%y)
         diff_new = ABS(y(j) - particle%y)
 
         DO WHILE (diff_new < diff_old)
             j = j + jstep
+            IF (j < 1_intk .OR. j > jj) EXIT
             diff_old = diff_new
             diff_new = ABS(y(j) - particle%y)
         END DO
 
-        particle%ijkcell(2) = MIN(MAX(j - jstep, 1), jj)
+        particle%ijkcell(2) = MIN(MAX(j - jstep, 1_intk), jj) ! MIN/MAX should be obsolete here
 
         ! find nearest z:
         kstep = INT(SIGN(1.0_realk, particle%z - z(particle%ijkcell(3))), intk)
 
-        k = particle%ijkcell(3) + kstep
+        k = MIN(MAX(particle%ijkcell(3) + kstep, 1_intk), kk)
 
         diff_old = ABS(z(particle%ijkcell(3)) - particle%z)
         diff_new = ABS(z(k) - particle%z)
 
         DO WHILE (diff_new < diff_old)
             k = k + kstep
+            IF (k < 1_intk .OR. k > kk) EXIT
             diff_old = diff_new
             diff_new = ABS(z(k) - particle%z)
         END DO
 
-        particle%ijkcell(3) = MIN(MAX(k - kstep, 1), kk)
-
+        particle%ijkcell(3) = MIN(MAX(k - kstep, 1_intk), kk) ! MIN/MAX should be obsolete here
     END SUBROUTINE update_particle_cell
 
     !-----------------------------------

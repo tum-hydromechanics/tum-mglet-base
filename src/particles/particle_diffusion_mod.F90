@@ -1,7 +1,9 @@
 MODULE particle_diffusion_mod
 
+    USE MPI_f08
     USE precision_mod
     USE charfunc_mod
+    USE comms_mod
     USE fort7_mod
     USE grids_mod
     USE field_mod
@@ -16,13 +18,13 @@ MODULE particle_diffusion_mod
 
     ! REFERENCE VALUES FOR THE STANDART NORMAL DISTRIBUTIONS:
     ! realization values
-    REAL(intk) :: sn_x(22) = [-3.0, -2.8, -2.6, -2.4, -2.2, -2.0, -1.8, -1.6, -1.4, -1.2, -1.0, &
+    REAL(realk) :: sn_x(22) = [-3.0, -2.8, -2.6, -2.4, -2.2, -2.0, -1.8, -1.6, -1.4, -1.2, -1.0, &
        1.0,  1.2,  1.4,  1.6,  1.8,  2.0,  2.2,  2.4,  2.6,  2.8,  3.0]
     ! corresponding cumulative probabilities
-    REAL(intk) :: sn_pc(22) = [0.00135, 0.00256, 0.00466, 0.00820, 0.01390, 0.02275, 0.03593, 0.05480, 0.08076, 0.11507, 0.15866, &
+    REAL(realk) :: sn_pc(22) = [0.00135, 0.00256, 0.00466, 0.00820, 0.01390, 0.02275, 0.03593, 0.05480, 0.08076, 0.11507, 0.15866, &
       0.84134, 0.88493, 0.91924, 0.94520, 0.96407, 0.97725, 0.98610, 0.99180, 0.99534, 0.99744, 0.99865]
     ! corresponding probabilites
-    REAL(intk) :: sn_p(22)
+    REAL(realk) :: sn_p(22)
 
     ! truncation limit stored in config mod
     REAL(realk) :: truncation_factor
@@ -39,7 +41,7 @@ CONTAINS
         CALL start_timer(910)
 
         DO i = 1, SIZE(sn_p)
-            sn_p(i) = 1 / SQRT(2 * pi) * EXP(- (sn_x(i)** 2) / 2)
+            sn_p(i) = 1.0_realk / SQRT(2.0_realk * pi) * EXP(- (sn_x(i)**2) / 2.0_realk)
         END DO
 
         ! given a truncation narrower than APPROXIMATELY [-truncation_limit = -1.75, truncation_limit = 1.75]
@@ -70,15 +72,15 @@ CONTAINS
         ! if they cannot be read, then generate_turbulent_diffusion will try to generate the diffsuion fields
         ! if diffsuion fields cannot be read nor generated, the simulation is terminated
         CALL set_field("P_DIFF_X", istag = 1, units = units_diff, &
-         dread = dcont, required = dcont, dwrite = .TRUE., buffers = .TRUE.)
+         dread = .FALSE., required = .FALSE., dwrite = .TRUE., buffers = .TRUE.)
         CALL set_field("P_DIFF_Y", jstag = 1, units = units_diff, &
-         dread = dcont, required = dcont, dwrite = .TRUE., buffers = .TRUE.)
+         dread = .FALSE., required = .FALSE., dwrite = .TRUE., buffers = .TRUE.)
         CALL set_field("P_DIFF_Z", kstag = 1, units = units_diff, &
-         dread = dcont, required = dcont, dwrite = .TRUE., buffers = .TRUE.)
+         dread = .FALSE., required = .FALSE., dwrite = .TRUE., buffers = .TRUE.)
 
-        IF (.NOT. dcont) THEN
+        !IF (.NOT. dcont) THEN
             CALL generate_diffusion_field
-        END IF
+        !END IF
 
         CALL stop_timer(910)
         CALL stop_timer(900)
@@ -89,6 +91,9 @@ CONTAINS
 
         ! local_variables
         INTEGER(intk) :: igrid, ii, jj, kk, g, i, j, k, ilevel
+        INTEGER(intk) :: mean_counter, pos_counter, neg_counter, und_counter
+        REAL(realk) :: delta_t1, turb_flux
+        REAL(realk) :: max_Dx, max_Dy, max_Dz, mean_Dx, mean_Dy, mean_Dz, dummy
 
         TYPE(field_t), POINTER :: dx_f, dy_f, dz_f
         REAL(realk), POINTER, CONTIGUOUS, DIMENSION(:) :: dx, dy, dz
@@ -100,6 +105,19 @@ CONTAINS
         REAL(realk), POINTER, CONTIGUOUS, DIMENSION(:, :, :) :: ut1_avg, vt1_avg, wt1_avg
         TYPE(field_t), POINTER :: diffx_f, diffy_f, diffz_f
         REAL(realk), POINTER, CONTIGUOUS, DIMENSION(:, :, :) :: diffx, diffy, diffz
+
+        max_Dx = 0.0
+        max_Dy = 0.0
+        max_Dz = 0.0
+
+        mean_Dx = 0.0
+        mean_Dy = 0.0
+        mean_Dz = 0.0
+
+        mean_counter = 0
+        pos_counter = 0
+        neg_counter = 0
+        und_counter = 0
 
         ! if one of the following fields does not exist, get_field will call an error and terminate the process
         CALL get_field(dx_f, "DX")
@@ -147,35 +165,121 @@ CONTAINS
             DO i = 3, ii - 2
                 DO j = 3, jj - 2
                     DO k = 3, kk - 2
-                        diffx(k, j, i) = (ut1_avg(k, j, i) - u_avg(k, j, i) * 0.5 * (t1_avg(k, j, i + 1) + t1_avg(k, j, i))) &
-                         * dx(i) / (t1_avg(k, j, i + 1) - t1_avg(k, j, i)) + D(1)
+                        delta_t1 = (t1_avg(k, j, i + 1) - t1_avg(k, j, i))
+                        turb_flux = (ut1_avg(k, j, i) - u_avg(k, j, i) * 0.5 * (t1_avg(k, j, i + 1) + t1_avg(k, j, i)))
+                        IF (ABS(turb_flux) < SQRT(EPSILON(turb_flux))) THEN
+                            diffx(k, j, i) = 0.0
+                            und_counter = und_counter + 1
+                        ELSEIF (ABS(delta_t1) < SQRT(EPSILON(delta_t1))) THEN
+                            ! assuming this case only occurs inside obstacles/ outside boundaries
+                            diffx(k, j, i) = 0.0
+                            und_counter = und_counter + 1
+                        ELSE
+                            diffx(k, j, i) = -turb_flux * dx(i) / delta_t1
+                            IF (diffx(k, j, i) > 0.0) THEN
+                                max_Dx = MAX(max_Dx, diffx(k, j, i))
+                                mean_Dx = mean_Dx + diffx(k, j, i)
+                                mean_counter = mean_counter + 1
+                                pos_counter = pos_counter + 1
+                            ELSE
+                                diffx(k, j, i) = 0.0
+                                neg_counter = neg_counter + 1
+                            END IF
+                        END IF
                     END DO
                 END DO
             END DO
+
+            mean_Dx = mean_Dx / mean_counter
+            mean_counter = 0
 
             DO i = 3, ii - 2
                 DO j = 3, jj - 2
                     DO k = 3, kk - 2
-                        diffy(k, j, i) = (vt1_avg(k, j, i) - v_avg(k, j, i) * 0.5 * (t1_avg(k, j + 1, i) + t1_avg(k, j, i))) &
-                         * dy(j) / (t1_avg(k, j + 1, i) - t1_avg(k, j, i)) + D(2)
+                        delta_t1 = (t1_avg(k, j + 1, i) - t1_avg(k, j, i))
+                        turb_flux = (vt1_avg(k, j, i) - v_avg(k, j, i) * 0.5 * (t1_avg(k, j + 1, i) + t1_avg(k, j, i)))
+                        IF (ABS(turb_flux) < SQRT(EPSILON(turb_flux))) THEN
+                            diffy(k, j, i) = 0.0
+                            und_counter = und_counter + 1
+                        ELSEIF (ABS(delta_t1) < SQRT(EPSILON(delta_t1))) THEN
+                            ! assuming this case only occurs inside obstacles/ outside boundaries
+                            diffy(k, j, i) = 0.0
+                            und_counter = und_counter + 1
+                        ELSE
+                            diffy(k, j, i) = -turb_flux * dy(j) / delta_t1
+                            IF (diffy(k, j, i) > 0.0) THEN
+                                max_Dy = MAX(max_Dy, diffy(k, j, i))
+                                mean_Dy = mean_Dy + diffy(k, j, i)
+                                mean_counter = mean_counter + 1
+                                pos_counter = pos_counter + 1
+                            ELSE
+                                diffy(k, j, i) = 0.0
+                                neg_counter = neg_counter + 1
+                            END IF
+                        END IF
                     END DO
                 END DO
             END DO
+
+            mean_Dy = mean_Dy / mean_counter
+            mean_counter = 0
 
             DO i = 3, ii - 2
                 DO j = 3, jj - 2
                     DO k = 3, kk - 2
-                        diffz(k, j, i) = (wt1_avg(k, j, i) - w_avg(k, j, i) * 0.5 * (t1_avg(k + 1, j, i) + t1_avg(k, j, i))) &
-                         * dz(k) / (t1_avg(k + 1, j, i) - t1_avg(k, j, i)) + D(3)
+                        delta_t1 = (t1_avg(k + 1, j, i) - t1_avg(k, j, i))
+                        turb_flux = (wt1_avg(k, j, i) - w_avg(k, j, i) * 0.5 * (t1_avg(k + 1, j, i) + t1_avg(k, j, i)))
+                        IF (ABS(turb_flux) < SQRT(EPSILON(turb_flux))) THEN
+                            diffz(k, j, i) = 0.0
+                            und_counter = und_counter + 1
+                        ELSEIF (ABS(delta_t1) < SQRT(EPSILON(delta_t1))) THEN
+                            ! assuming this case only occurs inside obstacles/ outside boundaries
+                            diffz(k, j, i) = 0.0
+                            und_counter = und_counter + 1
+                        ELSE
+                            diffz(k, j, i) = -turb_flux * dz(k) / delta_t1
+                            IF (diffz(k, j, i) > 0.0) THEN
+                                max_Dz = MAX(max_Dz, diffz(k, j, i))
+                                mean_Dz = mean_Dz + diffz(k, j, i)
+                                mean_counter = mean_counter + 1
+                                pos_counter = pos_counter + 1
+                            ELSE
+                                diffz(k, j, i) = 0.0
+                                neg_counter = neg_counter + 1
+                            END IF
+                        END IF
                     END DO
                 END DO
-            END DO
-
-            ! TODO: check this approach for buffers; esp. levels ...
-            DO ilevel = minlevel, maxlevel
-                CALL connect(ilevel, 1, v1 = diffx_f, v2 = diffy_f, v3 = diffz_f, corners = .TRUE.)
             END DO
         END DO
+
+        mean_Dz = mean_Dz / mean_counter
+
+        ! connect
+        ! TODO: check this approach for buffers; esp. levels ...
+        DO ilevel = minlevel, maxlevel
+            CALL connect(ilevel, 1, v1 = diffx_f, v2 = diffy_f, v3 = diffz_f, corners = .TRUE.)
+        END DO
+
+        IF (TRIM(particle_terminal) == "normal" .OR. TRIM(particle_terminal) == "verbose") THEN
+            IF (myid /= 0) THEN
+                CALL MPI_Recv(dummy, 1, mglet_mpi_int, myid - 1, 900, &
+                 MPI_COMM_WORLD, MPI_STATUS_IGNORE)
+            END IF
+            WRITE(*, '("Maximum and Mean Turbulent Diffusion (x/y/z) on Process ", I3)') myid
+            WRITE(*, *) "Max (D_turb_x): ", max_Dx, "Mean (D_turb_x): ", mean_Dx
+            WRITE(*, *) "Max (D_turb_y): ", max_Dy, "Mean (D_turb_y): ", mean_Dy
+            WRITE(*, *) "Max (D_turb_z): ", max_Dz, "Mean (D_turb_z): ", mean_Dz
+            WRITE(*, *) "Negative values: ", neg_counter, "Undefined values", und_counter, "Positive values: ", pos_counter
+            WRITE(*, '()')
+            IF (myid /= numprocs - 1) THEN
+                CALL MPI_Send(dummy, 1, mglet_mpi_int, myid + 1, 900, &
+                 MPI_COMM_WORLD)
+            END IF
+        END IF
+
+        ! for coordinated terminal output
+        CALL MPI_Barrier(MPI_COMM_WORLD)
 
     END SUBROUTINE generate_diffusion_field
 
@@ -199,8 +303,7 @@ CONTAINS
             REAL(realk), POINTER, CONTIGUOUS, DIMENSION(:, :, :) :: diffx, diffy, diffz
 
             ! local variables
-            REAL(realk) :: p_diffx, p_diffy, p_diffz, ranx, rany, ranz
-            LOGICAL :: dusefield, dinterp
+            REAL(realk) :: p_diffx, p_diffy, p_diffz
 
             IF (.NOT. ddiffusion) THEN
                 RETURN
@@ -274,7 +377,7 @@ CONTAINS
         ! local variables
         REAL(realk) :: sigx, sigy, sigz, ranx, rany, ranz
 
-        IF (D_x > 0) THEN
+        IF (D_x > 0.0_realk) THEN
             sigx = SQRT(2 * D_x * dt)
 
             SELECT CASE (lower(TRIM(random_walk_mode)))
@@ -290,7 +393,7 @@ CONTAINS
 
         END IF
 
-        IF (D_y > 0) THEN
+        IF (D_y > 0.0_realk) THEN
 
             sigy = SQRT(2 * D_y * dt)
 
@@ -307,7 +410,7 @@ CONTAINS
 
         END IF
 
-        IF (D_z > 0) THEN
+        IF (D_z > 0.0_realk) THEN
 
             sigz = SQRT(2 * D_z * dt)
 
@@ -355,7 +458,7 @@ CONTAINS
     ! TODO: implement polar method for gaussian distribution (https://de.wikipedia.org/wiki/Polar-Methode)
 
     ! from: Simulation of truncated normal variables, Christian Robert, Statistics and Computing (1995) 5, 121-125
-    ! TODO: fully understand paper and potentially optimize this
+    ! TODO: potentially optimize this
     SUBROUTINE gaussian_dist2(mu, sigma, R)
 
         ! subroutine arguments
@@ -367,12 +470,11 @@ CONTAINS
         LOGICAL :: found
 
         found = .FALSE.
-        !CALL RANDOM_SEED()
 
         DO WHILE (.NOT. found)
 
             CALL RANDOM_NUMBER(rand1)
-            rand1 = truncation_limit / truncation_factor * (rand1 - 0.5) * 2
+            rand1 = truncation_limit / truncation_factor * (rand1 - 0.5) * 2.0
 
             P = EXP(-(rand1 ** 2) / 2)
 
@@ -408,7 +510,7 @@ CONTAINS
         ! IMPLICIT
         found_tcf = .FALSE.
         abort = .FALSE.
-        eps = 10**(-3)
+        eps = 10.0_realk**(-3)
 
         ! initialization value
         tcf = 1.0
@@ -420,18 +522,22 @@ CONTAINS
             alpha = - sym_limit / tcf
             beta = sym_limit / tcf
 
-            DO i = 1, SIZE(sn_x)
+            IF (alpha < sn_x(1) .OR. alpha > sn_x(SIZE(sn_x)) .OR. beta < sn_x(1) .OR. beta > sn_x(SIZE(sn_x))) THEN
+                CALL errr(__FILE__, __LINE__)
+            END IF
+
+            DO i = 2, SIZE(sn_x)
                 IF (alpha <= sn_x(i)) THEN
-                    prob_alpha = sn_p(i -1) + (sn_p(i) - sn_p(i-1)) * (alpha - sn_x(i-1)) / (sn_x(i) - sn_x(i-1))
-                    cprob_alpha = sn_pc(i -1) + (sn_pc(i) - sn_pc(i-1)) * (alpha - sn_x(i-1)) / (sn_x(i) - sn_x(i-1))
+                    prob_alpha = sn_p(i-1) + (sn_p(i) - sn_p(i-1)) * (alpha - sn_x(i-1)) / (sn_x(i) - sn_x(i-1))
+                    cprob_alpha = sn_pc(i-1) + (sn_pc(i) - sn_pc(i-1)) * (alpha - sn_x(i-1)) / (sn_x(i) - sn_x(i-1))
                     EXIT
                 END IF
             END DO
 
-            DO i = 1, SIZE(sn_x)
+            DO i = 2, SIZE(sn_x)
                 IF (beta <= sn_x(i)) THEN
-                    prob_beta = sn_p(i -1) + (sn_p(i) - sn_p(i-1)) * (beta - sn_x(i-1)) / (sn_x(i) - sn_x(i-1))
-                    cprob_beta = sn_pc(i -1) + (sn_pc(i) - sn_pc(i-1)) * (beta - sn_x(i-1)) / (sn_x(i) - sn_x(i-1))
+                    prob_beta = sn_p(i-1) + (sn_p(i) - sn_p(i-1)) * (beta - sn_x(i-1)) / (sn_x(i) - sn_x(i-1))
+                    cprob_beta = sn_pc(i-1) + (sn_pc(i) - sn_pc(i-1)) * (beta - sn_x(i-1)) / (sn_x(i) - sn_x(i-1))
                     EXIT
                 END IF
             END DO
@@ -464,7 +570,11 @@ CONTAINS
         !alpha = - sym_limit
         !beta = sym_limit
 
-        !DO i = 1, SIZE(sn_x)
+        !IF (alpha < sn_x(1) .OR. alpha > sn_x(SIZE(sn_x)) .OR. beta < sn_x(1) .OR. beta > sn_x(SIZE(sn_x))) THEN
+        !    CALL errr(__FILE__, __LINE__)
+        !END IF
+
+        !DO i = 2, SIZE(sn_x)
         !    IF (alpha <= sn_x(i)) THEN
         !        prob_alpha = sn_p(i-1) + (sn_p(i) - sn_p(i-1)) * (alpha - sn_x(i-1)) / (sn_x(i) - sn_x(i-1))
         !        cprob_alpha = sn_pc(i-1) + (sn_pc(i) - sn_pc(i-1)) * (alpha - sn_x(i-1)) / (sn_x(i) - sn_x(i-1))
@@ -472,7 +582,7 @@ CONTAINS
         !    END IF
         !END DO
 
-        !DO i = 1, SIZE(sn_x)
+        !DO i = 2, SIZE(sn_x)
         !    IF (beta <= sn_x(i)) THEN
         !        prob_beta = sn_p(i-1) + (sn_p(i) - sn_p(i-1)) * (beta - sn_x(i-1)) / (sn_x(i) - sn_x(i-1))
         !        cprob_beta = sn_pc(i-1) + (sn_pc(i) - sn_pc(i-1)) * (beta - sn_x(i-1)) / (sn_x(i) - sn_x(i-1))

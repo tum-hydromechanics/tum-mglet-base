@@ -66,18 +66,15 @@ CONTAINS    !===================================
         TYPE(obstacle_t), ALLOCATABLE :: obstacles_src(:), obstacles_itm(:) ! temporary obtscle lists
         !(src -> input/regular/source obstacles (read), itm -> intermediate/filling obstacles (generated))
 
-        INTEGER(intk) :: unit, dict_len, iobst, igrid, h, i, j, k, counter, dummy
+        INTEGER(intk) :: unit, dict_len, igrid, h, i, j, counter, dummy
         INTEGER(intk) :: neighbours(26)
         INTEGER(intk), ALLOCATABLE :: proc_neigbhours(:) ! array to store all grids ONCE that are neighbours to any grid of this proc
         INTEGER(intk), ALLOCATABLE :: counter_array(:) ! number of obstacles that is relevant on this process per grid
 
-        LOGICAL :: dcycle, dexit
         LOGICAL, ALLOCATABLE :: grid_processed(:) ! array to indicate if a grid has been considered for a certain obstacle already
         LOGICAL, ALLOCATABLE :: is_relevant_src(:), is_relevant_itm(:) ! indicates if an obstacle is relevant on this process
 
         REAL(realk) :: dist
-        REAL(realk) :: minx, maxx, miny, maxy, minz, maxz
-
         CHARACTER(12) :: dummy_char
 
         IF (.NOT. dread_obstacles) THEN
@@ -384,6 +381,9 @@ CONTAINS    !===================================
             END IF
         END IF
 
+        ! obsolete ?
+        CALL MPI_Barrier(MPI_COMM_WORLD)
+
         ! the following vtk output is optional and can be removed
         CALL write_obstacles()
         CALL write_grids(mygrids, nmygrids, "   ")
@@ -428,9 +428,8 @@ CONTAINS    !===================================
     SUBROUTINE write_obstacles()
 
         ! local variables
-        INTEGER(intk) :: h, i, j, k, unit, igrid
-        REAL(realk) :: minx, maxx, miny, maxy, minz, maxz
-        CHARACTER(len = mglet_filename_max) :: filename, my_nobst_char, igrid_char
+        INTEGER(intk) :: i, unit
+        CHARACTER(len = mglet_filename_max) :: filename, my_nobst_char
 
         IF (myid == 0) THEN
             CALL create_directory("Particle_Obstacles") ! ! ! realtive to working directory ! ! !
@@ -498,9 +497,9 @@ CONTAINS    !===================================
         CHARACTER(len = 3), INTENT(in) :: prefix
 
         ! local variables
-        INTEGER(intk) :: h, i, j, k, unit, igrid
+        INTEGER(intk) :: i, unit, igrid
         REAL(realk) :: minx, maxx, miny, maxy, minz, maxz
-        CHARACTER(len = mglet_filename_max) :: filename, my_nobst_char, igrid_char
+        CHARACTER(len = mglet_filename_max) :: filename, igrid_char
 
         ! also write all grids into VTK (one proc per file)
         WRITE(filename, '("Particle_Obstacles/", A, "grids_proc", I0, ".vtp")') TRIM(prefix), myid

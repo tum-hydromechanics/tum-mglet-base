@@ -5,6 +5,7 @@ MODULE particle_runtimestat_mod
     USE err_mod
     USE precision_mod
     USE timer_mod
+    USE utils_mod
 
     USE particle_config_mod
 
@@ -72,7 +73,6 @@ CONTAINS
         INTEGER(intk) :: integer_temp
         REAL(realk) :: real_temp
 
-
         ! Particle Timeintegration
         CALL MPI_Reduce(psim_max_adv_dx, real_temp, 1, mglet_mpi_real, &
          MPI_MAX, 0, MPI_COMM_WORLD)
@@ -101,7 +101,7 @@ CONTAINS
         CALL MPI_Allreduce(psim_max_disp, real_temp, 1, mglet_mpi_real, &
          MPI_MAX, MPI_COMM_WORLD)
 
-        IF (psim_max_disp == real_temp) THEN
+        IF (reals_are_equal(psim_max_disp, real_temp, EPSILON(psim_max_disp))) THEN
             iSend = myid
         END IF
 
@@ -118,30 +118,6 @@ CONTAINS
 
         CALL MPI_Bcast(psim_max_dz, 1, mglet_mpi_real, &
          source_proc, MPI_COMM_WORLD)
-
-        !IF (myid == 0) THEN
-!
-        !    CALL MPI_Recv(psim_max_dx, 1, mglet_mpi_real, &
-        !     source_proc, 123, MPI_COMM_WORLD, MPI_STATUS_IGNORE)
-!
-        !    CALL MPI_Recv(psim_max_dy, 1, mglet_mpi_real, &
-        !     source_proc, 123, MPI_COMM_WORLD, MPI_STATUS_IGNORE)
-!
-        !    CALL MPI_Recv(psim_max_dy, 1, mglet_mpi_real, &
-        !     source_proc, 123, MPI_COMM_WORLD, MPI_STATUS_IGNORE)
-!
-        !ELSEIF (myid = source_proc) THEN
-!
-        !    CALL MPI_Send(psim_max_dx, 1, mglet_mpi_real, &
-        !     0, 123, MPI_COMM_WORLD)
-!
-        !    CALL MPI_Send(psim_max_dy, 1, mglet_mpi_real, &
-        !     0, 123, MPI_COMM_WORLD)
-!
-        !    CALL MPI_Send(psim_max_dy, 1, mglet_mpi_real, &
-        !     0, 123, MPI_COMM_WORLD)
-!
-        !END IF
 
         ! Particle Boundaries/ Particle Motion
         CALL MPI_Reduce(psim_n_replaced_tot, integer_temp, 1, mglet_mpi_int, &

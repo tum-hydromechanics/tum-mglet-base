@@ -90,11 +90,10 @@ CONTAINS
             ! read or generate particles and init particle list
             CALL init_particle_list()
 
-            ! generate diffusion field from turbulent
-            CALL init_particle_diffusion()
-
+            ! generate diffusion field
+            !CALL init_particle_diffusion() EDIT: MUST BE DONE IN INIT TIMELOOP AFTER INIT_STATISTICS
             ! init backup fields for particle timeintegration
-            CALL init_particle_timeintegration()
+            !CALL init_particle_timeintegration() EDIT: MUST BE DONE IN INIT TIMELOOP AFTER INIT_STATISTICS
 
             ! determine particle exchange connections and init particle exchange
             CALL init_particle_exchange()
@@ -102,7 +101,7 @@ CONTAINS
             ! set particle concentration field
             CALL init_particle_field()
 
-            ! SNAPSHOT AND STATISTICS INITIALIZATION IN TIMELOOP
+            !  DIFFUSION, TIMEINTEGRATION, STATISTICS AND SNAPSHOT INITIALIZATION IN TIMELOOP
 
         ELSE
 

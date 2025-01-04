@@ -445,7 +445,7 @@ CONTAINS
         INTEGER(intk), INTENT(in) :: itstep
 
         ! local variables
-        INTEGER(intk) :: igrid, i, rt_tstep
+        INTEGER(intk) :: rt_tstep
         REAL(realk) :: p_coord
 
         IF (slice_dir == "N") THEN

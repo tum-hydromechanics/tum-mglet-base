@@ -15,7 +15,7 @@ MODULE utils_mod
     END INTERFACE
 
     PUBLIC :: unique, ind2sub, sub2ind, create_directory, &
-        most_frequent_nonzero, read_datfile, get_stag_shift, get_idx
+        most_frequent_nonzero, read_datfile, get_stag_shift, get_idx, reals_are_equal
 
 CONTAINS
     SUBROUTINE unique(result, input)
@@ -330,4 +330,34 @@ CONTAINS
             ERROR STOP
         END IF
     END SUBROUTINE get_idx
+
+    LOGICAL FUNCTION reals_are_equal(a, b, abs_tolerance, rel_tolerance) result(res)
+
+        ! subroutine arguments
+        REAL(realk), INTENT(in) :: a, b
+        REAL(realk), OPTIONAL, INTENT(in) :: abs_tolerance, rel_tolerance
+
+        ! local
+        REAL(realk) :: tolerance
+
+        res = .TRUE.
+
+        IF (PRESENT(abs_tolerance)) THEN
+            tolerance = abs_tolerance
+            IF (a < (b - tolerance) .OR. a > (b + tolerance)) THEN
+                res = .FALSE.
+            END IF
+        ELSEIF (PRESENT(rel_tolerance)) THEN
+            tolerance = MAX(rel_tolerance * MIN(ABS(a), ABS(b)), EPSILON(a))
+            IF (a < (b - tolerance) .OR. a > (b + tolerance)) THEN
+                res = .FALSE.
+            END IF
+        ELSE
+            IF (a < b .OR. a > b) THEN
+                res = .FALSE.
+            END IF
+        END IF
+
+    END FUNCTION reals_are_equal
+
 END MODULE utils_mod
