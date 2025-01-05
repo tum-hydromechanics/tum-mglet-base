@@ -220,6 +220,11 @@ CONTAINS
             END IF
         END DO
 
+        IF (numprocs == 1) THEN
+            CALL stop_timer(940)
+            CALL stop_timer(900)
+            RETURN
+        END IF
         ! --- step 1: The marking is done (grid and proc indicate destination). Done.
         ! --- step 2: The counting is done. Done.
 
@@ -246,7 +251,8 @@ CONTAINS
         ! --- step 3: The communication has been launched (not finished!). Open.
 
         ! displacements for start of section for one destination
-        ndispsend = -1; ndispsend(1) = 1
+        ndispsend = -1
+        IF (SIZE(ndispsend) > 0) ndispsend(1) = 1
         DO i = 2, iSend
             IF ( npsend(i-1) < 0 ) THEN
                 WRITE(*,*) 'Negative npsend value'
@@ -339,7 +345,8 @@ CONTAINS
         ! --- step 5: Finishing the communication of particle numbers. Done.
 
         ! displacements for start of section for one source
-        ndisprecv = -1; ndisprecv(1) = 1
+        ndisprecv = -1;
+        IF (SIZE(ndisprecv) > 0) ndisprecv(1) = 1
         DO i = 2, iRecv
             IF ( nprecv(i-1) < 0 ) THEN
                 WRITE(*,*) 'Invalid number of received particles'
@@ -356,9 +363,7 @@ CONTAINS
 
         ! Check if list is long enough and add additional space if not
         IF ( particle_list%max_np - particle_list%active_np < sizeRecvBuf) THEN
-
             CALL reallocate_particle_list(particle_list, INT(1.0 * (sizeRecvBuf - (particle_list%max_np - particle_list%active_np))))
-
         END IF
 
         ! --- step 6: Allocating the recieve buffer and displacements. Done.
@@ -695,17 +700,17 @@ CONTAINS
         CALL start_timer(910)
         isInit = .FALSE.
 
-        DEALLOCATE(sendConns)
-        DEALLOCATE(recvConns)
-        DEALLOCATE(recvIdxList)
-        DEALLOCATE(sendList)
-        DEALLOCATE(recvList)
-        DEALLOCATE(sendReqs)
-        DEALLOCATE(recvReqs)
-        DEALLOCATE(npsend)
-        DEALLOCATE(ndispsend)
-        DEALLOCATE(nprecv)
-        DEALLOCATE(ndisprecv)
+        IF (ALLOCATED(sendConns)) DEALLOCATE(sendConns)
+        IF (ALLOCATED(recvConns)) DEALLOCATE(recvConns)
+        IF (ALLOCATED(recvIdxList)) DEALLOCATE(recvIdxList)
+        IF (ALLOCATED(sendList)) DEALLOCATE(sendList)
+        IF (ALLOCATED(recvList)) DEALLOCATE(recvList)
+        IF (ALLOCATED(sendReqs)) DEALLOCATE(sendReqs)
+        IF (ALLOCATED(recvReqs)) DEALLOCATE(recvReqs)
+        IF (ALLOCATED(npsend)) DEALLOCATE(npsend)
+        IF (ALLOCATED(ndispsend)) DEALLOCATE(ndispsend)
+        IF (ALLOCATED(nprecv)) DEALLOCATE(nprecv)
+        IF (ALLOCATED(ndisprecv)) DEALLOCATE(ndisprecv)
 
         CALL stop_timer(910)
         CALL stop_timer(900)

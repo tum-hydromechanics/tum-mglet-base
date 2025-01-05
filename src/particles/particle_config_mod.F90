@@ -568,15 +568,9 @@ CONTAINS
 
     SUBROUTINE finish_particle_config()
 
-        CALL start_timer(900)
-        CALL start_timer(910)
-
         IF (ALLOCATED(nslices)) DEALLOCATE(nslices)
         IF (ALLOCATED(slice_levels)) DEALLOCATE(slice_levels)
         IF (ALLOCATED(particle_seed)) DEALLOCATE(particle_seed)
-
-        CALL stop_timer(910)
-        CALL stop_timer(900)
 
     END SUBROUTINE finish_particle_config
 

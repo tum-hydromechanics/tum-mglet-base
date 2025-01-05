@@ -115,23 +115,27 @@ CONTAINS
 
     SUBROUTINE finish_particles()
 
-        CALL finish_particle_snapshots()
+        IF (dsim_particles) THEN
 
-        CALL finish_particle_statistics()
+            CALL finish_particle_snapshots()
 
-        CALL finish_particle_timeintegration()
+            CALL finish_particle_statistics()
 
-        CALL finish_particle_exchange()
+            CALL finish_particle_timeintegration()
 
-        CALL finish_particle_list()
+            CALL finish_particle_exchange()
 
-        CALL finish_particle_boundaries()
+            CALL finish_particle_list()
+
+            CALL finish_particle_boundaries()
+
+            IF (myid == 0) THEN
+                WRITE(*,*) "PARTICLE SIMULATION FINISHED SUCCESSFULLY."
+            END IF
+
+        END IF
 
         CALL finish_particle_config()
-
-        IF (myid == 0) THEN
-            WRITE(*,*) "PARTICLE SIMULATION FINISHED SUCCESSFULLY."
-        END IF
 
     END SUBROUTINE finish_particles
 

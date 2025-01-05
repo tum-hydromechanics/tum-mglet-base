@@ -645,7 +645,7 @@ CONTAINS    !===================================
 
     SUBROUTINE finish_particle_list()
 
-        DEALLOCATE(my_particle_list%particles)
+        IF (ALLOCATED(my_particle_list%particles)) DEALLOCATE(my_particle_list%particles)
 
     END SUBROUTINE finish_particle_list
 
