@@ -170,8 +170,8 @@ MODULE particle_boundaries_mod
                 END DO
 
                 magnitude = SQRT(particle_boundaries%face_normals(1, iface, igrid)**2 + &
-                 particle_boundaries%face_normals(2, iface, igrid)**2 + &
-                 particle_boundaries%face_normals(3, iface, igrid)**2)
+                    particle_boundaries%face_normals(2, iface, igrid)**2 + &
+                    particle_boundaries%face_normals(3, iface, igrid)**2)
 
                 DO j = 1, 3
                     ! EPSILON(magnitude) is an arbitrary value significantely smaller than 1 as
@@ -466,7 +466,16 @@ MODULE particle_boundaries_mod
             c = x**2 + y**2 + z**2 + cx**2 + cy**2 + cz**2 - 2*x*cx - 2*y*cy - 2*z*cz - r**2
             d = b**2 - 4*a*c
 
-            IF (d <= 0) THEN
+            ! danger of divison by 0.0 or close to that
+            ! Would that mean that the particle stays in its position on the surface?
+            ! I am doing a dirty fix here - please, review carefully...
+
+
+            IF (d < EPSILON(0.0_realk)) THEN
+                CYCLE
+            END IF
+
+            IF (a < EPSILON(0.0_realk)) THEN
                 CYCLE
             END IF
 

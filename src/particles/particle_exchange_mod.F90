@@ -514,8 +514,8 @@ CONTAINS
     SUBROUTINE init_particle_exchange()
 
         ! local variables
-        INTEGER(intk) :: i, iface, igrid, dummy
-        INTEGER(intk) :: iprocnbr
+        INTEGER(intk) :: i, iface, igrid
+        INTEGER(intk) :: iprocnbr, dummy
 
         INTEGER(int32), ALLOCATABLE :: maxTag(:)
         INTEGER(int32), ALLOCATABLE :: sendcounts(:), sdispls(:)

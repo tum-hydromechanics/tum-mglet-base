@@ -514,7 +514,7 @@ CONTAINS
         ! IMPLICIT
         found_tcf = .FALSE.
         abort = .FALSE.
-        eps = 10.0_realk**(-3)
+        eps = 0.001
 
         ! initialization value
         tcf = 1.0

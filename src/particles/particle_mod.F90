@@ -11,6 +11,7 @@ MODULE particle_mod
     USE particle_statistics_mod
     USE particle_snapshot_mod
     USE particle_fields_mod
+    USE particle_io_mod
 
     IMPLICIT NONE(type, external)
 
@@ -113,6 +114,7 @@ CONTAINS
 
     END SUBROUTINE init_particles
 
+
     SUBROUTINE finish_particles()
 
         IF (dsim_particles) THEN
@@ -125,9 +127,18 @@ CONTAINS
 
             CALL finish_particle_exchange()
 
+            CALL finish_particle_boundaries()
+
+            ! stupid test case for read / write
+
+            WRITE(*,*) "Writing the particles"
+            CALL write_particles_h5("all_particles.h5")
+
+            WRITE(*,*) "Reading the particles"
+            CALL read_particles_h5("all_particles.h5")
+
             CALL finish_particle_list()
 
-            CALL finish_particle_boundaries()
 
             IF (myid == 0) THEN
                 WRITE(*,*) "PARTICLE SIMULATION FINISHED SUCCESSFULLY."
