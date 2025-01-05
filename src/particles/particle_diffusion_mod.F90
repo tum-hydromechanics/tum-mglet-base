@@ -138,9 +138,13 @@ CONTAINS
         CALL get_field(diffy_f, "P_DIFF_Y")
         CALL get_field(diffz_f, "P_DIFF_Z")
 
-        DO g = 1, nmygrids
+        diffx_f%arr = 0.0
+        diffy_f%arr = 0.0
+        diffz_f%arr = 0.0
 
-            igrid = mygrids(g)
+        DO g = 1, nmygridslvl(particle_level)
+
+            igrid = mygridslvl(g, particle_level)
 
             CALL get_mgdims(kk, jj, ii, igrid)
 
@@ -167,10 +171,10 @@ CONTAINS
                     DO k = 3, kk - 2
                         delta_t1 = (t1_avg(k, j, i + 1) - t1_avg(k, j, i))
                         turb_flux = (ut1_avg(k, j, i) - u_avg(k, j, i) * 0.5 * (t1_avg(k, j, i + 1) + t1_avg(k, j, i)))
-                        IF (ABS(turb_flux) < SQRT(EPSILON(turb_flux))) THEN
+                        IF (ABS(turb_flux) < EPSILON(turb_flux)) THEN
                             diffx(k, j, i) = 0.0
                             und_counter = und_counter + 1
-                        ELSEIF (ABS(delta_t1) < SQRT(EPSILON(delta_t1))) THEN
+                        ELSEIF (ABS(delta_t1) < EPSILON(delta_t1)) THEN
                             ! assuming this case only occurs inside obstacles/ outside boundaries
                             diffx(k, j, i) = 0.0
                             und_counter = und_counter + 1
@@ -198,10 +202,10 @@ CONTAINS
                     DO k = 3, kk - 2
                         delta_t1 = (t1_avg(k, j + 1, i) - t1_avg(k, j, i))
                         turb_flux = (vt1_avg(k, j, i) - v_avg(k, j, i) * 0.5 * (t1_avg(k, j + 1, i) + t1_avg(k, j, i)))
-                        IF (ABS(turb_flux) < SQRT(EPSILON(turb_flux))) THEN
+                        IF (ABS(turb_flux) < EPSILON(turb_flux)) THEN
                             diffy(k, j, i) = 0.0
                             und_counter = und_counter + 1
-                        ELSEIF (ABS(delta_t1) < SQRT(EPSILON(delta_t1))) THEN
+                        ELSEIF (ABS(delta_t1) < EPSILON(delta_t1)) THEN
                             ! assuming this case only occurs inside obstacles/ outside boundaries
                             diffy(k, j, i) = 0.0
                             und_counter = und_counter + 1
@@ -229,10 +233,10 @@ CONTAINS
                     DO k = 3, kk - 2
                         delta_t1 = (t1_avg(k + 1, j, i) - t1_avg(k, j, i))
                         turb_flux = (wt1_avg(k, j, i) - w_avg(k, j, i) * 0.5 * (t1_avg(k + 1, j, i) + t1_avg(k, j, i)))
-                        IF (ABS(turb_flux) < SQRT(EPSILON(turb_flux))) THEN
+                        IF (ABS(turb_flux) < EPSILON(turb_flux)) THEN
                             diffz(k, j, i) = 0.0
                             und_counter = und_counter + 1
-                        ELSEIF (ABS(delta_t1) < SQRT(EPSILON(delta_t1))) THEN
+                        ELSEIF (ABS(delta_t1) < EPSILON(delta_t1)) THEN
                             ! assuming this case only occurs inside obstacles/ outside boundaries
                             diffz(k, j, i) = 0.0
                             und_counter = und_counter + 1

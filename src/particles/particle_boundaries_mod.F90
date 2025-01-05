@@ -77,6 +77,9 @@ MODULE particle_boundaries_mod
         ! REF : reflective particle boundary
         DO igrid = 1, ngrid
 
+            ! TODO: possibly cycle if grid is not on particle_level
+            !IF (level(igrid) /= particle_level) CYCLE
+
             CALL get_neighbours(neighbours, igrid)
 
             DO iface = 1, 6

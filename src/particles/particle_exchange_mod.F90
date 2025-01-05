@@ -556,10 +556,10 @@ CONTAINS
 
         ! ---------------------------
 
-        DO i = 1, nmygrids
+        DO i = 1, nmygridslvl(particle_level)
 
             ! getting the grid parameters
-            igrid = mygrids(i)
+            igrid = mygridslvl(i, particle_level)
 
             ! Check surfaces of grid
             DO iface = 1, 26
@@ -647,8 +647,8 @@ CONTAINS
                 MPI_COMM_WORLD, MPI_STATUS_IGNORE)
             END IF
             WRITE(*,*) 'I am proc:', myid
-            WRITE(*,*) 'I own grids: '
-            WRITE(*,*) mygrids(:)
+            WRITE(*,*) 'I own grids (on particle_level): '
+            WRITE(*,*) mygridslvl(:, particle_level)
             WRITE(*,*) ' - I receive from the following ', iRecv, 'processes (recvConns):'
             WRITE(*,*) recvConns(2, 1:iRecv)
             WRITE(*,*) ' - I send to the following ', iSend, 'processes (sendConns):'

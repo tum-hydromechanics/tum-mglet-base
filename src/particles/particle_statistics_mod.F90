@@ -1,6 +1,7 @@
 MODULE particle_statistics_mod
 
     USE utils_mod
+    USE grids_mod
 
     USE particle_list_mod
 
@@ -270,9 +271,11 @@ CONTAINS
             RETURN
         END IF
 
-        CALL get_bbox(global_x0, global_x1, global_y0, global_y1, global_z0, global_z1, igrid = 1)
+        CALL get_bbox(global_x0, global_x1, global_y0, global_y1, global_z0, global_z1, igrid = igrdoflevel(1, particle_level))
 
-        DO igrid = 2, ngrid
+        DO i = 2, noflevel(particle_level)
+
+            igrid = igrdoflevel(i, particle_level)
 
             CALL get_bbox(minx, maxx, miny, maxy, minz, maxz, igrid)
 
@@ -315,9 +318,9 @@ CONTAINS
                 END IF
 
                 ! check if this slice does overlap with any grid on this process
-                DO k = 1, nmygrids
+                DO k = 1, nmygridslvl(particle_level)
 
-                    igrid = mygrids(k)
+                    igrid = mygridslvl(k, particle_level)
                     CALL get_bbox(minx, maxx, miny, maxy, minz, maxz, igrid)
 
                     SELECT CASE(slice_dir)

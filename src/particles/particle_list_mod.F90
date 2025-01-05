@@ -8,6 +8,7 @@ MODULE particle_list_mod
 
     USE MPI_f08
     USE comms_mod
+    USE grids_mod
 
     USE particle_dict_mod
     USE particle_boundaries_mod
@@ -306,6 +307,8 @@ CONTAINS    !===================================
         ! every proc computes the preliminary number of particles of all procs respectively from each proc's combined grid volume
         DO igrid = 1, ngrid
 
+            IF (level(igrid) /= particle_level) CYCLE
+
             iproc = idprocofgrd(igrid)
 
             CALL get_bbox(minx, maxx, miny, maxy, minz, maxz, igrid)
@@ -350,20 +353,20 @@ CONTAINS    !===================================
 
         !ALLOCATE(particles_per_grid_counter(nmygrids))
 
-        ! compute combined volume of all grids this process owns (assumning there is only one level!)
+        ! compute combined volume of all grids this process owns
         myvolume = 0.0_realk
 
-        DO i = 1, nmygrids
-            igrid = mygrids(i)
+        DO i = 1, nmygridslvl(particle_level)
+            igrid = mygridslvl(i, particle_level)
             CALL get_bbox(minx, maxx, miny, maxy, minz, maxz, igrid)
             myvolume = myvolume + (maxx - minx) * (maxy - miny) * (maxz - minz)
         END DO
 
         ! compute each grids (normalized) volume as a fraction of the combined proc volume (volume of all grids this process owns)
         ! (assumning ther is only one level!)
-        ALLOCATE(my_grid_volume_fractions(nmygrids))
+        ALLOCATE(my_grid_volume_fractions(nmygridslvl(particle_level)))
 
-        igrid = mygrids(1)
+        igrid = mygridslvl(1, particle_level)
         CALL get_bbox(minx, maxx, miny, maxy, minz, maxz, igrid)
 
         my_grid_volume_fractions(1) = (maxx - minx) * (maxy - miny) * (maxz - minz) / myvolume
@@ -371,9 +374,9 @@ CONTAINS    !===================================
         my_grid_volume_fractions(1) = MAX(0.0_realk, my_grid_volume_fractions(1))
         my_grid_volume_fractions(1) = MIN(1.0_realk, my_grid_volume_fractions(1))
 
-        DO i = 2, nmygrids
+        DO i = 2, nmygridslvl(particle_level)
 
-            igrid = mygrids(i)
+            igrid = mygridslvl(i, particle_level)
             CALL get_bbox(minx, maxx, miny, maxy, minz, maxz, igrid)
 
             my_grid_volume_fractions(i) = my_grid_volume_fractions(i-1) + ((maxx - minx) * (maxy - miny) * (maxz - minz) / myvolume)
@@ -402,7 +405,7 @@ CONTAINS    !===================================
                 grid_counter = grid_counter + 1
             END DO
 
-            igrid = mygrids(grid_counter)
+            igrid = mygridslvl(grid_counter, particle_level)
             CALL get_bbox(minx, maxx, miny, maxy, minz, maxz, igrid)
 
             CALL RANDOM_NUMBER(x)
@@ -515,7 +518,7 @@ CONTAINS    !===================================
                     grid_counter = grid_counter + 1
                 END DO
 
-                igrid = mygrids(grid_counter)
+                igrid = mygridslvl(grid_counter, particle_level)
                 CALL get_bbox(minx, maxx, miny, maxy, minz, maxz, igrid)
 
                 CALL RANDOM_NUMBER(x)

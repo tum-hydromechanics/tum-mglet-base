@@ -8,6 +8,7 @@ MODULE particle_config_mod
     USE err_mod
     USE precision_mod
     USE timer_mod
+    USE grids_mod
     USE utils_mod
 
     IMPLICIT NONE
@@ -35,6 +36,7 @@ MODULE particle_config_mod
     INTEGER(int32), ALLOCATABLE :: particle_seed(:)
 
     ! PARTICLE LIST
+    INTEGER(intk) :: particle_level
     INTEGER(intk) :: init_npart ! only relevant if particles are not read
     INTEGER(intk) :: plist_len
     LOGICAL :: list_limit = .FALSE.
@@ -182,6 +184,10 @@ CONTAINS
         END IF
 
         != = = = = = = = = = PARTICLE LIST = = = = = = = = = =
+
+        ! set level on which particles will be handeled
+        ! (for now, as simple as possible)
+        CALL pconf%get_value("/particle_level", particle_level, maxlevel)
 
         CALL pconf%get_value("/list_len", plist_len, -1)
 
@@ -485,7 +491,8 @@ CONTAINS
                     END IF
                     END IF
                     ! PARTICLE LIST
-                    WRITE(*, '("    Particle List:")')
+                    WRITE(*, '("    Particle Administration:")')
+                    WRITE(*, '("        Particle Level:                   ", I12)') particle_level
                     WRITE(*, '("        Limiting initial List Length:     ", L12)') list_limit
                     IF (list_limit) THEN
                     WRITE(*, '("        Max Particle List Length:         ", I12)') plist_len

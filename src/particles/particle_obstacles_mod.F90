@@ -96,10 +96,11 @@ CONTAINS    !===================================
 
         grid_processed = .FALSE.
         counter = 0
-        DO i = 1, nmygrids
-            igrid = mygrids(i)
+        DO i = 1, nmygridslvl(particle_level)
+            igrid = mygridslvl(i, particle_level)
             CALL get_neighbours(neighbours, igrid)
             DO j = 1, 26
+            !TODO: check if neighbours(j) is on particle_level (?)
                 IF (neighbours(j) < 1 .OR. neighbours(j) > ngrid) THEN
                     CYCLE
                 ELSEIF (idprocofgrd(neighbours(j)) /= myid .AND. .NOT. grid_processed(neighbours(j))) THEN
@@ -115,7 +116,7 @@ CONTAINS    !===================================
         DO i = 1, ngrid
             IF (grid_processed(i)) THEN
                 IF (counter > SIZE(proc_neigbhours)) THEN
-                    CALL errr(__FILE__,__LINE__)
+                    EXIT
                 END IF
                 proc_neigbhours(counter) = i
                 counter = counter + 1
@@ -219,8 +220,8 @@ CONTAINS    !===================================
         counter = 0
         DO h = 1, dict_len
 
-                DO i = 1, nmygrids
-                    igrid = mygrids(i)
+                DO i = 1, nmygridslvl(particle_level)
+                    igrid = mygridslvl(i, particle_level)
                     IF (obstacles_src(h)%in_grid_zone(igrid)) THEN
                         counter_array(igrid) = counter_array(igrid) + 1
                         is_relevant_src(h) = .TRUE.
@@ -244,8 +245,8 @@ CONTAINS    !===================================
         ! count intermediate/filling obstacles that are relevant for this process and determine for which grids they are relevant
         DO h = 1, SIZE(obstacles_itm)
 
-            DO i = 1, nmygrids
-                igrid = mygrids(i)
+            DO i = 1, nmygridslvl(particle_level)
+                igrid = mygridslvl(i, particle_level)
                 IF (obstacles_itm(h)%in_grid_zone(igrid)) THEN
                     counter_array(igrid) = counter_array(igrid) + 1
                     is_relevant_itm(h) = .TRUE.
@@ -282,8 +283,8 @@ CONTAINS    !===================================
 
                 my_obstacles(counter) = obstacles_src(h)
 
-                DO i = 1, nmygrids
-                    igrid = mygrids(i)
+                DO i = 1, nmygridslvl(particle_level)
+                    igrid = mygridslvl(i, particle_level)
                     IF (obstacles_src(h)%in_grid_zone(igrid)) THEN
                         IF (counter_array(igrid) > SIZE(my_obstacle_pointers(igrid)%grid_obstacles)) THEN
                             CALL errr(__FILE__, __LINE__)
@@ -317,8 +318,8 @@ CONTAINS    !===================================
 
                 my_obstacles(counter) = obstacles_itm(h)
 
-                DO i = 1, nmygrids
-                    igrid = mygrids(i)
+                DO i = 1, nmygridslvl(particle_level)
+                    igrid = mygridslvl(i, particle_level)
                     IF (obstacles_itm(h)%in_grid_zone(igrid)) THEN
                         IF (counter_array(igrid) > SIZE(my_obstacle_pointers(igrid)%grid_obstacles)) THEN
                             CALL errr(__FILE__, __LINE__)
@@ -356,8 +357,7 @@ CONTAINS    !===================================
 
             DO igrid = 1, ngrid
 
-                IF ((SIZE(my_obstacle_pointers(igrid)%grid_obstacles) > 0 .AND. TRIM(particle_terminal) == "normal") &
-                 .OR. TRIM(particle_terminal) == "verbose") THEN
+                IF (SIZE(my_obstacle_pointers(igrid)%grid_obstacles) > 0) THEN
                     WRITE(*,'(I0, " Obstacles registered for Grid ", I0, ".")') SIZE(my_obstacle_pointers(igrid)%grid_obstacles), igrid
                     WRITE(*, '()')
                 END IF
@@ -386,7 +386,7 @@ CONTAINS    !===================================
 
         ! the following vtk output is optional and can be removed
         CALL write_obstacles()
-        CALL write_grids(mygrids, nmygrids, "   ")
+        CALL write_grids(mygridslvl(:, particle_level), nmygridslvl(particle_level), "   ")
         CALL write_grids(proc_neigbhours, SIZE(proc_neigbhours), "nbr")
 
         IF (ALLOCATED(proc_neigbhours)) DEALLOCATE(proc_neigbhours)

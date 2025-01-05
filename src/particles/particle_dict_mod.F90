@@ -80,9 +80,9 @@ CONTAINS
 
             READ(unit, fmt = *) xtemp, ytemp, ztemp
 
-            DO i = 1, nmygrids
+            DO i = 1, nmygridslvl(particle_level)
 
-                igrid = mygrids(i)
+                igrid = mygridslvl(i, particle_level)
                 CALL get_bbox(minx, maxx, miny, maxy, minz, maxz, igrid)
 
                 IF (xtemp < minx) THEN
