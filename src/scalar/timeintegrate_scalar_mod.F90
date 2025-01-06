@@ -198,6 +198,7 @@ CONTAINS
 
         CALL start_timer(410)
         
+        ! Loop over all grids and distribute the work for each grid over teams
         !$omp target teams distribute
         DO igrid = 1, nmygrids
             BLOCK
@@ -206,6 +207,7 @@ CONTAINS
                 REAL(realk), POINTER, CONTIGUOUS, DIMENSION(:) :: ddx, ddy, ddz, rdx, rdy, rdz
                 REAL(realk), POINTER, CONTIGUOUS, DIMENSION(:, :, :) :: qtu, qtv, qtw, t, u, v, w, g, bt
 
+                ! Get grid-specific data required for the computation
                 CALL get_mgbasb_target(nfro, nbac, nrgt, nlft, nbot, ntop, igrid)
                 CALL get_mgdims_target(kk, jj, ii, igrid)
 
@@ -226,6 +228,7 @@ CONTAINS
                 CALL ptr_to_grid_y(rdy_offload, igrid, rdy)
                 CALL ptr_to_grid_z(rdz_offload, igrid, rdz)
 
+                ! Run the grid kernel
                 CALL tstsca4_grid(kk, jj, ii, qtu, qtv, qtw, t, u, v, w, g, bt, &
                     ddx, ddy, ddz, rdx, rdy, rdz, &
                     prmol_offload, kayscrawford_offload, prturb_offload, &
@@ -239,6 +242,42 @@ CONTAINS
     END SUBROUTINE tstsca4
 
 
+    !> @brief Kernel function to timeintegrate a scalar field for a specific grid
+    !!
+    !! Very similar to the CPU version of integrating the scalar field.
+    !! But, this whole function shall be executed on the target device.
+    !! Thus, we can only use data that is available to the target device.
+    !!
+    !! @param[in]  kk  Grid-specific z-dimensions
+    !! @param[in]  jj  Grid-specific y-dimensions
+    !! @param[in]  ii  Grid-specific z-dimensions
+    !! @param[out] qtu Grid-specific 3d-pointer to computed scalar fluxes in x-direction
+    !! @param[out] qtv Grid-specific 3d-pointer to computed scalar fluxes in y-direction
+    !! @param[out] qtw Grid-specific 3d-pointer to computed scalar fluxes in z-direction
+    !! @param[in]  t   Grid-specific 3d-pointer to grid-specific scalar field
+    !! @param[in]  u   Grid-specific 3d-pointer to grid-specific u field
+    !! @param[in]  u   Grid-specific 3d-pointer to grid-specific v field
+    !! @param[in]  u   Grid-specific 3d-pointer to grid-specific w field
+    !! @param[in]  g   Grid-specific 3d-pointer to grid-specific g field
+    !! @param[in]  bt  Grid-specific 3d-pointer to grid-specific bt field
+    !! @param[in]  ddx Grid-specific 1d-pointer to grid-specific ddx field
+    !! @param[in]  ddy Grid-specific 1d-pointer to grid-specific ddy field
+    !! @param[in]  ddz Grid-specific 1d-pointer to grid-specific ddz field
+    !! @param[in]  rdx Grid-specific 1d-pointer to grid-specific rdx field
+    !! @param[in]  rdy Grid-specific 1d-pointer to grid-specific rdy field
+    !! @param[in]  rdz Grid-specific 1d-pointer to grid-specific rdz field
+    !! @param[in]  sca_prmol        Scalar field specific value of prmol
+    !! @param[in]  sca_kayscrawford Scalar field specific value of kayscrawford
+    !! @param[in]  sca_prturb       Scalar field specific value of prturb
+    !! @param[in]  nfro Number of front boundaries
+    !! @param[in]  nbac Number of back boundaries
+    !! @param[in]  nrgt Number of right boundaries
+    !! @param[in]  nlft Number of left boundaries
+    !! @param[in]  nbot Number of bottom boundaries
+    !! @param[in]  ntop Number of top boundaries
+    !! @param[in]  ilesmodel_offlad Encoded index of LES-Model
+    !! @param[in]  gmol_offload Flow setting gmol available on target device
+    !! @param[in]  rho_offload  Flow setting rho available on target device
     SUBROUTINE tstsca4_grid(kk, jj, ii, qtu, qtv, qtw, t, u, v, w, g, bt, &
             ddx, ddy, ddz, rdx, rdy, rdz, sca_prmol, sca_kayscrawford, sca_prturb, nfro, nbac, nrgt, nlft, &
             nbot, ntop, ilesmodel_offlad, gmol_offload, rho_offload)
@@ -287,6 +326,9 @@ CONTAINS
         iles = 1
         IF (ilesmodel_offlad == 0) iles = 0
 
+        ! Create the parallel region within in the team specific to this grid
+        ! Execute the 3 dimensional loop over each cell in the grid in parallel
+        ! Repeat this for the X, Y and Z direction 
         ! X direction
         !$omp parallel
         !$omp do collapse(2)
@@ -308,6 +350,7 @@ CONTAINS
                         gsca(k) = MAX(gscamol, gsca(k))
                     END DO
                 ELSE
+                    ! Execute the inner most loop with SIMD
                     !$omp simd
                     DO k = 3, kk-2
                         gsca(k) = gmol_offload/rho_offload/sca_prmol
@@ -441,8 +484,11 @@ CONTAINS
 
 
         ! These loops are not used in our basic scalar test
-        ! ------------------------------------------------------------------------------------------------------------
-
+        ! Thus, they are not additionally parallelized
+        ! One could also just remove this code as long as we are only using the scalar testcases
+        
+        ! DEAD CODE IF SCALAR TESTCASE
+        ! --------------------------------------------------------------------------------------
         ! Special treatment at par boundaries
         ! Substraction of downwind and addition of upwind T-value
         ! to finally get an upwind scheme in case of flow towards coarse grid
@@ -511,8 +557,19 @@ CONTAINS
                 END DO
             END DO
         END IF
+        ! --------------------------------------------------------------------------------------
+        ! DEAD CODE IF SCALAR TESTCASE
+
     END SUBROUTINE tstsca4_grid
 
+    !> @brief Calculation of local turbulent Prandtl number
+    !!
+    !! Target device ready implementation mirroring the prt Function in scacore_mod.
+    !!
+    !! @param[in] sca_prmol        Scalar-field specific prmol
+    !! @param[in] sca_kayscrawford Scalar-field specific kayscrawford
+    !! @param[in] sca_prturb       Scalar-field specific prturb
+    !! @return     Local turbulent Prandtl number
     FUNCTION sca_prt(sca_prmol, sca_kayscrawford, sca_prturb, sca_gtgmol) RESULT(res)
         !$omp declare target
         REAL(realk), INTENT(IN) :: sca_prmol, sca_prturb, sca_gtgmol
@@ -575,6 +632,22 @@ CONTAINS
         CALL stop_timer(411)
     END SUBROUTINE fluxbalance
 
+    !> @brief Kernel function for fluxbalance on a specific grid
+    !!
+    !! Very similar to the CPU version of fluxbalance.
+    !! But, this whole function shall be executed on the target device.
+    !! Thus, we can only use data that is available to the target device.
+    !!
+    !! @param[in]  kk   Grid-specific z-dimensions
+    !! @param[in]  jj   Grid-specific y-dimensions
+    !! @param[in]  ii   Grid-specific z-dimensions
+    !! @param[out] qtt  Grid-specific 3d-pointer to balanced scalar fluxes
+    !! @param[in]  qtu  Grid-specific 3d-pointer to computed scalar fluxes in x-direction
+    !! @param[in]  qtv  Grid-specific 3d-pointer to computed scalar fluxes in y-direction
+    !! @param[in]  qtw  Grid-specific 3d-pointer to computed scalar fluxes in z-direction
+    !! @param[in]  rddx Grid-specific 1d-pointer to grid-specific rddx field
+    !! @param[in]  rddy Grid-specific 1d-pointer to grid-specific rddy field
+    !! @param[in]  rddz Grid-specific 1d-pointer to grid-specific rddz field
     SUBROUTINE fluxbalance_grid(kk, jj, ii, qtt, qtu, qtv, qtw, rddx, rddy, rddz)
         !$omp declare target
         ! Subroutine arguments
