@@ -283,9 +283,11 @@ CONTAINS
                 cpart = cpart + 1
 
                 ! Inserting the particle data
+
                 plist%particles(cpart)%state = states_lists(ig)%arr(i)
 
                 plist%particles(cpart)%ipart = ipart_lists(ig)%arr(i)
+                plist%particles(cpart)%iproc = myid
                 plist%particles(cpart)%igrid = igrid_lists(ig)%arr(i)
                 plist%particles(cpart)%islice = islice_lists(ig)%arr(i)
 
@@ -296,9 +298,18 @@ CONTAINS
                 plist%particles(cpart)%y = y_lists(ig)%arr(i)
                 plist%particles(cpart)%z = z_lists(ig)%arr(i)
 
+                CALL set_particle_cell(plist%particles(cpart))
+
             END DO
 
         END DO
+
+        plist%ifinal = cpart
+        plist%active_np = cpart
+
+        IF (list_limit .AND. plist%max_np > plist_len) THEN
+            WRITE(*,*) "WARNING in read_particle_list (h5): Specified List Limit exceeded while reading particles!"
+        END IF
 
         IF (cpart /= npart) THEN
             WRITE(*,*) "Counter unequal number of particles"

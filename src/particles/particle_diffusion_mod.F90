@@ -287,12 +287,12 @@ CONTAINS
 
     END SUBROUTINE generate_diffusion_field
 
-    SUBROUTINE get_pdiff(particle, dt, pu_diff, pv_diff, pw_diff, pdx_diff, pdy_diff, pdz_diff, dinterp_pdiffsuion)
+    SUBROUTINE get_pdiff(particle, dt, pu_diff, pv_diff, pw_diff, pdx_diff, pdy_diff, pdz_diff, dinterp_pdiffusion)
 
             ! subroutine arguments
             TYPE(baseparticle_t), INTENT(in) :: particle
             REAL(realk), INTENT(in) :: dt
-            LOGICAL, INTENT(in) :: dinterp_pdiffsuion
+            LOGICAL, INTENT(in) :: dinterp_pdiffusion
             REAL(realk), INTENT(out) :: pu_diff, pv_diff, pw_diff, pdx_diff, pdy_diff, pdz_diff
 
             ! local variables
@@ -333,7 +333,7 @@ CONTAINS
                 CALL diffy_f%get_ptr(diffy, particle%igrid)
                 CALL diffz_f%get_ptr(diffz, particle%igrid)
 
-                IF (dinterp_pdiffsuion) THEN
+                IF (dinterp_pdiffusion) THEN
 
                     CALL get_field(dx_f, "DX")
                     CALL get_field(dy_f, "DY")

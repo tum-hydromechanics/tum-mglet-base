@@ -15,7 +15,7 @@ CONTAINS
         ! local variables
         INTEGER(intk), PARAMETER :: units_part(7) = [0, 0, 0, 0, 0, 0, 0]
 
-        IF (.NOT. dwrite_npcfield) THEN
+        IF (.NOT. dwrite_npc_field) THEN
             RETURN
         END IF
 
@@ -47,7 +47,7 @@ CONTAINS
         TYPE(field_t), POINTER :: npc_f
         REAL(realk), POINTER, CONTIGUOUS, DIMENSION(:, :, :) :: npc
 
-        IF (.NOT. dwrite_npcfield) THEN
+        IF (.NOT. dwrite_npc_field) THEN
             RETURN
         END IF
 

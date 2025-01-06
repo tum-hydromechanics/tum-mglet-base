@@ -70,7 +70,7 @@ CONTAINS
         CALL get_field(y_f, "Y")
         CALL get_field(z_f, "Z")
 
-        IF (dinterp_padvection .OR. dinterp_pdiffsuion) THEN
+        IF (dinterp_padvection .OR. dinterp_pdiffusion) THEN
             CALL get_field(dx_f, "DX")
             CALL get_field(dy_f, "DY")
             CALL get_field(dz_f, "DZ")
@@ -122,7 +122,7 @@ CONTAINS
             CALL y_f%get_ptr(y, igrid)
             CALL z_f%get_ptr(z, igrid)
 
-            IF (dinterp_padvection .OR. dinterp_pdiffsuion) THEN
+            IF (dinterp_padvection .OR. dinterp_pdiffusion) THEN
                 CALL dx_f%get_ptr(dx, igrid)
                 CALL dy_f%get_ptr(dy, igrid)
                 CALL dz_f%get_ptr(dz, igrid)
@@ -237,7 +237,7 @@ CONTAINS
                 END IF
 
                 IF (dturb_diff) THEN
-                    IF (dinterp_pdiffsuion) THEN
+                    IF (dinterp_pdiffusion) THEN
                         CALL interpolate_lincon(my_particle_list%particles(i), kk, jj, ii, x, y, z, dx, dy, dz, ddx, ddy, ddz, &
                         diffx, diffy, diffz, Dturb1, Dturb2, Dturb3)
                     ELSE

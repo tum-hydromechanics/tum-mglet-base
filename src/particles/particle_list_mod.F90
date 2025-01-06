@@ -56,6 +56,15 @@ CONTAINS    !===================================
 
         my_particle_list%iproc = myid
 
+        ! TODO: restructure the way h5 list reading is done (or right away generally restructure particle initialization)
+        IF (dread_particles_h5) THEN
+            my_particle_list%max_np = plist_len
+            ALLOCATE(my_particle_list%particles(plist_len))
+            CALL stop_timer(910)
+            CALL stop_timer(900)
+            RETURN
+        END IF
+
         IF (dread_particles_dict) THEN
 
             ! all arguments that are passed as particle list attributes are input only
@@ -416,7 +425,7 @@ CONTAINS    !===================================
             y = miny + y * (maxy - miny)
             z = minz + z * (maxz - minz)
 
-            IF (dread_obstacles) THEN
+            IF (dread_obstacles_dict) THEN
                 DO j = 1, SIZE(my_obstacle_pointers(igrid)%grid_obstacles)
 
                     iobst = my_obstacle_pointers(igrid)%grid_obstacles(j)
@@ -531,7 +540,7 @@ CONTAINS    !===================================
 
                 valid_location = .TRUE.
 
-                IF (dread_obstacles) THEN
+                IF (dread_obstacles_dict) THEN
                     DO j = 1, SIZE(my_obstacle_pointers(igrid)%grid_obstacles)
 
                         iobst = my_obstacle_pointers(igrid)%grid_obstacles(j)

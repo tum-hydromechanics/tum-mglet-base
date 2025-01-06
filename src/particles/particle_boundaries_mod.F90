@@ -442,7 +442,7 @@ MODULE particle_boundaries_mod
         a = (dx**2 + dy**2 + dz**2)
 
         ! iterate over all obstacles of the grid
-        IF (dread_obstacles) THEN
+        IF (dread_obstacles_dict) THEN
             nobst = SIZE(my_obstacle_pointers(temp_grid)%grid_obstacles)
         ELSE
             nobst = 0
@@ -769,7 +769,7 @@ MODULE particle_boundaries_mod
             y_new = miny + y_new * (maxy - miny)
             z_new = minz + z_new * (maxz - minz)
 
-            IF (dread_obstacles) THEN
+            IF (dread_obstacles_dict) THEN
                 DO i = 1, SIZE(my_obstacle_pointers(igrid)%grid_obstacles)
 
                     iobst_local = my_obstacle_pointers(igrid)%grid_obstacles(i)

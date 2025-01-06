@@ -14,53 +14,55 @@ MODULE particle_config_mod
     IMPLICIT NONE
 
     ! ON/OFF SWITCH FOR PARTICLE SIMULATION
-    LOGICAL :: dsim_particles = .FALSE.
+    LOGICAL :: dsim_particles = .FALSE. ! set to .TRUE., if "/particles" section in parameters.json exists
 
     ! INPUT
-    LOGICAL :: dread_particles_dict
-    LOGICAL :: dread_obstacles
+    LOGICAL :: dread_particles_h5 ! "particles/dread_part_h5"; File name:
+    LOGICAL :: dread_particles_dict ! "particles/dread_part_dict"; File name:
+    LOGICAL :: dread_obstacles_dict ! "particles/dread_obst_dict"; File mame:
 
     ! OUTPUT
-    CHARACTER(len = 7) :: particle_terminal
-    LOGICAL :: dwrite_npcfield
-    LOGICAL :: dwrite_psnapshots
+    CHARACTER(len = 7) :: particle_terminal ! "particles/terminal"
+    LOGICAL :: dwrite_particles_h5 ! "particles/dwrite_part_h5" File name:
+    LOGICAL :: dwrite_npc_field ! "particles/dwrite_npc"
+    LOGICAL :: dwrite_psnapshots ! indirectly via "particles/snapshot_step"
 
-    INTEGER(intk) :: psnapshot_step
-    INTEGER(intk) :: psnapshot_np
-    INTEGER(intk) :: psnapshot_write_all_particles_tag = -99
+    INTEGER(intk) :: psnapshot_step ! "particles/snapshot_step"
+    INTEGER(intk) :: psnapshot_np ! "particles/snapshot_np"
+    INTEGER(intk) :: psnapshot_write_all_particles_tag = -99 ! if psnapshot_np == psnapshot_write_all_particles_tag, write all particles
 
-    CHARACTER(len = 7) :: vtk_float_format = '(F10.6)'
+    CHARACTER(len = 8) :: vtk_float_format = '(F14.10)'
 
     ! RANDOM NUMBER GENERATION
-    LOGICAL :: dput_seed
-    INTEGER(int32), ALLOCATABLE :: particle_seed(:)
+    LOGICAL :: dput_seed ! indirectly via "particles/particle_seed"
+    INTEGER(int32), ALLOCATABLE :: particle_seed(:) ! "particles/particle_seed"
 
     ! PARTICLE LIST
-    INTEGER(intk) :: particle_level
-    INTEGER(intk) :: init_npart ! only relevant if particles are not read
-    INTEGER(intk) :: plist_len
-    LOGICAL :: list_limit = .FALSE.
+    INTEGER(intk) :: particle_level ! "particles/particle_level"
+    INTEGER(intk) :: init_npart ! "particles/init_npart", only relevant if particles are not read
+    INTEGER(intk) :: plist_len ! "particles/list_length"
+    LOGICAL :: list_limit = .FALSE. ! indirectly via "particles/list_length"
 
     ! ADVECTION
-    CHARACTER(len=16) :: prkmethod
-    LOGICAL :: dinterp_padvection = .TRUE.
+    LOGICAL :: dinterp_padvection = .TRUE. ! "particles/dinterp"
+    CHARACTER(len=16) :: prkmethod ! "particles/rk_method"
 
     ! DIFFUSION / RANDOM WALK
-    LOGICAL :: ddiffusion = .TRUE.
-    LOGICAL :: dturb_diff
-    LOGICAL :: dinterp_pdiffsuion = .TRUE.
-    CHARACTER(len = 16) :: random_walk_mode
-    REAL(realk) :: truncation_limit
-    REAL(realk) :: D(3) = 0.0_realk
+    LOGICAL :: ddiffusion = .TRUE. ! indirectly via "particles/dturb_diff" and "particles/D"
+    LOGICAL :: dturb_diff ! "particles/dturb_diff"
+    LOGICAL :: dinterp_pdiffusion = .TRUE. ! "particles/dinterp"
+    CHARACTER(len = 16) :: random_walk_mode ! "particles/random_walk_mode"
+    REAL(realk) :: truncation_limit ! "particles/truncation_limit"
+    REAL(realk) :: D(3) = 0.0_realk ! "particles/D"
 
     ! STATISTICS (GRID AND SLICE SAMPLES)
-    LOGICAL :: dgridstat = .FALSE.
-    INTEGER(intk) :: rt_ittot_start
-    INTEGER(intk) :: rt_tstep_max ! maximum residence time as number of timesteps
-    CHARACTER(len = 1) :: slice_dir = "N" ! X, Y, Z or N for None ! MAX ONE DIRECTION !
-    INTEGER(intk) :: nslice_levels
-    INTEGER(intk), ALLOCATABLE :: nslices(:)
-    REAL(realk), ALLOCATABLE :: slice_levels(:)
+    LOGICAL :: dgridstat = .FALSE. ! "particles/dgridstat"
+    INTEGER(intk) :: rt_ittot_start ! "particles/rt_ittot_start"
+    INTEGER(intk) :: rt_tstep_max ! "particles/rt_tstep_max" ! maximum residence time as number of timesteps
+    CHARACTER(len = 1) :: slice_dir = "N" ! "/particles/slice_dir"; X, Y, Z or N for None ! MAXIMUM ONE DIRECTION !
+    INTEGER(intk) :: nslice_levels ! "particles/nslice_levels"
+    INTEGER(intk), ALLOCATABLE :: nslices(:) ! "particles/nslices"
+    REAL(realk), ALLOCATABLE :: slice_levels(:) ! "particles/slice_levels"
 
 CONTAINS
 
@@ -71,6 +73,7 @@ CONTAINS
 
         TYPE(config_t) :: pconf
         TYPE(config_t) :: timeconf_temp
+        LOGICAL :: dinterp
         INTEGER(intk) :: i, j, mtstep_temp, seed_n, pseed_n, dummy
         INTEGER(int32), ALLOCATABLE ::  seed(:)
 
@@ -93,11 +96,15 @@ CONTAINS
 
         != = = = = = = = = = INPUT = = = = = = = = = =
 
-        CALL pconf%get_value("/read", dread_particles_dict, .FALSE.)
+        CALL pconf%get_value("/dread_part_h5", dread_particles_h5, .FALSE.)
 
         !- - - - - - - - - - - - - - - - - -
 
-        CALL pconf%get_value("/read_obst", dread_obstacles, .FALSE.)
+        CALL pconf%get_value("/dread_part_dict", dread_particles_dict, .FALSE.)
+
+        !- - - - - - - - - - - - - - - - - -
+
+        CALL pconf%get_value("/dread_obst_dict", dread_obstacles_dict, .FALSE.)
 
         != = = = = = = = = = OUTPUT = = = = = = = = = =
 
@@ -112,7 +119,11 @@ CONTAINS
 
         !- - - - - - - - - - - - - - - - - -
 
-        CALL pconf%get_value("/dwrite_npc", dwrite_npcfield, .FALSE.)
+        CALL pconf%get_value("/dwrite_part_h5", dwrite_particles_h5, .FALSE.)
+
+        !- - - - - - - - - - - - - - - - - -
+
+        CALL pconf%get_value("/dwrite_npc_field", dwrite_npc_field, .FALSE.)
 
         !- - - - - - - - - - - - - - - - - -
 
@@ -189,7 +200,7 @@ CONTAINS
         ! (for now, as simple as possible)
         CALL pconf%get_value("/particle_level", particle_level, maxlevel)
 
-        CALL pconf%get_value("/list_len", plist_len, -1)
+        CALL pconf%get_value("/list_length", plist_len, -1)
 
         list_limit = .TRUE.
 
@@ -209,7 +220,7 @@ CONTAINS
 
         !- - - - - - - - - - - - - - - - - -
 
-        CALL pconf%get_value("/init_np", init_npart, 100_intk)
+        CALL pconf%get_value("/init_npart", init_npart, 100_intk)
 
         IF (init_npart <= 0_intk) THEN
 
@@ -224,23 +235,23 @@ CONTAINS
 
         END IF
 
+        != = = = = = = = = = SPATIAL INTERPOLATION = = = = = = = = = =
+
+        CALL pconf%get_value("/dinterp", dinterp, .TRUE.)
+
+        dinterp_padvection = dinterp
+        dinterp_pdiffusion = dinterp
+
         != = = = = = = = = = ADVECTION = = = = = = = = = =
 
-        CALL pconf%get_value("/interp", dinterp_padvection, .TRUE.)
 
-        !- - - - - - - - - - - - - - - - - -
-
-        CALL pconf%get_value("/prkmethod", prkmethod, "euler")
+        CALL pconf%get_value("/rk_method", prkmethod, "euler")
 
         != = = = = = = = = = DIFFUSION = = = = = = = = = =
 
         ddiffusion = .TRUE.
 
         CALL pconf%get_value("/dturb_diff", dturb_diff, .FALSE.)
-
-        !- - - - - - - - - - - - - - - - - -
-
-        CALL pconf%get_value("/interp", dinterp_padvection, .TRUE.)
 
         !- - - - - - - - - - - - - - - - - -
 
@@ -301,7 +312,7 @@ CONTAINS
         END IF
 
         IF (.NOT. dturb_diff) THEN
-            dinterp_pdiffsuion = .FALSE.
+            dinterp_pdiffusion = .FALSE.
         END IF
 
         != = = = = = = = = = STATISTICS = = = = = = = = = =
@@ -330,9 +341,9 @@ CONTAINS
 
         !- - - - - - - - - - - - - - - - - -
 
-        IF (fort7%exists("/particles/slice_dir")) THEN
+        IF (fort7%exists("/particles/slice_direction")) THEN
 
-            CALL pconf%get_value("/slice_dir", slice_dir, "N")
+            CALL pconf%get_value("/slice_direction", slice_dir, "N")
 
             IF (slice_dir /= "X" .AND. slice_dir /= "Y" .AND. slice_dir /= "Z" .AND. slice_dir /= "N") THEN
 
@@ -476,11 +487,11 @@ CONTAINS
                     ! READING
                     WRITE(*, '("    Input:")')
                     WRITE(*, '("        Reading ParticlesDict:            ", L12)') dread_particles_dict
-                    WRITE(*, '("        Reading ObstaclesDict:            ", L12)') dread_obstacles
+                    WRITE(*, '("        Reading ObstaclesDict:            ", L12)') dread_obstacles_dict
                     ! OUTPUT
                     WRITE(*, '("    Output:")')
                     WRITE(*, '("        Terminal Output:                  ", A12)') TRIM(particle_terminal)
-                    WRITE(*, '("        Writing NPC Field:                ", L12)') dwrite_npcfield
+                    WRITE(*, '("        Writing NPC Field:                ", L12)') dwrite_npc_field
                     WRITE(*, '("        Writing Particle Snapshots:       ", L12)') dwrite_psnapshots
                     IF (dwrite_psnapshots) THEN
                     WRITE(*, '("        Snapshot Step:                    ", I12)') psnapshot_step
@@ -510,7 +521,7 @@ CONTAINS
                     IF (ddiffusion) THEN
                     WRITE(*, '("        Simulating turbulent Diffusion:   ", L12)') dturb_diff
                     IF (dturb_diff) THEN
-                    WRITE(*, '("        Interpolating Diffusion:          ", L12)') dinterp_pdiffsuion
+                    WRITE(*, '("        Interpolating Diffusion:          ", L12)') dinterp_pdiffusion
                     END IF
                     WRITE(*, '("        Random Walk Mode:                 ", A12)') TRIM(random_walk_mode)
                     WRITE(*, '("        Symmetric Truncation Limit:       ", F12.3)') truncation_limit

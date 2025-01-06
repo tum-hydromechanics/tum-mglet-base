@@ -77,14 +77,14 @@ CONTAINS    !===================================
         REAL(realk) :: dist
         CHARACTER(12) :: dummy_char
 
-        IF (.NOT. dread_obstacles) THEN
+        IF (.NOT. dread_obstacles_dict) THEN
             ALLOCATE(my_obstacles(0))
             RETURN
         END IF
 
-        INQUIRE(file = 'ObstaclesDict.txt', exist = dread_obstacles)
+        INQUIRE(file = 'ObstaclesDict.txt', exist = dread_obstacles_dict)
 
-        IF (.NOT. dread_obstacles) THEN
+        IF (.NOT. dread_obstacles_dict) THEN
             WRITE(*, *) "ERROR: No file for reading obstacles detected!"
             CALL errr(__FILE__,__LINE__)
         END IF

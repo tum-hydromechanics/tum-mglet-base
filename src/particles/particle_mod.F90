@@ -91,6 +91,13 @@ CONTAINS
             ! read or generate particles and init particle list
             CALL init_particle_list()
 
+            IF (dread_particles_h5) THEN
+                IF (myid == 0) THEN
+                    WRITE(*,*) "Reading the particles"
+                END IF
+                CALL read_particles_h5("particles.h5")
+            END IF
+
             ! generate diffusion field
             !CALL init_particle_diffusion() EDIT: MUST BE DONE IN INIT TIMELOOP AFTER INIT_STATISTICS
             ! init backup fields for particle timeintegration
@@ -131,14 +138,14 @@ CONTAINS
 
             ! stupid test case for read / write
 
-            WRITE(*,*) "Writing the particles"
-            CALL write_particles_h5("all_particles.h5")
-
-            WRITE(*,*) "Reading the particles"
-            CALL read_particles_h5("all_particles.h5")
+            IF (dwrite_particles_h5) THEN
+                IF (myid == 0) THEN
+                    WRITE(*,*) "Writing the particles"
+                END IF
+                CALL write_particles_h5("particles.h5")
+            END IF
 
             CALL finish_particle_list()
-
 
             IF (myid == 0) THEN
                 WRITE(*,*) "PARTICLE SIMULATION FINISHED SUCCESSFULLY."

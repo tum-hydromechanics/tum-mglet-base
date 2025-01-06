@@ -15,7 +15,7 @@ MODULE particle_snapshot_mod
         INTEGER(intk) :: nprocs
 
         ! should depend on the domain lengths and be determined in init_psnapshots
-        CHARACTER(7) :: coordinate_format
+        CHARACTER(8) :: coordinate_format
 
         ! particles to write in snapshots
         INTEGER(intk) :: global_np
