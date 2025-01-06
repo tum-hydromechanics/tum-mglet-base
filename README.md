@@ -134,47 +134,20 @@ The following dependencies are fetched and built automatically by CMake:
 * Nlohman JSON: https://github.com/nlohmann/json
 * Exprtk: https://github.com/ArashPartow/exprtk
 
-### Build instructions
-
-MGLET-base make use of
-[CMake presets](https://cmake.org/cmake/help/latest/manual/cmake-presets.7.html)
-to store a default set of build settings for the most common environments.
-There are currently four pre-defined presets:
-
-* `gnu-debug`: GNU compilers `gcc`, `g++` and `gfortran` with common debug flags
-* `gnu-release`: GNU compilers `gcc`, `g++` and `gfortran` with flags
-for release (performance-optimized) builds
-* `intel-debug`: Intel compilers `icx`, `icpx` and `ifx` with common debug flags
-* `intel-debug`: Intel compilers `icx`, `icpx` and `ifx` with flags for release
-(performance-optimized) builds
-
-In order to build MGLET there is a few simple steps to follow:
-
-1. Check out the source code
-
-2. Create a separate `build` directory in the source code root and enter that
-directory: `mkdir build && cd build`
-
-3. Run CMake: `cmake --preset=gnu-release ..` (replace the preset with your
-desired one)
-
-4. Compile: `make`
-
-5. Run tests: `ctest --output-on-failure --test-dir tests`
-
 ### Build instructions with GPU support
 
 Compiling MGLET with GPU support is possible by using the following instructions:
 
-1. Check out the source code
-
-2. Create a separate `build` directory in the source code root and enter that
+1. Create a separate `build` directory in the source code root and enter that
 directory: `mkdir build && cd build`
 
-3. Run CMake: `CXXFLAGS="-g -fopenmp -foffload=-lm -foffload=nvptx-none" FFLAGS="-g -fopenmp -foffload=-lm -foffload=nvptx-none" cmake .. --preset=gnu-release` (replace the preset with your
-desired one)
+2. Run CMake:
 
-4. Compile: `make`
+```
+CXXFLAGS="-g -fopenmp -foffload=-lm -foffload=nvptx-none" FFLAGS="-g -fopenmp -foffload=-lm -foffload=nvptx-none" cmake .. --preset=gnu-release
+```
+
+3. Compile: `make`
 
 GPU support is only guaranteed for the example testcases in `/sca-tests`. Use `run.sh help` in the `/sca-tests` directory for more information.
 
