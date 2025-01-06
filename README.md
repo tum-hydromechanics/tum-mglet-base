@@ -176,6 +176,8 @@ desired one)
 
 4. Compile: `make`
 
+GPU support is only guaranteed for the example testcases in `/sca-tests`. Use `run.sh help` in the `/sca-tests` directory for more information.
+
 
 License and trademarks
 ----------------------
