@@ -1,0 +1,8 @@
+FEDriver2_yaml_4_3.txt
+eduardoq@eduardoq-linux:~/git/tum-mglet-base/paraview-examples/conduit_amr/build$ mpirun -N 3 ./bin/test2 ../catalyst_pipeline.py --output fedriver2_yamldisp2.vthb 
+
+unsigned int numberOfAMRLevels = 4;
+
+
+
+

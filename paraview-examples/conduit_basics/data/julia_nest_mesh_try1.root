@@ -1,0 +1,81 @@
+
+{
+  "blueprint_index": 
+  {
+    "mesh": 
+    {
+      "state": 
+      {
+        "path": "mesh/state",
+        "number_of_domains": 2,
+        "partition_pattern": "julia_nest_mesh_try1/domain_{domain:06d}.json:/",
+        "partition_map": 
+        {
+          "file": [0, 1],
+          "domain": [0, 1]
+        }
+      },
+      "coordsets": 
+      {
+        "coords": 
+        {
+          "type": "rectilinear",
+          "coord_system": 
+          {
+            "axes": 
+            {
+              "x": null,
+              "y": null
+            },
+            "type": "cartesian"
+          },
+          "path": "mesh/coordsets/coords"
+        }
+      },
+      "topologies": 
+      {
+        "topo": 
+        {
+          "type": "rectilinear",
+          "coordset": "coords",
+          "path": "mesh/topologies/topo"
+        }
+      },
+      "fields": 
+      {
+        "iters": 
+        {
+          "number_of_components": 1,
+          "topology": "topo",
+          "association": "element",
+          "path": "mesh/fields/iters"
+        },
+        "mask": 
+        {
+          "number_of_components": 1,
+          "topology": "topo",
+          "association": "element",
+          "path": "mesh/fields/mask"
+        }
+      },
+      "nestsets": 
+      {
+        "nest": 
+        {
+          "association": "element",
+          "topology": "topo",
+          "path": "mesh/nestsets/nest"
+        }
+      }
+    }
+  },
+  "protocol": 
+  {
+    "name": "json",
+    "version": "0.9.2"
+  },
+  "number_of_files": 2,
+  "number_of_trees": 2,
+  "file_pattern": "julia_nest_mesh_try1/domain_%06d.json",
+  "tree_pattern": "/"
+}

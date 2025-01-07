@@ -1,0 +1,244 @@
+  unsigned int numberOfAMRLevels = 2;
+
+
+---------------------------------writing mesh
+
+domain_0: 
+  state: 
+    domain_id: 0
+    cycle: 1
+    time: 0.1
+    level: 0
+  coordsets: 
+    coords: 
+      type: "uniform"
+      dims: 
+        i: 2
+        j: 2
+        k: 2
+      spacing: 
+        dx: 1.0
+        dy: 1.0
+        dz: 1.0
+      origin: 
+        x: 0.0
+        y: 0.0
+        z: 0.0
+  topologies: 
+    topo: 
+      type: "uniform"
+      coordset: "coords"
+      elements: 
+        origin: 
+          i0: 0
+          j0: 0
+          k0: 0
+  nestsets: 
+    nest: 
+      association: "element"
+      topology: "topo"
+      windows: 
+        window_0: 
+          domain_id: 0
+          domain_type: "child"
+          origin: 
+            i: 0
+            j: 0
+            k: 0
+          dims: 
+            i: 2
+            j: 2
+            k: 2
+          ratio: 
+            i: 2
+            j: 2
+            k: 2
+  fields: 
+    cellvals: 
+      association: "element"
+      topology: "topo"
+      values: 0.0
+    otherfield: 
+      association: "vertex"
+      topology: "topo"
+      values: [0.0, 0.995004165278026, 0.0, 0.995004165278026, 0.0, 0.995004165278026, 0.0, 0.995004165278026]
+domain_1: 
+  state: 
+    domain_id: 1
+    cycle: 1
+    time: 0.1
+    level: 1
+  coordsets: 
+    coords: 
+      type: "uniform"
+      dims: 
+        i: 3
+        j: 3
+        k: 3
+      spacing: 
+        dx: 0.5
+        dy: 0.5
+        dz: 0.5
+      origin: 
+        x: 0.0
+        y: 0.0
+        z: 0.0
+  topologies: 
+    topo: 
+      type: "uniform"
+      coordset: "coords"
+      elements: 
+        origin: 
+          i0: 0
+          j0: 0
+          k0: 0
+  nestsets: 
+    nest: 
+      association: "element"
+      topology: "topo"
+      windows: 
+        window_0: 
+          domain_id: 0
+          domain_type: "parent"
+          origin: 
+            i: 0
+            j: 0
+            k: 0
+          dims: 
+            i: 2
+            j: 2
+            k: 2
+          ratio: 
+            i: 2
+            j: 2
+            k: 2
+  fields: 
+    cellvals: 
+      association: "element"
+      topology: "topo"
+      values: [0.0, 1.0, 0.0, 1.0, 0.0, 1.0, 0.0, 1.0]
+    otherfield: 
+      association: "vertex"
+      topology: "topo"
+      values: [0.0, 0.497502082639013, 0.995004165278026, 0.0, 0.497502082639013, 0.995004165278026, 0.0, 0.497502082639013, 0.995004165278026, 0.0, 0.497502082639013, 0.995004165278026, 0.0, 0.497502082639013, 0.995004165278026, 0.0, 0.497502082639013, 0.995004165278026, 0.0, 0.497502082639013, 0.995004165278026, 0.0, 0.497502082639013, 0.995004165278026, 0.0, 0.497502082639013, 0.995004165278026]
+
+
+domain_0: 
+  state: 
+    domain_id: 0
+    cycle: 2
+    time: 0.2
+    level: 0
+  coordsets: 
+    coords: 
+      type: "uniform"
+      dims: 
+        i: 2
+        j: 2
+        k: 2
+      spacing: 
+        dx: 1.0
+        dy: 1.0
+        dz: 1.0
+      origin: 
+        x: 0.0
+        y: 0.0
+        z: 0.0
+  topologies: 
+    topo: 
+      type: "uniform"
+      coordset: "coords"
+      elements: 
+        origin: 
+          i0: 0
+          j0: 0
+          k0: 0
+  nestsets: 
+    nest: 
+      association: "element"
+      topology: "topo"
+      windows: 
+        window_0: 
+          domain_id: 0
+          domain_type: "child"
+          origin: 
+            i: 0
+            j: 0
+            k: 0
+          dims: 
+            i: 2
+            j: 2
+            k: 2
+          ratio: 
+            i: 2
+            j: 2
+            k: 2
+  fields: 
+    cellvals: 
+      association: "element"
+      topology: "topo"
+      values: 0.0
+    otherfield: 
+      association: "vertex"
+      topology: "topo"
+      values: [0.0, 0.980066577841242, 0.0, ..., 0.0, 0.980066577841242]
+domain_1: 
+  state: 
+    domain_id: 1
+    cycle: 2
+    time: 0.2
+    level: 1
+  coordsets: 
+    coords: 
+      type: "uniform"
+      dims: 
+        i: 3
+        j: 3
+        k: 3
+      spacing: 
+        dx: 0.5
+        dy: 0.5
+        dz: 0.5
+      origin: 
+        x: 0.0
+        y: 0.0
+        z: 0.0
+  topologies: 
+    topo: 
+      type: "uniform"
+      coordset: "coords"
+      elements: 
+        origin: 
+          i0: 0
+          j0: 0
+          k0: 0
+  nestsets: 
+    nest: 
+      association: "element"
+      topology: "topo"
+      windows: 
+        window_0: 
+          domain_id: 0
+          domain_type: "parent"
+          origin: 
+            i: 0
+            j: 0
+            k: 0
+          dims: 
+            i: 2
+            j: 2
+            k: 2
+          ratio: 
+            i: 2
+            j: 2
+            k: 2
+  fields: 
+    cellvals: 
+      association: "element"
+      topology: "topo"
+      values: [0.0, 1.0, 0.0, ..., 0.0, 1.0]
+    otherfield: 
+      association: "vertex"
+      topology: "topo"
+      values: [0.0, 0.490033288920621, 0.980066577841242, ..., 0.490033288920621, 0.980066577841242]
+

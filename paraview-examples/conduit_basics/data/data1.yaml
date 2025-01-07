@@ -1,0 +1,15 @@
+coordsets: 
+  coords: 
+    type: "rectilinear"
+    values: 
+      x: [0.0, 1.25, 2.5, 3.75, 5.0, 6.25, 7.5, 8.75, 10.0]
+      y: [0.0, 1.25, 2.5, 3.75, 5.0, 6.25, 7.5, 8.75, 10.0]
+topologies: 
+  topo: 
+    type: "rectilinear"
+    coordset: "coords"
+fields: 
+  iters: 
+    association: "element"
+    topology: "topo"
+    values: [2, 1, 0, 0, 0, 0, 0, 0, 6, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]

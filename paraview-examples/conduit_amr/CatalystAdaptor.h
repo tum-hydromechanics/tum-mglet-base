@@ -224,7 +224,21 @@ void Execute(unsigned int cycle, double time, AMR& amr)
     // we copy the data since point_values will get deallocated
     other_field["values"] = point_values;
   }
-  mesh.print();
+  // std::string path1="amr_mesh_1";
+  // std::cout<<"\n\n---------------------------------writing mesh. rank"<<myRank<<std::endl;
+  // mesh.print();
+  // MPI_Barrier(MPI_COMM_WORLD);
+
+  //this is using conduit.hpp but we are using this embedded conduit_cpp
+  // conduit_cpp::relay::io::blueprint::write_mesh(mesh, path1,"json");
+  //so let's try this
+  // std::cout<<mesh.to_yaml()<<std::endl;
+  //and
+  // std::cout<<mesh.write_mesh(path1,"json")<<std::endl;
+
+
+
+
   // exec_params.print(); // for viewing the Conduit node information
 
   catalyst_status err = catalyst_execute(conduit_cpp::c_node(&exec_params));

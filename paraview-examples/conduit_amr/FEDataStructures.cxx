@@ -21,9 +21,9 @@ AMR::AMR(int numberOfAMRLevels, int myRank, int numRanks)
       (levelIndices[5] - levelIndices[4]);
     this->CellsPerLevel.push_back(cellsPerLevel);
     std::array<double, 3> levelOrigin;
-    levelOrigin[0] = 0;
+    levelOrigin[0] = myRank;
     levelOrigin[1] = 0;
-    levelOrigin[2] = 0;
+    levelOrigin[2] = level;
     this->LevelOrigin.push_back(levelOrigin);
     numberOfCells += cellsPerLevel;
   }

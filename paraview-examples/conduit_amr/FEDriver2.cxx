@@ -51,7 +51,7 @@ if(rank == 0)
   MPI_Comm_size(MPI_COMM_WORLD, &numRanks);
   MPI_Comm_rank(MPI_COMM_WORLD, &myRank);
 
-  unsigned int numberOfAMRLevels = 5;
+  unsigned int numberOfAMRLevels = 3;
   AMR amr(numberOfAMRLevels, myRank, numRanks);
 
   // The first argument is the program name
@@ -59,7 +59,7 @@ if(rank == 0)
   CatalystAdaptor::Initialize(argc, argv);
 #endif
   // keep the number of time steps small since nothing about the grid or fields is changing
-  unsigned int numberOfTimeSteps = 5;
+  unsigned int numberOfTimeSteps = 3;
   for (unsigned int timeStep = 0; timeStep < numberOfTimeSteps; timeStep++)
   {
     // use a time step length of 0.1
