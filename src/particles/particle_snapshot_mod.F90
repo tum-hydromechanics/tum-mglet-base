@@ -74,12 +74,12 @@ CONTAINS
 
         ! particle info
         ! the following assumes that all ids within [1, 2, ..., global_np - 1, global_np] are assigned to particles unambiguously
-        IF (psnapshot_np >= global_np .OR. psnapshot_np == psnapshot_write_all_particles_tag) THEN
+        IF (psnapshot_npart >= global_np .OR. psnapshot_npart == psnapshot_write_all_particles_tag) THEN
             psnapshot_info%global_np = global_np
             ALLOCATE(psnapshot_info%particle_ids(0))
-        ELSEIF (psnapshot_np > 1) THEN
-            psnapshot_info%global_np = psnapshot_np
-            psnapshot_info%pstep = NINT(REAL(global_np / psnapshot_np))
+        ELSEIF (psnapshot_npart > 1) THEN
+            psnapshot_info%global_np = psnapshot_npart
+            psnapshot_info%pstep = NINT(REAL(global_np / psnapshot_npart))
             ALLOCATE(psnapshot_info%particle_ids(psnapshot_info%global_np))
             psnapshot_info%particle_ids(1) = 1
             DO i = 2, SIZE(psnapshot_info%particle_ids)

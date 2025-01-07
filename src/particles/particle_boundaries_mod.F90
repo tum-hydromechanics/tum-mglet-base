@@ -360,6 +360,16 @@ MODULE particle_boundaries_mod
 
                 temp_grid = destgrid
 
+                ! PROBABLY NOT NEEDED DUE TO ADJUSTMENTS IN MOVE_TO_BOUNDARY
+                ! Move particle sligthly to avoid particles getting stuck at a boundary.
+                ! The way particle motion works particles would otherwise get stuck on edges and corners,
+                ! if they are right on an edge or corner at the beginning of move_particle.
+                ! If the following small displacement leads to a particle being outside temp_grid or inside an obstacle,
+                ! no problems should occur as the algorithm should be stable in that reguard.
+                !x = x + SIGN(EPSILON(x), dx_from_here)
+                !y = y + SIGN(EPSILON(y), dy_from_here)
+                !z = z + SIGN(EPSILON(z), dz_from_here)
+
             END IF
 
             IF (TRIM(particle_terminal) == "verbose") THEN
@@ -588,7 +598,9 @@ MODULE particle_boundaries_mod
             ! motion vector is reflected towards temp_grid
             IF (lx >= 0.0_realk) THEN
                 iobst_local = 0
-                CALL get_exit_face(temp_grid, x, y, z, dist, iface)
+                ! if a particle is already on a face (esp. edge or corner), its future coordinates have to be
+                ! "projected" to assign the right ecit face (otherwise, particles might get stuck on edges or corners)
+                CALL get_exit_face(temp_grid, x + dx, y + dy, z + dz, dist, iface)
                 RETURN
             END IF
             rx = dx * s / lx
@@ -596,7 +608,7 @@ MODULE particle_boundaries_mod
             lx = (maxx - x)
             IF (lx <= 0.0_realk) THEN
                 iobst_local = 0
-                CALL get_exit_face(temp_grid, x, y, z, dist, iface)
+                CALL get_exit_face(temp_grid, x + dx, y + dy, z + dz, dist, iface)
                 RETURN
             END IF
             rx = dx * s / lx
@@ -608,7 +620,7 @@ MODULE particle_boundaries_mod
             ly = (miny - y)
             IF (ly >= 0.0_realk) THEN
                 iobst_local = 0
-                CALL get_exit_face(temp_grid, x, y, z, dist, iface)
+                CALL get_exit_face(temp_grid, x + dx, y + dy, z + dz, dist, iface)
                 RETURN
             END IF
             ry = dy * s / ly
@@ -616,7 +628,7 @@ MODULE particle_boundaries_mod
             ly = (maxy - y)
             IF (ly <= 0.0_realk) THEN
                 iobst_local = 0
-                CALL get_exit_face(temp_grid, x, y, z, dist, iface)
+                CALL get_exit_face(temp_grid, x + dx, y + dy, z + dz, dist, iface)
                 RETURN
             END IF
             ry = dy * s / ly
@@ -628,7 +640,7 @@ MODULE particle_boundaries_mod
             lz = (minz - z)
             IF(lz >= 0.0_realk) THEN
                 iobst_local = 0
-                CALL get_exit_face(temp_grid, x, y, z, dist, iface)
+                CALL get_exit_face(temp_grid, x + dx, y + dy, z + dz, dist, iface)
                 RETURN
             END IF
             rz = dz * s / lz
@@ -636,7 +648,7 @@ MODULE particle_boundaries_mod
             lz = (maxz - z)
             IF(lz <= 0.0_realk) THEN
                 iobst_local = 0
-                CALL get_exit_face(temp_grid, x, y, z, dist, iface)
+                CALL get_exit_face(temp_grid, x + dx, y + dy, z + dz, dist, iface)
                 RETURN
             END IF
             rz = dz * s / lz

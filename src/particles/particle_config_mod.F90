@@ -10,6 +10,7 @@ MODULE particle_config_mod
     USE timer_mod
     USE grids_mod
     USE utils_mod
+    USE flowcore_mod, ONLY: solve_flow ! to check compatability of particle rk scheme
 
     IMPLICIT NONE
 
@@ -28,8 +29,8 @@ MODULE particle_config_mod
     LOGICAL :: dwrite_psnapshots ! indirectly via "particles/snapshot_step"
 
     INTEGER(intk) :: psnapshot_step ! "particles/snapshot_step"
-    INTEGER(intk) :: psnapshot_np ! "particles/snapshot_np"
-    INTEGER(intk) :: psnapshot_write_all_particles_tag = -99 ! if psnapshot_np == psnapshot_write_all_particles_tag, write all particles
+    INTEGER(intk) :: psnapshot_npart ! "particles/snapshot_npart"
+    INTEGER(intk) :: psnapshot_write_all_particles_tag = -99 ! if psnapshot_npart == psnapshot_write_all_particles_tag, write all particles
 
     CHARACTER(len = 8) :: vtk_float_format = '(F14.10)'
 
@@ -53,7 +54,7 @@ MODULE particle_config_mod
     LOGICAL :: dinterp_pdiffusion = .TRUE. ! "particles/dinterp"
     CHARACTER(len = 16) :: random_walk_mode ! "particles/random_walk_mode"
     REAL(realk) :: truncation_limit ! "particles/truncation_limit"
-    REAL(realk) :: D(3) = 0.0_realk ! "particles/D"
+    REAL(realk) :: D(3) ! "particles/D"
 
     ! STATISTICS (GRID AND SLICE SAMPLES)
     LOGICAL :: dgridstat = .FALSE. ! "particles/dgridstat"
@@ -123,7 +124,7 @@ CONTAINS
 
         !- - - - - - - - - - - - - - - - - -
 
-        CALL pconf%get_value("/dwrite_npc_field", dwrite_npc_field, .FALSE.)
+        CALL pconf%get_value("/dwrite_npc", dwrite_npc_field, .FALSE.)
 
         !- - - - - - - - - - - - - - - - - -
 
@@ -144,7 +145,7 @@ CONTAINS
 
         END IF
 
-        CALL pconf%get_value("/snapshot_np", psnapshot_np, psnapshot_write_all_particles_tag)
+        CALL pconf%get_value("/snapshot_npart", psnapshot_npart, psnapshot_write_all_particles_tag)
 
         IF (psnapshot_step < 1_intk .AND. psnapshot_step /= psnapshot_write_all_particles_tag) THEN
 
@@ -156,7 +157,7 @@ CONTAINS
                 END IF
             END IF
 
-            psnapshot_np = -1
+            psnapshot_npart = -1
             dwrite_psnapshots = .FALSE.
 
         END IF
@@ -247,6 +248,12 @@ CONTAINS
 
         CALL pconf%get_value("/rk_method", prkmethod, "euler")
 
+        IF (solve_flow .AND. TRIM(prkmethod) == "williamson") THEN
+            WRITE(*, *) "Particle Runge Kutta Scheme must be of Type >euler< if flow is solved parallel to Particles."
+            WRITE(*, *) "The >williamson< RK-Scheme should only be applied in combination with an averaged flow field."
+            CALL errr(__FILE__, __LINE__)
+        END IF
+
         != = = = = = = = = = DIFFUSION = = = = = = = = = =
 
         ddiffusion = .TRUE.
@@ -263,7 +270,11 @@ CONTAINS
 
         !- - - - - - - - - - - - - - - - - -
 
-        CALL pconf%get_array("/D", D)
+        D = 0.0_realk
+
+        IF (fort7%exists("/particles/D")) THEN
+            CALL pconf%get_array("/D", D)
+        END IF
 
         IF (D(1) < 0.0_realk) THEN
 
@@ -486,19 +497,21 @@ CONTAINS
                     WRITE(*, '("        Particle Simulation:              ", L12)') dsim_particles
                     ! READING
                     WRITE(*, '("    Input:")')
+                    WRITE(*, '("        Reading Particles H5:             ", L12)') dread_particles_h5
                     WRITE(*, '("        Reading ParticlesDict:            ", L12)') dread_particles_dict
                     WRITE(*, '("        Reading ObstaclesDict:            ", L12)') dread_obstacles_dict
                     ! OUTPUT
                     WRITE(*, '("    Output:")')
-                    WRITE(*, '("        Terminal Output:                  ", A12)') TRIM(particle_terminal)
+                    WRITE(*, '("        Writing Particles H5:             ", L12)') dwrite_particles_h5
                     WRITE(*, '("        Writing NPC Field:                ", L12)') dwrite_npc_field
                     WRITE(*, '("        Writing Particle Snapshots:       ", L12)') dwrite_psnapshots
+                    WRITE(*, '("        Terminal Output:                  ", A12)') TRIM(particle_terminal)
                     IF (dwrite_psnapshots) THEN
                     WRITE(*, '("        Snapshot Step:                    ", I12)') psnapshot_step
-                    IF (psnapshot_np == psnapshot_write_all_particles_tag) THEN
+                    IF (psnapshot_npart == psnapshot_write_all_particles_tag) THEN
                     WRITE(*, '("        Snapshot - Number of Particles:  ", A13)') "All Particles"
                     ELSE
-                    WRITE(*, '("        Snapshot - Number of Particles:   ", I12)') psnapshot_np
+                    WRITE(*, '("        Snapshot - Number of Particles:   ", I12)') psnapshot_npart
                     END IF
                     END IF
                     ! PARTICLE LIST

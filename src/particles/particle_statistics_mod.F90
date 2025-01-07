@@ -138,8 +138,8 @@ CONTAINS
             igrid = mygrids(i)
             ! initialize first entry of np_counter (count the number of particles in each grid at itstep = 0 resprectively)
             DO j = 1, my_particle_list%ifinal
-                IF (my_particle_list%particles(i)%gitstep >= 0 .AND. &
-                 my_particle_list%particles(i)%gitstep < rt_ittot_start) THEN
+                IF (my_particle_list%particles(j)%gitstep >= 0 .AND. &
+                 my_particle_list%particles(j)%gitstep < rt_ittot_start) THEN
                     CALL errr(__FILE__,__LINE__)
                 END IF
                 IF (my_particle_list%particles(j)%igrid == my_gridcol_list(i)%igrid) THEN
@@ -681,7 +681,7 @@ CONTAINS
         CALL start_timer(900)
         CALL start_timer(950)
 
-        CALL write_gridstat_folder()
+        CALL write_partstat_folder()
 
         CALL write_gridstat_files()
 
@@ -695,7 +695,7 @@ CONTAINS
 
     END SUBROUTINE write_particle_statistics
 
-    SUBROUTINE write_gridstat_folder()
+    SUBROUTINE write_partstat_folder()
 
         IF (myid == 0) THEN
             CALL create_directory("Particle_Statistics") ! ! ! realtive to working directory ! ! !
@@ -703,12 +703,16 @@ CONTAINS
 
         CALL MPI_Barrier(MPI_COMM_WORLD)
 
-    END SUBROUTINE write_gridstat_folder
+    END SUBROUTINE write_partstat_folder
 
     SUBROUTINE write_gridstat_files()
 
         INTEGER(intk) :: i, j, unit
         CHARACTER(len = mglet_filename_max) :: filename
+
+        IF (.NOT. dgridstat) THEN
+            RETURN
+        END IF
 
         DO i = 1, nmygrids
 

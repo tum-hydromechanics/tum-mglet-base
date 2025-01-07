@@ -51,7 +51,8 @@ CONTAINS
             WRITE(*, '("MAX ADV DX/DY/DZ (decoupled):   ", 3F14.9)') psim_max_adv_dx, psim_max_adv_dy, psim_max_adv_dz
             WRITE(*, '("MAX DIF DX/DY/DZ (decoupled):   ", 3F14.9)') psim_max_dif_dx, psim_max_dif_dy, psim_max_dif_dz
 
-            WRITE(*, '("MAX DISPLACEMENT:               ", 1F14.9, "   (", 3F14.9, " )")') psim_max_disp, psim_max_dx, psim_max_dy, psim_max_dz
+            WRITE(*, '("MAX DISPLACEMENT:               ", 1F14.9, "   (", 3F14.9, " )")') &
+             psim_max_disp, psim_max_dx, psim_max_dy, psim_max_dz
 
             WRITE(*, '("MAX OBST ERR:                      ", F17.15)') psim_max_bcerr
             WRITE(*, '("NUM PART IN OBST.:              ", I10)') psim_n_bcerr

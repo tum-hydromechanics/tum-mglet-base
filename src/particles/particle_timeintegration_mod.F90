@@ -225,18 +225,15 @@ CONTAINS
             IF (ddiffusion) THEN
                 CALL start_timer(923)
 
-                IF (dturb_diff) THEN
-                    CALL diffx_f%get_ptr(diffx, my_particle_list%particles(i)%igrid)
-                    CALL diffy_f%get_ptr(diffy, my_particle_list%particles(i)%igrid)
-                    CALL diffz_f%get_ptr(diffz, my_particle_list%particles(i)%igrid)
-                END IF
-
                 IF (TRIM(particle_terminal) == "verbose") THEN
                     WRITE(*,'("---------- Particle Diffusion ----------")')
                     WRITE(*, '()')
                 END IF
 
                 IF (dturb_diff) THEN
+                    CALL diffx_f%get_ptr(diffx, my_particle_list%particles(i)%igrid)
+                    CALL diffy_f%get_ptr(diffy, my_particle_list%particles(i)%igrid)
+                    CALL diffz_f%get_ptr(diffz, my_particle_list%particles(i)%igrid)
                     IF (dinterp_pdiffusion) THEN
                         CALL interpolate_lincon(my_particle_list%particles(i), kk, jj, ii, x, y, z, dx, dy, dz, ddx, ddy, ddz, &
                         diffx, diffy, diffz, Dturb1, Dturb2, Dturb3)
@@ -263,7 +260,7 @@ CONTAINS
                     pdz_eff_tot = pdz_eff_tot + pdz_eff
                     psim_max_dif_dx = MAX(psim_max_dif_dx, ABS(pdx_eff))
                     psim_max_dif_dy = MAX(psim_max_dif_dy, ABS(pdy_eff))
-                    psim_max_dif_dz = MAX(psim_max_dif_dx, ABS(pdz_eff))
+                    psim_max_dif_dz = MAX(psim_max_dif_dz, ABS(pdz_eff))
                 END IF
 
             END IF
