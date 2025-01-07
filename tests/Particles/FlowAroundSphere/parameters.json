@@ -112,16 +112,20 @@
     },
 
     "particles": {
-        "read": true,
-        "read_obst": true,
-        "init_np": 2000,
-        "list_len": 2000,
-        "interp": true,
-        "prkmethod": "williamson",
-        "D":[0.0, 0.0, 0.0],
+        "dread_part_h5": false,
+        "dread_part_dict": true,
+        "dread_obst_dict": true,
+        "dwrite_part_h5": false,
+        "dwrite_npc": false,
         "terminal": "normal",
-        "write": true,
-        "snapshot_step": 1
+        "snapshot_step": 1,
+        "list_length": 2000,
+        "dinterp": true,
+        "rk_method": "euler",
+        "dturb_diff": false,
+        "random_walk_mode": "gaussian2",
+        "truncation_limit": 2.0,
+        "D":[0.0, 0.0, 0.0]
     }
 
 }

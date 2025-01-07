@@ -48,13 +48,20 @@
         ]
     },
     "particles": {
+        "dread_part_h5": false,
+        "dread_part_dict": true,
+        "dread_obst_dict": false,
+        "dwrite_part_h5": false,
+        "dwrite_npc": false,
         "terminal": "normal",
-        "read": true,
-        "interp": true,
-        "write": true,
         "snapshot_step": 10,
-        "init_np": 1000,
-        "list_len": 10000,
-        "D":[0.01, 0.005, 0.005]
+        "list_length": 10000,
+        "dinterp": true,
+        "rk_method": "williamson",
+        "dturb_diff": false,
+        "random_walk_mode": "gaussian2",
+        "truncation_limit": 2.0,
+        "D":[0.01, 0.005, 0.005],
+        "dgridstat": true
     }
 }

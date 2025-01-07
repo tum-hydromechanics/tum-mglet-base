@@ -48,16 +48,11 @@
         ]
     },
     "particles": {
-        "read": true,
-        "read_obst": false,
-        "init_np": 1,
-        "list_len": 1,
-        "interp": true,
-        "prkmethod": "williamson",
-        "D":[0.0, 0.0, 0.0],
+        "dread_part_dict": true,
         "terminal": "normal",
-        "slice_dir": "N",
-        "write": true,
-        "snapshot_step": 10
+        "snapshot_step": 10,
+        "dinterp": true,
+        "rk_method": "williamson",
+        "dgridstat": true
     }
 }

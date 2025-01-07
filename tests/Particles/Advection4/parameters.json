@@ -48,19 +48,17 @@
         ]
     },
     "particles": {
-        "read": true,
-        "read_obst": false,
-        "init_np": 10,
-        "list_len": 100,
-        "interp": true,
-        "prkmethod": "euler",
-        "D":[0.0, 0.0, 0.0],
+        "dread_part_dict": true,
         "terminal": "verbose",
-        "slice_dir": "X",
+        "snapshot_step": 1,
+        "init_npart": 10,
+        "list_length": 100,
+        "dinterp": true,
+        "rk_method": "euler",
+        "dgridstat": true,
+        "slice_direction": "X",
         "nslice_levels": 2,
         "nslices": [2, 10],
-        "slice_levels": [0.5, 0.5],
-        "write": true,
-        "snapshot_step": 1
+        "slice_levels": [0.5, 0.5]
     }
 }

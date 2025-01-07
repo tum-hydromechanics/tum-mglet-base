@@ -48,15 +48,10 @@
         ]
     },
     "particles": {
+        "dread_part_dict": true,
         "terminal": "verbose",
-        "read": true,
-        "read_obst": false,
-        "interp": true,
-        "prkmethod": "euler",
-        "write": true,
         "snapshot_step": 1,
-        "init_np": 10,
-        "list_len": 100,
-        "D":[0.0, 0.0, 0.0]
+        "dinterp": true,
+        "rk_method": "euler"
     }
 }

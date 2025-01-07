@@ -48,17 +48,17 @@
         ]
     },
     "particles": {
-        "read": true,
-        "init_np": 10,
-        "list_len": 100,
-        "interp": true,
-        "D":[0.0, 0.0, 0.0],
-        "terminal": "verbose",
-        "slice_dir": "X",
+        "dread_part_dict": true,
+        "terminal": "normal",
+        "snapshot_step": 1,
+        "init_npart": 10,
+        "list_length": 100,
+        "dinterp": true,
+        "rk_method": "williamson",
+        "dgridstat": true,
+        "slice_direction": "X",
         "nslice_levels": 1,
         "nslices": [10],
-        "slice_levels": [1.0],
-        "write": true,
-        "snapshot_step": 1
+        "slice_levels": [1.0]
     }
 }

@@ -48,13 +48,14 @@
         ]
     },
     "particles": {
+        "dread_part_dict": true,
         "terminal": "normal",
-        "read": true,
-        "interp": true,
-        "write": true,
         "snapshot_step": 5,
-        "init_np": 100,
-        "list_len": 100,
+        "list_length": 100,
+        "dinterp": true,
+        "dturb_diff": false,
+        "random_walk_mode": "gaussian2",
+        "truncation_limit": 2.0,
         "D":[0.05, 0.00, 0.00]
     }
 }

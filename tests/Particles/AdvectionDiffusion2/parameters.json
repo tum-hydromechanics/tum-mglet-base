@@ -1,6 +1,6 @@
 {
     "time": {
-        "mtstep": 1000,
+        "mtstep": 10000,
         "dt": 0.1,
         "tend": 100.0,
         "itinfo": 1,
@@ -48,13 +48,26 @@
         ]
     },
     "particles": {
+        "dread_part_h5": false,
+        "dread_part_dict": false,
+        "dwrite_part_h5": true,
         "terminal": "normal",
-        "read": false,
-        "interp": false,
-        "write": true,
         "snapshot_step": 50,
-        "init_np": 1000,
-        "list_len": 1000,
-        "D":[0.01, 0.005, 0.005]
+       	"snapshot_npart": 1000,
+        "init_npart": 10000,
+        "list_length": 10000,
+        "dinterp": true,
+        "rk_method": "euler",
+        "dturb_diff": false,
+        "random_walk_mode": "gaussian2",
+        "truncation_limit": 2.0,
+        "D":[0.005, 0.005, 0.005],
+        "dgridstat": true,
+	    "rt_ittot_start": 1000,
+	    "rt_tstep_max": 9000,
+        "slice_direction": "X",
+        "nslice_levels": 2,
+        "nslices": [1, 5],
+        "slice_levels": [0.5, 1.0]
     }
 }

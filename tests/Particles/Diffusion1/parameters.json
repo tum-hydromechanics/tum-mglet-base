@@ -53,18 +53,23 @@
         "fields": ["U", "V", "W", "P", "NPC"]
     },
     "particles": {
-        "read": true,
-        "init_np": 10000,
-        "list_len": 10000,
-        "interp": true,
-        "prkmethod": "williamson",
-        "D":[0.002, 0.002, 0.000],
+        "dread_part_h5": false,
+        "dread_part_dict": true,
+        "dread_obst_dict": false,
+        "dwrite_part_h5": false,
+        "dwrite_npc": true,
         "terminal": "normal",
-        "slice_dir": "X",
+        "snapshot_step": 10,
+        "list_length": 10000,
+        "dinterp": true,
+        "dturb_diff": false,
+        "random_walk_mode": "gaussian2",
+        "truncation_limit": 2.0,
+        "D":[0.002, 0.002, 0.000],
+        "dgridstat": true,
+        "slice_direction": "X",
         "nslice_levels": 1,
         "nslices": [100],
-        "slice_levels": [1.0],
-        "write": true,
-        "snapshot_step": 10
+        "slice_levels": [1.0]
     }
 }

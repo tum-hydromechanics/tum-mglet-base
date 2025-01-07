@@ -48,13 +48,10 @@
         ]
     },
     "particles": {
+        "dread_part_dict": true,
         "terminal": "normal",
-        "read": true,
-        "interp": true,
-        "write": true,
         "snapshot_step": 5,
-        "init_np": 100,
-        "list_len": 1000,
-        "D":[0.0, 0.0, 0.0]
+        "list_length": 100,
+        "dinterp": true
     }
 }

@@ -35,18 +35,19 @@
         }
     },
     "particles": {
-        "read": true,
-        "init_np": 1000,
-        "list_len": 1000,
-        "interp": true,
-        "prkmethod": "williamson",
-        "D":[0.000, 0.002, 0.000],
+        "dread_part_dict": true,
         "terminal": "normal",
-        "slice_dir": "X",
+        "snapshot_step": 20,
+        "dinterp": true,
+        "rk_method": "williamson",
+        "dturb_diff": false,
+        "random_walk_mode": "gaussian2",
+        "truncation_limit": 2.0,
+        "D":[0.000, 0.002, 0.000],
+        "dgridstat": true,
+        "slice_direction": "X",
         "nslice_levels": 1,
         "nslices": [100],
-        "slice_levels": [1.0],
-        "write": true,
-        "snapshot_step": 20
+        "slice_levels": [1.0]
     }
 }
