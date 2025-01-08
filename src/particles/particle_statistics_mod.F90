@@ -468,12 +468,31 @@ CONTAINS
 
         IF (p_coord < my_slicecol_list(particle%islice)%llim) THEN
 
+            IF (ittot >= rt_ittot_start) THEN
+                IF (particle%sitstep >= 0) THEN
+                    rt_tstep = ittot - particle%sitstep
+                    IF (rt_tstep > SIZE(my_slicecol_list(particle%islice)%rt_counter) .OR. rt_tstep < 1) THEN
+                        WRITE(*, '("WARNING in Particle Statistics (Slices)")')
+                        WRITE(*, '("On Proc ", I0, ": Residence time of particle ", I0," is too large or too small!")') &
+                         myid, particle%ipart
+                        WRITE(*, '("rt_tstep ", I0, "; size(rt_counter)", I0)') rt_tstep, SIZE(my_slicecol_list(particle%islice)%rt_counter)
+                    ELSE
+                        my_slicecol_list(particle%islice)%rt_counter(rt_tstep) = &
+                        my_slicecol_list(particle%islice)%rt_counter(rt_tstep) + 1
+                    END IF
+                END IF
+
+                particle%sitstep = ittot
+            END IF
+
             IF (particle%islice == 1) THEN
                 particle%islice = SIZE(my_slicecol_list)
             ELSE
                 particle%islice = particle%islice - 1
             END IF
 
+        ELSEIF (p_coord > my_slicecol_list(particle%islice)%ulim) THEN
+
             IF (ittot >= rt_ittot_start) THEN
                 IF (particle%sitstep >= 0) THEN
                     rt_tstep = ittot - particle%sitstep
@@ -490,30 +509,11 @@ CONTAINS
 
                 particle%sitstep = ittot
             END IF
-
-        ELSEIF (p_coord > my_slicecol_list(particle%islice)%ulim) THEN
 
             IF (particle%islice == SIZE(my_slicecol_list)) THEN
                 particle%islice = 1
             ELSE
                 particle%islice = particle%islice + 1
-            END IF
-
-            IF (ittot >= rt_ittot_start) THEN
-                IF (particle%sitstep >= 0) THEN
-                    rt_tstep = ittot - particle%sitstep
-                    IF (rt_tstep > SIZE(my_slicecol_list(particle%islice)%rt_counter) .OR. rt_tstep < 1) THEN
-                        WRITE(*, '("WARNING in Particle Statistics (Slices)")')
-                        WRITE(*, '("On Proc ", I0, ": Residence time of particle ", I0," is too large or too small!")') &
-                         myid, particle%ipart
-                        WRITE(*, '("rt_tstep ", I0, "; size(rt_counter)", I0)') rt_tstep, SIZE(my_slicecol_list(particle%islice)%rt_counter)
-                    ELSE
-                        my_slicecol_list(particle%islice)%rt_counter(rt_tstep) = &
-                        my_slicecol_list(particle%islice)%rt_counter(rt_tstep) + 1
-                    END IF
-                END IF
-
-                particle%sitstep = ittot
             END IF
 
         END IF
