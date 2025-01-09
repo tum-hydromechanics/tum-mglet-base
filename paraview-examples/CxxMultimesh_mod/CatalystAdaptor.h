@@ -13,7 +13,9 @@
 
 namespace CatalystAdaptor
 {
-bool trigger = true;
+  static std::vector<std::string> filesToValidate;
+
+  bool trigger = true;
 /**
  * In this example, we show how we can use Catalysts's C++
  * wrapper around conduit's C API to create Conduit nodes.
@@ -29,6 +31,38 @@ void Initialize(int argc, char* argv[])
   {
     node["catalyst/scripts/script" + std::to_string(cc - 1)].set_string(argv[cc]);
   }
+//in order to preview the multimesh...
+  for (int cc = 1; cc < argc; ++cc)
+  {
+    if (strcmp(argv[cc], "--output") == 0 && (cc + 1) < argc)
+    {
+      node["catalyst/pipelines/0/type"].set("io");
+      node["catalyst/pipelines/0/filename"].set(argv[cc + 1]);
+      node["catalyst/pipelines/0/channel"].set("grid");
+
+      // node["catalyst/pipelines/0/channel/input/data"].set("grid");
+      ++cc;
+    }
+    else if (strcmp(argv[cc], "--exists") == 0 && (cc + 1) < argc)
+    {
+      filesToValidate.push_back(argv[cc + 1]);
+      ++cc;
+    }
+    else
+    {
+      const auto path = std::string(argv[cc]);
+      // note: one can simply add the script file as follows:
+      // node["catalyst/scripts/script" + std::to_string(cc - 1)].set_string(path);
+
+      // alternatively, use this form to pass optional parameters to the script.
+      const auto name = "catalyst/scripts/script" + std::to_string(cc - 1);
+      node[name + "/filename"].set_string(path);
+      node[name + "/args"].append().set_string("argument0");
+      node[name + "/args"].append().set_string("argument1=12");
+      node[name + "/args"].append().set_string("--argument3");
+      // node[name + "/args"].append().set_string("--channel-name=grid");
+      node[name + "/args"].append().set_string("--channel-name=data/grid");//
+    }
   node["catalyst_load/implementation"] = "paraview";
   node["catalyst_load/search_paths/paraview"] = PARAVIEW_IMPL_DIR;
   catalyst_status err = catalyst_initialize(conduit_cpp::c_node(&node));
@@ -36,6 +70,7 @@ void Initialize(int argc, char* argv[])
   {
     std::cerr << "Failed to initialize Catalyst: " << err << std::endl;
   }
+}
 }
 
 void Execute(int cycle, double time, Grid& grid, Attributes& attribs, Particles& particles)
@@ -149,6 +184,17 @@ void Execute(int cycle, double time, Grid& grid, Attributes& attribs, Particles&
   if (err != catalyst_status_ok)
   {
     std::cerr << "Failed to execute Catalyst: " << err << std::endl;
+  }
+
+    if(trigger){
+    // std::cout<<"Time: "<<time<<std::endl;
+    std::cout<<"mesh_grid:"<<std::endl;
+    // std::cout<<mesh_grid.to_yaml()<<std::endl;//prints everything in detail
+    mesh_grid.print();// does not prints everything...
+    std::cout<<"---------------------------\nchannel:"<<std::endl;
+    channel.print();
+    // // std::cout<<channel.to_yaml()<<std::endl;
+    trigger = false;
   }
 }
 

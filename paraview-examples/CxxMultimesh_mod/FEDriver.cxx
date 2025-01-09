@@ -25,7 +25,7 @@ int main(int argc, char* argv[])
 #ifdef USE_CATALYST
   CatalystAdaptor::Initialize(argc, argv);
 #endif
-  unsigned int numberOfTimeSteps = 10;
+  unsigned int numberOfTimeSteps = 2;
   for (unsigned int timeStep = 0; timeStep < numberOfTimeSteps; timeStep++)
   {
     // use a time step length of 0.1

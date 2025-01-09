@@ -18,7 +18,8 @@
 
 namespace CatalystAdaptor
 {
-static std::vector<std::string> filesToValidate;
+  static std::vector<std::string> filesToValidate;
+  bool trigger =true;
 
 /**
  * In this example, we show how to pass overlapping AMR data
@@ -223,21 +224,25 @@ void Execute(unsigned int cycle, double time, AMR& amr)
     }
     // we copy the data since point_values will get deallocated
     other_field["values"] = point_values;
+  
   }
-  // std::string path1="amr_mesh_1";
-  // std::cout<<"\n\n---------------------------------writing mesh. rank"<<myRank<<std::endl;
-  // mesh.print();
+  // if(trigger){
+
+  // std::cout<<"\n\n------------------------------writing mesh. rank"<<myRank<<std::endl;
+  // // mesh.print();
+
+  // trigger = false;
+  // }
   // MPI_Barrier(MPI_COMM_WORLD);
 
-  //this is using conduit.hpp but we are using this embedded conduit_cpp
+  // this is using conduit.hpp but we are using this embedded conduit_cpp
+  // std::string path1="amr_mesh_1";
+
   // conduit_cpp::relay::io::blueprint::write_mesh(mesh, path1,"json");
-  //so let's try this
+  // so let's try this
   // std::cout<<mesh.to_yaml()<<std::endl;
-  //and
+  // and
   // std::cout<<mesh.write_mesh(path1,"json")<<std::endl;
-
-
-
 
   // exec_params.print(); // for viewing the Conduit node information
 

@@ -7,51 +7,18 @@
 #include <iostream>
 #include <mpi.h>
 
-
-
 // using Node =   conduit_cpp::Node;
 // using conduit = conduit_cpp;
 
 int main(int argc, char* argv[]){
 
-    /*
-// Call on each of 4 MPI ranks.
-CatalystAdaptor::conduit_cpp::Node mesh, bp_index;
-CatalystAdaptor::conduit_cpp::blueprint::mesh::examples::braid("uniform", 10, 10, 10, mesh);
-char domainFile[1024];
-sprintf(domainFile, "./bp/bp_%04d.hdf5", rank);
-conduit_cpp::relay::io::save(mesh, domainFile, "hdf5");
-
-CatalystAdaptor::conduit_cpp::blueprint::mpi::mesh::generate_index(mesh,
-                                              "",
-                                              bp_index["blueprint_index/mesh"],
-                                              MPI_COMM_WORLD);
-bp_index["file_pattern"] = "./bp/bp_%04d.hdf5";
-bp_index["number_of_files"] = 4;
-bp_index["number_of_trees"] = 4;
-bp_index["protocol/name"] = "hdf5";clear
-bp_index["protocol/version"] = "0.4.0";
-bp_index["tree_pattern"] = "/";
-if(rank == 0)
-    CatalystAdaptor::conduit_cpp::relay::io::save(bp_index, "bp.root", "hdf5");
-}
-*/
-
-// Example of a C++ adaptor for a simulation code
-// where the simulation code has an overlapping AMR
-// grid. The grid in this case is a vtkOverlappingAMR
-// data set with the MPI process id specified
-// as cell data. Note that in order to see the AMR
-// cells (i.e. Surface With Edges representation of
-// the data) that the .vtk reader needs to increase
-// the `Default Number Of Levels` parameter to
-// greater than the default of 1.
   MPI_Init(&argc, &argv);
   int numRanks(1), myRank(0);
   MPI_Comm_size(MPI_COMM_WORLD, &numRanks);
   MPI_Comm_rank(MPI_COMM_WORLD, &myRank);
 
-  unsigned int numberOfAMRLevels = 5;
+  unsigned int numberOfAMRLevels = 3;
+  // numRanks =2;
   AMR amr(numberOfAMRLevels, myRank, numRanks);
 
   // The first argument is the program name
