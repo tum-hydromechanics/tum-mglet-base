@@ -6,19 +6,19 @@
 #include "FEDataStructures.h"
 #include <iostream>
 #include <mpi.h>
+#include "conduit.hpp"
 
-// Example of a C++ adaptor for a simulation code
-// where the simulation code has an overlapping AMR
-// grid. The grid in this case is a vtkOverlappingAMR
-// data set with the MPI process id specified
-// as cell data. Note that in order to see the AMR
-// cells (i.e. Surface With Edges representation of
-// the data) that the .vtk reader needs to increase
-// the `Default Number Of Levels` parameter to
-// greater than the default of 1.
+#include <conduit_blueprint_mesh_examples_julia.hpp>
+#include <conduit_relay_io_blueprint.hpp>
+#include "conduit_blueprint.hpp"
+#include <conduit_relay_io_blueprint.hpp>
+#include <conduit_blueprint_mesh.hpp>
+#include <conduit_blueprint_mesh_examples_generate.hpp>
+#include <conduit_relay_io.hpp>
 
 int main(int argc, char* argv[])
 {
+`
   using ValueType =int;
 
   MPI_Init(&argc, &argv);
@@ -28,11 +28,8 @@ int main(int argc, char* argv[])
 
   unsigned int numberOfAMRLevels = 3;
   AMR amr(numberOfAMRLevels, myRank, numRanks);
-//   for (size_t i=0;i<argc;i++){
-//     std::cout<<"argv["<<i<<"]: "<<argv[i]<<std::endl;
-// }
 
-  // The first argument is the program name
+
 #ifdef USE_CATALYST
   CatalystAdaptor::Initialize(argc, argv);
 #endif

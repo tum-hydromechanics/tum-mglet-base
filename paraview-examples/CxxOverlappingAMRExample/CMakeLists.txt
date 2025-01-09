@@ -7,9 +7,15 @@ set(CMAKE_LIBRARY_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/${CMAKE_INSTALL_LIBDIR}"
 
 #------------------------------------------------------------------------------
 # since we use C++11 in this example.
-set(CMAKE_CXX_STANDARD 11)
+# set(CMAKE_CXX_STANDARD 11)
+# set(CMAKE_CXX_STANDARD_REQUIRED ON)
+# set(CMAKE_CXX_EXTENSIONS OFF)
+find_package(Conduit REQUIRED)
+######
+# Conduit requires c++14 support
+######
+set(CMAKE_CXX_STANDARD 14)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
-set(CMAKE_CXX_EXTENSIONS OFF)
 
 # Since this example uses MPI, find and link against it.
 find_package(MPI COMPONENTS C CXX)
@@ -32,7 +38,8 @@ add_executable(test2
 target_link_libraries(test2
   PRIVATE
     MPI::MPI_C
-    MPI::MPI_CXX)
+    MPI::MPI_CXX
+    conduit::conduit)
 
 #------------------------------------------------------------------------------
 option(USE_CATALYST "Build example with Catalyst enabled" ON)
