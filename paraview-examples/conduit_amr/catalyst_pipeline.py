@@ -17,13 +17,8 @@ producer = TrivialProducer(registrationName="grid")
 def catalyst_execute(info):
     global producer
     producer.UpdatePipeline()
-    # print("-----------------------------------")
-    # print("executing (cycle={}, time={})".format(info.cycle, info.time))
-    # print("bounds:", producer.GetDataInformation().GetBounds())
-    # print("cellvals:", producer.CellData["cellvals"].GetRange(-1))
-    # print("vtkGhostType:", producer.CellData["vtkGhostType"].GetRange(-1))
-
-    # access the node pass through catalyst_execute from the simulation
-    # make sure that CATALYST_PYTHONPATH is in your PYTHONPATH
-    # node = info.catalyst_params
-    # print(f"{node=}")
+    print("-----------------------------------")
+    print("executing (cycle={}, time={})".format(info.cycle, info.time))
+    print("bounds:", producer.GetDataInformation().GetBounds())
+    print("procid:", producer.CellData["procid"].GetRange(-1))
+    print("vtkGhostType:", producer.CellData["vtkGhostType"].GetRange(-1))
