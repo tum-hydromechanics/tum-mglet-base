@@ -27,6 +27,13 @@ target_link_libraries(CxxOverlappingAMRExampleV2
     MPI::MPI_C
     MPI::MPI_CXX)
 
+add_executable(test2
+  FEDriver2.cxx FEDataStructures.cxx FEDataStructures.h)
+target_link_libraries(test2
+  PRIVATE
+    MPI::MPI_C
+    MPI::MPI_CXX)
+
 #------------------------------------------------------------------------------
 option(USE_CATALYST "Build example with Catalyst enabled" ON)
 if (USE_CATALYST)
@@ -37,6 +44,15 @@ if (USE_CATALYST)
       "PARAVIEW_IMPL_DIR=\"${ParaView_CATALYST_DIR}\""
       USE_CATALYST=1)
   target_link_libraries(CxxOverlappingAMRExampleV2
+    PRIVATE
+      catalyst::catalyst)
+
+
+  target_compile_definitions(test2
+    PRIVATE
+      "PARAVIEW_IMPL_DIR=\"${ParaView_CATALYST_DIR}\""
+      USE_CATALYST=1)
+  target_link_libraries(test2
     PRIVATE
       catalyst::catalyst)
 
