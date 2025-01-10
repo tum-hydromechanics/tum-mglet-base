@@ -1,0 +1,1367 @@
+
+domain_0: 
+  state: 
+    domain_id: 0
+    cycle: 0
+    time: 0.0
+    level: 0
+  coordsets: 
+    coords: 
+      type: "uniform"
+      dims: 
+        i: 2
+        j: 2
+        k: 6
+      spacing: 
+        dx: 1.0
+        dy: 1.0
+        dz: 1.0
+      origin: 
+        x: 0.0
+        y: 0.0
+        z: 0.0
+  topologies: 
+    topo: 
+      type: "uniform"
+      coordset: "coords"
+      elements: 
+        origin: 
+          i0: 0
+          j0: 0
+          k0: 0
+  nestsets: 
+    nest: 
+      association: "element"
+      topology: "topo"
+      windows: 
+        window_0: 
+          domain_id: 0
+          domain_type: "child"
+          origin: 
+            i: 0
+            j: 0
+            k: 0
+          dims: 
+            i: 2
+            j: 2
+            k: 6
+          ratio: 
+            i: 2
+            j: 2
+            k: 2
+  fields: 
+    procid: 
+      association: "element"
+      topology: "topo"
+      values: [0, 0, 0, 0, 0]
+    otherfield: 
+      association: "vertex"
+      topology: "topo"
+      values: [0.0, 1.0, 0.0, ..., 0.0, 1.0]
+domain_1: 
+  state: 
+    domain_id: 1
+    cycle: 0
+    time: 0.0
+    level: 1
+  coordsets: 
+    coords: 
+      type: "uniform"
+      dims: 
+        i: 3
+        j: 3
+        k: 9
+      spacing: 
+        dx: 0.5
+        dy: 0.5
+        dz: 0.5
+      origin: 
+        x: 0.0
+        y: 0.0
+        z: 1.0
+  topologies: 
+    topo: 
+      type: "uniform"
+      coordset: "coords"
+      elements: 
+        origin: 
+          i0: 0
+          j0: 0
+          k0: 2
+  nestsets: 
+    nest: 
+      association: "element"
+      topology: "topo"
+      windows: 
+        window_0: 
+          domain_id: 0
+          domain_type: "parent"
+          origin: 
+            i: 0
+            j: 0
+            k: 0
+          dims: 
+            i: 2
+            j: 2
+            k: 6
+          ratio: 
+            i: 2
+            j: 2
+            k: 2
+        window_1: 
+          domain_id: 1
+          domain_type: "child"
+          origin: 
+            i: 0
+            j: 0
+            k: 2
+          dims: 
+            i: 3
+            j: 3
+            k: 9
+          ratio: 
+            i: 2
+            j: 2
+            k: 2
+  fields: 
+    procid: 
+      association: "element"
+      topology: "topo"
+      values: [0, 0, 0, ..., 0, 0]
+    otherfield: 
+      association: "vertex"
+      topology: "topo"
+      values: [0.0, 0.5, 1.0, ..., 0.5, 1.0]
+domain_2: 
+  state: 
+    domain_id: 2
+    cycle: 0
+    time: 0.0
+    level: 2
+  coordsets: 
+    coords: 
+      type: "uniform"
+      dims: 
+        i: 5
+        j: 5
+        k: 13
+      spacing: 
+        dx: 0.25
+        dy: 0.25
+        dz: 0.25
+      origin: 
+        x: 0.0
+        y: 0.0
+        z: 2.0
+  topologies: 
+    topo: 
+      type: "uniform"
+      coordset: "coords"
+      elements: 
+        origin: 
+          i0: 0
+          j0: 0
+          k0: 8
+  nestsets: 
+    nest: 
+      association: "element"
+      topology: "topo"
+      windows: 
+        window_1: 
+          domain_id: 1
+          domain_type: "parent"
+          origin: 
+            i: 0
+            j: 0
+            k: 2
+          dims: 
+            i: 3
+            j: 3
+            k: 9
+          ratio: 
+            i: 2
+            j: 2
+            k: 2
+        window_2: 
+          domain_id: 2
+          domain_type: "child"
+          origin: 
+            i: 0
+            j: 0
+            k: 8
+          dims: 
+            i: 5
+            j: 5
+            k: 13
+          ratio: 
+            i: 2
+            j: 2
+            k: 2
+  fields: 
+    procid: 
+      association: "element"
+      topology: "topo"
+      values: [0, 0, 0, ..., 0, 0]
+    otherfield: 
+      association: "vertex"
+      topology: "topo"
+      values: [0.0, 0.25, 0.5, ..., 0.75, 1.0]
+domain_3: 
+  state: 
+    domain_id: 3
+    cycle: 0
+    time: 0.0
+    level: 3
+  coordsets: 
+    coords: 
+      type: "uniform"
+
+domain_10: 
+  state: 
+      dims: 
+        i: 9
+        j: 9
+        k: 17
+      spacing: 
+        dx: 0.125
+        dy: 0.125
+        dz: 0.125
+      origin: 
+        x: 0.0
+        y: 0.0
+        z: 3.0
+  topologies: 
+    topo: 
+    domain_id: 10
+    cycle: 0
+    time: 0.0
+    level: 0
+  coordsets: 
+    coords: 
+      type: "uniform"
+      coordset: "coords"
+      elements: 
+        origin: 
+          i0: 0
+          j0: 0
+          k0: 24
+  nestsets: 
+    nest: 
+      type: "uniform"
+      dims: 
+        i: 2
+        j: 2
+        k: 6
+      spacing: 
+        dx: 1.0
+        dy: 1.0
+        dz: 1.0
+      origin: 
+        x: 2.0
+        y: 0.0
+        z: 0.0
+  topologies: 
+      association: "element"
+      topology: "topo"
+      windows: 
+        window_2: 
+          domain_id: 2
+          domain_type: "parent"
+          origin: 
+            i: 0
+            j: 0
+            k: 8
+          dims: 
+            i: 5
+            j: 5
+    topo: 
+      type: "uniform"
+      coordset: "coords"
+            k: 13
+          ratio: 
+      elements: 
+        origin: 
+          i0: 0
+          j0: 0
+          k0: 0
+  nestsets: 
+    nest: 
+      association: "element"
+      topology: "topo"
+      windows: 
+        window_10: 
+          domain_id: 10
+          domain_type: "child"
+          origin: 
+            i: 0
+            i: 2
+            j: 2
+            k: 2
+        window_3: 
+          domain_id: 3
+          domain_type: "child"
+          origin: 
+            i: 0
+            j: 0
+            k: 24
+          dims: 
+            i: 9
+            j: 9
+            k: 17
+          ratio: 
+            i: 2
+            j: 2
+            k: 2
+  fields: 
+    procid: 
+      association: "element"
+      topology: "topo"
+      values: [0, 0, 0, ..., 0, 0]
+    otherfield: 
+      association: "vertex"
+      topology: "topo"
+            j: 0
+            k: 0
+          dims: 
+            i: 2
+            j: 2
+            k: 6
+          ratio: 
+            i: 2
+            j: 2
+            k: 2
+  fields: 
+    procid: 
+      association: "element"
+      topology: "topo"
+      values: [2, 2, 2, 2, 2]
+    otherfield: 
+      association: "vertex"
+      topology: "topo"
+      values: [2.0, 3.0, 2.0, ..., 2.0, 3.0]
+domain_11: 
+  state: 
+      values: [0.0, 0.125, 0.25, ..., 0.875, 1.0]
+domain_4: 
+  state: 
+    domain_id: 4
+    cycle: 0
+    time: 0.0
+    level: 4
+  coordsets: 
+    coords: 
+      type: "uniform"
+      dims: 
+    domain_id: 11
+    cycle: 0
+    time: 0.0
+    level: 1
+  coordsets: 
+    coords: 
+      type: "uniform"
+      dims: 
+        i: 3
+        i: 17
+        j: 17
+        k: 17
+      spacing: 
+        dx: 0.0625
+        dy: 0.0625
+        dz: 0.0625
+      origin: 
+        x: 0.0
+        j: 3
+        k: 9
+      spacing: 
+        dx: 0.5
+        dy: 0.5
+        dz: 0.5
+      origin: 
+        x: 2.0
+        y: 0.0
+        z: 1.0
+  topologies: 
+        y: 0.0
+        z: 4.0
+  topologies: 
+    topo: 
+      type: "uniform"
+      coordset: "coords"
+      elements: 
+        origin: 
+          i0: 0
+          j0: 0
+          k0: 64
+  nestsets: 
+    nest: 
+    topo: 
+      type: "uniform"
+      coordset: "coords"
+      elements: 
+        origin: 
+          i0: 0
+          j0: 0
+          k0: 2
+  nestsets: 
+      association: "element"
+      topology: "topo"
+      windows: 
+        window_3: 
+          domain_id: 3
+          domain_type: "parent"
+          origin: 
+            i: 0
+            j: 0
+    nest: 
+      association: "element"
+      topology: "topo"
+      windows: 
+        window_10: 
+          domain_id: 10
+          domain_type: "parent"
+          origin: 
+            k: 24
+          dims: 
+            i: 9
+            j: 9
+            k: 17
+          ratio: 
+            i: 2
+            j: 2
+            k: 2
+  fields: 
+    procid: 
+      association: "element"
+      topology: "topo"
+      values: [0, 0, 0, ..., 0, 0]
+    otherfield: 
+      association: "vertex"
+      topology: "topo"
+      values: [0.0, 0.0625, 0.125, ..., 0.9375, 1.0]
+            i: 0
+            j: 0
+            k: 0
+          dims: 
+            i: 2
+            j: 2
+            k: 6
+          ratio: 
+            i: 2
+            j: 2
+            k: 2
+        window_11: 
+          domain_id: 11
+
+domain_5: 
+  state: 
+    domain_id: 5
+    cycle: 0
+    time: 0.0
+    level: 0
+  coordsets: 
+    coords: 
+      type: "uniform"
+
+          domain_type: "child"
+          origin: 
+            i: 0
+            j: 0
+            k: 2
+          dims: 
+            i: 3
+            j: 3
+            k: 9
+          ratio: 
+            i: 2
+      dims: 
+        i: 2
+
+domain_15: 
+            j: 2
+            k: 2
+  fields: 
+    procid: 
+  state: 
+    domain_id: 15
+    cycle: 0
+    time: 0.0
+    level: 0
+  coordsets: 
+    coords: 
+      type: "uniform"
+      dims: 
+        i: 2
+        j: 2
+        k: 6
+      spacing: 
+        dx: 1.0
+        dy: 1.0
+        j: 2
+        k: 6
+      spacing: 
+        dx: 1.0
+        dy: 1.0
+        dz: 1.0
+      origin: 
+        x: 1.0
+        y: 0.0
+        z: 0.0
+  topologies: 
+    topo: 
+      type: "uniform"
+      coordset: "coords"
+      elements: 
+        origin: 
+          i0: 0
+          j0: 0
+          k0: 0
+  nestsets: 
+    nest: 
+      association: "element"
+      topology: "topo"
+      association: "element"
+      topology: "topo"
+      values: [2, 2, 2, ..., 2, 2]
+    otherfield: 
+      association: "vertex"
+      topology: "topo"
+      values: [2.0, 2.5, 3.0, ..., 2.5, 3.0]
+domain_12: 
+  state: 
+    domain_id: 12
+    cycle: 0
+    time: 0.0
+    level: 2
+  coordsets: 
+    coords: 
+      type: "uniform"
+      dims: 
+        i: 5
+        j: 5
+        k: 13
+      spacing: 
+        dx: 0.25
+      windows: 
+        window_5: 
+        dz: 1.0
+      origin: 
+        x: 3.0
+        y: 0.0
+        dy: 0.25
+        dz: 0.25
+      origin: 
+        z: 0.0
+  topologies: 
+    topo: 
+      type: "uniform"
+      coordset: "coords"
+      elements: 
+        origin: 
+          i0: 0
+          j0: 0
+          k0: 0
+          domain_id: 5
+          domain_type: "child"
+          origin: 
+            i: 0
+            j: 0
+            k: 0
+          dims: 
+            i: 2
+            j: 2
+        x: 2.0
+        y: 0.0
+        z: 2.0
+  topologies: 
+    topo: 
+      type: "uniform"
+      coordset: "coords"
+      elements: 
+        origin: 
+          i0: 0
+            k: 6
+          ratio: 
+            i: 2
+            j: 2
+            k: 2
+  fields: 
+    procid: 
+      association: "element"
+      topology: "topo"
+      values: [1, 1, 1, 1, 1]
+  nestsets: 
+    nest: 
+      association: "element"
+      topology: "topo"
+      windows: 
+        window_15: 
+          domain_id: 15
+          domain_type: "child"
+          origin: 
+            i: 0
+          j0: 0
+          k0: 8
+  nestsets: 
+    nest: 
+      association: "element"
+      topology: "topo"
+      windows: 
+        window_11: 
+          domain_id: 11
+          domain_type: "parent"
+          origin: 
+            j: 0
+            k: 0
+          dims: 
+    otherfield: 
+      association: "vertex"
+      topology: "topo"
+      values: [1.0, 2.0, 1.0, ..., 1.0, 2.0]
+            i: 0
+            j: 0
+            k: 2
+          dims: 
+domain_6: 
+  state: 
+    domain_id: 6
+    cycle: 0
+    time: 0.0
+    level: 1
+  coordsets: 
+    coords: 
+      type: "uniform"
+            i: 2
+            j: 2
+            k: 6
+          ratio: 
+            i: 2
+            j: 2
+            k: 2
+  fields: 
+    procid: 
+      association: "element"
+      topology: "topo"
+      values: [3, 3, 3, 3, 3]
+            i: 3
+            j: 3
+            k: 9
+          ratio: 
+            i: 2
+            j: 2
+            k: 2
+        window_12: 
+          domain_id: 12
+          domain_type: "child"
+          origin: 
+    otherfield: 
+      association: "vertex"
+      topology: "topo"
+      values: [3.0, 4.0, 3.0, ..., 3.0, 4.0]
+domain_16: 
+  state: 
+      dims: 
+        i: 3
+        j: 3
+        k: 9
+      spacing: 
+        dx: 0.5
+        dy: 0.5
+        dz: 0.5
+            i: 0
+            j: 0
+            k: 8
+          dims: 
+            i: 5
+            j: 5
+      origin: 
+        x: 1.0
+        y: 0.0
+        z: 1.0
+  topologies: 
+    topo: 
+      type: "uniform"
+      coordset: "coords"
+      elements: 
+        origin: 
+          i0: 0
+    domain_id: 16
+    cycle: 0
+    time: 0.0
+    level: 1
+  coordsets: 
+    coords: 
+      type: "uniform"
+      dims: 
+        i: 3
+        j: 3
+        k: 9
+            k: 13
+          ratio: 
+            i: 2
+            j: 2
+            k: 2
+  fields: 
+    procid: 
+      association: "element"
+      topology: "topo"
+      values: [2, 2, 2, ..., 2, 2]
+    otherfield: 
+      spacing: 
+        dx: 0.5
+          j0: 0
+          k0: 2
+  nestsets: 
+    nest: 
+      association: "element"
+      association: "vertex"
+      topology: "topo"
+      values: [2.0, 2.25, 2.5, ..., 2.75, 3.0]
+domain_13: 
+      topology: "topo"
+      windows: 
+        window_5: 
+          domain_id: 5
+          domain_type: "parent"
+          origin: 
+            i: 0
+            j: 0
+            k: 0
+          dims: 
+            i: 2
+            j: 2
+        dy: 0.5
+        dz: 0.5
+      origin: 
+        x: 3.0
+        y: 0.0
+        z: 1.0
+  topologies: 
+    topo: 
+      type: "uniform"
+      coordset: "coords"
+      elements: 
+        origin: 
+          i0: 0
+          j0: 0
+          k0: 2
+  nestsets: 
+  state: 
+    domain_id: 13
+    cycle: 0
+    time: 0.0
+    level: 3
+  coordsets: 
+    coords: 
+      type: "uniform"
+      dims: 
+        i: 9
+        j: 9
+        k: 17
+      spacing: 
+        dx: 0.125
+        dy: 0.125
+        dz: 0.125
+      origin: 
+    nest: 
+      association: "element"
+      topology: "topo"
+      windows: 
+        window_15: 
+            k: 6
+          ratio: 
+            i: 2
+            j: 2
+            k: 2
+        x: 2.0
+        y: 0.0
+        z: 3.0
+  topologies: 
+        window_6: 
+          domain_id: 6
+          domain_type: "child"
+          origin: 
+            i: 0
+            j: 0
+            k: 2
+          dims: 
+            i: 3
+            j: 3
+            k: 9
+          ratio: 
+          domain_id: 15
+          domain_type: "parent"
+          origin: 
+            i: 0
+            j: 0
+            k: 0
+          dims: 
+            i: 2
+            j: 2
+            k: 6
+          ratio: 
+            i: 2
+            j: 2
+    topo: 
+      type: "uniform"
+      coordset: "coords"
+      elements: 
+        origin: 
+          i0: 0
+          j0: 0
+          k0: 24
+  nestsets: 
+    nest: 
+      association: "element"
+      topology: "topo"
+      windows: 
+        window_12: 
+          domain_id: 12
+          domain_type: "parent"
+          origin: 
+            i: 0
+            j: 0
+            k: 8
+          dims: 
+            i: 5
+            k: 2
+        window_16: 
+          domain_id: 16
+          domain_type: "child"
+          origin: 
+            i: 0
+            j: 0
+            k: 2
+          dims: 
+            i: 2
+            j: 2
+            k: 2
+  fields: 
+    procid: 
+      association: "element"
+      topology: "topo"
+      values: [1, 1, 1, ..., 1, 1]
+    otherfield: 
+      association: "vertex"
+      topology: "topo"
+      values: [1.0, 1.5, 2.0, ..., 1.5, 2.0]
+domain_7: 
+  state: 
+    domain_id: 7
+            j: 5
+            k: 13
+          ratio: 
+            i: 2
+            j: 2
+            k: 2
+        window_13: 
+          domain_id: 13
+          domain_type: "child"
+          origin: 
+            i: 3
+            j: 3
+            k: 9
+          ratio: 
+            i: 2
+            j: 2
+            k: 2
+  fields: 
+    procid: 
+    cycle: 0
+    time: 0.0
+    level: 2
+  coordsets: 
+    coords: 
+      type: "uniform"
+      dims: 
+        i: 5
+        j: 5
+        k: 13
+      spacing: 
+        dx: 0.25
+            i: 0
+            j: 0
+            k: 24
+          dims: 
+            i: 9
+            j: 9
+            k: 17
+          ratio: 
+            i: 2
+            j: 2
+            k: 2
+      association: "element"
+      topology: "topo"
+      values: [3, 3, 3, ..., 3, 3]
+    otherfield: 
+      association: "vertex"
+      topology: "topo"
+      values: [3.0, 3.5, 4.0, ..., 3.5, 4.0]
+domain_17: 
+  state: 
+    domain_id: 17
+  fields: 
+    procid: 
+        dy: 0.25
+        dz: 0.25
+      origin: 
+    cycle: 0
+    time: 0.0
+    level: 2
+        x: 1.0
+        y: 0.0
+        z: 2.0
+  topologies: 
+    topo: 
+      type: "uniform"
+      coordset: "coords"
+      elements: 
+      association: "element"
+      topology: "topo"
+      values: [2, 2, 2, ..., 2, 2]
+    otherfield: 
+      association: "vertex"
+      topology: "topo"
+      values: [2.0, 2.125, 2.25, ..., 2.875, 3.0]
+domain_14: 
+  state: 
+    domain_id: 14
+    cycle: 0
+  coordsets: 
+    coords: 
+      type: "uniform"
+      dims: 
+        i: 5
+        j: 5
+        k: 13
+      spacing: 
+        dx: 0.25
+    time: 0.0
+    level: 4
+  coordsets: 
+        origin: 
+          i0: 0
+          j0: 0
+          k0: 8
+  nestsets: 
+        dy: 0.25
+        dz: 0.25
+      origin: 
+        x: 3.0
+    nest: 
+      association: "element"
+      topology: "topo"
+      windows: 
+        window_6: 
+          domain_id: 6
+          domain_type: "parent"
+          origin: 
+            i: 0
+            j: 0
+            k: 2
+          dims: 
+            i: 3
+    coords: 
+      type: "uniform"
+      dims: 
+        i: 17
+        j: 17
+        k: 17
+      spacing: 
+        dx: 0.0625
+        dy: 0.0625
+        dz: 0.0625
+      origin: 
+        x: 2.0
+        y: 0.0
+        z: 4.0
+  topologies: 
+        y: 0.0
+        z: 2.0
+  topologies: 
+    topo: 
+      type: "uniform"
+      coordset: "coords"
+      elements: 
+        origin: 
+          i0: 0
+          j0: 0
+          k0: 8
+  nestsets: 
+    nest: 
+      association: "element"
+    topo: 
+      type: "uniform"
+      coordset: "coords"
+      elements: 
+        origin: 
+            j: 3
+            k: 9
+          ratio: 
+            i: 2
+      topology: "topo"
+      windows: 
+        window_16: 
+          domain_id: 16
+            j: 2
+            k: 2
+        window_7: 
+          domain_id: 7
+          domain_type: "child"
+          origin: 
+            i: 0
+            j: 0
+            k: 8
+          dims: 
+            i: 5
+            j: 5
+          i0: 0
+          j0: 0
+          k0: 64
+  nestsets: 
+    nest: 
+      association: "element"
+      topology: "topo"
+      windows: 
+        window_13: 
+          domain_id: 13
+          domain_type: "parent"
+          origin: 
+            i: 0
+            j: 0
+          domain_type: "parent"
+          origin: 
+            i: 0
+            j: 0
+            k: 2
+          dims: 
+            i: 3
+            j: 3
+            k: 9
+          ratio: 
+            i: 2
+            j: 2
+            k: 2
+            k: 24
+          dims: 
+            k: 13
+          ratio: 
+            i: 2
+        window_17: 
+          domain_id: 17
+            i: 9
+            j: 9
+            k: 17
+          ratio: 
+            i: 2
+            j: 2
+            k: 2
+  fields: 
+    procid: 
+      association: "element"
+      topology: "topo"
+      values: [2, 2, 2, ..., 2, 2]
+    otherfield: 
+          domain_type: "child"
+          origin: 
+            i: 0
+            j: 0
+            k: 8
+          dims: 
+            i: 5
+            j: 5
+            k: 13
+          ratio: 
+            i: 2
+            j: 2
+            k: 2
+  fields: 
+    procid: 
+      association: "element"
+      topology: "topo"
+      values: [1, 1, 1, ..., 1, 1]
+    otherfield: 
+      association: "vertex"
+      topology: "topo"
+      values: [1.0, 1.25, 1.5, ..., 1.75, 2.0]
+domain_8: 
+  state: 
+            j: 2
+            k: 2
+  fields: 
+    procid: 
+      association: "element"
+      topology: "topo"
+      association: "vertex"
+      topology: "topo"
+      values: [2.0, 2.0625, 2.125, ..., 2.9375, 3.0]
+
+    domain_id: 8
+    cycle: 0
+    time: 0.0
+    level: 3
+  coordsets: 
+    coords: 
+      values: [3, 3, 3, ..., 3, 3]
+    otherfield: 
+      association: "vertex"
+      topology: "topo"
+      values: [3.0, 3.25, 3.5, ..., 3.75, 4.0]
+domain_18: 
+  state: 
+    domain_id: 18
+    cycle: 0
+    time: 0.0
+    level: 3
+  coordsets: 
+    coords: 
+      type: "uniform"
+      dims: 
+      type: "uniform"
+      dims: 
+        i: 9
+        j: 9
+        k: 17
+      spacing: 
+        dx: 0.125
+        dy: 0.125
+        dz: 0.125
+      origin: 
+        x: 1.0
+        y: 0.0
+        z: 3.0
+  topologies: 
+        i: 9
+        j: 9
+        k: 17
+      spacing: 
+        dx: 0.125
+        dy: 0.125
+        dz: 0.125
+      origin: 
+    topo: 
+      type: "uniform"
+      coordset: "coords"
+      elements: 
+        origin: 
+          i0: 0
+          j0: 0
+          k0: 24
+  nestsets: 
+        x: 3.0
+        y: 0.0
+        z: 3.0
+  topologies: 
+    topo: 
+    nest: 
+      association: "element"
+      topology: "topo"
+      type: "uniform"
+      coordset: "coords"
+      elements: 
+        origin: 
+          i0: 0
+          j0: 0
+          k0: 24
+  nestsets: 
+    nest: 
+      association: "element"
+      topology: "topo"
+      windows: 
+        window_17: 
+      windows: 
+        window_7: 
+          domain_id: 7
+          domain_type: "parent"
+          origin: 
+            i: 0
+            j: 0
+            k: 8
+          dims: 
+            i: 5
+            j: 5
+            k: 13
+          ratio: 
+            i: 2
+            j: 2
+          domain_id: 17
+          domain_type: "parent"
+          origin: 
+            i: 0
+            j: 0
+            k: 8
+            k: 2
+        window_8: 
+          domain_id: 8
+          domain_type: "child"
+          dims: 
+            i: 5
+            j: 5
+            k: 13
+          ratio: 
+            i: 2
+            j: 2
+            k: 2
+        window_18: 
+          domain_id: 18
+          origin: 
+            i: 0
+            j: 0
+            k: 24
+          dims: 
+            i: 9
+            j: 9
+            k: 17
+          ratio: 
+            i: 2
+            j: 2
+            k: 2
+          domain_type: "child"
+          origin: 
+            i: 0
+            j: 0
+            k: 24
+  fields: 
+    procid: 
+          dims: 
+            i: 9
+            j: 9
+            k: 17
+          ratio: 
+            i: 2
+            j: 2
+            k: 2
+  fields: 
+    procid: 
+      association: "element"
+      topology: "topo"
+      association: "element"
+      topology: "topo"
+      values: [1, 1, 1, ..., 1, 1]
+    otherfield: 
+      association: "vertex"
+      topology: "topo"
+      values: [1.0, 1.125, 1.25, ..., 1.875, 2.0]
+domain_9: 
+  state: 
+    domain_id: 9
+    cycle: 0
+      values: [3, 3, 3, ..., 3, 3]
+    otherfield: 
+      association: "vertex"
+    time: 0.0
+    level: 4
+  coordsets: 
+    coords: 
+      type: "uniform"
+      topology: "topo"
+      values: [3.0, 3.125, 3.25, ..., 3.875, 4.0]
+domain_19: 
+  state: 
+    domain_id: 19
+    cycle: 0
+    time: 0.0
+    level: 4
+  coordsets: 
+    coords: 
+      type: "uniform"
+      dims: 
+        i: 17
+        j: 17
+        k: 17
+      spacing: 
+        dx: 0.0625
+        dy: 0.0625
+        dz: 0.0625
+      origin: 
+        x: 1.0
+        y: 0.0
+        z: 4.0
+  topologies: 
+      dims: 
+        i: 17
+        j: 17
+        k: 17
+      spacing: 
+    topo: 
+      type: "uniform"
+      coordset: "coords"
+      elements: 
+        origin: 
+          i0: 0
+          j0: 0
+          k0: 64
+  nestsets: 
+    nest: 
+      association: "element"
+        dx: 0.0625
+        dy: 0.0625
+        dz: 0.0625
+      origin: 
+        x: 3.0
+        y: 0.0
+        z: 4.0
+  topologies: 
+    topo: 
+      type: "uniform"
+      topology: "topo"
+      windows: 
+        window_8: 
+          domain_id: 8
+          domain_type: "parent"
+          origin: 
+            i: 0
+            j: 0
+      coordset: "coords"
+      elements: 
+        origin: 
+          i0: 0
+          j0: 0
+          k0: 64
+  nestsets: 
+            k: 24
+          dims: 
+            i: 9
+            j: 9
+            k: 17
+          ratio: 
+            i: 2
+            j: 2
+            k: 2
+  fields: 
+    procid: 
+      association: "element"
+    nest: 
+      association: "element"
+      topology: "topo"
+      windows: 
+        window_18: 
+          domain_id: 18
+          domain_type: "parent"
+          origin: 
+            i: 0
+            j: 0
+            k: 24
+          dims: 
+      topology: "topo"
+      values: [1, 1, 1, ..., 1, 1]
+    otherfield: 
+            i: 9
+            j: 9
+            k: 17
+      association: "vertex"
+      topology: "topo"
+      values: [1.0, 1.0625, 1.125, ..., 1.9375, 2.0]
+
+          ratio: 
+            i: 2
+            j: 2
+            k: 2
+  fields: 
+    procid: 
+      association: "element"
+      topology: "topo"
+      values: [3, 3, 3, ..., 3, 3]
+    otherfield: 
+      association: "vertex"
+      topology: "topo"
+      values: [3.0, 3.0625, 3.125, ..., 3.9375, 4.0]

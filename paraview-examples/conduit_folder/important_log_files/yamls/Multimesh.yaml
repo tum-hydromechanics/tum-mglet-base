@@ -1,0 +1,285 @@
+# eduardoq@eduardoq-linux:~/git/tum-mglet-base/paraview-examples/CxxMultimesh_mod/build$ ./bin/CxxMultimeshV2 ../printingmesh.py 
+# executing catalyst_pipeline
+# (   0.610s) [pvbatch         ]        v2_internals.py:212   WARN| Module 'printingmesh' missing Catalyst 'options', will use a default options object
+# -----------------------------------
+# executing (cycle=0, time=0.0)
+# grid:
+#   bounds: (0.0, 69.0, 0.0, 64.9, 0.0, 55.9)
+# -----------------------------------
+# executing (cycle=1, time=0.1)
+# grid:
+#   bounds: (0.0, 69.0, 0.0, 64.9, 0.0, 55.9)
+# Grid info:
+vtkPVDataInformation (0x621d1a278ec0)
+  Debug: Off
+  Modified Time: 93638
+  Reference Count: 2
+  Registered Events: (none)
+  RootOnly: 0
+  PortNumber: 0
+  Rank: -1
+  SubsetSelector: //grid
+  SubsetAssemblyName: Hierarchy
+  DataSetType: 4
+  CompositeDataSetType: 37
+  FirstLeafCompositeIndex: 1
+  UniqueBlockTypes: 4
+  NumberOfPoints: 184800
+  NumberOfCells: 175053
+  NumberOfVertices: 0
+  NumberOfEdges: 0
+  NumberOfRows: 0
+  NumberOfTrees: 0
+  NumberOfLeaves: 0
+  NumberOfAMRLevels: 0
+  NumberOfDataSets: 1
+  MemorySize: 17121
+  Bounds: 0, 69, 0, 64.9, 0, 55.9
+  Extent: 2147483647, -2147483647, 2147483647, -2147483647, 2147483647, -2147483647
+  PointDataInformation 
+    Debug: Off
+    Modified Time: 93625
+    Reference Count: 1
+    Registered Events: (none)
+    ArrayInformation, number of arrays: 1
+      Debug: Off
+      Modified Time: 93709
+      Reference Count: 1
+      Registered Events: (none)
+      Name: velocity
+      DataType: 11
+      NumberOfComponents: 4
+      NumberOfTuples: 184800
+      IsPartial: 0
+      InformationKeys (count=0):
+      Ranges: 
+        (magnitude): 0, 6.49
+        (comp=0): 0, 6.49
+        (comp=1): 0, 0
+        (comp=2): 0, 0
+      FiniteRanges: 
+        (magnitude): 0, 6.49
+        (comp=0): 0, 6.49
+        (comp=1): 0, 0
+        (comp=2): 0, 0
+      ComponentNames
+        (magnitude): 
+        (comp=0): 
+        (comp=1): 
+        (comp=2): 
+
+  CellDataInformation 
+    Debug: Off
+    Modified Time: 93626
+    Reference Count: 1
+    Registered Events: (none)
+    ArrayInformation, number of arrays: 1
+      Debug: Off
+      Modified Time: 93710
+      Reference Count: 1
+      Registered Events: (none)
+      Name: pressure
+      DataType: 10
+      NumberOfComponents: 2
+      NumberOfTuples: 175053
+      IsPartial: 0
+      InformationKeys (count=0):
+      Ranges: 
+        (magnitude): 1, 1
+        (comp=0): 1, 1
+      FiniteRanges: 
+        (magnitude): 1, 1
+        (comp=0): 1, 1
+      ComponentNames
+        (magnitude): 
+        (comp=0): 
+
+  VertexDataInformation
+    Debug: Off
+    Modified Time: 93629
+    Reference Count: 1
+    Registered Events: (none)
+    ArrayInformation, number of arrays: 0
+  EdgeDataInformation
+    Debug: Off
+    Modified Time: 93630
+    Reference Count: 1
+    Registered Events: (none)
+    ArrayInformation, number of arrays: 0
+  RowDataInformation
+    Debug: Off
+    Modified Time: 93631
+    Reference Count: 1
+    Registered Events: (none)
+    ArrayInformation, number of arrays: 0
+  FieldDataInformation 
+    Debug: Off
+    Modified Time: 93627
+    Reference Count: 1
+    Registered Events: (none)
+    ArrayInformation, number of arrays: 6
+      Debug: Off
+      Modified Time: 93711
+      Reference Count: 1
+      Registered Events: (none)
+      Name: author
+      DataType: 13
+      NumberOfComponents: 2
+      NumberOfTuples: 1
+      IsPartial: 0
+      InformationKeys (count=0):
+      Ranges: 
+        (magnitude): 1e+299, -1e+299
+        (comp=0): 1e+299, -1e+299
+      FiniteRanges: 
+        (magnitude): 1e+299, -1e+299
+        (comp=0): 1e+299, -1e+299
+      ComponentNames
+        (magnitude): 
+        (comp=0): 
+      StringValues (count=2)
+        Kitware
+        Kitware
+
+      Debug: Off
+      Modified Time: 93712
+      Reference Count: 1
+      Registered Events: (none)
+      Name: mesh time
+      DataType: 11
+      NumberOfComponents: 2
+      NumberOfTuples: 1
+      IsPartial: 0
+      InformationKeys (count=0):
+      Ranges: 
+        (magnitude): 0.1, 0.1
+        (comp=0): 0.1, 0.1
+      FiniteRanges: 
+        (magnitude): 0.1, 0.1
+        (comp=0): 0.1, 0.1
+      ComponentNames
+        (magnitude): 
+        (comp=0): 
+
+      Debug: Off
+      Modified Time: 93713
+      Reference Count: 1
+      Registered Events: (none)
+      Name: mesh timestep
+      DataType: 6
+      NumberOfComponents: 2
+      NumberOfTuples: 1
+      IsPartial: 0
+      InformationKeys (count=0):
+      Ranges: 
+        (magnitude): 1, 1
+        (comp=0): 1, 1
+      FiniteRanges: 
+        (magnitude): 1, 1
+        (comp=0): 1, 1
+      ComponentNames
+        (magnitude): 
+        (comp=0): 
+
+      Debug: Off
+      Modified Time: 93714
+      Reference Count: 1
+      Registered Events: (none)
+      Name: mesh external data
+      DataType: 11
+      NumberOfComponents: 2
+      NumberOfTuples: 184800
+      IsPartial: 0
+      InformationKeys (count=0):
+      Ranges: 
+        (magnitude): 0, 64.9
+        (comp=0): 0, 64.9
+      FiniteRanges: 
+        (magnitude): 0, 64.9
+        (comp=0): 0, 64.9
+      ComponentNames
+        (magnitude): 
+        (comp=0): 
+
+      Debug: Off
+      Modified Time: 93735
+      Reference Count: 1
+      Registered Events: (none)
+      Name: velocity
+      DataType: 11
+      NumberOfComponents: 4
+      NumberOfTuples: 184800
+      IsPartial: 1
+      InformationKeys (count=0):
+      Ranges: 
+        (magnitude): 0, 6.49
+        (comp=0): 0, 6.49
+        (comp=1): 0, 0
+        (comp=2): 0, 0
+      FiniteRanges: 
+        (magnitude): 0, 6.49
+        (comp=0): 0, 6.49
+        (comp=1): 0, 0
+        (comp=2): 0, 0
+      ComponentNames
+        (magnitude): 
+        (comp=0): 
+        (comp=1): 
+        (comp=2): 
+
+      Debug: Off
+      Modified Time: 93737
+      Reference Count: 1
+      Registered Events: (none)
+      Name: pressure
+      DataType: 10
+      NumberOfComponents: 2
+      NumberOfTuples: 175053
+      IsPartial: 1
+      InformationKeys (count=0):
+      Ranges: 
+        (magnitude): 1, 1
+        (comp=0): 1, 1
+      FiniteRanges: 
+        (magnitude): 1, 1
+        (comp=0): 1, 1
+      ComponentNames
+        (magnitude): 
+        (comp=0): 
+
+  PointArrayInformation 
+    Debug: Off
+    Modified Time: 93620
+    Reference Count: 1
+    Registered Events: (none)
+    Name: Points
+    DataType: 11
+    NumberOfComponents: 4
+    NumberOfTuples: 184800
+    IsPartial: 0
+    InformationKeys (count=4):
+      vtkAbstractArray::PER_COMPONENT
+      vtkAbstractArray::PER_FINITE_COMPONENT
+      vtkDataArray::L2_NORM_FINITE_RANGE
+      vtkDataArray::L2_NORM_RANGE
+    Ranges: 
+      (magnitude): 0, 109.99
+      (comp=0): 0, 69
+      (comp=1): 0, 64.9
+      (comp=2): 0, 55.9
+    FiniteRanges: 
+      (magnitude): 0, 109.99
+      (comp=0): 0, 69
+      (comp=1): 0, 64.9
+      (comp=2): 0, 55.9
+    ComponentNames
+      (magnitude): 
+      (comp=0): 
+      (comp=1): 
+      (comp=2): 
+  HasTime: 0
+  Time: 0
+  TimeRange: 0.1, 0.1
+  TimeLabel: (none)
+  NumberOfTimeSteps: 1
+  TimeSteps: 0.1

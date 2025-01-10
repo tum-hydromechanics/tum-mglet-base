@@ -204,8 +204,8 @@ void Execute(unsigned int cycle, double time, AMR& amr)
 
     other_field["values"] = point_values;
   }
-  std::cout<<"\n\n------------------------------writing mesh. rank"
-          <<myRank<<std::endl;
+  // std::cout<<"\n\n------------------------------writing mesh. rank"
+  //         <<myRank<<std::endl;
     mesh.print();
   // exec_params.print(); // for viewing the Conduit node information
 

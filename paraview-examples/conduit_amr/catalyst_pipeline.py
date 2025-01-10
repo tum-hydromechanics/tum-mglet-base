@@ -18,7 +18,7 @@ def catalyst_execute(info):
     global producer
     producer.UpdatePipeline()
     print("-----------------------------------")
-    print("executing (cycle={}, time={})".format(info.cycle, info.time))
-    print("bounds:", producer.GetDataInformation().GetBounds())
-    print("procid:", producer.CellData["procid"].GetRange(-1))
-    print("vtkGhostType:", producer.CellData["vtkGhostType"].GetRange(-1))
+    # print("executing (cycle={}, time={})".format(info.cycle, info.time))
+    # print("bounds:", producer.GetDataInformation().GetBounds())
+    # print("procid:", producer.CellData["procid"].GetRange(-1))
+    # print("vtkGhostType:", producer.CellData["vtkGhostType"].GetRange(-1))

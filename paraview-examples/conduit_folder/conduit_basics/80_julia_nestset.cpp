@@ -29,7 +29,7 @@ int main(){
 
     // std::cout<<mesh.print()<<std::endl;
     mesh.print();
-    mesh.
+    // mesh.
 
 
     std::string path1="julia_simple_1";

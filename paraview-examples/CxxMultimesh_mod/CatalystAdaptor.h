@@ -86,7 +86,7 @@ void Execute(int cycle, double time, Grid& grid, Attributes& attribs, Particles&
 
   // Add channels.
   auto channel = exec_params["catalyst/channels/input"];
-
+  
   // Since this example is using "multimesh" protocol
   // we set the channel's type to "multimesh".
   channel["type"].set_string("multimesh");
@@ -191,7 +191,7 @@ void Execute(int cycle, double time, Grid& grid, Attributes& attribs, Particles&
     if(trigger){
     // std::cout<<"Time: "<<time<<std::endl;
     // std::cout<<"mesh_grid:"<<std::endl;
-    // // std::cout<<mesh_grid.to_yaml()<<std::endl;//prints everything in detail
+    std::cout<<mesh_grid.to_yaml()<<std::endl;//prints everything in detail
     // mesh_grid.print();// does not prints everything...
     // std::cout<<"---------------------------\nchannel:"<<std::endl;
     // channel.print();
