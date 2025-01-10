@@ -1,58 +1,28 @@
 // SPDX-FileCopyrightText: Copyright (c) Kitware Inc.
 // SPDX-License-Identifier: BSD-3-Clause
-#ifndef FEDATASTRUCTURES_HEADER
-#define FEDATASTRUCTURES_HEADER
+#ifndef FEDataStructures_h
+#define FEDataStructures_h
 
-#include <cstddef>
+#include <array>
 #include <vector>
 
-class Grid
+class AMR
 {
 public:
-  Grid(const unsigned int numPoints[3], const double spacing[3]);
-  size_t GetNumberOfPoints();
-  size_t GetNumberOfCells();
-  double* GetPointsArray();
-  double* GetPoint(size_t pointId);
-  unsigned int* GetCellPoints(size_t cellId);
-  void GetGlobalBounds(double globalBounds[6]);
+  // on each MPI proc the coarse grid is 1 first AMR level cell in the i-dir, 1 first AMR level
+  // cell in the j-dir, and numberOfAMRLevels first AMR level cells in the k-dir.
+  // The grid gets finer as we go in the k-dir.
+  AMR(int numberOfAMRLevels, int myRank, int numRanks);
 
-private:
-  std::vector<double> Points;
-  std::vector<unsigned int> Cells;
-  double GlobalBounds[6];
+  std::array<int, 6> GetLevelIndices(int level);
+  std::array<double, 3> GetLevelOrigin(int level);
+
+  int NumberOfAMRLevels;
+
+  std::vector<std::array<int, 6>> LevelIndices; // inclusive min and max for point indices
+  std::vector<int> CellsPerLevel;
+  std::vector<int> BlockId; // We only have one child block under each parent block
+  std::vector<std::array<double, 3>> LevelOrigin;
 };
 
-class Attributes
-{
-  // A class for generating and storing point and cell fields.
-  // Velocity is stored at the points and pressure is stored
-  // for the cells. The current velocity profile is for a
-  // shearing flow with U(y,t) = y*t, V = 0 and W = 0.
-  // Pressure is constant through the domain.
-public:
-  Attributes();
-  void Initialize(Grid* grid);
-  void UpdateFields(double time);
-  double* GetVelocityArray();
-  float* GetPressureArray();
-
-private:
-  std::vector<double> Velocity;
-  std::vector<float> Pressure;
-  Grid* GridPtr;
-};
-
-class Particles
-{
-public:
-  Particles(Grid& grid, size_t numParticlesPerProcess);
-  void Advect();
-  double* GetPointsArray() { return &this->Coordinates[0]; }
-  size_t GetNumberOfPoints() { return this->Coordinates.size() / 3; }
-
-private:
-  std::vector<double> Coordinates;
-  double GlobalBounds[6];
-};
 #endif
