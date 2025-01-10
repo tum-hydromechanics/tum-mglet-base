@@ -51,6 +51,9 @@ void Initialize(int argc, char* argv[])
       node[name + "/args"].append().set_string("--argument3");
       node[name + "/args"].append().set_string("--channel-name=grid");
     }
+    std::cout<<"printing node"<<std::endl;
+    node.print();
+
   }
   node["catalyst_load/implementation"] = "paraview";
   node["catalyst_load/search_paths/paraview"] = PARAVIEW_IMPL_DIR;
@@ -206,7 +209,7 @@ void Execute(unsigned int cycle, double time, AMR& amr)
   }
   // std::cout<<"\n\n------------------------------writing mesh. rank"
   //         <<myRank<<std::endl;
-    mesh.print();
+    // mesh.print();
   // exec_params.print(); // for viewing the Conduit node information
 
   catalyst_status err = catalyst_execute(conduit_cpp::c_node(&exec_params));

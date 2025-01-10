@@ -1,0 +1,158 @@
+
+domain_000000: 
+  coordsets: 
+    coords: 
+      type: "rectilinear"
+      values: 
+        x: [0.0, 0.833333333333333, 1.66666666666667, 2.5, 3.33333333333333, 4.16666666666667, 5.0, 5.83333333333333, 6.66666666666667, 7.5, 8.33333333333333, 9.16666666666667, 10.0]
+        y: [0.0, 0.833333333333333, 1.66666666666667, 2.5, 3.33333333333333, 4.16666666666667, 5.0, 5.83333333333333, 6.66666666666667, 7.5, 8.33333333333333, 9.16666666666667, 10.0]
+  topologies: 
+    topo: 
+      type: "rectilinear"
+      coordset: "coords"
+  fields: 
+    iters: 
+      association: "element"
+      topology: "topo"
+      values: [2, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 7, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+    mask: 
+      association: "element"
+      topology: "topo"
+      values: [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+  nestsets: 
+    nest: 
+      association: "element"
+      topology: "topo"
+      windows: 
+        window_0_2: 
+          domain_id: 2
+          domain_type: "child"
+          origin: 
+            i: 0
+            j: 1
+          dims: 
+            i: 1
+            j: 1
+          ratio: 
+            i: 2
+            j: 2
+domain_000001: 
+  coordsets: 
+    coords: 
+      type: "rectilinear"
+      values: 
+        x: [0.0, 0.416666666666667, 0.833333333333333]
+        y: [0.833333333333333, 1.25, 1.66666666666667]
+  topologies: 
+    topo: 
+      type: "rectilinear"
+      coordset: "coords"
+  fields: 
+    iters: 
+      association: "element"
+      topology: "topo"
+      values: [3, 1, 1, 1]
+    mask: 
+      association: "element"
+      topology: "topo"
+      values: [0, 0, 0, 0]
+  nestsets: 
+    nest: 
+      association: "element"
+      topology: "topo"
+      windows: 
+        window_2_0: 
+          domain_id: 0
+          domain_type: "parent"
+          origin: 
+            i: 0
+            j: 0
+          dims: 
+            i: 2
+            j: 2
+          ratio: 
+            i: 2
+            j: 2
+
+
+
+------------info
+
+
+------------print
+
+domain_000000: 
+  coordsets: 
+    coords: 
+      type: "rectilinear"
+      values: 
+        x: [0.0, 0.833333333333333, 1.66666666666667, ..., 9.16666666666667, 10.0]
+        y: [0.0, 0.833333333333333, 1.66666666666667, ..., 9.16666666666667, 10.0]
+  topologies: 
+    topo: 
+      type: "rectilinear"
+      coordset: "coords"
+  fields: 
+    iters: 
+      association: "element"
+      topology: "topo"
+      values: [2, 1, 1, ..., 0, 0]
+    mask: 
+      association: "element"
+      topology: "topo"
+      values: [0, 0, 0, ..., 0, 0]
+  nestsets: 
+    nest: 
+      association: "element"
+      topology: "topo"
+      windows: 
+        window_0_2: 
+          domain_id: 2
+          domain_type: "child"
+          origin: 
+            i: 0
+            j: 1
+          dims: 
+            i: 1
+            j: 1
+          ratio: 
+            i: 2
+            j: 2
+domain_000001: 
+  coordsets: 
+    coords: 
+      type: "rectilinear"
+      values: 
+        x: [0.0, 0.416666666666667, 0.833333333333333]
+        y: [0.833333333333333, 1.25, 1.66666666666667]
+  topologies: 
+    topo: 
+      type: "rectilinear"
+      coordset: "coords"
+  fields: 
+    iters: 
+      association: "element"
+      topology: "topo"
+      values: [3, 1, 1, 1]
+    mask: 
+      association: "element"
+      topology: "topo"
+      values: [0, 0, 0, 0]
+  nestsets: 
+    nest: 
+      association: "element"
+      topology: "topo"
+      windows: 
+        window_2_0: 
+          domain_id: 0
+          domain_type: "parent"
+          origin: 
+            i: 0
+            j: 0
+          dims: 
+            i: 2
+            j: 2
+          ratio: 
+            i: 2
+            j: 2
+
