@@ -25,7 +25,7 @@ int main(int argc, char* argv[])
   MPI_Comm_rank(MPI_COMM_WORLD, &myRank);
 
   unsigned int numberOfAMRLevels = 5;
-  AMR amr(numberOfAMRLevels, myRank, numRanks);
+  AMR_new amr(numberOfAMRLevels, myRank, numRanks);
 
   // The first argument is the program name
 #ifdef USE_CATALYST

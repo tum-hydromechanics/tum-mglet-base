@@ -64,7 +64,7 @@ void Initialize(int argc, char* argv[])
   }
 }
 
-void Execute(unsigned int cycle, double time, AMR_new& amr)
+void Execute(unsigned int cycle, double time, AMR& amr)
 {
   int numRanks(1), myRank(0);
   MPI_Comm_size(MPI_COMM_WORLD, &numRanks);
