@@ -11,12 +11,12 @@ int main(int argc, char* argv[])
 {
   // MPI_Init(&argc, &argv);
   // int numRanks(1), myRank(0);
-  int myRank = 3;
+  int myRank = 5;
   int numRanks = 3;
   // MPI_Comm_size(MPI_COMM_WORLD, &numRanks);
   // MPI_Comm_rank(MPI_COMM_WORLD, &myRank);
 
-  unsigned int numberOfAMRLevels = 5;
+  unsigned int numberOfAMRLevels = 4;
   std::vector<AMR*> amr;
   for (int rank=0;rank<myRank;rank++){
     amr.push_back(new AMR(numberOfAMRLevels, rank, numRanks));
@@ -41,11 +41,11 @@ int main(int argc, char* argv[])
     // Z-direction, relative to the 0th level cell. Each 0th level cell in the
     // Z-direction is subsequently refined.
 #ifdef USE_CATALYST
-    for (int rank=0;rank<myRank;rank++){
-      std::cout<<"Rank:"<<rank<<",address:"<<&amr[rank]<<std::endl;
-      CatalystAdaptor::Execute(timeStep, time, *amr[rank], rank);
-    }
-    // CatalystAdaptor::Execute(timeStep, time, amr, myRank);
+    //for (int rank=0;rank<myRank;rank++){
+    //  std::cout<<"Rank:"<<rank<<",address:"<<&amr[rank]<<std::endl;
+    //  CatalystAdaptor::Execute(timeStep, time, *amr[rank], rank);
+    //}
+    CatalystAdaptor::Execute(timeStep, time, amr, myRank);
 
 #endif
   }

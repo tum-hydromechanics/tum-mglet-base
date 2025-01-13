@@ -65,7 +65,7 @@ void Initialize(int argc, char* argv[])
   }
 }
 
-void Execute(unsigned int cycle, double time, AMR& amr, int myRank)
+void Execute(unsigned int cycle, double time, std::vector<AMR*> amrs, int ranks)
 {
   // int numRanks(1), myRank(0);
   // MPI_Comm_size(MPI_COMM_WORLD, &numRanks);
@@ -90,8 +90,9 @@ void Execute(unsigned int cycle, double time, AMR& amr, int myRank)
   // now create the mesh.
   conduit_cpp::Node mesh = channel["data"];
 
-  // for (int myRank=0;myRank<rank;myRank++){
+  for (int myRank=0;myRank<ranks;myRank++){
 
+  AMR& amr = *amrs[myRank];
   for (unsigned int level = 0; level < amr.NumberOfAMRLevels; level++)
   {
     std::string patch_name = "domain_" + std::to_string(level + amr.NumberOfAMRLevels * myRank);
@@ -207,6 +208,7 @@ void Execute(unsigned int cycle, double time, AMR& amr, int myRank)
     // we copy the data since point_values will get deallocated
     other_field["values"] = point_values;
   }
+  }
   // std::cout<<"\n\n----------------writing mesh. rank"
         // <<myRank<<std::endl;
   
@@ -220,7 +222,6 @@ void Execute(unsigned int cycle, double time, AMR& amr, int myRank)
   {
     std::cerr << "Failed to execute Catalyst: " << err << std::endl;
   }
-  // }
 }
 
 void Finalize()
