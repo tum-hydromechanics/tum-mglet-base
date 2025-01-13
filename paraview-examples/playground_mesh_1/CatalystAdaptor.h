@@ -9,7 +9,7 @@
 
 #include <iostream>
 #include <math.h>
-#include <mpi.h>
+// #include <mpi.h>
 #include <string>
 #include <vector>
 
@@ -51,10 +51,11 @@ void Initialize(int argc, char* argv[])
       node[name + "/args"].append().set_string("--argument3");
       node[name + "/args"].append().set_string("--channel-name=grid");
     }
-    std::cout<<"printing node"<<std::endl;
-    node.print();
 
   }
+  std::cout<<"printing node: "<<&node<<std::endl;
+  node.print();
+
   node["catalyst_load/implementation"] = "paraview";
   node["catalyst_load/search_paths/paraview"] = PARAVIEW_IMPL_DIR;
   catalyst_status err = catalyst_initialize(conduit_cpp::c_node(&node));
@@ -64,11 +65,12 @@ void Initialize(int argc, char* argv[])
   }
 }
 
-void Execute(unsigned int cycle, double time, AMR_new& amr)
+void Execute(unsigned int cycle, double time, AMR& amr, int myRank)
 {
-  int numRanks(1), myRank(0);
-  MPI_Comm_size(MPI_COMM_WORLD, &numRanks);
-  MPI_Comm_rank(MPI_COMM_WORLD, &myRank);
+  // int numRanks(1), myRank(0);
+  // MPI_Comm_size(MPI_COMM_WORLD, &numRanks);
+  // MPI_Comm_rank(MPI_COMM_WORLD, &myRank);
+  // for (int myRank=0;myRank<rank;myRank++){
 
   conduit_cpp::Node exec_params;
 
@@ -87,6 +89,8 @@ void Execute(unsigned int cycle, double time, AMR_new& amr)
 
   // now create the mesh.
   conduit_cpp::Node mesh = channel["data"];
+
+  // for (int myRank=0;myRank<rank;myRank++){
 
   for (unsigned int level = 0; level < amr.NumberOfAMRLevels; level++)
   {
@@ -185,13 +189,13 @@ void Execute(unsigned int cycle, double time, AMR_new& amr)
     other_field["topology"] = "topo";
     int num_points = (levelIndices[1] - levelIndices[0] + 1) *
       (levelIndices[3] - levelIndices[2] + 1) * (levelIndices[5] - levelIndices[4] + 1);
+    
     std::vector<double> point_values(num_points, 0);
-    for (size_t k = 0; k < levelIndices[5] - levelIndices[4] + 1; k++)
-    {
-      for (size_t j = 0; j < levelIndices[3] - levelIndices[2] + 1; j++)
-      {
-        for (size_t i = 0; i < levelIndices[1] - levelIndices[0] + 1; i++)
-        {
+    
+    for (size_t k = 0; k < levelIndices[5] - levelIndices[4] + 1; k++){
+      for (size_t j = 0; j < levelIndices[3] - levelIndices[2] + 1; j++){
+        for (size_t i = 0; i < levelIndices[1] - levelIndices[0] + 1; i++){
+          
           size_t l = i + j * (levelIndices[1] - levelIndices[0] + 1) +
             k * (levelIndices[1] - levelIndices[0] + 1) * (levelIndices[3] - levelIndices[2] + 1);
           double spacing = 1. / std::pow(2, level);
@@ -200,13 +204,12 @@ void Execute(unsigned int cycle, double time, AMR_new& amr)
         }
       }
     }
-
-
-    // mesh.print()
     // we copy the data since point_values will get deallocated
-
     other_field["values"] = point_values;
   }
+  // std::cout<<"\n\n----------------writing mesh. rank"
+        // <<myRank<<std::endl;
+  
   // std::cout<<"\n\n------------------------------writing mesh. rank"
   //         <<myRank<<std::endl;
     // mesh.print();
@@ -217,6 +220,7 @@ void Execute(unsigned int cycle, double time, AMR_new& amr)
   {
     std::cerr << "Failed to execute Catalyst: " << err << std::endl;
   }
+  // }
 }
 
 void Finalize()

@@ -17,7 +17,7 @@ producer = TrivialProducer(registrationName="grid")
 def catalyst_execute(info):
     global producer
     producer.UpdatePipeline()
-    print("-----------------------------------")
+    # print("-----------------------------------")
     # print("executing (cycle={}, time={})".format(info.cycle, info.time))
     # print("bounds:", producer.GetDataInformation().GetBounds())
     # print("procid:", producer.CellData["procid"].GetRange(-1))

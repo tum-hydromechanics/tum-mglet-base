@@ -28,7 +28,11 @@ int main(int argc, char* argv[])
 
   unsigned int numberOfAMRLevels = 3;
   AMR amr(numberOfAMRLevels, myRank, numRanks);
+  std::cout<<"RANK: "<<myRank<<", numRanks:"<<numRanks<<
+  "amr: "<<&amr<<std::endl;
+
 //   for (size_t i=0;i<argc;i++){
+
 //     std::cout<<"argv["<<i<<"]: "<<argv[i]<<std::endl;
 // }
 

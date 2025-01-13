@@ -62,6 +62,9 @@ void Initialize(int argc, char* argv[])
   }
 
   // indicate that we want to load ParaView-Catalyst
+  std::cout<<"printing node: "<<&node<<std::endl;
+  node.print();
+  
   node["catalyst_load/implementation"].set_string("paraview");
   node["catalyst_load/search_paths/paraview"] = PARAVIEW_IMPL_DIR;
 
