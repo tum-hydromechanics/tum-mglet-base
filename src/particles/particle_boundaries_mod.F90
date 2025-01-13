@@ -301,7 +301,8 @@ MODULE particle_boundaries_mod
         END IF
 
         counter = 1
-        DO WHILE (eps < SQRT(dx_from_here**(2) + dy_from_here**(2) + dz_from_here**(2)) .AND. counter <= 10)
+        DO WHILE (SQRT(dx_from_here**(2) + dy_from_here**(2) + dz_from_here**(2)) > eps .AND. &
+         MAX(ABS(dx_from_here), ABS(dy_from_here), ABS(dz_from_here)) > EPSILON(0.0_realk) .AND. counter <= 10)
 
             IF (TRIM(particle_terminal) == "verbose") THEN
                 WRITE(*, *) "Way to go:"
@@ -431,20 +432,11 @@ MODULE particle_boundaries_mod
         ! STEP 1 - OBSTACLES
         ! find intersection points of the line the particle moves on (straight) and the sphere surface
             ! particle path: X(s) = X + dX * s with s: [0, 1] (X is the vector (x/y/z))
-            ! => |X + dX * s - C| =! r (C is the sphere center (cx/cy/cz))
-            ! => (x + dx * s -cx)² + (y + dy * s -cy)² + (z + dz * s -cz)² =! r² (r is the sphere radius)
+            ! => |X + dX * s - C| = r (C is the sphere center (cx/cy/cz))
+            ! => (x + dx * s -cx)² + (y + dy * s -cy)² + (z + dz * s -cz)² = r² (r is the sphere radius)
             ! => s1/s2 = sa/sb = (-b +/- sqrt(b² - 4ac)) / 2a (corefficients see code)
 
         dist_to_go = SQRT((dx)**2 + (dy)**2 + (dz)**2)
-
-       !smin = 1.0
-       !IF (0 < ABS(dx) .AND. ABS(dx) <= ABS(dy) .AND. ABS(dx) <= ABS(dz)) THEN
-       !    smin =  MIN(smin, ABS(EPSILON(s) / dx))
-       !ELSEIF (0 < ABS(dy) .AND. ABS(dy) < ABS(dx) .AND. ABS(dy) <= ABS(dz)) THEN
-       !    smin =  MIN(smin, ABS(EPSILON(s) / dy))
-       !ELSEIF (0 < ABS(dz) .AND. ABS(dz) < ABS(dx) .AND. ABS(dz) < ABS(dy)) THEN
-       !    smin =  MIN(smin, ABS(EPSILON(s) / dz))
-       !END IF
 
         s = 1.0
 
@@ -475,11 +467,6 @@ MODULE particle_boundaries_mod
             b = 2*x*dx + 2*y*dy + 2*z*dz - 2*cx*dx - 2*cy*dy - 2*cz*dz
             c = x**2 + y**2 + z**2 + cx**2 + cy**2 + cz**2 - 2*x*cx - 2*y*cy - 2*z*cz - r**2
             d = b**2 - 4*a*c
-
-            ! danger of divison by 0.0 or close to that
-            ! Would that mean that the particle stays in its position on the surface?
-            ! I am doing a dirty fix here - please, review carefully...
-
 
             IF (d < EPSILON(0.0_realk)) THEN
                 CYCLE
@@ -541,45 +528,6 @@ MODULE particle_boundaries_mod
                     CYCLE
                 END IF
 
-                ! ALTERNATIVE METHOD:
-                !! check intersection with shrinked obstacle
-                !! new coefficient c and d
-                !c = x**2 + y**2 + z**2 + cx**2 + cy**2 + cz**2 - 2*x*cx - 2*y*cy - 2*z*cz - (dist_to_center - aura)**2
-                !d = b**2 - 4*a*c
-!
-                !! one or none intersection with shrinked obstacle => free motion
-                !IF (d <= 0) THEN
-                !    CYCLE
-                !END IF
-!
-                !sa = (-b + SQRT(d)) / 2 / a
-                !sb = (-b - SQRT(d)) / 2 / a
-!
-                !IF (sa >= 0.0 .AND. sb >= 0.0) THEN
-                !    IF (sa < s) THEN
-                !        s = sa
-                !        iobst_local = my_obstacle_pointers(temp_grid)%grid_obstacles(i)
-                !    END IF
-                !    IF (sb < s) THEN
-                !        s = sb
-                !        iobst_local = my_obstacle_pointers(temp_grid)%grid_obstacles(i)
-                !    END IF
-                !ELSEIF (sa <= 0.0 .AND. sb <= 0.0) THEN
-                !    CYCLE
-                !ELSE
-                !    IF (TRIM(particle_terminal) == "normal" .OR. TRIM(particle_terminal) == "verbose") THEN
-                !        WRITE(*, '("WARNING: In move_to_boundary:")')
-                !        WRITE(*, *) "Particle", ipart, " to be replaced!"
-                !        WRITE(*, '()')
-                !    END IF
-                !    replace = .TRUE.
-                !    iobst_local = 0
-                !    iface = 0
-                !    dx_to_b = 0.0
-                !    dy_to_b = 0.0
-                !    dz_to_b = 0.0
-                !    RETURN
-                !END IF
             END IF
         END DO
 
@@ -760,7 +708,7 @@ MODULE particle_boundaries_mod
         TYPE(baseparticle_t), INTENT(inout) :: particle
 
         ! local variables
-        LOGICAL :: valid_location = .FALSE.
+        LOGICAL :: valid_location
         INTEGER(intk) :: i, iobst_local, igrid
         REAL(realk) :: minx, maxx, miny, maxy, minz, maxz, x_new, y_new, z_new, dist_to_center
 
@@ -769,6 +717,7 @@ MODULE particle_boundaries_mod
 
         CALL get_bbox(minx, maxx, miny, maxy, minz, maxz, igrid)
 
+        valid_location = .FALSE.
         DO WHILE (.NOT. valid_location)
 
             valid_location = .TRUE.
@@ -790,11 +739,11 @@ MODULE particle_boundaries_mod
                      (my_obstacles(iobst_local)%y - y_new)**2 + &
                      (my_obstacles(iobst_local)%z - z_new)**2)
 
-                    IF (dist_to_center < my_obstacles(iobst_local)%radius + aura) THEN
+                    IF (dist_to_center < my_obstacles(iobst_local)%radius + EPSILON(dist_to_center)) THEN
                         valid_location = .FALSE.
                         EXIT
                     ELSE
-                         CONTINUE
+                        CONTINUE
                     END IF
 
                 END DO
@@ -810,6 +759,7 @@ MODULE particle_boundaries_mod
 
     END SUBROUTINE replace_particle
 
+    ! out of use
     SUBROUTINE apply_periodic_boundary(x, y, z, oldgrid, newgrid, iface)
 
         ! subroutine arguments

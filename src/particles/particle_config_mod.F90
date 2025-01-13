@@ -32,7 +32,8 @@ MODULE particle_config_mod
     INTEGER(intk) :: psnapshot_npart ! "particles/snapshot_npart"
     INTEGER(intk) :: psnapshot_write_all_particles_tag = -99 ! if psnapshot_npart == psnapshot_write_all_particles_tag, write all particles
 
-    CHARACTER(len = 8) :: vtk_float_format = '(F14.10)'
+    INTEGER(intk), PARAMETER :: format_char_len = 8
+    CHARACTER(len = format_char_len) :: vtk_float_format = '(F14.10)'
 
     ! RANDOM NUMBER GENERATION
     LOGICAL :: dput_seed ! indirectly via "particles/particle_seed"

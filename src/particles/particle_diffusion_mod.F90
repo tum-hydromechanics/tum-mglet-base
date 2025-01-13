@@ -90,7 +90,7 @@ CONTAINS
     SUBROUTINE generate_diffusion_field()
 
         ! local_variables
-        INTEGER(intk) :: igrid, ii, jj, kk, g, i, j, k, ilevel
+        INTEGER(intk) :: igrid, ii, jj, kk, g, i, j, k
         INTEGER(intk) :: mean_counter, pos_counter, neg_counter, und_counter
         REAL(realk) :: delta_t1, turb_flux
         REAL(realk) :: max_Dx, max_Dy, max_Dz, mean_Dx, mean_Dy, mean_Dz, dummy
@@ -171,10 +171,7 @@ CONTAINS
                     DO k = 3, kk - 2
                         delta_t1 = (t1_avg(k, j, i + 1) - t1_avg(k, j, i))
                         turb_flux = (ut1_avg(k, j, i) - u_avg(k, j, i) * 0.5 * (t1_avg(k, j, i + 1) + t1_avg(k, j, i)))
-                        IF (ABS(turb_flux) < EPSILON(turb_flux)) THEN
-                            diffx(k, j, i) = 0.0
-                            und_counter = und_counter + 1
-                        ELSEIF (ABS(delta_t1) < EPSILON(delta_t1)) THEN
+                        IF (ABS(delta_t1) < EPSILON(delta_t1)) THEN
                             ! assuming this case only occurs inside obstacles/ outside boundaries
                             diffx(k, j, i) = 0.0
                             und_counter = und_counter + 1
@@ -202,10 +199,7 @@ CONTAINS
                     DO k = 3, kk - 2
                         delta_t1 = (t1_avg(k, j + 1, i) - t1_avg(k, j, i))
                         turb_flux = (vt1_avg(k, j, i) - v_avg(k, j, i) * 0.5 * (t1_avg(k, j + 1, i) + t1_avg(k, j, i)))
-                        IF (ABS(turb_flux) < EPSILON(turb_flux)) THEN
-                            diffy(k, j, i) = 0.0
-                            und_counter = und_counter + 1
-                        ELSEIF (ABS(delta_t1) < EPSILON(delta_t1)) THEN
+                        IF (ABS(delta_t1) < EPSILON(delta_t1)) THEN
                             ! assuming this case only occurs inside obstacles/ outside boundaries
                             diffy(k, j, i) = 0.0
                             und_counter = und_counter + 1
@@ -233,10 +227,7 @@ CONTAINS
                     DO k = 3, kk - 2
                         delta_t1 = (t1_avg(k + 1, j, i) - t1_avg(k, j, i))
                         turb_flux = (wt1_avg(k, j, i) - w_avg(k, j, i) * 0.5 * (t1_avg(k + 1, j, i) + t1_avg(k, j, i)))
-                        IF (ABS(turb_flux) < EPSILON(turb_flux)) THEN
-                            diffz(k, j, i) = 0.0
-                            und_counter = und_counter + 1
-                        ELSEIF (ABS(delta_t1) < EPSILON(delta_t1)) THEN
+                        IF (ABS(delta_t1) < EPSILON(delta_t1)) THEN
                             ! assuming this case only occurs inside obstacles/ outside boundaries
                             diffz(k, j, i) = 0.0
                             und_counter = und_counter + 1
@@ -261,9 +252,8 @@ CONTAINS
 
         ! connect
         ! TODO: check this approach for buffers; esp. levels ...
-        DO ilevel = minlevel, maxlevel
-            CALL connect(ilevel, 1, v1 = diffx_f, v2 = diffy_f, v3 = diffz_f, corners = .TRUE.)
-        END DO
+        CALL connect(particle_level, 2, v1 = diffx_f, v2 = diffy_f, v3 = diffz_f, corners = .TRUE.)
+
 
         IF (TRIM(particle_terminal) == "normal" .OR. TRIM(particle_terminal) == "verbose") THEN
             IF (myid /= 0) THEN

@@ -1,6 +1,8 @@
 MODULE particle_timeintegration_mod
 
     USE fields_mod
+    USE ib_mod
+    USE gc_flowstencils_mod
 
     USE particle_runtimestat_mod
     USE particle_list_mod
@@ -22,6 +24,32 @@ CONTAINS
         ! init rk scheme
         CALL prkscheme%init(prkmethod)
 
+        IF (dturb_diff) THEN
+            IF (solve_flow) THEN
+                WRITE(*, *) "Running a Particle Simulation with turbulent Diffusivity while solving Flow is not recommended."
+                CALL errr(__FILE__, __LINE__)
+            END IF
+
+            BLOCK
+                TYPE(field_t), POINTER :: pwu_avg_f, pwv_avg_f, pww_avg_f
+                TYPE(field_t), POINTER :: u_avg_f, v_avg_f, w_avg_f
+
+                CALL set_field("PWU_AVG", istag=1, buffers=.TRUE.)
+                CALL set_field("PWV_AVG", jstag=1, buffers=.TRUE.)
+                CALL set_field("PWW_AVG", kstag=1, buffers=.TRUE.)
+
+                CALL get_field(pwu_avg_f, "PWU_AVG")
+                CALL get_field(pwv_avg_f, "PWV_AVG")
+                CALL get_field(pww_avg_f, "PWW_AVG")
+
+                CALL get_field(u_avg_f, "U_AVG")
+                CALL get_field(v_avg_f, "V_AVG")
+                CALL get_field(w_avg_f, "W_AVG")
+
+                CALL setpointvalues(pwu_avg_f, pwv_avg_f, pww_avg_f, u_avg_f, v_avg_f, w_avg_f, .TRUE.)
+            END BLOCK
+
+        END IF
         CALL stop_timer(910)
         CALL stop_timer(900)
 
@@ -37,12 +65,12 @@ CONTAINS
         !TYPE(baseparticle_t) :: particle_clone
         TYPE(field_t), POINTER :: x_f, y_f, z_f
         TYPE(field_t), POINTER :: dx_f, dy_f, dz_f, ddx_f, ddy_f, ddz_f
-        TYPE(field_t), POINTER :: u_f, v_f, w_f
+        TYPE(field_t), POINTER :: pwu_f, pwv_f, pww_f
         TYPE(field_t), POINTER :: diffx_f, diffy_f, diffz_f
 
         REAL(realk), POINTER, CONTIGUOUS, DIMENSION(:) :: x, y, z
         REAL(realk), POINTER, CONTIGUOUS, DIMENSION(:) :: dx, dy, dz, ddx, ddy, ddz
-        REAL(realk), POINTER, CONTIGUOUS, DIMENSION(:, :, :) :: u, v, w
+        REAL(realk), POINTER, CONTIGUOUS, DIMENSION(:, :, :) :: pwu, pwv, pww
         REAL(realk), POINTER, CONTIGUOUS, DIMENSION(:, :, :) :: diffx, diffy, diffz
 
         REAL(realk), ALLOCATABLE :: pdx_pot(:), pdy_pot(:), pdz_pot(:)
@@ -79,9 +107,22 @@ CONTAINS
             CALL get_field(ddz_f, "DDZ")
         END IF
 
-        CALL get_field(u_f, "U")
-        CALL get_field(v_f, "V")
-        CALL get_field(w_f, "W")
+        IF (dturb_diff) THEN
+            ! if turbulent diffusion is done, use the point values deduced from the average flow field
+            CALL get_field(pwu_f, "PWU_AVG")
+            CALL get_field(pwv_f, "PWV_AVG")
+            CALL get_field(pww_f, "PWW_AVG")
+        ELSE
+            IF (ib%type == "GHOSTCELL") THEN
+                CALL get_field(pwu_f, "PWU")
+                CALL get_field(pwv_f, "PWV")
+                CALL get_field(pww_f, "PWW")
+            ELSE
+                CALL get_field(pwu_f, "U")
+                CALL get_field(pwv_f, "V")
+                CALL get_field(pww_f, "W")
+            END IF
+        END IF
 
         IF (dturb_diff) THEN
             CALL get_field(diffx_f, "P_DIFF_X")
@@ -152,9 +193,9 @@ CONTAINS
             ! --- ADVECTION ---
             CALL start_timer(921)
 
-            CALL u_f%get_ptr(u, igrid)
-            CALL v_f%get_ptr(v, igrid)
-            CALL w_f%get_ptr(w, igrid)
+            CALL pwu_f%get_ptr(pwu, igrid)
+            CALL pwv_f%get_ptr(pwv, igrid)
+            CALL pww_f%get_ptr(pww, igrid)
 
             ! for particle runtime statistics (terminal output)
             IF (TRIM(particle_terminal) == "normal" .OR. TRIM(particle_terminal) == "verbose") THEN
@@ -179,10 +220,10 @@ CONTAINS
                 ! get particle velocity
                 IF (dinterp_padvection) THEN
                     CALL interpolate_lincon(my_particle_list%particles(i), kk, jj, ii, x, y, z, dx, dy, dz, ddx, ddy, ddz, &
-                     u, v, w, pu_adv, pv_adv, pw_adv)
+                     pwu, pwv, pww, pu_adv, pv_adv, pw_adv)
                 ELSE
                     CALL get_nearest_value(my_particle_list%particles(i), kk, jj, ii, x, y, z, &
-                     u, v, w, pu_adv, pv_adv, pw_adv)
+                     pwu, pwv, pww, pu_adv, pv_adv, pw_adv)
                 END IF
 
                 CALL prkstep(pdx_pot(i), pdy_pot(i), pdz_pot(i), pu_adv, pv_adv, pw_adv, dt, A, B, pdx_adv, pdy_adv, pdz_adv)
@@ -231,9 +272,9 @@ CONTAINS
                 END IF
 
                 IF (dturb_diff) THEN
-                    CALL diffx_f%get_ptr(diffx, my_particle_list%particles(i)%igrid)
-                    CALL diffy_f%get_ptr(diffy, my_particle_list%particles(i)%igrid)
-                    CALL diffz_f%get_ptr(diffz, my_particle_list%particles(i)%igrid)
+                    CALL diffx_f%get_ptr(diffx, igrid)
+                    CALL diffy_f%get_ptr(diffy, igrid)
+                    CALL diffz_f%get_ptr(diffz, igrid)
                     IF (dinterp_pdiffusion) THEN
                         CALL interpolate_lincon(my_particle_list%particles(i), kk, jj, ii, x, y, z, dx, dy, dz, ddx, ddy, ddz, &
                         diffx, diffy, diffz, Dturb1, Dturb2, Dturb3)
