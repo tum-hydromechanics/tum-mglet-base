@@ -1,9 +1,9 @@
 {
     "time": {
-        "mtstep": 2000,
+        "mtstep": 10000,
         "dt": 0.01,
-        "tend": 10.0,
-        "itinfo": 1,
+        "tend": 100.0,
+        "itinfo": 10,
         "itcheck": 10
     },
     "io": {
@@ -65,7 +65,7 @@
         "dturb_diff": false,
         "random_walk_mode": "gaussian2",
         "truncation_limit": 2.0,
-        "D":[0.002, 0.002, 0.000],
+        "D":[0.001, 0.001, 0.000],
         "dgridstat": true,
         "slice_direction": "X",
         "nslice_levels": 1,
