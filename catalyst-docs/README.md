@@ -27,7 +27,7 @@ The following snippet shows an example on how such a configuration could look li
 
 Before running the complete simulation with Catalyst, a representative dataset must be created. This dataset serves as a reference for paraview and the user to set up the pipeline script which is used to specify e.g. which fields, areas of the domain shall be investigaged. Furthermore, the pipeline script serves as the only interface on how to view the simulation during execution.
 
-**Warning** Representative datasets will save all fields of the whole domain to disk. Use with caution for large domains. 
+:warning: **Warning** Representative datasets will save all fields of the whole domain to disk. Use with caution for large domains. 
 
 ### Running a Simulation with Catalyst
 
