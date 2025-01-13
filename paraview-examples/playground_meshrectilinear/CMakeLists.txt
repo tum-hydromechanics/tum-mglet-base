@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.13)
-project(CxxOverlappingAMRExampleV2 LANGUAGES C CXX)
+project(MeshV1 LANGUAGES C CXX)
 
 include (GNUInstallDirs)
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/${CMAKE_INSTALL_BINDIR}")
@@ -7,15 +7,9 @@ set(CMAKE_LIBRARY_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/${CMAKE_INSTALL_LIBDIR}"
 
 #------------------------------------------------------------------------------
 # since we use C++11 in this example.
-# set(CMAKE_CXX_STANDARD 11)
-# set(CMAKE_CXX_STANDARD_REQUIRED ON)
-# set(CMAKE_CXX_EXTENSIONS OFF)
-# find_package(Conduit REQUIRED)
-######
-# Conduit requires c++14 support
-######
-set(CMAKE_CXX_STANDARD 14)
+set(CMAKE_CXX_STANDARD 11)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
+set(CMAKE_CXX_EXTENSIONS OFF)
 
 # Since this example uses MPI, find and link against it.
 find_package(MPI COMPONENTS C CXX)
@@ -26,48 +20,31 @@ if (NOT MPI_FOUND)
 endif ()
 
 #------------------------------------------------------------------------------
-add_executable(CxxOverlappingAMRExampleV2
+add_executable(MeshV1
   FEDriver.cxx FEDataStructures.cxx FEDataStructures.h)
-target_link_libraries(CxxOverlappingAMRExampleV2
+target_link_libraries(MeshV1
   PRIVATE
     MPI::MPI_C
     MPI::MPI_CXX)
-
-# add_executable(test2
-#   FEDriver2.cxx FEDataStructures.cxx FEDataStructures.h)
-# target_link_libraries(test2
-#   PRIVATE
-#     MPI::MPI_C
-#     MPI::MPI_CXX
-#     conduit::conduit)
 
 #------------------------------------------------------------------------------
 option(USE_CATALYST "Build example with Catalyst enabled" ON)
 if (USE_CATALYST)
   find_package(catalyst REQUIRED
     PATHS "${ParaView_DIR}/catalyst")
-  target_compile_definitions(CxxOverlappingAMRExampleV2
+  target_compile_definitions(MeshV1
     PRIVATE
       "PARAVIEW_IMPL_DIR=\"${ParaView_CATALYST_DIR}\""
       USE_CATALYST=1)
-  target_link_libraries(CxxOverlappingAMRExampleV2
+  target_link_libraries(MeshV1
     PRIVATE
       catalyst::catalyst)
-
-
-  # target_compile_definitions(test2
-  #   PRIVATE
-  #     "PARAVIEW_IMPL_DIR=\"${ParaView_CATALYST_DIR}\""
-  #     USE_CATALYST=1)
-  # target_link_libraries(test2
-  #   PRIVATE
-  #     catalyst::catalyst)
 
   include(CTest)
   if (BUILD_TESTING)
     add_test(
-      NAME CxxOverlappingAMRExampleV2::SimplePipeline
-      COMMAND CxxOverlappingAMRExampleV2
+      NAME MeshV1::SimplePipeline
+      COMMAND MeshV1
               ${CMAKE_CURRENT_SOURCE_DIR}/catalyst_pipeline.py)
 
     set(_vtk_fail_regex
@@ -79,7 +56,7 @@ if (USE_CATALYST)
       # vtkDebugLeaks
       "instance(s)? still around")
 
-    set_tests_properties("CxxOverlappingAMRExampleV2::SimplePipeline"
+    set_tests_properties("MeshV1::SimplePipeline"
       PROPERTIES
         FAIL_REGULAR_EXPRESSION "${_vtk_fail_regex}"
         PASS_REGULAR_EXPRESSION "executing catalyst_pipeline"

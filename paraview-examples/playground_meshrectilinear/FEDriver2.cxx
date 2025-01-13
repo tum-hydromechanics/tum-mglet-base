@@ -7,41 +7,29 @@
 #include <iostream>
 #include <mpi.h>
 
-// Example of a C++ adaptor for a simulation code
-// where the simulation code has an overlapping AMR
-// grid. The grid in this case is a vtkOverlappingAMR
-// data set with the MPI process id specified
-// as cell data. Note that in order to see the AMR
-// cells (i.e. Surface With Edges representation of
-// the data) that the .vtk reader needs to increase
-// the `Default Number Of Levels` parameter to
-// greater than the default of 1.
 
-int main(int argc, char* argv[])
-{
-  using ValueType =int;
+
+// using Node =   conduit_cpp::Node;
+// using conduit = conduit_cpp;
+
+int main(int argc, char* argv[]){
 
   MPI_Init(&argc, &argv);
   int numRanks(1), myRank(0);
+  int size1 = 4;
+  int size2 = 3;
   MPI_Comm_size(MPI_COMM_WORLD, &numRanks);
   MPI_Comm_rank(MPI_COMM_WORLD, &myRank);
 
   unsigned int numberOfAMRLevels = 3;
-  AMR amr(numberOfAMRLevels, myRank, numRanks);
-  std::cout<<"RANK: "<<myRank<<", numRanks:"<<numRanks<<
-  "amr: "<<&amr<<std::endl;
-
-//   for (size_t i=0;i<argc;i++){
-
-//     std::cout<<"argv["<<i<<"]: "<<argv[i]<<std::endl;
-// }
+  AMR_new amr(numberOfAMRLevels, myRank, numRanks, size1,size2);
 
   // The first argument is the program name
 #ifdef USE_CATALYST
   CatalystAdaptor::Initialize(argc, argv);
 #endif
   // keep the number of time steps small since nothing about the grid or fields is changing
-  unsigned int numberOfTimeSteps = 2;
+  unsigned int numberOfTimeSteps = 3;
   for (unsigned int timeStep = 0; timeStep < numberOfTimeSteps; timeStep++)
   {
     // use a time step length of 0.1
