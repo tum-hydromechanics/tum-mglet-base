@@ -11,12 +11,12 @@ int main(int argc, char* argv[])
 {
   // MPI_Init(&argc, &argv);
   // int numRanks(1), myRank(0);
-  int myRank = 5;
+  int myRank = 1;
   int numRanks = 3;
   // MPI_Comm_size(MPI_COMM_WORLD, &numRanks);
   // MPI_Comm_rank(MPI_COMM_WORLD, &myRank);
 
-  unsigned int numberOfAMRLevels = 4;
+  unsigned int numberOfAMRLevels = 3;
   std::vector<AMR*> amr;
   for (int rank=0;rank<myRank;rank++){
     amr.push_back(new AMR(numberOfAMRLevels, rank, numRanks));

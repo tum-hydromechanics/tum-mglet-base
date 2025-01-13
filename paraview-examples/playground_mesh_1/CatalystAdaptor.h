@@ -16,6 +16,7 @@
 namespace CatalystAdaptor
 {
 static std::vector<std::string> filesToValidate;
+bool trigger = true;
 /**
  * In this example, we show how to pass overlapping AMR data
  * into Conduit for ParaView Catalyst processing.
@@ -53,8 +54,8 @@ void Initialize(int argc, char* argv[])
     }
 
   }
-  std::cout<<"printing node: "<<&node<<std::endl;
-  node.print();
+  // std::cout<<"printing node: "<<&node<<std::endl;
+  // node.print();
 
   node["catalyst_load/implementation"] = "paraview";
   node["catalyst_load/search_paths/paraview"] = PARAVIEW_IMPL_DIR;
@@ -216,11 +217,18 @@ void Execute(unsigned int cycle, double time, std::vector<AMR*> amrs, int ranks)
   //         <<myRank<<std::endl;
     // mesh.print();
   // exec_params.print(); // for viewing the Conduit node information
+  if (trigger){
+    std::cout<<"Time: "<<time<<std::endl;
+    std::cout<<mesh.to_yaml()<<std::endl;
+    // mesh.print();
+
+  }
 
   catalyst_status err = catalyst_execute(conduit_cpp::c_node(&exec_params));
   if (err != catalyst_status_ok)
   {
     std::cerr << "Failed to execute Catalyst: " << err << std::endl;
+    trigger =false;
   }
 }
 

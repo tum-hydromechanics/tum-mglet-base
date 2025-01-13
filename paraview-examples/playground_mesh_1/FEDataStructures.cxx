@@ -2,14 +2,16 @@
 // SPDX-License-Identifier: BSD-3-Clause
 #include "FEDataStructures.h"
 #include <math.h>
-
-
+#include <iostream>
+#include <vector>
+#include <algorithm>
 ///////////////////////////////////////////////////////////////////////////////
 //AMR starts here
 AMR::AMR(int numberOfAMRLevels, int myRank, int numRanks)
   : NumberOfAMRLevels(numberOfAMRLevels)
 {
   int numberOfCells = 0;
+  std::vector<int> numberOfCellsperLevel(numberOfAMRLevels,0);
   for (int level = 0; level < numberOfAMRLevels; level++)
   {
     std::array<int, 6> levelIndices;
@@ -29,7 +31,13 @@ AMR::AMR(int numberOfAMRLevels, int myRank, int numRanks)
     levelOrigin[2] = level;
     this->LevelOrigin.push_back(levelOrigin);
     numberOfCells += cellsPerLevel;
+    numberOfCellsperLevel[level]+=cellsPerLevel;
   }
+  std::for_each(numberOfCellsperLevel.begin(), numberOfCellsperLevel.end(), [](int value) {
+      std::cout << value << " ";
+  });
+
+  // std::cout << std::endl;
   this->BlockId.resize(this->NumberOfAMRLevels, -1);
   for (int level = 0; level < this->NumberOfAMRLevels; level++)
   {
