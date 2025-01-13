@@ -24,6 +24,6 @@ CONTAINS
         CALL register_plugin("UVWBULK", init_late=init_uvwbulk, &
             itinfo=itinfo_uvwbulk, finish=finish_uvwbulk)
         CALL register_plugin("CATALYST", init_late=init_catalyst, &
-            itinfo=sample_catalyst, finish=finish_catalyst)
+            timeintegrate=sample_catalyst, finish=finish_catalyst)
     END SUBROUTINE register_builtin_plugins
 END MODULE builtin_plugins_mod
