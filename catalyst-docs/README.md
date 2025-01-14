@@ -1,6 +1,8 @@
 # Catalyst and MGLET
 
-![til](./in-situ-overlap.gif)
+![showcase](./in-situ-overlap.gif)
+
+*In-Situ visualization with Paraview Catalyst and MGLET. Data is not written to disk, but read from pointers into the memory of the simulation.*
 
 ## Workflow
 
