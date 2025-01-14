@@ -11,7 +11,9 @@
 #include <math.h>
 // #include <mpi.h>
 #include <string>
+#include <iostream>
 #include <vector>
+#include <algorithm>
 
 namespace CatalystAdaptor
 {
@@ -150,6 +152,12 @@ void Execute(unsigned int cycle, double time, std::vector<AMR*> amrs, int ranks)
       parent["ratio/i"] = 2;
       parent["ratio/j"] = 2;
       parent["ratio/k"] = 2;
+    //   if (trigger){
+    //     std::for_each(parentLevelIndices.begin(), parentLevelIndices.end(), [](int value) {
+    //     std::cout << value << " ";
+    // }); std::cout << std::endl;
+    //     std::cout<<"Rank"<<myRank<<std::endl;
+    //   }
     }
     if (level < amr.NumberOfAMRLevels - 1)
     {
@@ -208,6 +216,16 @@ void Execute(unsigned int cycle, double time, std::vector<AMR*> amrs, int ranks)
     }
     // we copy the data since point_values will get deallocated
     other_field["values"] = point_values;
+  // }
+  
+  if (trigger){
+
+  std::for_each(levelIndices.begin(), levelIndices.end(), [](int value) {
+        std::cout << value << " ";
+    }); std::cout << std::endl;
+    std::cout<<"Rank: "<<myRank<<", Level: "<<level<<std::endl;
+
+  }
   }
   }
   // std::cout<<"\n\n----------------writing mesh. rank"
@@ -221,14 +239,17 @@ void Execute(unsigned int cycle, double time, std::vector<AMR*> amrs, int ranks)
     std::cout<<"Time: "<<time<<std::endl;
     std::cout<<mesh.to_yaml()<<std::endl;
     // mesh.print();
-
+    // std::cout<<"Rank"<<myRank<<std::endl;
+    // std::for_each(levelIndices.begin(), levelIndices.end(), [](int value) {
+    //     std::cout << value << " ";
+    // }); std::cout << std::endl;
+    trigger =false;
   }
 
   catalyst_status err = catalyst_execute(conduit_cpp::c_node(&exec_params));
   if (err != catalyst_status_ok)
   {
     std::cerr << "Failed to execute Catalyst: " << err << std::endl;
-    trigger =false;
   }
 }
 

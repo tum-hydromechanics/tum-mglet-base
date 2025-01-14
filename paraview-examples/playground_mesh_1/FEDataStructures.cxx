@@ -14,6 +14,7 @@ AMR::AMR(int numberOfAMRLevels, int myRank, int numRanks)
   std::vector<int> numberOfCellsperLevel(numberOfAMRLevels,0);
   for (int level = 0; level < numberOfAMRLevels; level++)
   {
+    std::cout<<"std::pow(2,"<<level<<")="<<std::pow(2,level)<<std::endl;
     std::array<int, 6> levelIndices;
     levelIndices[0] = 0;                                            // smallest i
     levelIndices[1] = std::pow(2, level);                           // largest i
