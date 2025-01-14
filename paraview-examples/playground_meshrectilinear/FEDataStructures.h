@@ -5,6 +5,7 @@
 
 #include <array>
 #include <vector>
+#include <catalyst.hpp>
 
 class AMR
 {
@@ -46,13 +47,13 @@ public:
   int dy(){return dy_;}
   int nx(){return nx_;}
   int ny(){return ny_;}
-  int domainid(){return domainid_;}
+  int domain(){return domain_;}
   int level(){return level_;}
 
   std::string topo() {return topo_;}
   std::string type() {return type_;}
 
-  std::array<double, 3> length(){lengths_;}
+  std::array<double, 3> lengths(){return lengths_;}
   int NumberOfAMRLevels;
   std::vector<std::array<int, 6>> LevelIndices; // inclusive min and max for point indices
   std::vector<int> CellsPerLevel;
@@ -61,11 +62,13 @@ public:
   // private:
   std::array<double, 3> origin_, lengths_,ds;
   int dx_,dy_,dz_,domain_;
-  int nx_,ny_,nz_,domain_;
+  int nx_,ny_,nz_;
   std::string topo_,assotiation_,type_,coordset_;
-  int domainid_,level_;
+  int level_;
   std::vector<double> coordsX, coordsY, coordsZ;
   int childrens_;
+  // void make_fields(conduit_cpp::Node& proc_id_field);
+  // void make_otherfields(conduit_cpp::Node& proc_id_field);
 
 };
 
@@ -88,13 +91,13 @@ public:
   int dy(){return dy_;}
   int nx(){return nx_;}
   int ny(){return ny_;}
-  int domainid(){return domainid_;}
+  int domain(){return domain_;}
   int level(){return level_;}
 
   std::string topo() {return topo_;}
   std::string type() {return type_;}
 
-  std::array<double, 3> length(){lengths_;}
+  std::array<double, 3> lengths(){return lengths_;}
   int NumberOfAMRLevels;
   std::vector<std::array<int, 6>> LevelIndices; // inclusive min and max for point indices
   std::vector<int> CellsPerLevel;
@@ -103,11 +106,12 @@ public:
   // private:
   std::array<double, 3> origin_, lengths_,ds;
   int dx_,dy_,dz_,domain_;
-  int nx_,ny_,nz_,domain_;
+  int nx_,ny_,nz_;
   std::string topo_,assotiation_,type_,coordset_;
-  int domainid_,level_;
+  int level_;
   std::vector<double> coordsX, coordsY, coordsZ;
-  int childrens_;
+  int childrens_parentid_;
+
 
 };
 

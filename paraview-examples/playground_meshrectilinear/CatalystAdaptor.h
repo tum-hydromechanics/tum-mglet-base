@@ -12,18 +12,16 @@
 // #include <mpi.h>
 #include <string>
 #include <vector>
-
+#include <algorithm>
 namespace CatalystAdaptor
 {
 static std::vector<std::string> filesToValidate;
 bool trigger = true;
 
-void create_domain_1(unsigned int cycle, double time,
-                      conduitcpp::Node mesh, 
-                        std::vector<AMR*> amrV, int childrens){
-  
+void create_domain_1(unsigned int cycle, double time,conduitcpp::Node& mesh, AMR& amr, int childrens){
+  int myRank = 0; //this will have to change for not the first domain....
   // for (int rank=0;rank<myRank;rank++){
-  AMR& amr = *amrV[0]
+  // AMR& amr = *amrV[0];
   std::string patch_name = "domain_" + std::to_string(amr.domainid_);
   conduit_cpp::Node patch = mesh[patch_name];
   patch["state/domain_id"] = amr.domainid();
@@ -61,29 +59,42 @@ void create_domain_1(unsigned int cycle, double time,
     nest_set["association"] = "element";
     nest_set["topology"] = "topo";
 
-  for (int child_id=0;child_id<childrens,child_id++){
-    //comparing this with the CxxOverlapping example i am not going to 
-    // overwrite the parent under nest_set
-      int child_id = amr.BlockId[level];
-      std::string child_name = "windows/window_" + std::to_string(child_id);
-      conduit_cpp::Node child = nest_set[child_name];
-      child["domain_id"] = child_id;
-      child["domain_type"] = "child";
+  //TBDONE //all the children code-----------------------------------------------------------
+  // for (int child_id=0;child_id<childrens,child_id++){
+  //   //comparing this with the CxxOverlapping example i am not going to 
+  //   // overwrite the parent under nest_set
+  //     int child_id = amr.BlockId[level];
+  //     std::string child_name = "windows/window_" + std::to_string(child_id);
+  //     conduit_cpp::Node child = nest_set[child_name];
+  //     child["domain_id"] = child_id;
+  //     child["domain_type"] = "child";
 
-      child["origin/i"] = levelIndices[0];
-      child["origin/j"] = levelIndices[2];
-      child["origin/k"] = levelIndices[4];
+  //     child["origin/i"] = levelIndices[0];
+  //     child["origin/j"] = levelIndices[2];
+  //     child["origin/k"] = levelIndices[4];
 
-      child["dims/i"] = levelIndices[1] - levelIndices[0] + 1;
-      child["dims/j"] = levelIndices[3] - levelIndices[2] + 1;
-      child["dims/k"] = levelIndices[5] - levelIndices[4] + 1;
+  //     child["dims/i"] = levelIndices[1] - levelIndices[0] + 1;
+  //     child["dims/j"] = levelIndices[3] - levelIndices[2] + 1;
+  //     child["dims/k"] = levelIndices[5] - levelIndices[4] + 1;
 
-      child["ratio/i"] = 2;
-      child["ratio/j"] = 2;
-      child["ratio/k"] = 2;
+  //     child["ratio/i"] = 2;
+  //     child["ratio/j"] = 2;
+  //     child["ratio/k"] = 2;
 
-  }
+  // }
+  //TBDONE //all the children code-----------------------------------------------------------
 
+  patch["nestsets/nest"].set(nest_set);
+
+  // add fields
+  conduit_cpp::Node fields = patch["fields"];
+
+  // cell data corresponding to MPI process id
+  conduit_cpp::Node proc_id_field = fields["procid"];
+  make_fields(proc_id_field,levelIndices,myRank);
+
+  conduit_cpp::Node other_field = fields["otherfield"];
+  make_otherfields(other_field,levelIndices);
 }
 
 
@@ -170,6 +181,9 @@ void Execute(unsigned int cycle, double time, std::vector<AMR*> amrs, int ranks)
   AMR& amr = *amrs[myRank];
   for (unsigned int level = 0; level < amr.NumberOfAMRLevels; level++)
   {
+      create_domain_1(cycle,time,mesh,amr,amr.NumberOfAMRLevels());
+
+    /*
     std::string patch_name = "domain_" + std::to_string(level + amr.NumberOfAMRLevels * myRank);
     conduit_cpp::Node patch = mesh[patch_name];
     // add basic state info
@@ -283,6 +297,7 @@ void Execute(unsigned int cycle, double time, std::vector<AMR*> amrs, int ranks)
     // we copy the data since point_values will get deallocated
     other_field["values"] = point_values;
   }
+  */
   }
   // std::cout<<"\n\n----------------writing mesh. rank"
         // <<myRank<<std::endl;
@@ -304,6 +319,8 @@ void Execute(unsigned int cycle, double time, std::vector<AMR*> amrs, int ranks)
     std::cerr << "Failed to execute Catalyst: " << err << std::endl;
     trigger =false;
   }
+
+  }
 }
 
 void Finalize()
@@ -315,6 +332,51 @@ void Finalize()
     std::cerr << "Failed to finalize Catalyst: " << err << std::endl;
   }
 }
+
+
+////////////////////////////////////////////////////////////////////////////////////
+void make_otherfields(conduit_cpp::Node& other_field, std::array<int, 6> levelIndices){
+  // std::array<int, 6> levelIndices = amr.GetLevelIndices(level);
+
+  // conduit_cpp::Node other_field = fields["otherfield"];
+  other_field["association"] = "vertex";
+  other_field["topology"] = "topo";
+
+
+  int num_points = (levelIndices[1] - levelIndices[0] + 1) *
+  (levelIndices[3] - levelIndices[2] + 1) * (levelIndices[5] - levelIndices[4] + 1);
+    
+  std::vector<double> point_values(num_points, 0);
+  
+  for (size_t k = 0; k < levelIndices[5] - levelIndices[4] + 1; k++){
+    for (size_t j = 0; j < levelIndices[3] - levelIndices[2] + 1; j++){
+      for (size_t i = 0; i < levelIndices[1] - levelIndices[0] + 1; i++){
+        
+        size_t l = i + j * (levelIndices[1] - levelIndices[0] + 1) +
+          k * (levelIndices[1] - levelIndices[0] + 1) * (levelIndices[3] - levelIndices[2] + 1);
+        double spacing = 1. / std::pow(2, level);
+        double xOrigin = levelOrigin[0];
+        point_values[l] = xOrigin + i * spacing * std::cos(time);
+      }
+    }
+  }
+  // we copy the data since point_values will get deallocated
+  other_field["values"] = point_values;
 }
 
+
+
+void make_fields(conduit_cpp::Node& proc_id_field,
+                    std::array<int, 6> levelIndices, int myRank){
+  proc_id_field["association"] = "element";
+  proc_id_field["topology"] = "topo";
+  int num_cells = (levelIndices[1] - levelIndices[0]) * (levelIndices[3] - levelIndices[2]) *
+    (levelIndices[5] - levelIndices[4]);
+  std::vector<int> cellValues(num_cells, myRank);
+  // we copy the data since cellValues will get deallocated
+  proc_id_field["values"] = cellValues;
+}
+
+
+}
 #endif

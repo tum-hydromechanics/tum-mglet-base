@@ -7,6 +7,7 @@
 #include <algorithm>
 ///////////////////////////////////////////////////////////////////////////////
 //AMR starts here
+
 AMR::AMR(int numberOfAMRLevels, int myRank, int numRanks)
   : NumberOfAMRLevels(numberOfAMRLevels)
 {
@@ -62,11 +63,11 @@ std::array<double, 3> AMR::GetLevelOrigin(int level)
 
 ///////////////////////////////////////////////////////////////////////////////
 //Jul starts here
-
-  Jul::Jul(int numberOfAMRLevels, int myRank, int numRanks,
+Jul::Jul(int numberOfAMRLevels, int myRank, int numRanks,
       std::array<double, 3> origin,std::array<double, 3> lengths,//);
-      int nx, int ny, std::string topo, std::string domain, int childrens) : origin_(origin), lengths_(lengths),
-        domain_(domainid_),childrens_(childrens)
+      int nx, int ny, std::string topo, int domain, int childrens) :
+       origin_(origin), lengths_(lengths),
+        domain_(domain),childrens_(childrens)
          {
   int numberOfCells = 0;
   type_ = "rectilinear";//uniform
@@ -110,8 +111,10 @@ std::vector<double> linspace(int ns, double o, double ds){
 //create the childrens!!!!
   Lia::Lia(int numberOfAMRLevels, int myRank, int numRanks,
       std::array<double, 3> origin,std::array<double, 3> lengths,//);
-      int nx, int ny, std::string topo, std::string domain, int childrens) : origin_(origin), lengths_(lengths),
-        domain_(domainid_),childrens_(childrens)
+      int nx, int ny, std::string topo, int domain, int childrens) : 
+      origin_(origin), lengths_(lengths),
+        domain_(domain),parentid_(parentid), 
+        childrens_(childrens)
          {
   int numberOfCells = 0;
   type_ = "rectilinear";//uniform
@@ -124,6 +127,7 @@ std::vector<double> linspace(int ns, double o, double ds){
   coordsX = linspace(nx,origin[0],dx_);
   coordsY = linspace(ny,origin[1],dy_);
   coordsZ = linspace(2 ,origin[2], 1 );//[0,1];
+  parentid_ = parentid;
   
 }
 
