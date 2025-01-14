@@ -61,52 +61,93 @@ std::array<double, 3> AMR::GetLevelOrigin(int level)
 ///////////////////////////////////////////////////////////////////////////////
 
 ///////////////////////////////////////////////////////////////////////////////
-//AMR_new starts here
-/*
-AMR_new::AMR_new(int numberOfAMRLevels, int myRank, int numRanks, std::array<double, 3> AMR_origin,int size1, int size2) : 
-          NumberOfAMRLevels(numberOfAMRLevels), 
-          AMR_origin_(AMR_origin), size1_(size1),size2_(size2)
-{
+//Jul starts here
+
+  Jul::Jul(int numberOfAMRLevels, int myRank, int numRanks,
+      std::array<double, 3> origin,std::array<double, 3> lengths,//);
+      int nx, int ny, std::string topo, std::string domain, int childrens) : origin_(origin), lengths_(lengths),
+        domain_(domainid_),childrens_(childrens)
+         {
   int numberOfCells = 0;
-  for (int xdir = 0; xdir < size1; xdir++){
-    for (int ydir = 0; ydir < size1; ydir++){
-      std::array<int, 6> levelIndices;
-      // levelIndices[0] = 0;                                            // smallest i
-      // levelIndices[1] = std::pow(2, level);                           // largest i
-      // levelIndices[2] = 0;                                            // smallest j
-      // levelIndices[3] = std::pow(2, level);                           // largest j
-      // levelIndices[4] = level * std::pow(2, level);                   // smallest k
-      // levelIndices[5] = this->NumberOfAMRLevels * std::pow(2, level); // largest k
-      // this->LevelIndices.push_back(levelIndices);
-      // int cellsPerLevel = (levelIndices[1] - levelIndices[0]) * (levelIndices[3] - levelIndices[2]) *
-      //   (levelIndices[5] - levelIndices[4]);
-      // this->CellsPerLevel.push_back(cellsPerLevel);
-      // std::array<double, 3> levelOrigin;
-      // levelOrigin[0] = size_1;
-      // levelOrigin[1] = 0;
-      // levelOrigin[2] = myRank;
-      // this->LevelOrigin.push_back(levelOrigin);
-      // numberOfCells += cellsPerLevel;
-    }
-    this->BlockId.resize(this->NumberOfAMRLevels, -1);
-    for (int level = 0; level < this->NumberOfAMRLevels; level++)
-    {
-      this->BlockId[level] = myRank * this->NumberOfAMRLevels + level;
-    }
+  type_ = "rectilinear";//uniform
+  topo_ = "topo";
+  coordset_ = "coords";
+  dx_ = lengths_[0] / nx;
+  dy_ = lengths_[1] / ny;
+  dz_ = 1;
+  int ntotal = nx*ny;
+  coordsX = linspace(nx,origin[0],dx_);
+  coordsY = linspace(ny,origin[1],dy_);
+  coordsZ = linspace(2 ,origin[2], 1 );//[0,1];
+  
+}
+
+std::vector<double> linspace(int ns, double o, double ds){
+  std::vector<double> Vout(ns,0.0);
+  Vout[0]=o; 
+    for (int i=1;i<ns;++i){
+      Vout[i]=Vout[i-1]+ds;
   }
+  return Vout;
 }
 
-std::array<int, 6> AMR_new::GetLevelIndices(int level)
-{
-  return this->LevelIndices[level];
+
+// std::array<int, 6> AMR_new::GetLevelIndices(int level)
+// {
+//   return this->LevelIndices[level];
+// }
+
+// std::array<double, 3> Jul::GetLevelOrigin(int level)
+// {
+//   return this->LevelOrigin[level];
+// }
+
+//Jul ends here
+///////////////////////////////////////////////////////////////////////////////
+
+///////////////////////////////////////////////////////////////////////////////
+//Lia starts here
+//create the childrens!!!!
+  Lia::Lia(int numberOfAMRLevels, int myRank, int numRanks,
+      std::array<double, 3> origin,std::array<double, 3> lengths,//);
+      int nx, int ny, std::string topo, std::string domain, int childrens) : origin_(origin), lengths_(lengths),
+        domain_(domainid_),childrens_(childrens)
+         {
+  int numberOfCells = 0;
+  type_ = "rectilinear";//uniform
+  topo_ = "topo";
+  coordset_ = "coords";
+  dx_ = lengths_[0] / nx;
+  dy_ = lengths_[1] / ny;
+  dz_ = 1;
+  int ntotal = nx*ny;
+  coordsX = linspace(nx,origin[0],dx_);
+  coordsY = linspace(ny,origin[1],dy_);
+  coordsZ = linspace(2 ,origin[2], 1 );//[0,1];
+  
 }
 
-std::array<double, 3> AMR_new::GetLevelOrigin(int level)
-{
-  return this->LevelOrigin[level];
+std::vector<double> linspace(int ns, double o, double ds){
+  std::vector<double> Vout(ns,0.0);
+  Vout[0]=o; 
+    for (int i=1;i<ns;++i){
+      Vout[i]=Vout[i-1]+ds;
+  }
+  return Vout;
 }
-*/
-//AMR_new ends here
+
+
+// std::array<int, 6> AMR_new::GetLevelIndices(int level)
+// {
+//   return this->LevelIndices[level];
+// }
+
+// std::array<double, 3> Jul::GetLevelOrigin(int level)
+// {
+//   return this->LevelOrigin[level];
+// }
+
+//Lia ends here
 ///////////////////////////////////////////////////////////////////////////////
 
 

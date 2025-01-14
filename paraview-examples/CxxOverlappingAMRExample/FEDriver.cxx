@@ -41,7 +41,7 @@ int main(int argc, char* argv[])
   CatalystAdaptor::Initialize(argc, argv);
 #endif
   // keep the number of time steps small since nothing about the grid or fields is changing
-  unsigned int numberOfTimeSteps = 2;
+  unsigned int numberOfTimeSteps = 20;
   for (unsigned int timeStep = 0; timeStep < numberOfTimeSteps; timeStep++)
   {
     // use a time step length of 0.1

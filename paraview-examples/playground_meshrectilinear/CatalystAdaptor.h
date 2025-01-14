@@ -17,6 +17,80 @@ namespace CatalystAdaptor
 {
 static std::vector<std::string> filesToValidate;
 bool trigger = true;
+
+void create_domain_1(unsigned int cycle, double time,
+                      conduitcpp::Node mesh, 
+                        std::vector<AMR*> amrV, int childrens){
+  
+  // for (int rank=0;rank<myRank;rank++){
+  AMR& amr = *amrV[0]
+  std::string patch_name = "domain_" + std::to_string(amr.domainid_);
+  conduit_cpp::Node patch = mesh[patch_name];
+  patch["state/domain_id"] = amr.domainid();
+  patch["state/cycle"] = cycle;
+  patch["state/time"] = time;
+  patch["state/level"] = amr.level();
+
+  patch["coordsets/coords/type"] = amr.type();
+  //////////////////////////////////////this must change but idk yet to what
+  std::array<int, 6> levelIndices = amr.GetLevelIndices();
+  patch["coordsets/coords/dims/i"] = levelIndices[1] - levelIndices[0] + 1;
+  patch["coordsets/coords/dims/j"] = levelIndices[3] - levelIndices[2] + 1;
+  patch["coordsets/coords/dims/k"] = levelIndices[5] - levelIndices[4] + 1;
+
+  patch["coordsets/coords/spacing/dx"] = 1. / std::pow(2, level);
+  patch["coordsets/coords/spacing/dy"] = 1. / std::pow(2, level);
+  patch["coordsets/coords/spacing/dz"] = 1. / std::pow(2, level);
+
+  std::array<double, 3> levelOrigin = amr.GetLevelOrigin(level);
+  patch["coordsets/coords/origin/x"] = levelOrigin[0];
+  patch["coordsets/coords/origin/y"] = levelOrigin[1];
+  patch["coordsets/coords/origin/z"] = levelOrigin[2];
+
+  // create a rectilinear topology that refs our coordset
+  patch["topologies/topo/type"] = amr.type();
+  patch["topologies/topo/coordset"] = "coords";
+
+  // add logical elements origin 
+  //////////////////////////////////PENDING
+  // patch["topologies/topo/elements/origin/i0"] = levelIndices[0];
+  // patch["topologies/topo/elements/origin/j0"] = levelIndices[2];
+  // patch["topologies/topo/elements/origin/k0"] = levelIndices[4];
+
+  conduit_cpp::Node nest_set;
+    nest_set["association"] = "element";
+    nest_set["topology"] = "topo";
+
+  for (int child_id=0;child_id<childrens,child_id++){
+    //comparing this with the CxxOverlapping example i am not going to 
+    // overwrite the parent under nest_set
+      int child_id = amr.BlockId[level];
+      std::string child_name = "windows/window_" + std::to_string(child_id);
+      conduit_cpp::Node child = nest_set[child_name];
+      child["domain_id"] = child_id;
+      child["domain_type"] = "child";
+
+      child["origin/i"] = levelIndices[0];
+      child["origin/j"] = levelIndices[2];
+      child["origin/k"] = levelIndices[4];
+
+      child["dims/i"] = levelIndices[1] - levelIndices[0] + 1;
+      child["dims/j"] = levelIndices[3] - levelIndices[2] + 1;
+      child["dims/k"] = levelIndices[5] - levelIndices[4] + 1;
+
+      child["ratio/i"] = 2;
+      child["ratio/j"] = 2;
+      child["ratio/k"] = 2;
+
+  }
+
+}
+
+
+
+
+
+
 /**
  * In this example, we show how to pass overlapping AMR data
  * into Conduit for ParaView Catalyst processing.
