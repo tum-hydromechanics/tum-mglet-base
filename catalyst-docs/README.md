@@ -1,6 +1,6 @@
 # Catalyst and MGLET
 
-
+![til](./in-situ-overlap.gif)
 
 ## Workflow
 
