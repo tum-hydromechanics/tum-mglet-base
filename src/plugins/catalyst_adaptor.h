@@ -220,47 +220,42 @@ void execute(const MgletDataLink& args)
             real mdz = ( maxz - minz ) / ( kk - 4 );
 
             // Set grid coordsets
-            mesh["coordsets/coords/type"].set("uniform");
-
-            mesh["coordsets/coords/dims/i"].set(ii + 1 - 4);
-            mesh["coordsets/coords/dims/j"].set(jj + 1 - 4);
-            mesh["coordsets/coords/dims/k"].set(kk + 1 - 4);
-
-            mesh["coordsets/coords/origin/x"].set(minx);
-            mesh["coordsets/coords/origin/y"].set(miny);
-            mesh["coordsets/coords/origin/z"].set(minz); 
-
-            mesh["coordsets/coords/spacing/dx"].set(mdx);
-            mesh["coordsets/coords/spacing/dy"].set(mdy);
-            mesh["coordsets/coords/spacing/dz"].set(mdz);
+            auto coords = mesh["coordsets/coords"];
+            coords["type"].set("uniform");
+            coords["dims/i"].set(ii + 1 - 4);
+            coords["dims/j"].set(jj + 1 - 4);
+            coords["dims/k"].set(kk + 1 - 4);
+            coords["origin/x"].set(minx);
+            coords["origin/y"].set(miny);
+            coords["origin/z"].set(minz); 
+            coords["spacing/dx"].set(mdx);
+            coords["spacing/dy"].set(mdy);
+            coords["spacing/dz"].set(mdz);
 
             // Next, add topology
-            mesh["topologies/mesh/type"].set("uniform");
-            mesh["topologies/mesh/coordset"].set("coords");
+            auto topology = mesh["topologies/mesh"];
+            topology["type"].set("uniform");
+            topology["coordset"].set("coords");
 
             // Finally, add fields.
             auto fields = mesh["fields"];
-
             // Number of value entries without boundary layer
             const int nval = (ii - 4) * (jj - 4) * (kk - 4);
-
             // Velocity in x is cell-data
             fields["u/association"].set("element");
             fields["u/topology"].set("mesh");
             fields["u/volume_dependent"].set("false");
-            fields["u/values"].set_external(vel_u, nval, 0, sizeof(real) );
-
+            fields["u/values"].set_external(vel_u, nval, 0, sizeof(real));
             // Velocity in y is cell-data
             fields["v/association"].set("element");
             fields["v/topology"].set("mesh");
             fields["v/volume_dependent"].set("false");
-            fields["v/values"].set_external(vel_v, nval, 0, sizeof(float) );
-
+            fields["v/values"].set_external(vel_v, nval, 0, sizeof(float));
             // Velocity in z is cell-data
             fields["w/association"].set("element");
             fields["w/topology"].set("mesh");
             fields["w/volume_dependent"].set("false");
-            fields["w/values"].set_external(vel_w, nval, 0, sizeof(float) );
+            fields["w/values"].set_external(vel_w, nval, 0, sizeof(float));
         }
     }
     print_if_root(args.myid, "    Passing node to Catalyst");
