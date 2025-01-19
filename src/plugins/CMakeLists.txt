@@ -21,3 +21,8 @@ target_link_libraries(plugins
     PRIVATE ${HDF5_Fortran_LIBRARIES}
     PRIVATE catalyst::catalyst
 )
+
+if(catalyst_FOUND)
+    target_compile_definitions(plugins PRIVATE USE_CATALYST)
+    target_link_libraries(plugins PRIVATE catalyst::catalyst)
+endif()

@@ -14,7 +14,7 @@ FortranCInterface_VERIFY(CXX)
 
 find_package(ZLIB REQUIRED)
 
-find_package(catalyst 2.0 REQUIRED)
+find_package(catalyst 2.0)
 if(catalyst_FOUND)
     message(STATUS "Found Catalyst 2.0")
     message(STATUS "Catalyst 2.0 using ${catalyst_DIR}")

@@ -10,16 +10,15 @@ extern "C" void catalyst_init(const char* file, const char* impl, const char* pa
     config.is_repr = *is_repr;
     config.myid = *myid;
 
+    #ifdef USE_CATALYST
     catalyst_adaptor::initialize(config);
+    #endif
 }
 
 extern "C" void catalyst_finish() {
-    conduit_cpp::Node node;
-
-    catalyst_status err = catalyst_finalize(conduit_cpp::c_node(&node));
-    if (err != catalyst_status_ok) {
-        std::cerr << "Failed to finalize Catalyst: " << err << std::endl;
-    }
+    #ifdef USE_CATALYST
+    catalyst_adaptor::finalize();
+    #endif
 }
 
 extern "C" void catalyst_trigger(
@@ -55,5 +54,7 @@ extern "C" void catalyst_trigger(
     data.lvlmin = *lvlmin;
     data.lvlmax = *lvlmax;
 
+    #ifdef USE_CATALYST
     catalyst_adaptor::execute(data);
+    #endif
 }
