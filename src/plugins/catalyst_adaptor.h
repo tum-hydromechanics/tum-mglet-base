@@ -11,6 +11,15 @@
 #include <chrono>
 #include <cmath>
 
+#ifdef USE_CATALYST
+#include <catalyst.hpp>
+
+#ifdef _MGLET_DOUBLE_PRECISION_
+typedef double real;
+#else
+typedef float real;
+#endif
+
 // defining a struct of all information
 struct MgletDataLink {
     // function pointers
@@ -39,15 +48,6 @@ struct CatalystConfig {
     bool is_repr;
     int myid;
 };
-
-#ifdef USE_CATALYST
-#include <catalyst.hpp>
-
-#ifdef _MGLET_DOUBLE_PRECISION_
-typedef double real;
-#else
-typedef float real;
-#endif
 
 int get_ngrids_lvl(const MgletDataLink& args, int ilevel)
 {

@@ -3,6 +3,7 @@
 
 
 extern "C" void catalyst_init(const char* file, const char* impl, const char* path, bool* is_repr, int* myid ) {
+    #ifdef USE_CATALYST
     CatalystConfig config;
     config.file = file;
     config.impl = impl;
@@ -10,7 +11,6 @@ extern "C" void catalyst_init(const char* file, const char* impl, const char* pa
     config.is_repr = *is_repr;
     config.myid = *myid;
 
-    #ifdef USE_CATALYST
     catalyst_adaptor::initialize(config);
     #endif
 }
@@ -34,6 +34,7 @@ extern "C" void catalyst_trigger(
     int* myid, int* numprocs, int* istep,
     int* nscal, int* lvlmin, int* lvlmax) {
 
+    #ifdef USE_CATALYST
     MgletDataLink data;
     // Function pointers
     data.cp_mgdims = cp_mgdims;
@@ -54,7 +55,6 @@ extern "C" void catalyst_trigger(
     data.lvlmin = *lvlmin;
     data.lvlmax = *lvlmax;
 
-    #ifdef USE_CATALYST
     catalyst_adaptor::execute(data);
     #endif
 }
