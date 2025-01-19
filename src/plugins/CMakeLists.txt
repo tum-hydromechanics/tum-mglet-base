@@ -19,9 +19,5 @@ target_link_libraries(plugins
     PRIVATE ib
     PRIVATE ${MPI_Fortran_LIBRARIES}
     PRIVATE ${HDF5_Fortran_LIBRARIES}
+    PRIVATE catalyst::catalyst
 )
-
-if(catalyst_FOUND)
-    target_compile_definitions(plugins PRIVATE USE_CATALYST)
-    target_link_libraries(plugins PRIVATE catalyst::catalyst)
-endif()

@@ -3,7 +3,6 @@
 
 
 extern "C" void catalyst_init(const char* file, const char* impl, const char* path, bool* is_repr, int* myid ) {
-    #ifdef USE_CATALYST
     CatalystConfig config;
     config.file = file;
     config.impl = impl;
@@ -12,13 +11,15 @@ extern "C" void catalyst_init(const char* file, const char* impl, const char* pa
     config.myid = *myid;
 
     catalyst_adaptor::initialize(config);
-    #endif
 }
 
 extern "C" void catalyst_finish() {
-    #ifdef USE_CATALYST
-    catalyst_adaptor::finalize();
-    #endif
+    conduit_cpp::Node node;
+
+    catalyst_status err = catalyst_finalize(conduit_cpp::c_node(&node));
+    if (err != catalyst_status_ok) {
+        std::cerr << "Failed to finalize Catalyst: " << err << std::endl;
+    }
 }
 
 extern "C" void catalyst_trigger(
@@ -34,7 +35,6 @@ extern "C" void catalyst_trigger(
     int* myid, int* numprocs, int* istep,
     int* nscal, int* lvlmin, int* lvlmax) {
 
-    #ifdef USE_CATALYST
     MgletDataLink data;
     // Function pointers
     data.cp_mgdims = cp_mgdims;
@@ -56,5 +56,4 @@ extern "C" void catalyst_trigger(
     data.lvlmax = *lvlmax;
 
     catalyst_adaptor::execute(data);
-    #endif
 }

@@ -1,24 +1,31 @@
-#pragma once
+#ifndef CatalystAdaptor_h
+#define CatalystAdaptor_h
 
 // This Macro is required due to the deprecation of MPI C++ bindings
 // Without it, some function argument casting of MPI::Op::Init(...) between the C and C++ version may fail unexpectedly
 // Note: This is somehow not required on the hyd44 system, on my home system this is the only way to make it work
 #define OMPI_SKIP_MPICXX 1
 
+#include <catalyst.hpp>
 #include <mpi.h>
 #include <iostream>
 #include <string>
 #include <chrono>
 #include <cmath>
 
-#ifdef USE_CATALYST
-#include <catalyst.hpp>
-
 #ifdef _MGLET_DOUBLE_PRECISION_
 typedef double real;
 #else
 typedef float real;
 #endif
+
+struct CatalystConfig {
+    const char* file;
+    const char* impl;
+    const char* path;
+    bool is_repr;
+    int myid;
+};
 
 // defining a struct of all information
 struct MgletDataLink {
@@ -41,13 +48,6 @@ struct MgletDataLink {
     int lvlmax;
 };
 
-struct CatalystConfig {
-    const char* file;
-    const char* impl;
-    const char* path;
-    bool is_repr;
-    int myid;
-};
 
 int get_ngrids_lvl(const MgletDataLink& args, int ilevel)
 {
@@ -149,14 +149,6 @@ void initialize(const CatalystConfig& config)
     }
 }
 
-void finalize() {
-    conduit_cpp::Node node;
-
-    catalyst_status err = catalyst_finalize(conduit_cpp::c_node(&node));
-    if (err != catalyst_status_ok) {
-        std::cerr << "Failed to finalize Catalyst: " << err << std::endl;
-    }
-}
 
 // Consistency requirement accross MPI ranks
 //  - each MPI rank must manage the same number of grids
