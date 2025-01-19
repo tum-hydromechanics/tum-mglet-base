@@ -218,7 +218,10 @@ void execute(const MgletDataLink& args)
             grid_node["state/domain_id"] = igrid;
             grid_node["state/cycle"] = args.istep;
             grid_node["state/time"] = args.istep;
-            grid_node["state/level"] = ilvl;
+            // Reshift levels such that the coarsest level is 0
+            // Required since some grids are setup with 0 or 1 as the coarsest level index
+            int shifted_level = ilvl - args.lvlmin;
+            grid_node["state/level"] = shifted_level;
 
             // Calculate grid spacing
             real mdx = ( maxx - minx ) / ( ii - 4 );
