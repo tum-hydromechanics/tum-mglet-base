@@ -69,11 +69,9 @@ int get_ngrids_lvl(const MgletDataLink& args, int ilevel)
 namespace catalyst_adaptor
 {
 
-constexpr const char* REPR_DATASET_NAME = "dataout.vtm";
+constexpr const char* REPR_DATASET_NAME = "dataout.vthb";
 constexpr const char* PIPELINE_TYPE = "io";
 constexpr const char* PIPELINE_CHANNEL = "grid";
-constexpr unsigned RANK_NAME_SIZE = 8;
-constexpr unsigned LEVEL_NAME_SIZE = 8;
 constexpr unsigned GRID_NAME_SIZE = 8;
 
 /// @brief Print to stdout if the specified rank is the MPI root
@@ -166,11 +164,11 @@ void execute(const MgletDataLink& args)
     auto state = exec_node["catalyst/state"];
     state["timestep"].set(args.istep);
     state["time"].set( (float) args.istep);
-    state["multiblock"].set(1);
 
     // Opening grid channel as multimesh
     auto channel = exec_node["catalyst/channels/grid"];
-    channel["type"].set("multimesh");
+    channel["type"].set("amrmesh");
+    auto data = channel["data"];
 
     print_if_root(args.myid, "    Looping grids");
     // Loop levels independent of specific grid
@@ -185,10 +183,6 @@ void execute(const MgletDataLink& args)
             if (igrid <= 0) {
                 continue;
             }
-
-            int iparent;
-            args.cp_get_parent(&iparent, &igrid);
-            std::cout << "igrid: " << igrid << ", iparent: " << iparent << std::endl;
 
             // Get grid properties
             int kk; int jj; int ii;
@@ -213,12 +207,13 @@ void execute(const MgletDataLink& args)
             args.cp_get_arrptr( &ptr_arr, &w_name, &igrid );
             real *vel_w = (real*) ptr_arr;          
 
-            // Generate unique grid name depending on MPI rank, level and igrid
-            std::string rank_str = format_with_zeros(args.myid, RANK_NAME_SIZE);
-            std::string level_str = format_with_zeros(ilvl, LEVEL_NAME_SIZE);
             std::string grid_str = format_with_zeros(igrid, GRID_NAME_SIZE);
-            std::string block_name = "data/" + rank_str + "-" + level_str + "-" + grid_str;
-            auto mesh = channel[block_name];
+            std::string block_name = "grid_" + grid_str;
+            auto grid_node = data[block_name];
+            grid_node["state/domain_id"] = igrid;
+            grid_node["state/cycle"] = args.istep;
+            grid_node["state/time"] = args.istep;
+            grid_node["state/level"] = ilvl;
 
             // Calculate grid spacing
             real mdx = ( maxx - minx ) / ( ii - 4 );
@@ -226,7 +221,7 @@ void execute(const MgletDataLink& args)
             real mdz = ( maxz - minz ) / ( kk - 4 );
 
             // Set grid coordsets
-            auto coords = mesh["coordsets/coords"];
+            auto coords = grid_node["coordsets/coords"];
             coords["type"].set("uniform");
             coords["dims/i"].set(ii + 1 - 4);
             coords["dims/j"].set(jj + 1 - 4);
@@ -239,12 +234,12 @@ void execute(const MgletDataLink& args)
             coords["spacing/dz"].set(mdz);
 
             // Next, add topology
-            auto topology = mesh["topologies/mesh"];
+            auto topology = grid_node["topologies/mesh"];
             topology["type"].set("uniform");
             topology["coordset"].set("coords");
 
             // Finally, add fields.
-            auto fields = mesh["fields"];
+            auto fields = grid_node["fields"];
             // Number of value entries without boundary layer
             const int nval = (ii - 4) * (jj - 4) * (kk - 4);
             // Velocity in x is cell-data
