@@ -12,13 +12,9 @@
 #include <mpi.h>
 #include <string>
 #include <vector>
-#include <cstring>
-#include <fstream>
-#include <string>
 
 namespace CatalystAdaptor
 {
-static std::vector<std::string> filesToValidate;
 
 /**
  * In this example, we show how to pass overlapping AMR data
@@ -27,43 +23,22 @@ static std::vector<std::string> filesToValidate;
 void Initialize(int argc, char* argv[])
 {
   conduit_cpp::Node node;
-  for (int cc = 1; cc < argc; ++cc)
-  {
-    if (strcmp(argv[cc], "--output") == 0 && (cc + 1) < argc)
-    {
+  for (int cc = 1; cc < argc; ++cc) {
+    if (strcmp(argv[cc], "--output") == 0 && (cc + 1) < argc) {
       node["catalyst/pipelines/0/type"].set("io");
       node["catalyst/pipelines/0/filename"].set(argv[cc + 1]);
       node["catalyst/pipelines/0/channel"].set("grid");
       ++cc;
-    }
-    else if (strcmp(argv[cc], "--exists") == 0 && (cc + 1) < argc)
-    {
-      filesToValidate.push_back(argv[cc + 1]);
-      ++cc;
-    }
-    else
-    {
+    } else {
       const auto path = std::string(argv[cc]);
-      // note: one can simply add the script file as follows:
-      // node["catalyst/scripts/script" + std::to_string(cc - 1)].set_string(path);
-
-      // alternatively, use this form to pass optional parameters to the script.
-      const auto name = "catalyst/scripts/script" + std::to_string(cc - 1);
-      node[name + "/filename"].set_string(path);
-      node[name + "/args"].append().set_string("argument0");
-      node[name + "/args"].append().set_string("argument1=12");
-      node[name + "/args"].append().set_string("--argument3");
-      node[name + "/args"].append().set_string("--channel-name=grid");
+      node["catalyst/scripts/script/filename"] = path;
     }
   }
 
-  // indicate that we want to load ParaView-Catalyst
   node["catalyst_load/implementation"].set_string("paraview");
-  node["catalyst_load/search_paths/paraview"] = PARAVIEW_IMPL_DIR;
 
   catalyst_status err = catalyst_initialize(conduit_cpp::c_node(&node));
-  if (err != catalyst_status_ok)
-  {
+  if (err != catalyst_status_ok) {
     std::cerr << "ERROR: Failed to initialize Catalyst: " << err << std::endl;
   }
 }
@@ -129,7 +104,6 @@ void Execute(unsigned int cycle, double time, AMR& amr)
     conduit_cpp::Node nest_set;
     nest_set["association"] = "element";
     nest_set["topology"] = "topo";
-    // If level is not on the root level, parent_id is the level above
     if (level > 0)
     {
       int parent_id = amr.BlockId[level - 1];
@@ -141,7 +115,6 @@ void Execute(unsigned int cycle, double time, AMR& amr)
       parent["origin/i"] = levelIndices[0] / 2;
       parent["origin/j"] = parentLevelIndices[2];
       parent["origin/k"] = parentLevelIndices[4];
-      
       parent["dims/i"] = parentLevelIndices[1] - levelIndices[0] / 2 + 1;
       parent["dims/j"] = parentLevelIndices[3] - parentLevelIndices[2] + 1;
       ;
@@ -151,7 +124,6 @@ void Execute(unsigned int cycle, double time, AMR& amr)
       parent["ratio/j"] = 2;
       parent["ratio/k"] = 2;
     }
-    // If level is not on the leaf level, child_id gets set?
     if (level < amr.NumberOfAMRLevels - 1)
     {
       int child_id = amr.BlockId[level];
@@ -177,28 +149,14 @@ void Execute(unsigned int cycle, double time, AMR& amr)
     conduit_cpp::Node fields = patch["fields"];
 
     // cell data corresponding to MPI process id
-    conduit_cpp::Node cell_vals_field = fields["cellvals"];
-    cell_vals_field["association"] = "element";
-    cell_vals_field["topology"] = "topo";
+    conduit_cpp::Node proc_id_field = fields["procid"];
+    proc_id_field["association"] = "element";
+    proc_id_field["topology"] = "topo";
     int num_cells = (levelIndices[1] - levelIndices[0]) * (levelIndices[3] - levelIndices[2]) *
       (levelIndices[5] - levelIndices[4]);
-    std::vector<double> cellValues(num_cells, 0.0);
-
-    for (size_t k = 0; k < levelIndices[5] - levelIndices[4]; k++)
-    {
-      for (size_t j = 0; j < levelIndices[3] - levelIndices[2]; j++)
-      {
-        for (size_t i = 0; i < levelIndices[1] - levelIndices[0]; i++)
-        {
-          size_t l = i + j * (levelIndices[1] - levelIndices[0]) +
-            k * (levelIndices[1] - levelIndices[0]) * (levelIndices[3] - levelIndices[2]);
-          cellValues[l] = i;
-        }
-      }
-    }
-
+    std::vector<int> cellValues(num_cells, myRank);
     // we copy the data since cellValues will get deallocated
-    cell_vals_field["values"] = cellValues;
+    proc_id_field["values"] = cellValues;
 
     // point data that varies in time and X location.
     conduit_cpp::Node other_field = fields["otherfield"];
@@ -240,16 +198,7 @@ void Finalize()
   catalyst_status err = catalyst_finalize(conduit_cpp::c_node(&node));
   if (err != catalyst_status_ok)
   {
-    std::cerr << "ERROR: Failed to finalize Catalyst: " << err << std::endl;
-  }
-
-  for (const auto& fname : filesToValidate)
-  {
-    std::ifstream istrm(fname.c_str(), std::ios::binary);
-    if (!istrm.is_open())
-    {
-      std::cerr << "ERROR: Failed to open file '" << fname.c_str() << "'." << std::endl;
-    }
+    std::cerr << "Failed to finalize Catalyst: " << err << std::endl;
   }
 }
 }

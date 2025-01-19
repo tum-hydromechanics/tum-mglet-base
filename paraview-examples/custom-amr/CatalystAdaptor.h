@@ -84,7 +84,7 @@ void execute(unsigned timestep, float time, const std::vector<Grid>& grids) {
       auto parent = nestset[parent_name];
       parent["domain_id"] = 0; // THIS IS THE PARENT ID
       parent["domain_type"] = "parent";
-      parent["origin/i"] = 0; // ON WHICH PARENT ID DOES THE CHILD BEGIN
+      parent["origin/i"] = 0; // Origin of overlap
       parent["origin/j"] = 0;
       parent["origin/k"] = 0;
       parent["dims/i"] = grid.dims[0]; // DIMENSIONS OF CHILD
@@ -96,6 +96,7 @@ void execute(unsigned timestep, float time, const std::vector<Grid>& grids) {
       grid_node["nestsets/nest"].set(nestset);
     } 
     
+    // This is optional?
     if (!grid.child_ids.empty()) {
       // WE ARE THE PARENT (on the parent level)
       conduit_cpp::Node nestset;
@@ -107,7 +108,7 @@ void execute(unsigned timestep, float time, const std::vector<Grid>& grids) {
         auto child = nestset[child_name];
         child["domain_id"] = child_id; // THIS IS THE CHILD ID
         child["domain_type"] = "child";
-        child["origin/i"] = 0; // Origin of overlap
+        child["origin/i"] = 999; // Origin of overlap
         child["origin/j"] = 0;
         child["origin/k"] = 0;
         child["dims/i"] = child_grid.dims[0]; // DIMENSION OF THE OVERLAP
