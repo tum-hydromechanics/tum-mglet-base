@@ -19,7 +19,7 @@ if(catalyst_FOUND)
     message(STATUS "Found Catalyst 2.0")
     message(STATUS "Catalyst 2.0 using ${catalyst_DIR}")
 else()
-    message(FATAL_ERROR "Catalyst 2.0 not found")
+    message(WARNING "Catalyst 2.0 not found")
 endif()
 
 find_package(MPI COMPONENTS C Fortran REQUIRED)
