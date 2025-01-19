@@ -49,19 +49,22 @@ void execute(unsigned timestep, float time, const std::vector<Grid>& grids) {
     grid_node["state/domain_id"] = i;
     grid_node["state/cycle"] = timestep;
     grid_node["state/time"] = time;
-    grid_node["state/level"] = grid.level;
+    grid_node["state/level"] = grid.get_level();
 
     auto coords = grid_node["coordsets/coords"];
     coords["type"] = "uniform";
-    coords["dims/i"] = grid.dims[0];
-    coords["dims/j"] = grid.dims[1];
-    coords["dims/k"] = grid.dims[2];
-    coords["spacing/dx"] = grid.spacing[0];
-    coords["spacing/dy"] = grid.spacing[1];
-    coords["spacing/dz"] = grid.spacing[2];
-    coords["origin/x"] = grid.origin[0];
-    coords["origin/y"] = grid.origin[1];
-    coords["origin/z"] = grid.origin[2];
+    auto grid_dims = grid.get_dims();
+    auto grid_spacing = grid.get_spacing();
+    auto origin_global = grid.get_global_origin();
+    coords["dims/i"] = grid_dims[0];
+    coords["dims/j"] = grid_dims[1];
+    coords["dims/k"] = grid_dims[2];
+    coords["spacing/dx"] = grid_spacing[0];
+    coords["spacing/dy"] = grid_spacing[1];
+    coords["spacing/dz"] = grid_spacing[2];
+    coords["origin/x"] = origin_global[0];
+    coords["origin/y"] = origin_global[1];
+    coords["origin/z"] = origin_global[2];
 
     auto topo = grid_node["topologies/topo"];
     topo["type"] = "uniform";
@@ -71,52 +74,59 @@ void execute(unsigned timestep, float time, const std::vector<Grid>& grids) {
     auto cell_values = fields["cell_values"];
     cell_values["association"] = "element";
     cell_values["topology"] = "topo";
-    cell_values["values"].set_float32_vector(grid.values);
+    cell_values["values"].set_float32_vector(grid.get_values());
 
-    if (grid.parent_id >= 0) {
-      // SPECIFY PARENT
-      const Grid& parent_grid = grids[grid.parent_id];
+    int parent_id = grid.get_parent_id();
+    if (parent_id >= 0) {
+      // This grid has a parent
+      const Grid& parent_grid = grids[parent_id];
       conduit_cpp::Node nestset;
       nestset["association"] = "element";
       nestset["topology"] = "topo";
 
-      std::string parent_name = "windows/window_" + std::to_string(grid.parent_id);
+      std::string parent_name = "windows/window_" + std::to_string(parent_id);
       auto parent = nestset[parent_name];
-      parent["domain_id"] = 0; // THIS IS THE PARENT ID
+      parent["domain_id"] = parent_id;
       parent["domain_type"] = "parent";
-      parent["origin/i"] = 0; // Origin of overlap
-      parent["origin/j"] = 0;
-      parent["origin/k"] = 0;
-      parent["dims/i"] = grid.dims[0]; // DIMENSIONS OF CHILD
-      parent["dims/j"] = grid.dims[1];
-      parent["dims/k"] = grid.dims[2];
-      parent["ratio/i"] = 4;
-      parent["ratio/j"] = 4;
-      parent["ratio/k"] = 4;
+      // Origin of parent-child overlap box, local to the parent
+      parent["origin/i"] = 9999;  // Placeholder
+      parent["origin/j"] = 9999;  // Placeholder
+      parent["origin/k"] = 9999;  // Placeholder
+      // Dimensions of parent-child overlap box = child dimensions (since it is always fully contained)
+      parent["dims/i"] = grid_dims[0];
+      parent["dims/j"] = grid_dims[1];
+      parent["dims/k"] = grid_dims[2];
+      // Refinement ratio
+      parent["ratio/i"] = 9999;  // Placeholder
+      parent["ratio/j"] = 9999;  // Placeholder
+      parent["ratio/k"] = 9999;  // Placeholder
       grid_node["nestsets/nest"].set(nestset);
-    } 
-    
-    // This is optional?
-    if (!grid.child_ids.empty()) {
-      // WE ARE THE PARENT (on the parent level)
+    }
+    auto child_ids = grid.get_child_ids();
+    if (!child_ids.empty()) {
+      // This grid has at least one child
       conduit_cpp::Node nestset;
       nestset["association"] = "element";
       nestset["topology"] = "topo";
-      for (auto& child_id : grid.child_ids) {
+      for (auto& child_id : child_ids) {
         const Grid& child_grid = grids[child_id];
         std::string child_name = "windows/window_" + std::to_string(child_id);
         auto child = nestset[child_name];
         child["domain_id"] = child_id; // THIS IS THE CHILD ID
         child["domain_type"] = "child";
-        child["origin/i"] = 999; // Origin of overlap
-        child["origin/j"] = 0;
-        child["origin/k"] = 0;
-        child["dims/i"] = child_grid.dims[0]; // DIMENSION OF THE OVERLAP
-        child["dims/j"] = child_grid.dims[1];
-        child["dims/k"] = child_grid.dims[2];
-        child["ratio/i"] = 4;
-        child["ratio/j"] = 4;
-        child["ratio/k"] = 4;
+        // Origin of parent-child overlap box, local to the parent
+        child["origin/i"] = 9999;  // Placeholder
+        child["origin/j"] = 9999;  // Placeholder
+        child["origin/k"] = 9999;  // Placeholder
+        // Dimensions of parent-child overlap box = child dimensions (since it is always fully contained)
+        auto child_dims = child_grid.get_dims();
+        child["dims/i"] = child_dims[0];
+        child["dims/j"] = child_dims[1];
+        child["dims/k"] = child_dims[2];
+        // Refinement ratio
+        child["ratio/i"] = 9999;  // Placeholder
+        child["ratio/j"] = 9999;  // Placeholder
+        child["ratio/k"] = 9999;  // Placeholder
       }
       grid_node["nestsets/nest"].set(nestset);
     }
