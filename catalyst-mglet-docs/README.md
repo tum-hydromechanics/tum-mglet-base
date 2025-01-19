@@ -1,8 +1,8 @@
 # Catalyst and MGLET
 
-![showcase](./in-situ-overlap.gif)
+![showcase](./parker-micro-u-vel.gif)
 
-*In-Situ visualization with Paraview Catalyst and MGLET. Data is not written to disk, but read from pointers into the memory of the simulation.*
+*In-Situ visualization with [Paraview Catalyst](https://docs.paraview.org/en/latest/Catalyst/index.html) integrated in MGLET. Data fields are not written to disk during simulation. Catalyst establishes a direct link into the simulation memory by pointers and extracts images based on [Paraview](https://www.paraview.org/)'s visualization pipeline.*
 
 ## Workflow
 
@@ -40,7 +40,7 @@ To create a representative dataset, set the configuration parameter `repr` to `t
 #### Creating a Python pipeline script
 
 After running the simulation briefly to create a representative dataset, we can create a catalyst pipeline with Paraview.
-Import the representative dataset `dataout.vtm` from the configuration directory into paraview and process it to set up the desired behavior. Details on creating a catalyst pipeline can be found in the (very limited) [Paraview Catalyst Documentation](https://docs.paraview.org/en/latest/Catalyst/getting_started.html#generating-catalyst-scripts).
+Import the representative dataset `dataout.vthb` from the configuration directory into paraview and process it to set up the desired behavior. Details on creating a catalyst pipeline can be found in the (very limited) [Paraview Catalyst Documentation](https://docs.paraview.org/en/latest/Catalyst/getting_started.html#generating-catalyst-scripts).
 
 ### Running a Simulation with Catalyst
 
