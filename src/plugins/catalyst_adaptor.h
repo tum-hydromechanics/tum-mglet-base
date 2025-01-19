@@ -73,6 +73,7 @@ constexpr const char* REPR_DATASET_NAME = "dataout.vthb";
 constexpr const char* PIPELINE_TYPE = "io";
 constexpr const char* PIPELINE_CHANNEL = "grid";
 constexpr unsigned GRID_NAME_SIZE = 8;
+constexpr unsigned SPACING_ROUNDING_DECIMAL = 7;
 
 /// @brief Print to stdout if the specified rank is the MPI root
 /// @tparam ...Args Variadic template arguments
@@ -103,6 +104,11 @@ std::string format_with_zeros(unsigned input, unsigned num_chars) {
     std::string result(leading_zeros, '0');
     result += input_str;
     return result;
+}
+
+float round_to_decimals(float value, int decimals) {
+    float scale = std::pow(10.0, decimals);
+    return std::round(value * scale) / scale;
 }
 
 void get_field_ptr(const char* field_name, const int igrid, const MgletDataLink& data_link, real* field_ptr) {
@@ -148,7 +154,6 @@ void initialize(const CatalystConfig& config)
         std::cerr << "Failed to initialize Catalyst: " << err << std::endl;
     }
 }
-
 
 // Consistency requirement accross MPI ranks
 //  - each MPI rank must manage the same number of grids
@@ -228,10 +233,17 @@ void execute(const MgletDataLink& args)
             coords["dims/k"].set(kk + 1 - 4);
             coords["origin/x"].set(minx);
             coords["origin/y"].set(miny);
-            coords["origin/z"].set(minz); 
-            coords["spacing/dx"].set(mdx);
-            coords["spacing/dy"].set(mdy);
-            coords["spacing/dz"].set(mdz);
+            coords["origin/z"].set(minz);
+
+            // Round spacing to avoid catalyst complaining about precision
+            // If we leave this out, spacings on the same level will get the warning:
+            // inconsistent spacings, e.g. 0.004 != 0.004
+            float dx = round_to_decimals(mdx, SPACING_ROUNDING_DECIMAL);
+            float dy = round_to_decimals(mdy, SPACING_ROUNDING_DECIMAL);
+            float dz = round_to_decimals(mdz, SPACING_ROUNDING_DECIMAL);
+            coords["spacing/dx"].set(dx);
+            coords["spacing/dy"].set(dy);
+            coords["spacing/dz"].set(dz);
 
             // Next, add topology
             auto topology = grid_node["topologies/mesh"];
