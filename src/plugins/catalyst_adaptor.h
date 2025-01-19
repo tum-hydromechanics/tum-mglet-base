@@ -34,6 +34,7 @@ struct MgletDataLink {
     void (*cp_mgbasb)(int*,int*,int*,int*,int*,int*,const int*);
     void (*cp_iterate_grids_lvl)(int*,const int*,const int*);
     void (*cp_get_bbox)(float*,float*,float*,float*,float*,float*,const int*);
+    void (*cp_get_parent)(int*, int*);
     void (*cp_get_arrptr)(void*,void*,const int*);
     void (*cp_get_xyzptr)(void*,void*,void*,const int*);
     void (*cp_get_dxyzptr)(void*,void*,void*,const int*);
@@ -184,6 +185,11 @@ void execute(const MgletDataLink& args)
             if (igrid <= 0) {
                 continue;
             }
+
+            int iparent;
+            args.cp_get_parent(&iparent, &igrid);
+            std::cout << "igrid: " << igrid << ", iparent: " << iparent << std::endl;
+
             // Get grid properties
             int kk; int jj; int ii;
             args.cp_mgdims( &kk, &jj, &ii, &igrid );

@@ -9,7 +9,7 @@ MODULE catalyst_mod
 
     INTERFACE
         SUBROUTINE catalyst_trigger( &
-            p_mgdims, p_list_grids_lvl, p_mgbasb, p_get_bbox, &
+            p_mgdims, p_list_grids_lvl, p_mgbasb, p_get_bbox, p_get_parent, &
             p_get_arrptr, p_get_xyzptr, p_get_dxyzptr, p_get_ddxyzptr, &
             myid, numprocs, istep, &
             nscal, lvlmin, lvlmax ) BIND(C, name="catalyst_trigger")
@@ -18,7 +18,7 @@ MODULE catalyst_mod
 
             ! pointers must be passed with VALUE (it is already a pointer)
             TYPE(c_funptr), INTENT(in), VALUE :: &
-                p_mgdims, p_list_grids_lvl, p_mgbasb, p_get_bbox, &
+                p_mgdims, p_list_grids_lvl, p_mgbasb, p_get_bbox, p_get_parent, &
                 p_get_arrptr, p_get_xyzptr, p_get_dxyzptr, p_get_ddxyzptr
 
             ! rest is handled as pointers
@@ -176,7 +176,7 @@ CONTAINS
 
         ! local variables
         TYPE(C_FUNPTR) :: cp_mgdims, cp_iterate_grids_lvl, &
-                          cp_mgbasb, cp_get_bbox, &
+                          cp_mgbasb, cp_get_bbox, cp_get_parent, &
                           cp_get_arrptr, cp_get_xyzptr, &
                           cp_get_dxyzptr, cp_get_ddxyzptr
 
@@ -191,6 +191,7 @@ CONTAINS
         cp_iterate_grids_lvl = C_FUNLOC( c_iterate_grids_lvl )
         cp_mgbasb = C_FUNLOC( c_mgbasb )
         cp_get_bbox = C_FUNLOC( c_get_bbox )
+        cp_get_parent = C_FUNLOC(c_get_parent)
 
         cp_get_arrptr = C_FUNLOC( c_get_arrptr )
         cp_get_xyzptr = C_FUNLOC( c_get_xyzptr )
@@ -214,7 +215,7 @@ CONTAINS
 
         ! calling the C function described in the interface
         CALL catalyst_trigger( &
-            cp_mgdims, cp_iterate_grids_lvl, cp_mgbasb, cp_get_bbox, &
+            cp_mgdims, cp_iterate_grids_lvl, cp_mgbasb, cp_get_bbox, cp_get_parent, &
             cp_get_arrptr, cp_get_xyzptr, cp_get_dxyzptr, cp_get_ddxyzptr, &
             c_myid, c_numprocs, c_istep, &
             c_nscal, c_lvlmin, c_lvlmax )
@@ -396,6 +397,21 @@ CONTAINS
         c_ddz_ptr = C_LOC(f_ddz_ptr)
     END SUBROUTINE c_get_ddxyzptr
 
+    ! Return the parent grid id for igrid
+    SUBROUTINE c_get_parent(c_ipargrid, c_igrid) bind(C)
+        USE grids_mod, ONLY: iparent
+        IMPLICIT NONE
+        ! Variables
+        INTEGER(kind=c_int), INTENT(IN) :: c_igrid
+        INTEGER(kind=c_int), INTENT(out) :: c_ipargrid
+        ! Local variables
+        INTEGER(kind=intk) :: igrid
+        INTEGER(kind=intk) :: ipar
+        ! Function body
+        igrid = INT(c_igrid, kind=intk)
+        ipar = iparent(igrid)
+        c_ipargrid = INT(ipar, kind=c_int)
+    END SUBROUTINE
 
     ! Returns the boundary type at front, back, right, left, bottom, top for igrid
     SUBROUTINE c_get_bbox(c_minx, c_maxx, c_miny, c_maxy, c_minz, c_maxz, c_igrid) bind(C)

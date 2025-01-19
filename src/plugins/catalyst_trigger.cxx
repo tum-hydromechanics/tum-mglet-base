@@ -27,6 +27,7 @@ extern "C" void catalyst_trigger(
     void (*cp_iterate_grids_lvl)(int*,const int*,const int*),
     void (*cp_mgbasb)(int*,int*,int*,int*,int*,int*,const int*),
     void (*cp_get_bbox)(float*,float*,float*,float*,float*,float*,const int*),
+    void (*cp_get_parent)(int*, int*),
     void (*cp_get_arrptr)(void*,void*,const int*),
     void (*cp_get_xyzptr)(void*,void*,void*,const int*),
     void (*cp_get_dxyzptr)(void*,void*,void*,const int*),
@@ -40,6 +41,7 @@ extern "C" void catalyst_trigger(
     data.cp_mgbasb = cp_mgbasb;
     data.cp_iterate_grids_lvl = cp_iterate_grids_lvl;
     data.cp_get_bbox = cp_get_bbox;
+    data.cp_get_parent = cp_get_parent;
     data.cp_get_arrptr = cp_get_arrptr;
     data.cp_get_xyzptr = cp_get_xyzptr;
     data.cp_get_dxyzptr = cp_get_dxyzptr;
