@@ -606,6 +606,10 @@ CONTAINS
         ALLOCATE(wcv(kk, jj, ii))
         ALLOCATE(wcw(kk, jj, ii))
 
+        wcu = 0
+        wcv = 0
+        wcw = 0
+
         ! Upwind in vorletzter schicht bei PAR-randbedingung
         IF (nfro == 8) THEN
             i = 4
