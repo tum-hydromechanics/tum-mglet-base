@@ -75,6 +75,9 @@ CONTAINS
             RETURN
         END IF
 
+        CALL set_timer(810, "CATALYST")
+        CALL set_timer(811, "CATALYST_C_FIELDS")
+
         ! Required values
         CALL fort7%get(cata_conf, "/catalyst")
         ! Catalyst Path
@@ -185,6 +188,8 @@ CONTAINS
 
         IF (.NOT. has_catalyst) RETURN
 
+        CALL start_timer(810)
+
         ! setting the function pointers
         ! (necessary to transfer MGLET functions to the library)
         cp_mgdims = C_FUNLOC( c_mgdims )
@@ -211,7 +216,10 @@ CONTAINS
         CALL get_field(u_c_f, "U_C")
         CALL get_field(v_c_f, "V_C")
         CALL get_field(w_c_f, "W_C")
+        
+        CALL start_timer(811)
         CALL field_to_c(u_c_f, v_c_f, w_c_f)
+        CALL stop_timer(811)
 
         ! calling the C function described in the interface
         CALL catalyst_trigger( &
@@ -220,6 +228,7 @@ CONTAINS
             c_myid, c_numprocs, c_istep, &
             c_nscal, c_lvlmin, c_lvlmax )
 
+        CALL stop_timer(810)
     END SUBROUTINE sample_catalyst
 
 
