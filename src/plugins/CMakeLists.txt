@@ -20,4 +20,5 @@ target_link_libraries(plugins
     PRIVATE ${MPI_Fortran_LIBRARIES}
     PRIVATE ${HDF5_Fortran_LIBRARIES}
     PRIVATE catalyst::catalyst
+    PRIVATE catalyst::catalyst_fortran
 )
