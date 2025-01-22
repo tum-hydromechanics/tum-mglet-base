@@ -14,14 +14,12 @@ MODULE catalyst_mod
     TYPE(config_t) :: cata_conf
 
     CHARACTER(len=mglet_filename_max), ALLOCATABLE :: catascripts(:)
+    CHARACTER(len=mglet_filename_max) :: catalyst_path
+    CHARACTER(len=8) :: CATALYST_IMPL = "paraview"
     INTEGER(intk) :: nscripts
-
-    CHARACTER(len=127) :: path_char
-    CHARACTER(len=127) :: implementation_char
-    LOGICAL :: repr_logical
+    LOGICAL :: is_repr
 
     PUBLIC :: init_catalyst, sample_catalyst, finish_catalyst
-
 CONTAINS
     SUBROUTINE catalyst_adaptor_initialize()
         ! Local variables
@@ -34,12 +32,12 @@ CONTAINS
 
         ! Catalyst setup
         CALL catalyst_conduit_node_set_path_char8_str(node, &
-            "catalyst_load/implementation", "paraview")
+            "catalyst_load/implementation", CATALYST_IMPL)
         CALL catalyst_conduit_node_set_path_char8_str(node, &
-            "catalyst_load/search_paths/paraview", "/usr/local/lib/catalyst/")
+            "catalyst_load/search_paths/paraview", catalyst_path)
 
         ! Representative dataset
-        IF (repr_logical) THEN
+        IF (is_repr) THEN
             CALL catalyst_conduit_node_set_path_char8_str(node, &
                 "catalyst/pipelines/0/type", "io")
             CALL catalyst_conduit_node_set_path_char8_str(node, &
@@ -245,7 +243,7 @@ CONTAINS
         CALL fort7%get(cata_conf, "/catalyst")
         ! Catalyst Path
         IF ( cata_conf%is_char("/path") ) THEN
-            CALL cata_conf%get_value("/path", path_char)
+            CALL cata_conf%get_value("/path", catalyst_path)
         ELSE
             WRITE(*,*) "Specifiy directory containing libcatalyst-paraview.so"
             CALL errr(__FILE__, __LINE__)
@@ -253,10 +251,10 @@ CONTAINS
 
         ! Representative dataset
         IF ( cata_conf%is_logical("/repr") ) THEN
-            CALL cata_conf%get_value("/repr", repr_logical, .FALSE.)
+            CALL cata_conf%get_value("/repr", is_repr, .FALSE.)
         ELSE
             WRITE(*,*) "Specify repr to create representative dataset"
-            repr_logical = .FALSE.
+            is_repr = .FALSE.
         END IF
 
         ! Catalyst Scripts
@@ -270,12 +268,8 @@ CONTAINS
         ELSE
             nscripts = 0
         END IF
-        
-        ! Only implemented for Paraview
-        implementation_char = "paraview"
 
         CALL catalyst_adaptor_initialize()
-        !CALL pass_to_init(TRIM(script_char), TRIM(implementation_char), TRIM(path_char), repr_logical)
 
         ! Auxiliary fields for C-ordered arrays
         CALL set_field("U_C")
