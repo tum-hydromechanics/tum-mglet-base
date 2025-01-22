@@ -6,18 +6,15 @@ MODULE catalyst_mod
     USE, INTRINSIC :: ISO_FORTRAN_ENV, only: stderr => error_unit
 
     IMPLICIT NONE(type, external)
-
     PRIVATE
-    ! Module variables
 
-    LOGICAL :: has_catalyst = .FALSE.
     TYPE(config_t) :: cata_conf
-
     CHARACTER(len=mglet_filename_max), ALLOCATABLE :: catascripts(:)
     CHARACTER(len=mglet_filename_max) :: catalyst_path
     CHARACTER(len=8) :: CATALYST_IMPL = "paraview"
     INTEGER(intk) :: nscripts
     LOGICAL :: is_repr
+    LOGICAL :: has_catalyst = .FALSE.
 
     PUBLIC :: init_catalyst, sample_catalyst, finish_catalyst
 CONTAINS
@@ -57,7 +54,6 @@ CONTAINS
         END IF
 
         CALL catalyst_conduit_node_print(node)
-
 
         err = c_catalyst_initialize(node)
         IF (err /= catalyst_status_ok) THEN
