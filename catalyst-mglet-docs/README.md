@@ -30,6 +30,7 @@ The following snippet shows an example on how such a configuration could look li
 }
 ```
 
+*Currently not supported: Arguments to Catalyst Scripts.*
 ### Preparing a Simulation with Catalyst
 
 :information_source: Currently, the MGLET integration with Catalyst requires the total number of grids to be divisible by the number of MPI ranks. 
