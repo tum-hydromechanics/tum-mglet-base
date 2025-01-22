@@ -295,9 +295,13 @@ CONTAINS
         REAL(realk), INTENT(in) :: dt
 
         CALL start_timer(810)
+
+        ! Create fields copy for C
         CALL start_timer(811)
         CALL field_to_c()
         CALL stop_timer(811)
+
+        ! Execute adaptor
         CALL start_timer(812)
         CALL catalyst_adaptor_execute(itstep, ittot, timeph, dt)
         CALL stop_timer(812)
