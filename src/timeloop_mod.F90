@@ -284,7 +284,7 @@ CONTAINS
 
             ! Particle Concentration Field
             IF (dsim_particles) THEN ! <------------------------------------particles
-                CALL update_particle_field()
+                CALL update_particle_fields(itstep)
             END IF
 
             ! Particle Snapshots

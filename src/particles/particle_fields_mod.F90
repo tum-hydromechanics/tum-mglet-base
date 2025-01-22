@@ -14,6 +14,7 @@ CONTAINS
 
         ! local variables
         INTEGER(intk), PARAMETER :: units_part(7) = [0, 0, 0, 0, 0, 0, 0]
+        TYPE(field_t), POINTER :: npc_avg_f
 
         IF (.NOT. dwrite_npc_field) THEN
             RETURN
@@ -27,25 +28,32 @@ CONTAINS
         ! number per cell (NPC) field to count particles on cell
         ! with buffer so particle%ijkcell point to the right cell directly (neccessary?)
         CALL set_field("NPC", units=units_part, dwrite=.TRUE., buffers=.TRUE.)
+        CALL set_field("NPC_AVG", units=units_part, dwrite=.TRUE., buffers=.TRUE.)
 
-        CALL update_particle_field()
+        CALL get_field(npc_avg_f, "NPC_AVG")
+        npc_f%arr = 0.0
+
+        CALL update_particle_fields(0)
 
         CALL stop_timer(910)
         CALL stop_timer(900)
 
     END SUBROUTINE init_particle_field
 
-    SUBROUTINE update_particle_field()
+    SUBROUTINE update_particle_fields(itstep)
+
+        ! subroutine arguments
+        INTEGER(intk), INTENT(in) :: itstep
 
         ! local_variables
-        INTEGER(intk) :: igrid, ipart, ii, jj, kk, i_p, j_p, k_p
+        INTEGER(intk) :: i, igrid, ipart, ii, jj, kk, i_p, j_p, k_p
         REAL(realk) :: x_p, y_p, z_p
         TYPE(field_t), POINTER :: x_f, y_f, z_f
         REAL(realk), POINTER, CONTIGUOUS, DIMENSION(:) :: x, y, z
         TYPE(field_t), POINTER :: dx_f, dy_f, dz_f
         REAL(realk), POINTER, CONTIGUOUS, DIMENSION(:) :: dx, dy, dz
-        TYPE(field_t), POINTER :: npc_f
-        REAL(realk), POINTER, CONTIGUOUS, DIMENSION(:, :, :) :: npc
+        TYPE(field_t), POINTER :: npc_f, npc_avg_f
+        REAL(realk), POINTER, CONTIGUOUS, DIMENSION(:, :, :) :: npc, npc_avg
 
         IF (.NOT. dwrite_npc_field) THEN
             RETURN
@@ -62,11 +70,6 @@ CONTAINS
         CALL get_field(npc_f, "NPC")
 
         npc_f%arr = 0.0
-        !DO i = 1, nmygrids
-        !    igrid = mygrids(i)
-        !    CALL npc_f%get_ptr(npc, igrid)
-        !    npc = 0.0
-        !END DO
 
         DO ipart = 1, my_particle_list%ifinal
 
@@ -125,6 +128,24 @@ CONTAINS
 
         END DO
 
-    END SUBROUTINE update_particle_field
+        CALL get_field(npc_avg_f, "NPC_AVG")
+
+        DO i = 1, nmygridslvl(particle_level)
+
+            igrid = mygridslvl(i, particle_level)
+
+            CALL npc_avg_f%get_ptr(npc_avg, igrid)
+            CALL npc_f%get_ptr(npc, igrid)
+
+            DO i = 3, ii - 2
+                DO j = 3, jj - 2
+                    DO k = 3, kk - 2
+                        npc_avg(k, j, i) = (npc_avg(k, j, i) * itstep + npc(k, j, i)) / (itstep + 1)
+                    END DO
+                END DO
+            END DO
+        END DO
+
+    END SUBROUTINE update_particle_fields
 
 END MODULE particle_fields_mod
