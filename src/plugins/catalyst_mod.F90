@@ -87,6 +87,7 @@ CONTAINS
         REAL(realk), POINTER, CONTIGUOUS, DIMENSION(:) :: u_ptr, v_ptr, w_ptr
         CHARACTER(len=13) :: grid_name
         TYPE(field_t), POINTER :: u_c_f, v_c_f, w_c_f
+
         CALL get_field(u_c_f, "U_C")
         CALL get_field(v_c_f, "V_C")
         CALL get_field(w_c_f, "W_C")
@@ -195,7 +196,9 @@ CONTAINS
             END DO
         END DO
 
+        CALL start_timer(813)
         err = c_catalyst_execute(exec_node)
+        CALL stop_timer(813)
         IF (err /= catalyst_status_ok) THEN
             WRITE (stderr, *) "ERROR: Failed to execute Catalyst: ", err
         END IF
@@ -235,6 +238,8 @@ CONTAINS
 
         CALL set_timer(810, "CATALYST")
         CALL set_timer(811, "CATALYST_C_FIELDS")
+        CALL set_timer(812, "CATALYST_ADAPTOR")
+        CALL set_timer(813, "CATALYST_EXECUTE_LIB")
 
         ! Required values
         CALL fort7%get(cata_conf, "/catalyst")
@@ -289,8 +294,15 @@ CONTAINS
         REAL(realk), INTENT(in) :: timeph
         REAL(realk), INTENT(in) :: dt
 
+        CALL start_timer(810)
+        CALL start_timer(811)
         CALL field_to_c()
+        CALL stop_timer(811)
+        CALL start_timer(812)
         CALL catalyst_adaptor_execute(itstep, ittot, timeph, dt)
+        CALL stop_timer(812)
+
+        CALL stop_timer(810)
     END SUBROUTINE
 
     SUBROUTINE finish_catalyst()
