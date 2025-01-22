@@ -394,6 +394,7 @@ CONTAINS    !===================================
             my_grid_volume_fractions(i) = MIN(1.0_realk, my_grid_volume_fractions(i))
 
         END DO
+
         ! until here, no particles have actually been initialized
 
         ALLOCATE(npart_arr(0:numprocs-1))
@@ -402,7 +403,7 @@ CONTAINS    !===================================
         ! generate and distribute particles among all grids this process owns proportianally to the volume fraction of each grid
         counter = 1
         part_counter = 1
-        ! the while loop ensures that at least 1 particle on any process is initialized here (assuming init_npart > 0)
+        ! the while loop ensures that at least 1 particle on is initialized here (if init_npart_arr(myid) > 0)
         DO WHILE(part_counter <= MIN(1, init_npart_arr(myid)) .OR. counter <= init_npart_arr(myid))
 
             valid_location = .TRUE.
@@ -461,16 +462,22 @@ CONTAINS    !===================================
 
         ! compute the final number of particles that is to be initialized on each process respectively
         IF (myid == 0) THEN
+
+            WRITE(*, *) "npart_arr (before scaling):", npart_arr
+
             itm_npart = SUM(npart_arr)
 
-            IF (itm_npart < 1) CALL errr(__FILE__, __LINE__)
+            IF (itm_npart < 0) CALL errr(__FILE__, __LINE__)
 
             DO iproc = 1, numprocs - 1
-                npart_arr(iproc) = INT(npart_arr(iproc) * init_npart / itm_npart, intk)
+                npart_arr(iproc) = INT(REAL(npart_arr(iproc), realk) * &
+                 REAL(init_npart, realk) / REAL(itm_npart, realk), intk)
+                IF (npart_arr(iproc) < 0) CALL errr(__FILE__, __LINE__)
             END DO
 
             npart_arr(0) = 0
             npart_arr(0) = init_npart - SUM(npart_arr)
+            IF (npart_arr(0) < 0) CALL errr(__FILE__, __LINE__)
 
             ! if list_limit is set true, scale all previously computed entries of init_npart_arr such that
             ! they are smaller or equal to plist_len and their relative size to each other is preserved (once more)
@@ -478,7 +485,13 @@ CONTAINS    !===================================
                 DO iproc = 0, numprocs - 1
                     IF (plist_len < npart_arr(iproc)) THEN
                         DO i = 0, numprocs - 1
-                            npart_arr(i) = FLOOR(REAL(npart_arr(i)) * REAL(plist_len) / REAL(npart_arr(iproc)))
+                            IF (npart_arr(i) == 0) THEN
+                                CYCLE
+                            ELSE
+                                npart_arr(i) = MAX(0, FLOOR(REAL(npart_arr(i), realk) &
+                                 * REAL(plist_len, realk) / REAL(npart_arr(iproc), realk)))
+                                IF (npart_arr(i) < 0) CALL errr(__FILE__, __LINE__)
+                            END IF
                         END DO
                     END IF
                 END DO
@@ -493,11 +506,16 @@ CONTAINS    !===================================
                     CALL errr(__FILE__, __LINE__)
                 END IF
             END IF
+
+            WRITE(*, *) "npart_arr (after scaling):", npart_arr
+            WRITE(*, '()')
         END IF
 
-        ! TODO: remove Bcast?
         CALL MPI_Bcast(npart_arr, numprocs, mglet_mpi_int, &
          0, MPI_COMM_WORLD)
+
+        ! probably unneccessary
+        CALL MPI_Barrier(MPI_COMM_WORLD)
 
         ! move already generated positions to the final output array
         ALLOCATE(ipart_arr(npart_arr(myid)))
