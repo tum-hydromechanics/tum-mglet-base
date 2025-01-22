@@ -2,8 +2,8 @@ MODULE catalyst_mod
     USE core_mod
     USE catalyst_conduit
     USE catalyst_api
-    use, intrinsic :: iso_c_binding, only: C_PTR
-    use, intrinsic :: iso_fortran_env, only: stderr => error_unit
+    USE, INTRINSIC :: ISO_C_BINDING, only: C_PTR
+    USE, INTRINSIC :: ISO_FORTRAN_ENV, only: stderr => error_unit
 
     IMPLICIT NONE(type, external)
 
@@ -21,37 +21,43 @@ MODULE catalyst_mod
     PUBLIC :: init_catalyst, sample_catalyst, finish_catalyst
 
 CONTAINS
-    subroutine catalyst_adaptor_initialize()
-        type(C_PTR) node
-        integer(kind(catalyst_status)) :: err
+    SUBROUTINE catalyst_adaptor_initialize()
+        TYPE(C_PTR) node
+        INTEGER(kind(catalyst_status)) :: err
 
         node = catalyst_conduit_node_create()
 
         ! Catalyst setup
-        call catalyst_conduit_node_set_path_char8_str(node, "catalyst_load/implementation", "paraview")
-        call catalyst_conduit_node_set_path_char8_str(node, "catalyst_load/search_paths/paraview", "/usr/local/lib/catalyst/")
+        CALL catalyst_conduit_node_set_path_char8_str(node, &
+            "catalyst_load/implementation", "paraview")
+        CALL catalyst_conduit_node_set_path_char8_str(node, &
+            "catalyst_load/search_paths/paraview", "/usr/local/lib/catalyst/")
 
         ! Representative dataset
         IF (repr_logical) THEN
-            call catalyst_conduit_node_set_path_char8_str(node, "catalyst/pipelines/0/type", "io")
-            call catalyst_conduit_node_set_path_char8_str(node, "catalyst/pipelines/0/filename", "dataout.vthb")
-            call catalyst_conduit_node_set_path_char8_str(node, "catalyst/pipelines/0/channel", "grid")
+            CALL catalyst_conduit_node_set_path_char8_str(node, &
+                "catalyst/pipelines/0/type", "io")
+            CALL catalyst_conduit_node_set_path_char8_str(node, &
+                "catalyst/pipelines/0/filename", "dataout.vthb")
+            CALL catalyst_conduit_node_set_path_char8_str(node, &
+                "catalyst/pipelines/0/channel", "grid")
         END IF
 
         ! Catalyst Pipeline Script
         IF (.NOT. TRIM(script_char) == "") THEN
-            call catalyst_conduit_node_set_path_char8_str(node, "catalyst/scripts/script/filename", script_char)
+            CALL catalyst_conduit_node_set_path_char8_str(node, &
+                "catalyst/scripts/script/filename", script_char)
         END IF
 
         err = c_catalyst_initialize(node)
-        if (err /= catalyst_status_ok) then
-        write (stderr, *) "ERROR: Failed to initialize Catalyst: ", err
-        end if
+        IF (err /= catalyst_status_ok) THEN
+            WRITE (stderr, *) "ERROR: Failed to initialize Catalyst: ", err
+        END IF
 
-        call catalyst_conduit_node_destroy(node)
-    end subroutine catalyst_adaptor_initialize
+        CALL catalyst_conduit_node_destroy(node)
+    END SUBROUTINE catalyst_adaptor_initialize
 
-    subroutine catalyst_adaptor_execute(itstep, ittot, timeph, dt)
+    SUBROUTINE catalyst_adaptor_execute(itstep, ittot, timeph, dt)
         USE grids_mod, ONLY: minlevel, maxlevel, nmygridslvl
         ! Subroutine arguments
         INTEGER(intk), INTENT(in) :: itstep
@@ -60,25 +66,31 @@ CONTAINS
         REAL(realk), INTENT(in) :: dt
 
         ! Local variables
-        type(C_PTR) exec_node, channel_node, data_node, grid_node, coords_node, topo_node, fields_node
-        integer(kind(catalyst_status)) :: err
+        TYPE(C_PTR) exec_node, channel_node, data_node, grid_node, &
+            coords_node, topo_node, fields_node
+        INTEGER(kind(catalyst_status)) :: err
         INTEGER(intk) :: ilvl, igridlvl, igrid, kk, jj, ii, shiftedlvl
         INTEGER(kind=8) :: nval
         REAL(realk) :: minx, maxx, miny, maxy, minz, maxz, dx, dy, dz
-        character(len=13) :: grid_name
-        type(field_t), POINTER :: u_c_f, v_c_f, w_c_f
         REAL(realk), POINTER, CONTIGUOUS, DIMENSION(:) :: u_ptr, v_ptr, w_ptr
+        CHARACTER(len=13) :: grid_name
+        TYPE(field_t), POINTER :: u_c_f, v_c_f, w_c_f
         CALL get_field(u_c_f, "U_C")
         CALL get_field(v_c_f, "V_C")
         CALL get_field(w_c_f, "W_C")
 
-        ! Function body
+        ! Catalyst state
         exec_node = catalyst_conduit_node_create()
-        call catalyst_conduit_node_set_path_int32(exec_node, "catalyst/state/timestep", itstep)
-        call catalyst_conduit_node_set_path_float32(exec_node, "catalyst/state/time", timeph)
+        CALL catalyst_conduit_node_set_path_int32(exec_node, &
+            "catalyst/state/timestep", itstep)
+        CALL catalyst_conduit_node_set_path_float32(exec_node, &
+            "catalyst/state/time", timeph)
 
-        channel_node = catalyst_conduit_node_fetch(exec_node, "catalyst/channels/grid")
-        call catalyst_conduit_node_set_path_char8_str(channel_node, "type", "amrmesh")
+        ! Grid/Channel type
+        channel_node = catalyst_conduit_node_fetch(exec_node, &
+            "catalyst/channels/grid")
+        CALL catalyst_conduit_node_set_path_char8_str(channel_node, &
+            "type", "amrmesh")
 
         data_node = catalyst_conduit_node_fetch(channel_node, "data")
 
@@ -88,77 +100,112 @@ CONTAINS
                 CALL get_mgdims(kk, jj, ii, igrid)
                 CALL get_bbox(minx, maxx, miny, maxy, minz, maxz, igrid)
 
-                CALL convert_to_string(igrid, grid_name)
+                ! Grids state
+                CALL igrid_to_string(igrid, grid_name)
                 grid_node = catalyst_conduit_node_fetch(data_node, grid_name)
-                call catalyst_conduit_node_set_path_int32(grid_node, "state/domain_id", igrid)
-                call catalyst_conduit_node_set_path_int32(grid_node, "state/cycle", itstep)
-                call catalyst_conduit_node_set_path_float32(grid_node, "state/time", timeph)
-                
+                CALL catalyst_conduit_node_set_path_int32(grid_node, &
+                    "state/domain_id", igrid)
+                CALL catalyst_conduit_node_set_path_int32(grid_node, &
+                    "state/cycle", itstep)
+                CALL catalyst_conduit_node_set_path_float32(grid_node, &
+                    "state/time", timeph)
                 shiftedlvl = ilvl - minlevel
-                call catalyst_conduit_node_set_path_int32(grid_node, "state/level", shiftedlvl)
-                dx = round_to_n_decimals((maxx - minx) / (ii - 4), 8)
-                dy = round_to_n_decimals((maxy - miny) / (jj - 4), 8)
-                dz = round_to_n_decimals((maxz - minz) / (kk - 4), 8)
-                coords_node = catalyst_conduit_node_fetch(grid_node, "coordsets/coords")
-                call catalyst_conduit_node_set_path_char8_str(coords_node, "type", "uniform")
-                call catalyst_conduit_node_set_path_int32(coords_node, "dims/i", ii + 1 - 4)
-                call catalyst_conduit_node_set_path_int32(coords_node, "dims/j", jj + 1 - 4)
-                call catalyst_conduit_node_set_path_int32(coords_node, "dims/k", kk + 1 - 4)
-                call catalyst_conduit_node_set_path_float32(coords_node, "origin/x", minx)
-                call catalyst_conduit_node_set_path_float32(coords_node, "origin/y", miny)
-                call catalyst_conduit_node_set_path_float32(coords_node, "origin/z", minz)
-                call catalyst_conduit_node_set_path_float32(coords_node, "spacing/dx", dx)
-                call catalyst_conduit_node_set_path_float32(coords_node, "spacing/dy", dy)
-                call catalyst_conduit_node_set_path_float32(coords_node, "spacing/dz", dz)
-            
-                topo_node = catalyst_conduit_node_fetch(grid_node, "topologies/mesh")
-                call catalyst_conduit_node_set_path_char8_str(topo_node, "type", "uniform")
-                call catalyst_conduit_node_set_path_char8_str(topo_node, "coordset", "coords")
+                CALL catalyst_conduit_node_set_path_int32(grid_node, &
+                    "state/level", shiftedlvl)
 
+                ! Grid coordinates
+                coords_node = catalyst_conduit_node_fetch(grid_node, &
+                    "coordsets/coords")
+                    
+                    dx = round_to_n_decimals((maxx - minx) / (ii - 4), 8)
+                    dy = round_to_n_decimals((maxy - miny) / (jj - 4), 8)
+                    dz = round_to_n_decimals((maxz - minz) / (kk - 4), 8)
+                CALL catalyst_conduit_node_set_path_char8_str(coords_node, &
+                    "type", "uniform")
+                CALL catalyst_conduit_node_set_path_int32(coords_node, &
+                    "dims/i", ii + 1 - 4)
+                CALL catalyst_conduit_node_set_path_int32(coords_node, &
+                    "dims/j", jj + 1 - 4)
+                CALL catalyst_conduit_node_set_path_int32(coords_node, &
+                    "dims/k", kk + 1 - 4)
+                CALL catalyst_conduit_node_set_path_float32(coords_node, &
+                    "origin/x", minx)
+                CALL catalyst_conduit_node_set_path_float32(coords_node, &
+                    "origin/y", miny)
+                CALL catalyst_conduit_node_set_path_float32(coords_node, &
+                    "origin/z", minz)
+                CALL catalyst_conduit_node_set_path_float32(coords_node, &
+                    "spacing/dx", dx)
+                CALL catalyst_conduit_node_set_path_float32(coords_node, &
+                    "spacing/dy", dy)
+                CALL catalyst_conduit_node_set_path_float32(coords_node, &
+                    "spacing/dz", dz)
+            
+                ! Grid topology
+                topo_node = catalyst_conduit_node_fetch(grid_node, &
+                    "topologies/mesh")
+                CALL catalyst_conduit_node_set_path_char8_str(topo_node, &
+                    "type", "uniform")
+                CALL catalyst_conduit_node_set_path_char8_str(topo_node, &
+                    "coordset", "coords")
+
+                ! Grid fields
                 fields_node = catalyst_conduit_node_fetch(grid_node, "fields")
                 nval = (ii - 4) * (jj - 4) * (kk - 4)
                 CALL u_c_f%get_ptr(u_ptr, igrid)
                 CALL v_c_f%get_ptr(v_ptr, igrid)
                 CALL w_c_f%get_ptr(w_ptr, igrid)
-                call catalyst_conduit_node_set_path_char8_str(fields_node, "u/association", "element")
-                call catalyst_conduit_node_set_path_char8_str(fields_node, "u/topology", "mesh")
-                call catalyst_conduit_node_set_path_char8_str(fields_node, "u/volume_dependent", "false")
-                call catalyst_conduit_node_set_path_external_float32_ptr(fields_node, "u/values", u_ptr, nval)
+                CALL catalyst_conduit_node_set_path_char8_str(fields_node, &
+                    "u/association", "element")
+                CALL catalyst_conduit_node_set_path_char8_str(fields_node, &
+                    "u/topology", "mesh")
+                CALL catalyst_conduit_node_set_path_char8_str(fields_node, &
+                    "u/volume_dependent", "false")
+                CALL catalyst_conduit_node_set_path_external_float32_ptr( &
+                    fields_node, "u/values", u_ptr, nval)
 
-                call catalyst_conduit_node_set_path_char8_str(fields_node, "v/association", "element")
-                call catalyst_conduit_node_set_path_char8_str(fields_node, "v/topology", "mesh")
-                call catalyst_conduit_node_set_path_char8_str(fields_node, "v/volume_dependent", "false")
-                call catalyst_conduit_node_set_path_external_float32_ptr(fields_node, "v/values", v_ptr, nval)
+                CALL catalyst_conduit_node_set_path_char8_str(fields_node, &
+                    "v/association", "element")
+                CALL catalyst_conduit_node_set_path_char8_str(fields_node, &
+                    "v/topology", "mesh")
+                CALL catalyst_conduit_node_set_path_char8_str(fields_node, &
+                    "v/volume_dependent", "false")
+                CALL catalyst_conduit_node_set_path_external_float32_ptr( &
+                    fields_node, "v/values", v_ptr, nval)
 
-                call catalyst_conduit_node_set_path_char8_str(fields_node, "w/association", "element")
-                call catalyst_conduit_node_set_path_char8_str(fields_node, "w/topology", "mesh")
-                call catalyst_conduit_node_set_path_char8_str(fields_node, "w/volume_dependent", "false")
-                call catalyst_conduit_node_set_path_external_float32_ptr(fields_node, "w/values", w_ptr, nval)
+                CALL catalyst_conduit_node_set_path_char8_str(fields_node, &
+                    "w/association", "element")
+                CALL catalyst_conduit_node_set_path_char8_str(fields_node, &
+                    "w/topology", "mesh")
+                CALL catalyst_conduit_node_set_path_char8_str(fields_node, &
+                    "w/volume_dependent", "false")
+                CALL catalyst_conduit_node_set_path_external_float32_ptr( &
+                    fields_node, "w/values", w_ptr, nval)
             END DO
         END DO
 
-        !call catalyst_conduit_node_print(exec_node)
+        !CALL catalyst_conduit_node_print(exec_node)
 
         err = c_catalyst_execute(exec_node)
-        if (err /= catalyst_status_ok) then
-            write (stderr, *) "ERROR: Failed to execute Catalyst: ", err
-        end if
+        IF (err /= catalyst_status_ok) THEN
+            WRITE (stderr, *) "ERROR: Failed to execute Catalyst: ", err
+        END IF
 
-        call catalyst_conduit_node_destroy(exec_node)
-    end subroutine catalyst_adaptor_execute
+        CALL catalyst_conduit_node_destroy(exec_node)
+    END SUBROUTINE catalyst_adaptor_execute
 
-    subroutine catalyst_adaptor_finalize()
-        type(C_PTR) node
-        integer(kind(catalyst_status)) :: err
+    SUBROUTINE catalyst_adaptor_finalize()
+        TYPE(C_PTR) node
+        INTEGER(kind(catalyst_status)) :: err
     
         node = catalyst_conduit_node_create()
         err = c_catalyst_finalize(node)
-        if (err /= catalyst_status_ok) then
-          write (stderr, *) "ERROR: Failed to finalize Catalyst: ", err
-        end if
+        IF (err /= catalyst_status_ok) THEN
+          WRITE (stderr, *) "ERROR: Failed to finalize Catalyst: ", err
+        END IF
     
-        call catalyst_conduit_node_destroy(node)
-      end subroutine
+        CALL catalyst_conduit_node_destroy(node)
+    END SUBROUTINE catalyst_adaptor_finalize
 
     SUBROUTINE init_catalyst(ittot, mtstep, itint, timeph, dt, tend)
         ! Subroutine arguments
@@ -182,7 +229,7 @@ CONTAINS
         IF ( cata_conf%is_char("/path") ) THEN
             CALL cata_conf%get_value("/path", path_char)
         ELSE
-            WRITE(*,*) "Specifiy path of directory that contains libcatalyst-paraview.so"
+            WRITE(*,*) "Specifiy directory containing libcatalyst-paraview.so"
             CALL errr(__FILE__, __LINE__)
         END IF
 
@@ -190,7 +237,7 @@ CONTAINS
         IF ( cata_conf%is_logical("/repr") ) THEN
             CALL cata_conf%get_value("/repr", repr_logical, .FALSE.)
         ELSE
-            WRITE(*,*) "Specify repr to create representative dataset for Catalyst."
+            WRITE(*,*) "Specify repr to create representative dataset"
             repr_logical = .FALSE.
         END IF
 
@@ -198,12 +245,7 @@ CONTAINS
         IF ( cata_conf%is_char("/script") ) THEN
             CALL cata_conf%get_value("/script", script_char)
         ELSE
-            IF (.NOT. repr_logical) THEN
-                WRITE(*,*) "Specifiy script for Catalyst is required when not creating representative dataset."
-                CALL errr(__FILE__, __LINE__)
-            ELSE
-                script_char = ""
-            END IF
+            script_char = ""
         END IF
         
         ! Only implemented for Paraview
@@ -219,7 +261,6 @@ CONTAINS
 
         ! Declaring initialized
         has_catalyst = .TRUE.
-
     END SUBROUTINE init_catalyst
 
     SUBROUTINE sample_catalyst(itstep, ittot, timeph, dt)
@@ -238,23 +279,23 @@ CONTAINS
         CALL catalyst_adaptor_finalize()
     END SUBROUTINE finish_catalyst
 
-    subroutine convert_to_string(input_num, output_string)
-        integer, intent(in) :: input_num
-        character(len=13), intent(out) :: output_string
-        character(len=8) :: temp_string
-        write(temp_string, '(I8.8)') input_num
+    subroutine igrid_to_string(input_num, output_string)
+        INTEGER, INTENT(in) :: input_num
+        CHARACTER(len=13), INTENT(out) :: output_string
+        CHARACTER(len=8) :: temp_string
+        WRITE(temp_string, '(I8.8)') input_num
         output_string = 'grid_' // temp_string
     end subroutine convert_to_string
 
-    function round_to_n_decimals(x, decimals) result(rounded)
-        real(realk), intent(in) :: x
-        integer(intk), intent(in) :: decimals
-        real(realk) :: rounded
-        real(realk) :: factor
+    FUNCTION round_to_n_decimals(x, decimals) RESULT(rounded)
+        REAL(realk), INTENT(in) :: x
+        INTEGER(intk), INTENT(in) :: decimals
+        REAL(realk) :: rounded
+        REAL(realk) :: factor
     
         factor = 10.0 ** decimals    
         rounded = nint(x * factor) / factor
-    end function round_to_n_decimals
+    END FUNCTION round_to_n_decimals
 
     SUBROUTINE field_to_c()
         ! Local variables
