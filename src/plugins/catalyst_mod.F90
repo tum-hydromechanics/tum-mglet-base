@@ -10,9 +10,10 @@ MODULE catalyst_mod
 
     TYPE(config_t) :: cata_conf
     CHARACTER(len=mglet_filename_max), ALLOCATABLE :: catascripts(:)
+    CHARACTER(len=nchar_name), ALLOCATABLE :: fields(:)
     CHARACTER(len=mglet_filename_max) :: catalyst_path
     CHARACTER(len=8) :: CATALYST_IMPL = "paraview"
-    INTEGER(intk) :: nscripts
+    INTEGER(intk) :: nscripts, nfields
     LOGICAL :: is_repr
     LOGICAL :: has_catalyst = .FALSE.
 
@@ -49,11 +50,9 @@ CONTAINS
             DO iscript = 1, nscripts
                 CALL iscript_to_string(iscript, scriptname)
                 CALL catalyst_conduit_node_set_path_char8_str(script_node, &
-                    scriptname // "/filename", catascripts(iscript))
+                    scriptname//"/filename", catascripts(iscript))
             END DO
         END IF
-
-        CALL catalyst_conduit_node_print(node)
 
         err = c_catalyst_initialize(node)
         IF (err /= catalyst_status_ok) THEN
@@ -73,18 +72,14 @@ CONTAINS
 
         ! Local variables
         TYPE(C_PTR) exec_node, channel_node, data_node, grid_node, &
-            coords_node, topo_node, fields_node
+            coords_node, topo_node, fields_node, field_node
         INTEGER(kind(catalyst_status)) :: err
-        INTEGER(intk) :: ilvl, igridlvl, igrid, kk, jj, ii, shiftedlvl
+        INTEGER(intk) :: ilvl, igridlvl, igrid, kk, jj, ii, shiftedlvl, ifield
         INTEGER(kind=8) :: nval
         REAL(realk) :: minx, maxx, miny, maxy, minz, maxz, dx, dy, dz
-        REAL(realk), POINTER, CONTIGUOUS, DIMENSION(:) :: u_ptr, v_ptr, w_ptr
+        REAL(realk), POINTER, CONTIGUOUS, DIMENSION(:) :: field_ptr
         CHARACTER(len=13) :: grid_name
-        TYPE(field_t), POINTER :: u_c_f, v_c_f, w_c_f
-
-        CALL get_field(u_c_f, "U_C")
-        CALL get_field(v_c_f, "V_C")
-        CALL get_field(w_c_f, "W_C")
+        TYPE(field_t), POINTER :: field
 
         ! Catalyst state
         exec_node = catalyst_conduit_node_create()
@@ -158,35 +153,20 @@ CONTAINS
                 ! Grid fields
                 fields_node = catalyst_conduit_node_fetch(grid_node, "fields")
                 nval = (ii - 4) * (jj - 4) * (kk - 4)
-                CALL u_c_f%get_ptr(u_ptr, igrid)
-                CALL v_c_f%get_ptr(v_ptr, igrid)
-                CALL w_c_f%get_ptr(w_ptr, igrid)
-                CALL catalyst_conduit_node_set_path_char8_str(fields_node, &
-                    "u/association", "element")
-                CALL catalyst_conduit_node_set_path_char8_str(fields_node, &
-                    "u/topology", "mesh")
-                CALL catalyst_conduit_node_set_path_char8_str(fields_node, &
-                    "u/volume_dependent", "false")
-                CALL catalyst_conduit_node_set_path_external_float32_ptr( &
-                    fields_node, "u/values", u_ptr, nval)
-
-                CALL catalyst_conduit_node_set_path_char8_str(fields_node, &
-                    "v/association", "element")
-                CALL catalyst_conduit_node_set_path_char8_str(fields_node, &
-                    "v/topology", "mesh")
-                CALL catalyst_conduit_node_set_path_char8_str(fields_node, &
-                    "v/volume_dependent", "false")
-                CALL catalyst_conduit_node_set_path_external_float32_ptr( &
-                    fields_node, "v/values", v_ptr, nval)
-
-                CALL catalyst_conduit_node_set_path_char8_str(fields_node, &
-                    "w/association", "element")
-                CALL catalyst_conduit_node_set_path_char8_str(fields_node, &
-                    "w/topology", "mesh")
-                CALL catalyst_conduit_node_set_path_char8_str(fields_node, &
-                    "w/volume_dependent", "false")
-                CALL catalyst_conduit_node_set_path_external_float32_ptr( &
-                    fields_node, "w/values", w_ptr, nval)
+                DO ifield = 1, nfields
+                    field_node = catalyst_conduit_node_fetch(fields_node, &
+                        TRIM(fields(ifield)))
+                    CALL get_field(field, TRIM(fields(ifield))//"_C")
+                    CALL field%get_ptr(field_ptr, igrid)
+                    CALL catalyst_conduit_node_set_path_char8_str(field_node, &
+                        "association", "element")
+                    CALL catalyst_conduit_node_set_path_char8_str(field_node, &
+                        "topology", "mesh")
+                    CALL catalyst_conduit_node_set_path_char8_str(field_node, &
+                        "volume_dependent", "false")
+                    CALL catalyst_conduit_node_set_path_external_float32_ptr( &
+                        field_node, "values", field_ptr, nval)
+                END DO
             END DO
         END DO
 
@@ -241,7 +221,7 @@ CONTAINS
         IF ( cata_conf%is_char("/path") ) THEN
             CALL cata_conf%get_value("/path", catalyst_path)
         ELSE
-            WRITE(*,*) "Specifiy directory containing libcatalyst-paraview.so"
+            WRITE(*,*) "Specifiy directory containing libcatalyst-paraview.so!"
             CALL errr(__FILE__, __LINE__)
         END IF
 
@@ -249,8 +229,21 @@ CONTAINS
         IF ( cata_conf%is_logical("/repr") ) THEN
             CALL cata_conf%get_value("/repr", is_repr, .FALSE.)
         ELSE
-            WRITE(*,*) "Specify repr to create representative dataset"
+            WRITE(*,*) "Specify whether to create a representative dataset!"
             is_repr = .FALSE.
+        END IF
+
+        ! Fields
+        IF (cata_conf%exists("/fields")) THEN
+            CALL cata_conf%get_size("/fields", nfields)
+            ALLOCATE(fields(nfields))
+            DO i = 1, nfields
+                WRITE(jsonptr, '("/fields/", I0)') i-1
+                CALL cata_conf%get_value(jsonptr, fields(i))
+            END DO
+        ELSE
+            WRITE(*,*) "Fields for Catalyst not specified!"
+            CALL errr(__FILE__, __LINE__)
         END IF
 
         ! Catalyst Scripts
@@ -268,9 +261,9 @@ CONTAINS
         CALL catalyst_adaptor_initialize()
 
         ! Auxiliary fields for C-ordered arrays
-        CALL set_field("U_C")
-        CALL set_field("V_C")
-        CALL set_field("W_C")
+        DO i = 1, nfields
+            CALL set_field(TRIM(fields(i))//"_C")
+        END DO
 
         ! Declaring initialized
         has_catalyst = .TRUE.
@@ -309,7 +302,7 @@ CONTAINS
         CHARACTER(len=13), INTENT(out) :: output_string
         CHARACTER(len=8) :: temp_string
         WRITE(temp_string, '(I8.8)') igrid
-        output_string = 'grid_' // temp_string
+        output_string = 'grid_'//temp_string
     END SUBROUTINE igrid_to_string
 
     SUBROUTINE iscript_to_string(iscript, output_string)
@@ -317,7 +310,7 @@ CONTAINS
         CHARACTER(len=10), INTENT(out) :: output_string
         CHARACTER(len=3) :: temp_string
         WRITE(temp_string, '(I3.3)') iscript
-        output_string = 'script_' // temp_string
+        output_string = 'script_'//temp_string
     END SUBROUTINE iscript_to_string
 
     FUNCTION round_to_n_decimals(x, decimals) RESULT(rounded)
@@ -332,34 +325,22 @@ CONTAINS
 
     SUBROUTINE field_to_c()
         ! Local variables
-        INTEGER(intk) :: i, igrid
+        INTEGER(intk) :: i, igrid, ifield
         INTEGER(intk) :: kk, jj, ii
-        TYPE(field_t), POINTER :: u_f, v_f, w_f, u_c_f, v_c_f, w_c_f
+        TYPE(field_t), POINTER :: f_t, f_t_c
         REAL(realk), POINTER, CONTIGUOUS :: arr_c(:, :, :), arr(:, :, :)
         INTEGER, PARAMETER :: nbl = 2
 
-        CALL get_field(u_f, "U")
-        CALL get_field(v_f, "V")
-        CALL get_field(w_f, "W")
-        CALL get_field(u_c_f, "U_C")
-        CALL get_field(v_c_f, "V_C")
-        CALL get_field(w_c_f, "W_C")
-
-        DO i = 1, nmygrids
-            igrid = mygrids(i)
-            CALL get_mgdims(kk, jj, ii, igrid)
-            ! treating U
-            CALL u_f%get_ptr(arr, igrid)
-            CALL u_c_f%get_ptr(arr_c, igrid)
-            CALL field_to_c_grid(kk, jj, ii, nbl, arr_c, arr)
-            ! treating V
-            CALL v_f%get_ptr(arr, igrid)
-            CALL v_c_f%get_ptr(arr_c, igrid)
-            CALL field_to_c_grid(kk, jj, ii, nbl, arr_c, arr)
-            ! treating W
-            CALL w_f%get_ptr(arr, igrid)
-            CALL w_c_f%get_ptr(arr_c, igrid)
-            CALL field_to_c_grid(kk, jj, ii, nbl, arr_c, arr)
+        DO ifield = 1, nfields
+            CALL get_field(f_t, TRIM(fields(ifield)))
+            CALL get_field(f_t_c, TRIM(fields(ifield))//"_C")
+            DO i = 1, nmygrids
+                igrid = mygrids(i)
+                CALL get_mgdims(kk, jj, ii, igrid)
+                CALL f_t%get_ptr(arr, igrid)
+                CALL f_t_c%get_ptr(arr_c, igrid)
+                CALL field_to_c_grid(kk, jj, ii, nbl, arr_c, arr)
+            END DO
         END DO
     END SUBROUTINE field_to_c
 

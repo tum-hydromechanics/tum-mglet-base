@@ -8,6 +8,7 @@
 
 Running Catalyst alongside a simulation can be archieved by providing a simple configuration in the parameters `JSON` file required by MGLET. The configuration supports the following arguments
 - `catalyst`: Path of the directory that contains Catalyst, including `libcatalyst-paraview.so`
+- `fields`: List of field names that shall be captured by Catalyst
 - `repr` [Optional]: Boolean whether catalyst shall create a representative dataset
 - `scripts` [Optional]: List of paths to Catalyst pipeline Python scripts
 
@@ -19,6 +20,7 @@ The following snippet shows an example on how such a configuration could look li
 
     "catalyst": {
         "path": "/usr/local/lib/catalyst/",
+        "fields": ["U", "V", "W", "P"],
         "repr": false,
         "scripts": [
             "catalyst_pipeline.py",
