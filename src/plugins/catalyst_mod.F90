@@ -13,8 +13,10 @@ MODULE catalyst_mod
     LOGICAL :: has_catalyst = .FALSE.
     TYPE(config_t) :: cata_conf
 
+    CHARACTER(len=mglet_filename_max), ALLOCATABLE :: catascripts(:)
+    INTEGER(intk) :: nscripts
+
     CHARACTER(len=127) :: path_char
-    CHARACTER(len=127) :: script_char
     CHARACTER(len=127) :: implementation_char
     LOGICAL :: repr_logical
 
@@ -22,8 +24,11 @@ MODULE catalyst_mod
 
 CONTAINS
     SUBROUTINE catalyst_adaptor_initialize()
-        TYPE(C_PTR) node
+        ! Local variables
+        TYPE(C_PTR) node, script_node
         INTEGER(kind(catalyst_status)) :: err
+        INTEGER(intk) :: iscript
+        CHARACTER(len=10) :: scriptname
 
         node = catalyst_conduit_node_create()
 
@@ -44,10 +49,17 @@ CONTAINS
         END IF
 
         ! Catalyst Pipeline Script
-        IF (.NOT. TRIM(script_char) == "") THEN
-            CALL catalyst_conduit_node_set_path_char8_str(node, &
-                "catalyst/scripts/script/filename", script_char)
+        IF (nscripts /= 0) THEN
+            script_node = catalyst_conduit_node_fetch(node, "catalyst/scripts")
+            DO iscript = 1, nscripts
+                CALL iscript_to_string(iscript, scriptname)
+                CALL catalyst_conduit_node_set_path_char8_str(script_node, &
+                    scriptname // "/filename", catascripts(iscript))
+            END DO
         END IF
+
+        CALL catalyst_conduit_node_print(node)
+
 
         err = c_catalyst_initialize(node)
         IF (err /= catalyst_status_ok) THEN
@@ -116,10 +128,6 @@ CONTAINS
                 ! Grid coordinates
                 coords_node = catalyst_conduit_node_fetch(grid_node, &
                     "coordsets/coords")
-                    
-                    dx = round_to_n_decimals((maxx - minx) / (ii - 4), 8)
-                    dy = round_to_n_decimals((maxy - miny) / (jj - 4), 8)
-                    dz = round_to_n_decimals((maxz - minz) / (kk - 4), 8)
                 CALL catalyst_conduit_node_set_path_char8_str(coords_node, &
                     "type", "uniform")
                 CALL catalyst_conduit_node_set_path_int32(coords_node, &
@@ -134,6 +142,9 @@ CONTAINS
                     "origin/y", miny)
                 CALL catalyst_conduit_node_set_path_float32(coords_node, &
                     "origin/z", minz)
+                    dx = round_to_n_decimals((maxx - minx) / (ii - 4), 8)
+                    dy = round_to_n_decimals((maxy - miny) / (jj - 4), 8)
+                    dz = round_to_n_decimals((maxz - minz) / (kk - 4), 8)
                 CALL catalyst_conduit_node_set_path_float32(coords_node, &
                     "spacing/dx", dx)
                 CALL catalyst_conduit_node_set_path_float32(coords_node, &
@@ -184,8 +195,6 @@ CONTAINS
             END DO
         END DO
 
-        !CALL catalyst_conduit_node_print(exec_node)
-
         err = c_catalyst_execute(exec_node)
         IF (err /= catalyst_status_ok) THEN
             WRITE (stderr, *) "ERROR: Failed to execute Catalyst: ", err
@@ -216,6 +225,10 @@ CONTAINS
         REAL(realk), INTENT(in) :: dt
         REAL(realk), INTENT(in) :: tend
 
+        ! Local variables
+        CHARACTER(len=64) :: jsonptr
+        INTEGER(intk) :: i
+
         IF (.NOT. fort7%exists("/catalyst")) THEN
             RETURN
         END IF
@@ -241,11 +254,16 @@ CONTAINS
             repr_logical = .FALSE.
         END IF
 
-        ! Catalyst Script
-        IF ( cata_conf%is_char("/script") ) THEN
-            CALL cata_conf%get_value("/script", script_char)
+        ! Catalyst Scripts
+        IF (cata_conf%exists("/scripts")) THEN
+            CALL cata_conf%get_size("/scripts", nscripts)
+            ALLOCATE(catascripts(nscripts))
+            DO i = 1, nscripts
+                WRITE(jsonptr, '("/scripts/", I0)') i-1
+                CALL cata_conf%get_value(jsonptr, catascripts(i))
+            END DO
         ELSE
-            script_char = ""
+            nscripts = 0
         END IF
         
         ! Only implemented for Paraview
@@ -277,15 +295,24 @@ CONTAINS
 
     SUBROUTINE finish_catalyst()
         CALL catalyst_adaptor_finalize()
+        IF (ALLOCATED(catascripts)) DEALLOCATE(catascripts)
     END SUBROUTINE finish_catalyst
 
-    subroutine igrid_to_string(input_num, output_string)
-        INTEGER, INTENT(in) :: input_num
+    SUBROUTINE igrid_to_string(igrid, output_string)
+        INTEGER, INTENT(in) :: igrid
         CHARACTER(len=13), INTENT(out) :: output_string
         CHARACTER(len=8) :: temp_string
-        WRITE(temp_string, '(I8.8)') input_num
+        WRITE(temp_string, '(I8.8)') igrid
         output_string = 'grid_' // temp_string
-    end subroutine convert_to_string
+    END SUBROUTINE igrid_to_string
+
+    SUBROUTINE iscript_to_string(iscript, output_string)
+        INTEGER, INTENT(in) :: iscript
+        CHARACTER(len=10), INTENT(out) :: output_string
+        CHARACTER(len=3) :: temp_string
+        WRITE(temp_string, '(I3.3)') iscript
+        output_string = 'script_' // temp_string
+    END SUBROUTINE iscript_to_string
 
     FUNCTION round_to_n_decimals(x, decimals) RESULT(rounded)
         REAL(realk), INTENT(in) :: x
