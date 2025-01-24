@@ -59,7 +59,7 @@
         "dwrite_part_h5": false,
         "dwrite_npc": true,
         "terminal": "normal",
-        "snapshot_step": 10,
+        "snapshot_step": 100,
         "list_length": 10000,
         "dinterp": true,
         "dturb_diff": false,
