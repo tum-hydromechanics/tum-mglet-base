@@ -76,6 +76,7 @@ CONTAINS
         REAL(realk), ALLOCATABLE :: pdx_pot(:), pdy_pot(:), pdz_pot(:)
 
         INTEGER(intk) :: igrid, i, ii, jj, kk, gfound, ig, temp_grid
+        REAL(realk) :: temp_coord(3)
         REAL(realk) :: pu_adv, pv_adv, pw_adv, Dturb1, Dturb2, Dturb3
         REAL(realk) :: pdx_adv, pdy_adv, pdz_adv, pdx_diff, pdy_diff, pdz_diff
         REAL(realk) :: pdx_eff_tot, pdy_eff_tot, pdz_eff_tot, pdx_eff, pdy_eff, pdz_eff
@@ -155,6 +156,9 @@ CONTAINS
             ! assigning igrid for clarity of the follwing expressions
             igrid = my_particle_list%particles(i)%igrid
             temp_grid = my_particle_list%particles(i)%igrid
+            temp_coord(1) = my_particle_list%particles(i)%x
+            temp_coord(2) = my_particle_list%particles(i)%y
+            temp_coord(3) = my_particle_list%particles(i)%z
 
             CALL get_mgdims(kk, jj, ii, igrid)
 
@@ -239,7 +243,8 @@ CONTAINS
 
                 CALL start_timer(922)
                 ! Particle Boundary Interaction
-                CALL move_particle(my_particle_list%particles(i), pdx_adv, pdy_adv, pdz_adv, pdx_eff, pdy_eff, pdz_eff, temp_grid)
+                CALL move_particle(my_particle_list%particles(i), pdx_adv, pdy_adv, pdz_adv, &
+                 pdx_eff, pdy_eff, pdz_eff, temp_coord, temp_grid)
                 CALL stop_timer(922)
 
                 CALL start_timer(921)
@@ -291,7 +296,8 @@ CONTAINS
                 CALL stop_timer(924)
 
                 CALL start_timer(925)
-                CALL move_particle(my_particle_list%particles(i), pdx_diff, pdy_diff, pdz_diff, pdx_eff, pdy_eff, pdz_eff, temp_grid)
+                CALL move_particle(my_particle_list%particles(i), pdx_diff, pdy_diff, pdz_diff, &
+                 pdx_eff, pdy_eff, pdz_eff, temp_coord, temp_grid)
                 CALL stop_timer(925)
 
                 ! for particle runtime statistics (terminal output)

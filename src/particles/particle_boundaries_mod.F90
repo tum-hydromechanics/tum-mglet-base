@@ -249,12 +249,13 @@ MODULE particle_boundaries_mod
 
     ! TODO: source the following moduled out into particle_motion_mod or so
 
-    SUBROUTINE move_particle(particle, dx, dy, dz, dx_eff, dy_eff, dz_eff, temp_grid_prev)
+    SUBROUTINE move_particle(particle, dx, dy, dz, dx_eff, dy_eff, dz_eff, temp_coord_prev, temp_grid_prev)
 
         ! subroutine arguments
         TYPE(baseparticle_t), INTENT(inout) :: particle
         REAL(realk), INTENT(in) :: dx, dy, dz
         REAL(realk), INTENT(out) :: dx_eff, dy_eff, dz_eff
+        REAL(realk), INTENT(inout), OPTIONAL :: temp_coord_prev(3)
         INTEGER(intk), INTENT(inout), OPTIONAL :: temp_grid_prev
 
         ! local variables
@@ -285,9 +286,15 @@ MODULE particle_boundaries_mod
             temp_grid = particle%igrid
         END IF
 
-        x = particle%x
-        y = particle%y
-        z = particle%z
+        IF (PRESENT(temp_coord_prev)) THEN
+            x = temp_coord_prev(1)
+            y = temp_coord_prev(2)
+            z = temp_coord_prev(3)
+        ELSE
+            x = particle%x
+            y = particle%y
+            z = particle%z
+        END IF
 
         dx_from_here = dx
         dy_from_here = dy
@@ -386,12 +393,25 @@ MODULE particle_boundaries_mod
 
         END DO
 
-        ! do not update the particle grid here!
+        IF (PRESENT(temp_coord_prev)) THEN
+            temp_coord_prev(1) = x
+            temp_coord_prev(2) = y
+            temp_coord_prev(3) = z
+        END IF
+
+        IF (PRESENT(temp_grid_prev)) THEN
+            temp_grid_prev = temp_grid
+        END IF
+
+        ! do not update the particle grid here
+        ! and do not apply periodic boundaries here
         particle%x = particle%x + dx_eff
         particle%y = particle%y + dy_eff
         particle%z = particle%z + dz_eff
 
-        temp_grid_prev = temp_grid
+        !particle%xyz_abs(1) = particle%xyz_abs(1) + dx_eff
+        !particle%xyz_abs(2) = particle%xyz_abs(2) + dy_eff
+        !particle%xyz_abs(3) = particle%xyz_abs(3) + dz_eff
 
         CALL update_particle_cell(particle)
 

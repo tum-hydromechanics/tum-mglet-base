@@ -4,6 +4,7 @@ MODULE particle_fields_mod
     USE field_mod
     USE fields_mod
 
+    USE particle_config_mod
     USE particle_list_mod
 
     IMPLICIT NONE
@@ -31,7 +32,7 @@ CONTAINS
         CALL set_field("NPC_AVG", units=units_part, dwrite=.TRUE., buffers=.TRUE.)
 
         CALL get_field(npc_avg_f, "NPC_AVG")
-        npc_f%arr = 0.0
+        npc_avg_f%arr = 0.0
 
         CALL update_particle_fields(0)
 
@@ -46,7 +47,7 @@ CONTAINS
         INTEGER(intk), INTENT(in) :: itstep
 
         ! local_variables
-        INTEGER(intk) :: i, igrid, ipart, ii, jj, kk, i_p, j_p, k_p
+        INTEGER(intk) :: ig, i, k, j, igrid, ipart, ii, jj, kk, i_p, j_p, k_p
         REAL(realk) :: x_p, y_p, z_p
         TYPE(field_t), POINTER :: x_f, y_f, z_f
         REAL(realk), POINTER, CONTIGUOUS, DIMENSION(:) :: x, y, z
@@ -130,9 +131,9 @@ CONTAINS
 
         CALL get_field(npc_avg_f, "NPC_AVG")
 
-        DO i = 1, nmygridslvl(particle_level)
+        DO ig = 1, nmygridslvl(particle_level)
 
-            igrid = mygridslvl(i, particle_level)
+            igrid = mygridslvl(ig, particle_level)
 
             CALL npc_avg_f%get_ptr(npc_avg, igrid)
             CALL npc_f%get_ptr(npc, igrid)
