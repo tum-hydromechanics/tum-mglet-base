@@ -220,7 +220,7 @@ CONTAINS
         END IF
 
         IF (dsim_particles) THEN ! <------------------------------------particles
-            CALL write_particle_statistics(mtstep)
+            CALL write_particle_statistics(mtstep, dt)
         END IF
 
         CALL finish_statistics()

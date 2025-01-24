@@ -55,7 +55,7 @@ MODULE particle_obstacles_mod
     ! ratio of intermediate (filling) obstacles over readius of regular obstacles
     REAL(realk), PARAMETER :: radius_ratio = 0.348
 
-    REAL(realk), PROTECTED :: aura
+    REAL(realk) :: aura
 
 CONTAINS    !===================================
 

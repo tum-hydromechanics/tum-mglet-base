@@ -12,8 +12,9 @@ MODULE particle_core_mod
 
     IMPLICIT NONE
 
-    INTEGER(c_intk), PARAMETER :: particle_mpi_elems = 11
+    INTEGER(c_intk), PARAMETER :: particle_mpi_elems = 13
 
+    ! TODO: clear some components, use type extensions...
     ! C binding for MPI compatability!
     TYPE, BIND(C) :: baseparticle_t
 
@@ -38,10 +39,18 @@ MODULE particle_core_mod
         ! TODO: rename into ijk(3) ?
         INTEGER(c_intk) :: ijkcell(3) = 0
 
-        ! TODO: store coordinates as xyz(3) ?
+        ! TODO: merge relative and absolute coordinates
+        ! realtive coordinates
+        ! TODO: store relative coordinates as xyz(3) ?
         REAL(c_realk) :: x = 0.0
         REAL(c_realk) :: y = 0.0
         REAL(c_realk) :: z = 0.0
+
+        ! absolute coordinates
+        REAL(c_realk) :: xyz_abs(3) = 0.0
+
+        ! coordinates of point where a particle entered the current slice
+        REAL(c_realk) :: xyz_sentry(3) = 0.0
 
     END TYPE baseparticle_t
 
@@ -68,6 +77,9 @@ CONTAINS
         particle%x = x
         particle%y = y
         particle%z = z
+        particle%xyz_abs(1) = x
+        particle%xyz_abs(2) = y
+        particle%xyz_abs(3) = z
 
         IF (PRESENT(iproc)) THEN
             particle%iproc = iproc

@@ -270,7 +270,7 @@ CONTAINS
             psim_n_sent = psim_n_sent + SUM(npsend)
         END IF
 
-        ! JULIUS: would be nice to not iterate over the whole particle list twice. Maybe there is a way to allocate sendind before the first iteration?
+        ! would be nice to not iterate over the whole particle list twice. Maybe there is a way to allocate sendind before the first iteration?
         ! Maybe use sending from previous exchnage ?
         j = 1
         DO i = 1, particle_list%ifinal
@@ -840,8 +840,10 @@ CONTAINS
         INTEGER(int32) :: blocklen(particle_mpi_elems)
         TYPE(MPI_Datatype) :: types(particle_mpi_elems)
         TYPE(MPI_Datatype) :: triple_int_mpi_type
+        TYPE(MPI_Datatype) :: triple_real_mpi_type
 
         CALL MPI_Type_contiguous(3, mglet_mpi_int, triple_int_mpi_type)
+        CALL MPI_Type_contiguous(3, mglet_mpi_real, triple_real_mpi_type)
 
         CALL MPI_Get_address(foo%state, disp(1))
         ! JULIUS: isnt the following disp declaration unnessecary?
@@ -855,6 +857,8 @@ CONTAINS
         CALL MPI_Get_address(foo%x, disp(9))
         CALL MPI_Get_address(foo%y, disp(10))
         CALL MPI_Get_address(foo%z, disp(11))
+        CALL MPI_Get_address(foo%xyz_abs, disp(12))
+        CALL MPI_Get_address(foo%xyz_sentry, disp(13))
 
         types(1) = mglet_mpi_int    ! state
         types(2) = mglet_mpi_int    ! ipart
@@ -867,6 +871,8 @@ CONTAINS
         types(9) = mglet_mpi_real     ! x
         types(10) = mglet_mpi_real    ! y
         types(11) = mglet_mpi_real    ! z
+        types(12) = triple_real_mpi_type ! xyz_abs
+        types(13) = triple_real_mpi_type ! xyt_sentry
 
         ! computing the displacements in byte
         base = disp(1)

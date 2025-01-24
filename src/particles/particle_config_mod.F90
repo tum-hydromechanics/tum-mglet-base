@@ -61,6 +61,12 @@ MODULE particle_config_mod
     LOGICAL :: dgridstat = .FALSE. ! "particles/dgridstat"
     INTEGER(intk) :: rt_ittot_start ! "particles/rt_ittot_start"
     INTEGER(intk) :: rt_tstep_max ! "particles/rt_tstep_max" ! maximum residence time as number of timesteps
+    INTEGER(intk) :: tdx_step_min , tdx_step_max
+    INTEGER(intk) :: tdy_step_min , tdy_step_max
+    INTEGER(intk) :: tdz_step_min , tdz_step_max
+    INTEGER(intk) :: avu_step_min , avu_step_max
+    INTEGER(intk) :: avv_step_min , avv_step_max
+    INTEGER(intk) :: avw_step_min , avw_step_max
     CHARACTER(len = 1) :: slice_dir = "N" ! "/particles/slice_dir"; X, Y, Z or N for None ! MAXIMUM ONE DIRECTION !
     INTEGER(intk) :: nslice_levels ! "particles/nslice_levels"
     INTEGER(intk), ALLOCATABLE :: nslices(:) ! "particles/nslices"
@@ -78,6 +84,7 @@ CONTAINS
         LOGICAL :: dinterp
         INTEGER(intk) :: i, j, mtstep_temp, seed_n, pseed_n, dummy
         INTEGER(int32), ALLOCATABLE ::  seed(:)
+        INTEGER(intk) :: step_range(2)
 
         != = = = = = = = = = PARTICLE SIM ON/OFF = = = = = = = = = =
 
@@ -351,6 +358,47 @@ CONTAINS
 
         END IF
 
+        IF (fort7%exists("/particles/tdx_step_range")) THEN
+            step_range = 0
+            CALL pconf%get_array("/tdx_step_range", step_range)
+            tdx_step_min = step_range(1)
+            tdx_step_max = step_range(2)
+        END IF
+
+        IF (fort7%exists("/particles/tdy_step_range")) THEN
+            step_range = 0
+            CALL pconf%get_array("/tdy_step_range", step_range)
+            tdy_step_min = step_range(1)
+            tdy_step_max = step_range(2)
+        END IF
+
+        IF (fort7%exists("/particles/tdz_step_range")) THEN
+            step_range = 0
+            CALL pconf%get_array("/tdz_step_range", step_range)
+            tdz_step_min = step_range(1)
+            tdz_step_max = step_range(2)
+        END IF
+
+        IF (fort7%exists("/particles/avu_step_range")) THEN
+            step_range = 0
+            CALL pconf%get_array("/avu_step_range", step_range)
+            avu_step_min = step_range(1)
+            avu_step_max = step_range(2)
+        END IF
+
+        IF (fort7%exists("/particles/avv_step_range")) THEN
+            step_range = 0
+            CALL pconf%get_array("/avv_step_range", step_range)
+            avv_step_min = step_range(1)
+            avv_step_max = step_range(2)
+        END IF
+
+        IF (fort7%exists("/particles/avw_step_range")) THEN
+            step_range = 0
+            CALL pconf%get_array("/avw_step_range", step_range)
+            avw_step_min = step_range(1)
+            avw_step_max = step_range(2)
+        END IF
         !- - - - - - - - - - - - - - - - - -
 
         IF (fort7%exists("/particles/slice_direction")) THEN
