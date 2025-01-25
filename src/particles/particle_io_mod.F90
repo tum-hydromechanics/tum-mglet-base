@@ -273,6 +273,14 @@ CONTAINS
         ALLOCATE(y_lists(nmygrids))
         ALLOCATE(z_lists(nmygrids))
 
+        ALLOCATE(x_abs_lists(nmygrids))
+        ALLOCATE(y_abs_lists(nmygrids))
+        ALLOCATE(z_abs_lists(nmygrids))
+
+        ALLOCATE(x_sentry_lists(nmygrids))
+        ALLOCATE(y_sentry_lists(nmygrids))
+        ALLOCATE(z_sentry_lists(nmygrids))
+
         ! Using stencils infrastructure for parallel I/O
         ! (functions manage all grids of process)
         CALL stencilio_read(file_id, 'state', states_lists)

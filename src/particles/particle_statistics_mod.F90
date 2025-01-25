@@ -467,9 +467,9 @@ CONTAINS
 
             WRITE(*, '("Slice Statistics Collector of Length ", I0, " allocated on Proccess ", I0)') SIZE(my_slicecol_list), myid
 
-            DO i = 1, SIZE(my_slicecol_list)
-                WRITE(*, '("Slice ", I0, " activity: ", L2)') i, my_slicecol_list(i)%is_active
-            END DO
+            !DO i = 1, SIZE(my_slicecol_list)
+            !    WRITE(*, '("Slice ", I0, " activity: ", L2)') i, my_slicecol_list(i)%is_active
+            !END DO
 
             WRITE(*, '()')
 
@@ -517,9 +517,11 @@ CONTAINS
                     IF (particle_list%particles(i)%islice <= 0) THEN
                         particle_list%particles(i)%islice = islice
                     ELSEIF (particle_list%particles(i)%islice /= islice) THEN
-                        WRITE(*, '("ERROR on proc ", I0, ": Unexpected initial value of islice for particle ", I0)') &
+                        WRITE(*, '("WARNING on proc ", I0, ": Unexpected initial value of islice for particle ", I0)') &
                              myid, particle_list%particles(i)%ipart
-                        CALL errr(__FILE__,__LINE__)
+                        WRITE(*, '("Read Slice: ", I0)') particle_list%particles(i)%islice
+                        WRITE(*, '("New Slice: ", I0)') islice
+                        particle_list%particles(i)%islice = islice
                     END IF
                     my_slicecol_list(islice)%np_counter(1) = my_slicecol_list(islice)%np_counter(1) + 1
                     EXIT sliceloop
@@ -1091,31 +1093,31 @@ CONTAINS
             WRITE(unit, '("TIME INCREMENT: ", 1F10.7)') dt
 
             IF (SIZE(my_slicecol_list(islice)%tdx_counter) > 0) THEN
-                WRITE(unit, '("TDX STENCIL:    ", 1F10.7, A, 1F10.7, A, 1F10.7)') &
+                WRITE(unit, '("TDX STENCIL:    ", 1F12.7, A, 1F12.7, A, 1F12.7)') &
                  global_min_ddx*REAL(tdx_step_min), " : ", global_min_ddx, " : ", global_min_ddx*REAL(tdx_step_max)
             END IF
             IF (SIZE(my_slicecol_list(islice)%tdy_counter) > 0) THEN
-                WRITE(unit, '("TDY STENCIL:    ", 1F10.7, A, 1F10.7, A, 1F10.7)') &
+                WRITE(unit, '("TDY STENCIL:    ", 1F12.7, A, 1F12.7, A, 1F12.7)') &
                  global_min_ddy*REAL(tdy_step_min), " : ", global_min_ddy, " : ", global_min_ddy*REAL(tdy_step_max)
             END IF
             IF (SIZE(my_slicecol_list(islice)%tdz_counter) > 0) THEN
-                WRITE(unit, '("TDZ STENCIL:    ", 1F10.7, A, 1F10.7, A, 1F10.7)') &
+                WRITE(unit, '("TDZ STENCIL:    ", 1F12.7, A, 1F12.7, A, 1F12.7)') &
                  global_min_ddz*REAL(tdz_step_min), " : ", global_min_ddz, " : ", global_min_ddz*REAL(tdz_step_max)
             END IF
 
             IF (SIZE(my_slicecol_list(islice)%avu_counter) > 0) THEN
                 avu_increment = global_min_ddx/dt/REAL(MAX(ABS(avu_step_min), ABS(avu_step_max)))
-                WRITE(unit, '("AVU STENCIL:    ", 1F10.7, A, 1F10.7, A, 1F10.7)') &
+                WRITE(unit, '("AVU STENCIL:    ", 1F12.7, A, 1F12.7, A, 1F12.7)') &
                  avu_increment*REAL(avu_step_min), " : ", avu_increment, " : ", avu_increment*REAL(avu_step_max)
             END IF
             IF (SIZE(my_slicecol_list(islice)%avv_counter) > 0) THEN
                 avv_increment = global_min_ddy/dt/MAX(ABS(avv_step_min), ABS(avv_step_max))
-                WRITE(unit, '("AVV STENCIL:    ", 1F10.7, A, 1F10.7, A, 1F10.7)') &
+                WRITE(unit, '("AVV STENCIL:    ", 1F12.7, A, 1F12.7, A, 1F12.7)') &
                  avv_increment*REAL(avv_step_min), " : ", avv_increment, " : ", avv_increment*REAL(avv_step_max)
             END IF
             IF (SIZE(my_slicecol_list(islice)%avw_counter) > 0) THEN
                 avw_increment = global_min_ddz/dt/MAX(ABS(avw_step_min), ABS(avw_step_max))
-                WRITE(unit, '("AVW STENCIL:    ", 1F10.7, A, 1F10.7, A, 1F10.7)') &
+                WRITE(unit, '("AVW STENCIL:    ", 1F12.7, A, 1F12.7, A, 1F12.7)') &
                 avw_increment*REAL(avw_step_min), " : ", avw_increment, " : ", avw_increment*REAL(avw_step_max)
             END IF
 
