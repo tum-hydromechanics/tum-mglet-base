@@ -428,9 +428,11 @@ CONTAINS
                     IF (particle_list%particles(i)%islice <= 0) THEN
                         particle_list%particles(i)%islice = islice
                     ELSEIF (particle_list%particles(i)%islice /= islice) THEN
-                        WRITE(*, '("ERROR on proc ", I0, ": Unexpected initial value of islice for particle ", I0)') &
+                        WRITE(*, '("WARNING on proc ", I0, ": Unexpected initial value of islice for particle ", I0)') &
                              myid, particle_list%particles(i)%ipart
-                        CALL errr(__FILE__,__LINE__)
+                        WRITE(*, '("Read Slice: ", I0)') particle_list%particles(i)%islice
+                        WRITE(*, '("New Slice: ", I0)') islice
+                        particle_list%particles(i)%islice = islice
                     END IF
                     my_slicecol_list(islice)%np_counter(1) = my_slicecol_list(islice)%np_counter(1) + 1
                     EXIT sliceloop
