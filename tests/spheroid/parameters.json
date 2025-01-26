@@ -1,0 +1,60 @@
+{
+    "time": {
+        "mtstep": 10,
+        "dt": 0.02,
+        "itinfo": 1,
+        "read": false,
+        "write": true,
+        "continue": false 
+    },
+    "io": {
+        "grids": "grids.h5",
+        "infile": "fields.h5",
+        "outfile": "fields.h5"
+    },
+    "ib": {
+        "type": "ghostcell",
+        "stencilfile": "ib_stencils.h5",
+        "blocking": "newblock",
+        "fluidpoints": [
+            [-3.0, 0.0, 0.0]
+        ],
+        "nofluidpoints": [
+            [0.0, 0.0, 0.0]
+        ],
+        "geometries": [
+            {
+                "file": "./body.001.stl",
+                "velocity": [0.0, 0.0, 0.0]
+            }
+        ]
+    },
+    "flow": {
+        "gmol": 0.01,
+        "rho": 1.0,
+        "tu_level": 0.0,
+        "uinf": [1.0, 0.0, 0.0],
+        "pressuresolver": 
+        {
+            "type": "sor",
+            "epcorr": 5.0e-4,
+            "nouter_min": 2,
+            "nouter": 5,
+            "ninner": 2,
+            "omega": 1.1,
+            "loglevel": 3
+        },
+        "lesmodel": {
+            "model": "none"
+        },
+        "compbodyforce": false
+    },
+
+    "uvwbulk": true,
+
+    "catalyst": {
+        "path": "/usr/local/lib/catalyst/",
+        "fields": ["P"],
+        "repr": true
+    }
+}
