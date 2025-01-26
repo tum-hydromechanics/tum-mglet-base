@@ -73,6 +73,7 @@
 
     "catalyst": {
         "path": "/usr/local/lib/catalyst/",
+        "fields": ["U", "V", "W", "P"],
         "repr": true
     }
 }
