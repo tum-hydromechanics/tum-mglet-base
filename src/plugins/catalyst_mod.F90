@@ -63,7 +63,7 @@ CONTAINS
     END SUBROUTINE catalyst_adaptor_initialize
 
     SUBROUTINE catalyst_adaptor_execute(itstep, ittot, timeph, dt)
-        USE grids_mod, ONLY: minlevel, maxlevel, nmygridslvl
+        USE grids_mod, ONLY: minlevel, maxlevel, nmygridslvl, get_children
         ! Subroutine arguments
         INTEGER(intk), INTENT(in) :: itstep
         INTEGER(intk), INTENT(in) :: ittot
@@ -72,14 +72,25 @@ CONTAINS
 
         ! Local variables
         TYPE(C_PTR) exec_node, channel_node, data_node, grid_node, &
-            coords_node, topo_node, fields_node, field_node
+            coords_node, topo_node, fields_node, field_node, parent_node, &
+            nest_node, child_node
         INTEGER(kind(catalyst_status)) :: err
-        INTEGER(intk) :: ilvl, igridlvl, igrid, kk, jj, ii, shiftedlvl, ifield
+        INTEGER(intk) :: ilvl, igridlvl, igrid, kk, jj, ii, shiftedlvl, &
+            ifield, parentid
+        INTEGER(intk) :: parent_kk, parent_jj, parent_ii, child_kk, child_jj, child_ii
         INTEGER(kind=8) :: nval
         REAL(realk) :: minx, maxx, miny, maxy, minz, maxz, dx, dy, dz
+        REAL(realk) :: parent_minx, parent_maxx, parent_miny, parent_maxy, &
+            parent_minz, parent_maxz, parent_dx, parent_dy, parent_dz
+        REAL(realk) :: child_minx, child_maxx, child_miny, child_maxy, &
+            child_minz, child_maxz, child_dx, child_dy, child_dz
         REAL(realk), POINTER, CONTIGUOUS, DIMENSION(:) :: field_ptr
         CHARACTER(len=13) :: grid_name
+        CHARACTER(len=15) :: window_name
         TYPE(field_t), POINTER :: field
+
+        INTEGER, POINTER :: childarray(:)
+        INTEGER :: nchild, igrdchild, ichild
 
         ! Catalyst state
         exec_node = catalyst_conduit_node_create()
@@ -132,9 +143,9 @@ CONTAINS
                     "origin/y", miny)
                 CALL catalyst_conduit_node_set_path_float32(coords_node, &
                     "origin/z", minz)
-                    dx = round_to_n_decimals((maxx - minx) / (ii - 4), 8)
-                    dy = round_to_n_decimals((maxy - miny) / (jj - 4), 8)
-                    dz = round_to_n_decimals((maxz - minz) / (kk - 4), 8)
+                dx = round_to_n_decimals((maxx - minx) / (ii - 4), 7)
+                dy = round_to_n_decimals((maxy - miny) / (jj - 4), 7)
+                dz = round_to_n_decimals((maxz - minz) / (kk - 4), 7)
                 CALL catalyst_conduit_node_set_path_float32(coords_node, &
                     "spacing/dx", dx)
                 CALL catalyst_conduit_node_set_path_float32(coords_node, &
@@ -144,12 +155,100 @@ CONTAINS
             
                 ! Grid topology
                 topo_node = catalyst_conduit_node_fetch(grid_node, &
-                    "topologies/mesh")
+                    "topologies/topo")
                 CALL catalyst_conduit_node_set_path_char8_str(topo_node, &
                     "type", "uniform")
                 CALL catalyst_conduit_node_set_path_char8_str(topo_node, &
                     "coordset", "coords")
+                CALL catalyst_conduit_node_set_path_int32(topo_node, &
+                    "elements/origin/i0", 0)
+                CALL catalyst_conduit_node_set_path_int32(topo_node, &
+                    "elements/origin/j0", 0)
+                CALL catalyst_conduit_node_set_path_int32(topo_node, &
+                    "elements/origin/k0", 0)
 
+                ! Nestsets
+                nest_node = catalyst_conduit_node_fetch(grid_node, &
+                    "nestsets/nest")
+                CALL catalyst_conduit_node_set_path_char8_str(nest_node, &
+                    "association", "element")
+                CALL catalyst_conduit_node_set_path_char8_str(nest_node, &
+                    "topology", "topo")
+                ! Grids with a parent
+                IF (ilvl > minlevel) THEN
+                    parentid = iparent(igrid)
+                    CALL get_window_string(parentid, window_name)
+                    parent_node = catalyst_conduit_node_fetch(nest_node, &
+                        "windows/"//window_name)
+                    CALL catalyst_conduit_node_set_path_int32(parent_node, &
+                        "domain_id", parentid)
+                    CALL catalyst_conduit_node_set_path_char8_str(parent_node, &
+                        "domain_type", "parent")
+                    
+                    CALL get_mgdims(parent_kk, parent_jj, parent_ii, parentid)
+                    CALL get_bbox(parent_minx, parent_maxx, parent_miny, parent_maxy, parent_minz, parent_maxz, parentid)
+                    parent_dx = round_to_n_decimals((parent_maxx - parent_minx) / (parent_ii - 4), 7)
+                    parent_dy = round_to_n_decimals((parent_maxy - parent_miny) / (parent_jj - 4), 7)
+                    parent_dz = round_to_n_decimals((parent_maxz - parent_minz) / (parent_kk - 4), 7)
+                    CALL catalyst_conduit_node_set_path_int32(parent_node, &
+                        "origin/i", 0)
+                    CALL catalyst_conduit_node_set_path_int32(parent_node, &
+                        "origin/j", 0)
+                    CALL catalyst_conduit_node_set_path_int32(parent_node, &
+                        "origin/k", 0)
+                    CALL catalyst_conduit_node_set_path_int32(parent_node, &
+                        "dims/i", parent_ii - 1 + 4)
+                    CALL catalyst_conduit_node_set_path_int32(parent_node, &
+                        "dims/j", parent_jj - 1 + 4)
+                    CALL catalyst_conduit_node_set_path_int32(parent_node, &
+                        "dims/k", parent_kk - 1 + 4)
+                    CALL catalyst_conduit_node_set_path_int32(parent_node, &
+                        "ratio/i", INT(parent_dx / dx, intk))
+                    CALL catalyst_conduit_node_set_path_int32(parent_node, &
+                        "ratio/j", INT(parent_dy / dy, intk))
+                    CALL catalyst_conduit_node_set_path_int32(parent_node, &
+                        "ratio/k", INT(parent_dz / dz, intk))
+                END IF
+                ! Grids with at least one child
+                IF (ilvl < maxlevel) THEN
+                    CALL get_children(igrid, childarray, nchild)
+
+                    DO igrdchild = 1, nchild
+                        ichild = childarray(igrdchild)
+                        CALL get_window_string(ichild, window_name)
+                        child_node = catalyst_conduit_node_fetch(nest_node, &
+                            "windows/"//window_name)
+                        CALL catalyst_conduit_node_set_path_int32(child_node, &
+                            "domain_id", ichild)
+                        CALL catalyst_conduit_node_set_path_char8_str(child_node, &
+                            "domain_type", "child")
+                        
+                        CALL get_mgdims(child_kk, child_jj, child_ii, ichild)
+                        CALL get_bbox(child_minx, child_maxx, child_miny, child_maxy, child_minz, child_maxz, ichild)
+                        child_dx = round_to_n_decimals((child_maxx - child_minx) / (child_ii - 4), 7)
+                        child_dy = round_to_n_decimals((child_maxy - child_miny) / (child_jj - 4), 7)
+                        child_dz = round_to_n_decimals((child_maxz - child_minz) / (child_kk - 4), 7)
+                        CALL catalyst_conduit_node_set_path_int32(child_node, &
+                                "origin/i", 0)
+                        CALL catalyst_conduit_node_set_path_int32(child_node, &
+                                "origin/j", 0)
+                        CALL catalyst_conduit_node_set_path_int32(child_node, &
+                                "origin/k", 0)
+                        CALL catalyst_conduit_node_set_path_int32(child_node, &
+                                "dims/i", child_ii - 1 + 4)
+                        CALL catalyst_conduit_node_set_path_int32(child_node, &
+                                "dims/j", child_ii - 1 + 4)
+                        CALL catalyst_conduit_node_set_path_int32(child_node, &
+                                "dims/k", child_ii - 1 + 4)
+                        CALL catalyst_conduit_node_set_path_int32(child_node, &
+                                "ratio/i", INT(dx / child_dx, intk))
+                        CALL catalyst_conduit_node_set_path_int32(child_node, &
+                                "ratio/j", INT(dy / child_dy, intk))
+                        CALL catalyst_conduit_node_set_path_int32(child_node, &
+                                "ratio/k", INT(dz / child_dz, intk))
+                    END DO
+                END IF
+                
                 ! Grid fields
                 fields_node = catalyst_conduit_node_fetch(grid_node, "fields")
                 nval = (ii - 4) * (jj - 4) * (kk - 4)
@@ -161,7 +260,7 @@ CONTAINS
                     CALL catalyst_conduit_node_set_path_char8_str(field_node, &
                         "association", "element")
                     CALL catalyst_conduit_node_set_path_char8_str(field_node, &
-                        "topology", "mesh")
+                        "topology", "topo")
                     CALL catalyst_conduit_node_set_path_char8_str(field_node, &
                         "volume_dependent", "false")
                     CALL catalyst_conduit_node_set_path_external_float32_ptr( &
@@ -169,6 +268,8 @@ CONTAINS
                 END DO
             END DO
         END DO
+
+        CALL catalyst_conduit_node_print(exec_node)
 
         CALL start_timer(813)
         err = c_catalyst_execute(exec_node)
@@ -304,6 +405,14 @@ CONTAINS
         WRITE(temp_string, '(I8.8)') igrid
         output_string = 'grid_'//temp_string
     END SUBROUTINE igrid_to_string
+
+    SUBROUTINE get_window_string(parentid, output_string)
+        INTEGER, INTENT(in) :: parentid
+        CHARACTER(len=15), INTENT(out) :: output_string
+        CHARACTER(len=8) :: temp_string
+        WRITE(temp_string, '(I8.8)') parentid
+        output_string = 'window_'//temp_string
+    END SUBROUTINE get_window_string
 
     SUBROUTINE iscript_to_string(iscript, output_string)
         INTEGER, INTENT(in) :: iscript
