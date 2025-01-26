@@ -197,11 +197,11 @@ CONTAINS
                     CALL catalyst_conduit_node_set_path_int32(parent_node, &
                         "origin/k", 0)
                     CALL catalyst_conduit_node_set_path_int32(parent_node, &
-                        "dims/i", parent_ii - 1 + 4)
+                        "dims/i", 0)
                     CALL catalyst_conduit_node_set_path_int32(parent_node, &
-                        "dims/j", parent_jj - 1 + 4)
+                        "dims/j", 0)
                     CALL catalyst_conduit_node_set_path_int32(parent_node, &
-                        "dims/k", parent_kk - 1 + 4)
+                        "dims/k", 0)
                     CALL catalyst_conduit_node_set_path_int32(parent_node, &
                         "ratio/i", INT(parent_dx / dx, intk))
                     CALL catalyst_conduit_node_set_path_int32(parent_node, &
@@ -235,11 +235,11 @@ CONTAINS
                         CALL catalyst_conduit_node_set_path_int32(child_node, &
                                 "origin/k", 0)
                         CALL catalyst_conduit_node_set_path_int32(child_node, &
-                                "dims/i", child_ii - 1 + 4)
+                                "dims/i", 0)
                         CALL catalyst_conduit_node_set_path_int32(child_node, &
-                                "dims/j", child_ii - 1 + 4)
+                                "dims/j", 0)
                         CALL catalyst_conduit_node_set_path_int32(child_node, &
-                                "dims/k", child_ii - 1 + 4)
+                                "dims/k", 0)
                         CALL catalyst_conduit_node_set_path_int32(child_node, &
                                 "ratio/i", INT(dx / child_dx, intk))
                         CALL catalyst_conduit_node_set_path_int32(child_node, &
