@@ -40,7 +40,7 @@ MODULE particle_list_mod
 
     INTEGER(intk) :: global_np
 
-    PUBLIC :: my_particle_list
+    PUBLIC :: global_np, my_particle_list
 
 CONTAINS    !===================================
 
@@ -56,10 +56,25 @@ CONTAINS    !===================================
 
         my_particle_list%iproc = myid
 
+        IF (myid == 0) THEN
+            IF (TRIM(particle_terminal) == "normal" .OR. TRIM(particle_terminal) == "verbose") THEN
+                WRITE(*, '("INITIALIZING PARTICLE(S): ")')
+                WRITE(*, '()')
+            END IF
+        END IF
+
         ! TODO: restructure the way h5 list reading is done (or right away generally restructure particle initialization)
         IF (dread_particles_h5) THEN
             my_particle_list%max_np = plist_len
             ALLOCATE(my_particle_list%particles(plist_len))
+
+            IF (myid == 0) THEN
+                IF (TRIM(particle_terminal) == "normal" .OR. TRIM(particle_terminal) == "verbose") THEN
+                    WRITE(*, '("INITIALIZATION OF ", I0, " PARTICLE(S) SUCCESSFULLY COMPLETED.")') global_np
+                    WRITE(*, '()')
+                END IF
+            END IF
+
             CALL stop_timer(910)
             CALL stop_timer(900)
             RETURN
@@ -70,13 +85,11 @@ CONTAINS    !===================================
             ! all arguments that are passed as particle list attributes are input only
             CALL read_particles(dread_particles_dict, ipart_arr, igrid_arr, x_arr, y_arr, z_arr, read_np)
 
-            CALL MPI_Allreduce(read_np, global_np, 1, mglet_mpi_int, MPI_SUM, MPI_COMM_WORLD)
-
             IF (dread_particles_dict) THEN
 
                 IF (myid == 0) THEN
                     IF (TRIM(particle_terminal) == "normal" .OR. TRIM(particle_terminal) == "verbose") THEN
-                        WRITE(*, '("INITIALIZING ", I0, " PARTICLE(S):")') global_np
+                        WRITE(*,'("Reading Particles from ParticleDict.txt file.")')
                         WRITE(*, '()')
                     END IF
                 END IF
@@ -101,6 +114,8 @@ CONTAINS    !===================================
 
                 my_particle_list%ifinal = my_particle_list%active_np
 
+                CALL MPI_Allreduce(my_particle_list%active_np, global_np, 1, mglet_mpi_int, MPI_SUM, MPI_COMM_WORLD)
+
             END IF
 
             DEALLOCATE(ipart_arr)
@@ -115,7 +130,7 @@ CONTAINS    !===================================
 
             IF (myid == 0) THEN
                 IF (TRIM(particle_terminal) == "normal" .OR. TRIM(particle_terminal) == "verbose") THEN
-                    WRITE(*, '("INITIALIZING PARTICLE(S): ")')
+                    WRITE(*,'("Generating homogeneously distributed Particles.")')
                     WRITE(*, '()')
                 END IF
             END IF
@@ -173,7 +188,7 @@ CONTAINS    !===================================
 
         IF (myid == 0) THEN
             IF (TRIM(particle_terminal) == "normal" .OR. TRIM(particle_terminal) == "verbose") THEN
-                WRITE(*, '("INITIALIZATION OF PARTICLE(S) SUCCESSFULLY COMPLETED.")')
+                WRITE(*, '("INITIALIZATION OF ", I0, " PARTICLE(S) SUCCESSFULLY COMPLETED.")') global_np
                 WRITE(*, '()')
             END IF
         END IF

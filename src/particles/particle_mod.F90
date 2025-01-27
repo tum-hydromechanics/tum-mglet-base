@@ -92,9 +92,6 @@ CONTAINS
             CALL init_particle_list()
 
             IF (dread_particles_h5) THEN
-                IF (myid == 0) THEN
-                    WRITE(*,*) "Reading the particles"
-                END IF
                 CALL read_particles_h5("particles.h5")
             END IF
 
