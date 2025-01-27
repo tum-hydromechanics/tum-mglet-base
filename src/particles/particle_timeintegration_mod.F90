@@ -24,32 +24,63 @@ CONTAINS
         ! init rk scheme
         CALL prkscheme%init(prkmethod)
 
-        IF (dturb_diff) THEN
-            IF (solve_flow) THEN
+        IF (solve_flow) THEN
+            IF (dturb_diff) THEN
                 WRITE(*, *) "Running a Particle Simulation with turbulent Diffusivity while solving Flow is not recommended."
                 CALL errr(__FILE__, __LINE__)
             END IF
+        ELSE
+            IF (dturb_diff) THEN
+                BLOCK
+                    TYPE(field_t), POINTER :: pwu_avg_f, pwv_avg_f, pww_avg_f
+                    TYPE(field_t), POINTER :: u_avg_f, v_avg_f, w_avg_f
 
-            BLOCK
-                TYPE(field_t), POINTER :: pwu_avg_f, pwv_avg_f, pww_avg_f
-                TYPE(field_t), POINTER :: u_avg_f, v_avg_f, w_avg_f
+                    CALL set_field("PWU_AVG", istag=1, buffers=.TRUE.)
+                    CALL set_field("PWV_AVG", jstag=1, buffers=.TRUE.)
+                    CALL set_field("PWW_AVG", kstag=1, buffers=.TRUE.)
 
-                CALL set_field("PWU_AVG", istag=1, buffers=.TRUE.)
-                CALL set_field("PWV_AVG", jstag=1, buffers=.TRUE.)
-                CALL set_field("PWW_AVG", kstag=1, buffers=.TRUE.)
+                    CALL get_field(pwu_avg_f, "PWU_AVG")
+                    CALL get_field(pwv_avg_f, "PWV_AVG")
+                    CALL get_field(pww_avg_f, "PWW_AVG")
 
-                CALL get_field(pwu_avg_f, "PWU_AVG")
-                CALL get_field(pwv_avg_f, "PWV_AVG")
-                CALL get_field(pww_avg_f, "PWW_AVG")
+                    CALL get_field(u_avg_f, "U_AVG")
+                    CALL get_field(v_avg_f, "V_AVG")
+                    CALL get_field(w_avg_f, "W_AVG")
 
-                CALL get_field(u_avg_f, "U_AVG")
-                CALL get_field(v_avg_f, "V_AVG")
-                CALL get_field(w_avg_f, "W_AVG")
+                    CALL setpointvalues(pwu_avg_f, pwv_avg_f, pww_avg_f, u_avg_f, v_avg_f, w_avg_f, .TRUE.)
+                END BLOCK
+            ELSE
+                BLOCK
+                    TYPE(field_t), POINTER :: pwu_f, pwv_f, pww_f
+                    TYPE(field_t), POINTER :: u_f, v_f, w_f
+                    
+                    SELECT TYPE(ib)
+                    TYPE IS (gc_t)
+                        CALL create_flowstencils(ib)
+                        CALL set_field("PWU", istag=1, buffers=.TRUE.)
+                        CALL set_field("PWV", jstag=1, buffers=.TRUE.)
+                        CALL set_field("PWW", kstag=1, buffers=.TRUE.)
+                        
+                        WRITE(*, *) "set_field done..."
 
-                CALL setpointvalues(pwu_avg_f, pwv_avg_f, pww_avg_f, u_avg_f, v_avg_f, w_avg_f, .TRUE.)
-            END BLOCK
+                        CALL get_field(pwu_f, "PWU")
+                        CALL get_field(pwv_f, "PWV")
+                        CALL get_field(pww_f, "PWW")
+                        WRITE(*, *) "PW get_field done..."
 
+                        CALL get_field(u_f, "U")
+                        CALL get_field(v_f, "V")
+                        CALL get_field(w_f, "W")
+                        
+                        WRITE(*, *) "get_field done..."
+
+                        CALL setpointvalues(pwu_f, pwv_f, pww_f, u_f, v_f, w_f, .TRUE.)
+                    END SELECT
+                END BLOCK
+                WRITE(*, *) "Setting velocity point values for particle simulation done..."
+            END IF
         END IF
+        
         CALL stop_timer(910)
         CALL stop_timer(900)
 
