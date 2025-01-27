@@ -1,10 +1,10 @@
 {
     "time": {
         "mtstep": 10000,
-        "dt": 0.01,
+        "dt": 0.001,
         "tend": 100.0,
-        "itinfo": 10,
-        "itcheck": 10
+        "itinfo": 100,
+        "itcheck": 100
     },
     "io": {
         "grids": "particle_grids.h5",
@@ -19,7 +19,7 @@
     	"solve": false,
         "gmol": 0.01,
         "rho": 1.0,
-        "uinf": [-1.0, 0.0, 0.0],
+        "uinf": [-0.8, 0.0, 0.0],
         "gradp": [0.0, 0.0, 0.0],
         "pressuresolver": {
             "type": "sip",
@@ -52,7 +52,7 @@
         "dread_part_dict": false,
         "dwrite_part_h5": true,
         "terminal": "normal",
-        "snapshot_step": 50,
+        "snapshot_step": 1000,
        	"snapshot_npart": 1000,
         "init_npart": 10000,
         "list_length": 10000,
@@ -63,11 +63,17 @@
         "truncation_limit": 2.0,
         "D":[0.004, 0.004, 0.004],
         "dgridstat": true,
-	    "rt_ittot_start": 1000,
-	    "rt_tstep_max": 9000,
+	    "rt_ittot_start": 10000,
+	    "rt_tstep_max": 90000,
+        "tdx_step_range": [-50, 50],
+        "tdy_step_range": [-1000, 1000],
+        "tdz_step_range": [-1000, 1000],
+        "avu_step_range": [-10, 10],
+        "avv_step_range": [-10, 10],
+        "avw_step_range": [-10, 10],
         "slice_direction": "X",
-        "nslice_levels": 2,
-        "nslices": [1, 5],
-        "slice_levels": [0.5, 0.5]
+        "nslice_levels": 5,
+        "nslices": [1, 1, 1, 1, 1],
+        "slice_levels": [0.015, 0.100, 0.185, 0.2, 0.5]
     }
 }
