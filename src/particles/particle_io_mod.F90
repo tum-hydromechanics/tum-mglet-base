@@ -1,8 +1,11 @@
 MODULE particle_io_mod
 
     USE HDF5
+    USE MPI_f08
+    USE comms_mod
     USE core_mod
     USE stencilio_mod
+
     USE particle_list_mod
 
     IMPLICIT NONE(type, external)
@@ -50,10 +53,20 @@ CONTAINS
         ! Local variables
         INTEGER(hid_t) :: file_id
 
+        IF (myid == 0) THEN
+            IF (TRIM(particle_terminal) == "normal" .OR. TRIM(particle_terminal) == "verbose") THEN
+                WRITE(*,'("Reading Particles from particles.h5 file.")')
+                WRITE(*, '()')
+            END IF
+        END IF
+
         ! Function body
         CALL hdf5common_open(filename, 'r', file_id)
         CALL read_particles_list(file_id, my_particle_list)
         CALL hdf5common_close(file_id)
+
+        ! global_np is the number of particles amongst all processes, held by the particle list module
+        CALL MPI_Allreduce(my_particle_list%active_np, global_np, 1, mglet_mpi_int, MPI_SUM, MPI_COMM_WORLD)
 
     END SUBROUTINE read_particles_h5
 
