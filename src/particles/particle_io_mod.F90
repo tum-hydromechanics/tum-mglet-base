@@ -246,6 +246,14 @@ CONTAINS
         DEALLOCATE(y_lists)
         DEALLOCATE(z_lists)
 
+        DEALLOCATE(x_abs_lists)
+        DEALLOCATE(y_abs_lists)
+        DEALLOCATE(z_abs_lists)
+
+        DEALLOCATE(x_sentry_lists)
+        DEALLOCATE(y_sentry_lists)
+        DEALLOCATE(z_sentry_lists)
+
     END SUBROUTINE write_particles_list
 
 
@@ -393,6 +401,14 @@ CONTAINS
         DEALLOCATE(x_lists)
         DEALLOCATE(y_lists)
         DEALLOCATE(z_lists)
+
+        DEALLOCATE(x_abs_lists)
+        DEALLOCATE(y_abs_lists)
+        DEALLOCATE(z_abs_lists)
+
+        DEALLOCATE(x_sentry_lists)
+        DEALLOCATE(y_sentry_lists)
+        DEALLOCATE(z_sentry_lists)
 
     END SUBROUTINE read_particles_list
 
