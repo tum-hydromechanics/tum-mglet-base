@@ -840,8 +840,10 @@ CONTAINS
         INTEGER(int32) :: blocklen(particle_mpi_elems)
         TYPE(MPI_Datatype) :: types(particle_mpi_elems)
         TYPE(MPI_Datatype) :: triple_int_mpi_type
+        TYPE(MPI_Datatype) :: triple_real_mpi_type
 
         CALL MPI_Type_contiguous(3, mglet_mpi_int, triple_int_mpi_type)
+        CALL MPI_Type_contiguous(3, mglet_mpi_real, triple_real_mpi_type)
 
         CALL MPI_Get_address(foo%state, disp(1))
         ! JULIUS: isnt the following disp declaration unnessecary?
@@ -855,6 +857,7 @@ CONTAINS
         CALL MPI_Get_address(foo%x, disp(9))
         CALL MPI_Get_address(foo%y, disp(10))
         CALL MPI_Get_address(foo%z, disp(11))
+        CALL MPI_Get_address(foo%xyz_abs, disp(12))
 
         types(1) = mglet_mpi_int    ! state
         types(2) = mglet_mpi_int    ! ipart
@@ -867,6 +870,7 @@ CONTAINS
         types(9) = mglet_mpi_real     ! x
         types(10) = mglet_mpi_real    ! y
         types(11) = mglet_mpi_real    ! z
+        types(12) = triple_real_mpi_type ! xyz_abs
 
         ! computing the displacements in byte
         base = disp(1)

@@ -12,7 +12,7 @@ MODULE particle_core_mod
 
     IMPLICIT NONE
 
-    INTEGER(c_intk), PARAMETER :: particle_mpi_elems = 11
+    INTEGER(c_intk), PARAMETER :: particle_mpi_elems = 12
 
     ! C binding for MPI compatability!
     TYPE, BIND(C) :: baseparticle_t
@@ -43,6 +43,9 @@ MODULE particle_core_mod
         REAL(c_realk) :: y = 0.0
         REAL(c_realk) :: z = 0.0
 
+        ! absolute coordinates
+        REAL(c_realk) :: xyz_abs(3) = 0.0
+
     END TYPE baseparticle_t
 
     PUBLIC :: set_particle, set_particle_igrid, set_particle_cell, &
@@ -68,6 +71,9 @@ CONTAINS
         particle%x = x
         particle%y = y
         particle%z = z
+        particle%xyz_abs(1) = x
+        particle%xyz_abs(2) = y
+        particle%xyz_abs(3) = z
 
         IF (PRESENT(iproc)) THEN
             particle%iproc = iproc

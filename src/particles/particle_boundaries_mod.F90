@@ -409,9 +409,9 @@ MODULE particle_boundaries_mod
         particle%y = particle%y + dy_eff
         particle%z = particle%z + dz_eff
 
-        !particle%xyz_abs(1) = particle%xyz_abs(1) + dx_eff
-        !particle%xyz_abs(2) = particle%xyz_abs(2) + dy_eff
-        !particle%xyz_abs(3) = particle%xyz_abs(3) + dz_eff
+        particle%xyz_abs(1) = particle%xyz_abs(1) + dx_eff
+        particle%xyz_abs(2) = particle%xyz_abs(2) + dy_eff
+        particle%xyz_abs(3) = particle%xyz_abs(3) + dz_eff
 
         CALL update_particle_cell(particle)
 
