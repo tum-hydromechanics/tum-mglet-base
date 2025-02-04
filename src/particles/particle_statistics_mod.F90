@@ -467,9 +467,9 @@ CONTAINS
 
             WRITE(*, '("Slice Statistics Collector of Length ", I0, " allocated on Proccess ", I0)') SIZE(my_slicecol_list), myid
 
-            !DO i = 1, SIZE(my_slicecol_list)
-            !    WRITE(*, '("Slice ", I0, " activity: ", L2)') i, my_slicecol_list(i)%is_active
-            !END DO
+            DO i = 1, SIZE(my_slicecol_list)
+                WRITE(*, '("Slice ", I0, " activity: ", L2)') i, my_slicecol_list(i)%is_active
+            END DO
 
             WRITE(*, '()')
 
@@ -547,7 +547,9 @@ CONTAINS
 
         CALL start_timer(950)
 
-        IF (particle%islice < 1 .OR. particle%islice > SIZE(my_slicecol_list)) CALL errr(__FILE__, __LINE__)
+        IF (particle%islice < 1 .OR. particle%islice > SIZE(my_slicecol_list)) THEN
+            CALL errr(__FILE__, __LINE__)
+        END IF
 
         SELECT CASE(slice_dir)
             CASE("X")
@@ -558,7 +560,8 @@ CONTAINS
                     p_coord = particle%z
         END SELECT
 
-        IF (p_coord < my_slicecol_list(particle%islice)%llim) THEN
+        IF (p_coord < my_slicecol_list(particle%islice)%llim .OR. &
+         p_coord > my_slicecol_list(particle%islice)%ulim) THEN
 
             IF (ittot >= rt_ittot_start) THEN
                 IF (particle%sitstep >= 0) THEN
@@ -571,29 +574,48 @@ CONTAINS
             END IF
 
             IF (particle%islice == 1) THEN
-                particle%islice = SIZE(my_slicecol_list)
-            ELSE
-                particle%islice = particle%islice - 1
-            END IF
-
-        ELSEIF (p_coord > my_slicecol_list(particle%islice)%ulim) THEN
-
-            IF (ittot >= rt_ittot_start) THEN
-                IF (particle%sitstep >= 0) THEN
-                    CALL register_slicestat(particle, ittot)
+                IF (p_coord <= my_slicecol_list(SIZE(my_slicecol_list))%ulim .AND. &
+                 p_coord >= my_slicecol_list(SIZE(my_slicecol_list))%llim) THEN
+                    particle%islice = SIZE(my_slicecol_list)
+                ELSEIF (p_coord <= my_slicecol_list(particle%islice + 1)%ulim .AND. &
+                 p_coord >= my_slicecol_list(particle%islice + 1)%llim) THEN
+                    particle%islice = particle%islice + 1
+                ELSE
+                    WRITE(*, '("ERRROR on proc ", I0, ": Could not assign new slice to particle  ", I0)') &
+                     myid, particle%ipart
+                    CALL errr(__FILE__,__LINE__)
                 END IF
-                particle%sitstep = ittot
-                particle%xyz_sentry(1) = particle%xyz_abs(1)
-                particle%xyz_sentry(2) = particle%xyz_abs(2)
-                particle%xyz_sentry(3) = particle%xyz_abs(3)
-            END IF
-
-            IF (particle%islice == SIZE(my_slicecol_list)) THEN
-                particle%islice = 1
+            ELSEIF (particle%islice == SIZE(my_slicecol_list)) THEN
+                IF (p_coord <= my_slicecol_list(1)%ulim .AND. &
+                 p_coord >= my_slicecol_list(1)%llim) THEN
+                    particle%islice = 1
+                ELSEIF (p_coord <= my_slicecol_list(particle%islice - 1)%ulim .AND. &
+                 p_coord >= my_slicecol_list(particle%islice - 1)%llim) THEN
+                    particle%islice = particle%islice - 1
+                ELSE
+                    WRITE(*, '("ERRROR on proc ", I0, ": Could not assign new slice to particle  ", I0)') &
+                     myid, particle%ipart
+                    CALL errr(__FILE__,__LINE__)
+                END IF
             ELSE
-                particle%islice = particle%islice + 1
+                IF (p_coord <= my_slicecol_list(particle%islice + 1)%ulim .AND. &
+                 p_coord >= my_slicecol_list(particle%islice + 1)%llim) THEN
+                    particle%islice = particle%islice + 1
+                ELSEIF (p_coord <= my_slicecol_list(particle%islice - 1)%ulim .AND. &
+                 p_coord >= my_slicecol_list(particle%islice - 1)%llim) THEN
+                    particle%islice = particle%islice - 1
+                ELSE
+                    WRITE(*, '("ERRROR on proc ", I0, ": Could not assign new slice to particle  ", I0)') &
+                     myid, particle%ipart
+                    CALL errr(__FILE__,__LINE__)
+                END IF
             END IF
+        END IF
 
+        IF (.NOT. my_slicecol_list(particle%islice)%is_active) THEN
+            WRITE(*, '("ERRROR on proc ", I0, ": Particle ", I0, " was assigned to inactive slice!")') &
+             myid, particle%ipart
+            CALL errr(__FILE__, __LINE__)
         END IF
 
         my_slicecol_list(particle%islice)%np_counter(itstep + 1) = &

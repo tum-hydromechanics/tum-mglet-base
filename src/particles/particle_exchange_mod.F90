@@ -160,11 +160,6 @@ CONTAINS
                 CYCLE
             END IF
 
-            ! for particle slice statistics (must be called before update_coordinates !!!)
-            CALL stop_timer(940)
-            CALL associate_new_slice(particle_list%particles(i), ittot, itstep)
-            CALL start_timer(940)
-
             ! setting the destination of particle (quo vadis, particle?)
             CALL get_target_grid(particle_list%particles(i), destgrid, destproc, iface)
 
@@ -176,6 +171,12 @@ CONTAINS
             ! coordinate manipulation of particles passing periodic boundaries
             ! (at this point igrid is still NOT updated, meaning particle%igrid is still the "old" grid)
             CALL update_coordinates(particle_list%particles(i), destgrid, iface)
+
+            ! for particle slice statistics (must be called after update_coordinates !!!
+            ! as opposed to older versions)
+            CALL stop_timer(940)
+            CALL associate_new_slice(particle_list%particles(i), ittot, itstep)
+            CALL start_timer(940)
 
             ! triage of particles
             IF (particle_list%particles(i)%igrid == destgrid) THEN
