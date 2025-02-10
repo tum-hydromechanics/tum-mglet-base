@@ -85,7 +85,7 @@ CONTAINS
         REAL(realk) :: child_minx, child_maxx, child_miny, child_maxy, &
             child_minz, child_maxz, child_dx, child_dy, child_dz
         REAL(realk), POINTER, CONTIGUOUS, DIMENSION(:) :: field_ptr
-        CHARACTER(len=13) :: grid_name
+        CHARACTER(len=22) :: grid_name
         CHARACTER(len=15) :: window_name
         TYPE(field_t), POINTER :: field
 
@@ -269,7 +269,7 @@ CONTAINS
             END DO
         END DO
 
-        CALL catalyst_conduit_node_print(exec_node)
+        !CALL catalyst_conduit_node_print(exec_node)
 
         CALL start_timer(813)
         err = c_catalyst_execute(exec_node)
@@ -399,11 +399,12 @@ CONTAINS
     END SUBROUTINE finish_catalyst
 
     SUBROUTINE igrid_to_string(igrid, output_string)
-        INTEGER, INTENT(in) :: igrid
-        CHARACTER(len=13), INTENT(out) :: output_string
-        CHARACTER(len=8) :: temp_string
-        WRITE(temp_string, '(I8.8)') igrid
-        output_string = 'grid_'//temp_string
+        INTEGER, INTENT(in)              :: igrid
+        CHARACTER(len=22), INTENT(out)   :: output_string
+        CHARACTER(len=8)                 :: temp_string_igrid, temp_string_myid
+        WRITE(temp_string_igrid, '(I8.8)') igrid
+        WRITE(temp_string_myid,  '(I8.8)') myid
+        output_string = 'grid_' // temp_string_igrid // '_' // temp_string_myid
     END SUBROUTINE igrid_to_string
 
     SUBROUTINE get_window_string(parentid, output_string)
