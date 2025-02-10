@@ -14,6 +14,16 @@ MODULE bound_scalar_mod
 
     PUBLIC :: bound_sca
 CONTAINS
+    !> @brief Applies boundary conditions to scalar field
+    !!
+    !! Subroutine is specifically resigned to apply boundary conditions to scalar fluxes that "live" on the target device.
+    !! Thus, in the actual computation, we can only use data available on the target device.
+    !! All parameters "ilevel", "t_f" and "timeph" are actually unused in this module and only kept to resemble the
+    !! old interface more closely and provide a starting point for a more robust implementation.
+    !!
+    !! @param[in] ilevel Grid-level index
+    !! @param[in] t_f    Scalar field
+    !! @param[in] timeph size if the array
     SUBROUTINE bound_sca(ilevel, t_f, timeph)
         ! Subroutine arguments
         INTEGER(intk), INTENT(in) :: ilevel
