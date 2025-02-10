@@ -219,7 +219,19 @@ CONTAINS
         CALL stop_timer(410)
     END SUBROUTINE tstsca4
 
-
+    !> @brief Kernel function to timeintegrate a scalar field for a specific grid
+    !!
+    !! It is executed on a target-device per-grid basis, meaning one grid is processed at a time.
+    !!
+    !! @param[in] kk, jj, ii    Grid-specific dimensions in the z, y, and x directions
+    !! @param[in] sca_prmol      Scalar field specific value of prmol
+    !! @param[in] sca_kayscrawford Scalar field specific value of kayscrawford
+    !! @param[in] sca_prturb    Scalar field-specific turbulent Prandtl number
+    !! @param[in] nfro, nbac, nrgt, nlft, nbot, ntop Number of boundary cells in each direction
+    !! @param[in] ilesmodel_offlad Encoded index of the Large Eddy Simulation (LES) model
+    !! @param[in] gmol_offload  Flow parameter gmol on target device
+    !! @param[in] rho_offload   Flow parameter rho on target device
+    !! @param[in] igrid         Grid index being processed
     SUBROUTINE tstsca4_grid(kk, jj, ii, &
             sca_prmol, sca_kayscrawford, sca_prturb, nfro, nbac, nrgt, nlft, &
             nbot, ntop, ilesmodel_offlad, gmol_offload, rho_offload, igrid)  
@@ -260,6 +272,10 @@ CONTAINS
         iles = 1
         IF (ilesmodel_offlad == 0) iles = 0
 
+        !! Create the parallel region for per-grid parallelization
+        !! All GPU threads work on a single grid simultaneously
+        !! The execution moves sequentially from one grid to another.
+        !! Repeat this for the X, Y and Z direction
         
         ! X direction
         !$omp target data map(to: gsca)
@@ -269,6 +285,7 @@ CONTAINS
             REAL(realk), POINTER, CONTIGUOUS, DIMENSION(:, :, :) :: t, u, bt, qtu
             REAL(realk), POINTER, CONTIGUOUS, DIMENSION(:) :: ddy, ddz, rdx
 
+            ! Get grid-specific data required for the computation
             CALL ptr_to_grid3(qtu_offload, igrid, qtu)
             CALL ptr_to_grid3(g_offload, igrid, g)
             CALL ptr_to_grid3(t_offload, igrid, t)
@@ -469,6 +486,14 @@ CONTAINS
 
     END SUBROUTINE tstsca4_grid
 
+    !> @brief Calculation of local turbulent Prandtl number
+    !!
+    !! Target device ready implementation mirroring the prt Function in scacore_mod.
+    !!
+    !! @param[in] sca_prmol        Scalar-field specific prmol
+    !! @param[in] sca_kayscrawford Scalar-field specific kayscrawford
+    !! @param[in] sca_prturb       Scalar-field specific prturb
+    !! @return     Local turbulent Prandtl number
     FUNCTION sca_prt(sca_prmol, sca_kayscrawford, sca_prturb, sca_gtgmol) RESULT(res)
         !$omp declare target
         REAL(realk), INTENT(IN) :: sca_prmol, sca_prturb, sca_gtgmol
