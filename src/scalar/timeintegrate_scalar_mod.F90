@@ -220,7 +220,8 @@ CONTAINS
     END SUBROUTINE tstsca4
 
     !> @brief Kernel function to timeintegrate a scalar field for a specific grid
-    !!
+    !! 
+    !! This whole function shall be executed on the target device.
     !! It is executed on a target-device per-grid basis, meaning one grid is processed at a time.
     !!
     !! @param[in] kk, jj, ii    Grid-specific dimensions in the z, y, and x directions
@@ -536,6 +537,13 @@ CONTAINS
         CALL stop_timer(411)
     END SUBROUTINE fluxbalance
 
+    !> @brief Kernel function for fluxbalance on a specific grid.
+    !!
+    !! This subroutine computes the net flux resulting from neighboring grid cells.
+    !!  This whole function shall be executed on the target device.
+    !!
+    !! @param[in] kk, jj, ii  Grid-specific dimensions in the z, y, and x directions
+    !! @param[in] igrid        Grid index being processed
     SUBROUTINE fluxbalance_grid(kk, jj, ii, igrid)
         ! Subroutine arguments
         INTEGER(intk), INTENT(IN) :: kk, jj, ii, igrid
