@@ -36,6 +36,9 @@ CONTAINS
         sca_prmol = scalar(ISCA_FIELD)%prmol
 
         ! Simplification: Only BCs on the same level are handled, ilevel is unused
+        ! Offloading this loop is not performance critical, but only provides the benefit that we don't have to send
+        ! back the scalar fluxes back to the host. Thus, the following loop distributes a loop over all grids to teams
+        ! on the target device.
         !$omp target teams distribute
         DO igrid = 1, nmygrids
             DO iface = 1, 6
@@ -56,6 +59,19 @@ CONTAINS
         !$omp end target teams distribute
     END SUBROUTINE bound_sca
 
+    !> @brief Applies boundary conditions to front/back of a specific grid
+    !!
+    !! Actual application of boundary condition is HEAVILY simplified for this study.
+    !! SIMPLIFICATION: Only Fixed scalar value (inflow/outflow) BC = "SIO"
+    !!
+    !! @param[in] igrid        Grid index
+    !! @param[in] iface        Face index
+    !! @param[in] ctyp_encoded Encoded boundary condition type
+    !! @param[in] t_f          Scalar field (unused)
+    !! @param[in] sca_prmol    Scalar field specific prmol
+    !! @param[in] gmol_offload Flow specific gmol available on target device
+    !! @param[in] rho_offload  Flow specific rho available on target device
+    !! @param[in] timeph       Time metric (unused)
     SUBROUTINE bfront(igrid, iface, ctyp_encoded, t_f, sca_prmol, gmol_offload, rho_offload, timeph)
         !$omp declare target
         ! Subroutine arguments
@@ -137,7 +153,19 @@ CONTAINS
         !$omp end parallel do
     END SUBROUTINE bfront
 
-
+    !> @brief Applies boundary conditions to right/left of a specific grid
+    !!
+    !! Actual application of boundary condition is HEAVILY simplified for this study.
+    !! SIMPLIFICATION: Only Wall BC = "SWA"
+    !!
+    !! @param[in] igrid        Grid index
+    !! @param[in] iface        Face index
+    !! @param[in] ctyp_encoded Encoded boundary condition type
+    !! @param[in] t_f          Scalar field (unused)
+    !! @param[in] sca_prmol    Scalar field specific prmol
+    !! @param[in] gmol_offload Flow specific gmol available on target device
+    !! @param[in] rho_offload  Flow specific rho available on target device
+    !! @param[in] timeph       Time metric (unused)
     SUBROUTINE bright(igrid, iface, ctyp_encoded, t_f, sca_prmol, gmol_offload, rho_offload, timeph)
         !$omp declare target
         ! Subroutine arguments
@@ -203,7 +231,19 @@ CONTAINS
         !$omp end parallel do
     END SUBROUTINE bright
 
-
+    !> @brief Applies boundary conditions to bottom/top of a specific grid
+    !!
+    !! Actual application of boundary condition is HEAVILY simplified for this study.
+    !! SIMPLIFICATION: Only Wall BC = "SWA"
+    !!
+    !! @param[in] igrid        Grid index
+    !! @param[in] iface        Face index
+    !! @param[in] ctyp_encoded Encoded boundary condition type
+    !! @param[in] t_f          Scalar field (unused)
+    !! @param[in] sca_prmol    Scalar field specific prmol
+    !! @param[in] gmol_offload Flow specific gmol available on target device
+    !! @param[in] rho_offload  Flow specific rho available on target device
+    !! @param[in] timeph       Time metric (unused)
     SUBROUTINE bbottom(igrid, iface, ctyp_encoded, t_f, sca_prmol, gmol_offload, rho_offload, timeph)
         !$omp declare target
         ! Subroutine arguments
