@@ -72,6 +72,10 @@ MODULE offload_helper_mod
         u_offload, v_offload, w_offload, t_offload, qtu_offload, qtv_offload, qtw_offload, qtt_offload, nboconds_offload
 
 CONTAINS
+    !> @brief Sets up field pointers for target device
+    !!
+    !! All field pointers required by the scalar computation are made available for use on the target device.
+    !! Includes both setting up a new pointer to fields and maps the data to the target device.
     SUBROUTINE offload_constants()        
         CALL map_grid_data()
         CALL map_constant_grid_fields()
@@ -80,6 +84,11 @@ CONTAINS
         CALL map_flow_sca()
     END SUBROUTINE offload_constants
 
+    !> @brief Sets up grid data for target device
+    !!
+    !! Sets up a custom data representation for mgdims suitable for mapping to the target device.
+    !! Sets up pointers to ip3d and ip1d.
+    !! Maps fields to the target device.
     SUBROUTINE map_grid_data()
         ! Local variables
         INTEGER(intk) :: igrid, i, mgdims_arr_size, kk, jj, ii
@@ -102,6 +111,11 @@ CONTAINS
         !$omp target enter data map(to: ip3d_offload, ip1d_offload, mgdims_offload)
     END SUBROUTINE
 
+    !> @brief Sets up boundary condition representation for target device
+    !!
+    !! Sets up a custom data representation for mgbasb suitable for mapping to the target device.
+    !! Sets up pointers to nboconds.
+    !! Maps fields to the target device.
     SUBROUTINE map_bc_data()
         ! Local variables
         INTEGER(intk) :: igrid, i, nfro, nbac, nrgt, nlft, nbot, ntop
@@ -125,6 +139,10 @@ CONTAINS
         !$omp target enter data map(to: nboconds_offload, mgbasb_offload)
     END SUBROUTINE
 
+    !> @brief Sets up constant grid fields for target device
+    !!
+    !! Sets up pointers to constant grid fields (e.g. spacings or derivatives in spatial directions).
+    !! Maps fields to the target device.
     SUBROUTINE map_constant_grid_fields()
         ! Local variables
         TYPE(field_t), POINTER :: rdx_f, rdy_f, rdz_f, rddx_f, rddy_f, rddz_f, dx_f, dy_f, dz_f, ddx_f, ddy_f, ddz_f, bt_f, g_f
@@ -169,6 +187,11 @@ CONTAINS
         !$omp& dx_offload, dy_offload, dz_offload, ddx_offload, ddy_offload, ddz_offload, bt_offload, g_offload)
     END SUBROUTINE
 
+    !> @brief Sets up flow fields for target device
+    !!
+    !! Sets up pointers to flow fields U, V, W, G and the first scalar field.
+    !! Sets up global fields to hold values of qtu, qtv and qtw to keep this data purely on the target device.
+    !! Maps fields to the target device.
     SUBROUTINE map_flow_sca()
         ! Local variables
         TYPE(field_t), POINTER :: u_f, v_f, w_f, sca_f
@@ -191,6 +214,11 @@ CONTAINS
         !$omp target enter data map(to: u_offload, v_offload, w_offload, t_offload, qtu_offload, qtv_offload, qtw_offload, qtt_offload)
     END SUBROUTINE
 
+    !> @brief Sets up boundary condition encoding for target device
+    !!
+    !! Sets up a custom data structure to map bc_ctyp to the target device.
+    !! This also requires a second bc_indexing field to index the encoded bc_ctyp field.
+    !! Maps fields to the target device.
     SUBROUTINE map_bc_encoding()
         ! Local variables
         INTEGER(intk) :: igrid, iface, ibocd, n_bo_conds, num_bcs, bc_counter, bctypid
@@ -223,6 +251,12 @@ CONTAINS
         !$omp target enter data map(to: encoded_ctyp_offload, bc_indexing)
     END SUBROUTINE
 
+    !> @brief Gets an encoded bc_ctyp on the target device
+    !!
+    !! @param[out] ctyp_encoded Integer encoding the bc_ctyp
+    !! @param[in]  ibocd        Boundary condition index
+    !! @param[in]  iface        Face index
+    !! @param[in]  igrid        Grid index
     SUBROUTINE get_encoded_ctyp_offload(ctyp_encoded, ibocd, iface, igrid)
         !$omp declare target
         INTEGER(intk), INTENT(out) :: ctyp_encoded
@@ -237,6 +271,10 @@ CONTAINS
         ctyp_encoded = encoded_ctyp_offload(istart + ibocd - 1)
     END SUBROUTINE
 
+    !> @brief Encodes a bc_ctyp
+    !!
+    !! @param[out] bctypid Integer encoding the bc_ctyp
+    !! @param[in]  ctyp    Character list describing boundary condition
     SUBROUTINE encode_bc_ctyp(bctypid, ctyp)
         INTEGER(intk), INTENT(OUT) :: bctypid
         CHARACTER(len=8), INTENT(IN) :: ctyp
@@ -264,6 +302,9 @@ CONTAINS
         END SELECT
     END SUBROUTINE encode_bc_ctyp
 
+    !> @brief Counts boundary conditions of all grids and faces
+    !!
+    !! @param[out] num_bc Number of total boundary conditions
     SUBROUTINE count_num_bc(num_bc)
         ! Subroutine arguments
         INTEGER(intk), INTENT(OUT) :: num_bc
@@ -280,6 +321,10 @@ CONTAINS
         END DO
     END SUBROUTINE count_num_bc
 
+    !> @brief Finish offloaded fields
+    !!
+    !! All newly allocated field pointers required by the scalar computation are deallocated.
+    !! Exits all fields on the target device
     SUBROUTINE finish_offload_constants()
         !$omp target exit data map(delete: mgdims_offload, ip3d_offload, ip1d_offload)
         !$omp target exit data map(delete: nboconds_offload, mgbasb_offload)
@@ -298,6 +343,15 @@ CONTAINS
         DEALLOCATE(encoded_ctyp_offload)
     END SUBROUTINE finish_offload_constants
 
+    !> @brief Get mgbasb
+    !!
+    !! Mirrors core get_mgbasb method but uses fields available on the target device
+    !! @param[out] nfro  Num front
+    !! @param[out] nrgt  Num right
+    !! @param[out] nlft  Num left
+    !! @param[out] nbot  Num bottom
+    !! @param[out] ntop  Num top
+    !! @param[in]  igrid Grid index
     SUBROUTINE get_mgbasb_target(nfro, nbac, nrgt, nlft, nbot, ntop, igrid)
         !$omp declare target
         INTEGER(intk), INTENT(OUT) :: nfro, nbac, nrgt, nlft, nbot, ntop
@@ -315,6 +369,13 @@ CONTAINS
         ntop = mgbasb_offload(i+5)
     END SUBROUTINE get_mgbasb_target
 
+    !> @brief Get mgdims - grid dimensions
+    !!
+    !! Mirrors core get_mgdims method but uses fields available on the target device
+    !! @param[out] kk    Z-direction dimensions
+    !! @param[out] jj    Y-direction dimensions
+    !! @param[out] ii    X-direction dimensions
+    !! @param[in]  igrid Grid index
     SUBROUTINE get_mgdims_target(kk, jj, ii, igrid)
         !$omp declare target
         INTEGER(intk), INTENT(OUT) :: kk, jj, ii
@@ -329,6 +390,11 @@ CONTAINS
         kk = mgdims_offload(i+2)
     END SUBROUTINE get_mgdims_target
 
+    !> @brief Get field length 1d in x-direction
+    !!
+    !! Mirrors core get_len method but uses fields available on the target device.
+    !! @param[out] len   Field length
+    !! @param[in]  igrid Grid index
     SUBROUTINE get_len_ii_target(len, igrid)
         !$omp declare target
         INTEGER(intk), INTENT(OUT) :: len
@@ -341,6 +407,11 @@ CONTAINS
         len = mgdims_offload(i)
     END SUBROUTINE get_len_ii_target
 
+    !> @brief Get field length 1d in y-direction
+    !!
+    !! Mirrors core get_len method but uses fields available on the target device.
+    !! @param[out] len   Field length
+    !! @param[in]  igrid Grid index
     SUBROUTINE get_len_jj_target(len, igrid)
         !$omp declare target
         INTEGER(intk), INTENT(OUT) :: len
@@ -353,6 +424,11 @@ CONTAINS
         len = mgdims_offload(i+1)
     END SUBROUTINE get_len_jj_target
 
+    !> @brief Get field length 1d in z-direction
+    !!
+    !! Mirrors core get_len method but uses fields available on the target device.
+    !! @param[out] len   Field length
+    !! @param[in]  igrid Grid index
     SUBROUTINE get_len_kk_target(len, igrid)
         !$omp declare target
         INTEGER(intk), INTENT(OUT) :: len
@@ -365,6 +441,11 @@ CONTAINS
         len = mgdims_offload(i+2)
     END SUBROUTINE get_len_kk_target
 
+    !> @brief Get ip1 (1 dimensional fields)
+    !!
+    !! Mirrors core get_ip1 method but uses fields available on the target device.
+    !! @param[out] ip1   Index for pointer to nth grid
+    !! @param[in]  igrid Grid index
     SUBROUTINE get_ip1_target(ip1, igrid)
         !$omp declare target
         INTEGER(intk), INTENT(in) :: igrid
@@ -373,6 +454,11 @@ CONTAINS
         ip1 = ip1d_offload(igrid)
     END SUBROUTINE get_ip1_target
 
+    !> @brief Get ip3 (3 dimensional fields)
+    !!
+    !! Mirrors core get_ip3 method but uses fields available on the target device.
+    !! @param[out] ip3   Index for pointer to nth grid
+    !! @param[in]  igrid Grid index
     SUBROUTINE get_ip3_target(ip3, igrid)
         !$omp declare target
         INTEGER(intk), INTENT(in) :: igrid
@@ -381,6 +467,13 @@ CONTAINS
         ip3 = ip3d_offload(igrid)
     END SUBROUTINE get_ip3_target
 
+    !> @brief Get pointer to 1d grid-specific field (only x direction)
+    !!
+    !! Mirrors core get_grid1 method but uses fields available on the target device.
+    !! Apply only for x-direction.
+    !! @param[in]     arr_ptr  Pointer to field data
+    !! @param[in]     n_grid   Grid index
+    !! @param[in,out] grid_ptr 1d-pointer to grid-specific field data
     SUBROUTINE ptr_to_grid_x(arr_ptr, n_grid, grid_ptr)
         !$omp declare target
         ! Function arguments
@@ -395,7 +488,14 @@ CONTAINS
         CALL get_len_ii_target(len, n_grid)
         grid_ptr(1:len) => arr_ptr(ip:ip+len-1)
     END SUBROUTINE ptr_to_grid_x
-    
+
+    !> @brief Get pointer to 1d grid-specific field (only y direction)
+    !!
+    !! Mirrors core get_grid1 method but uses fields available on the target device.
+    !! Apply only for y-direction.
+    !! @param[in]     arr_ptr  Pointer to field data
+    !! @param[in]     n_grid   Grid index
+    !! @param[in,out] grid_ptr 1d-pointer to grid-specific field data 
     SUBROUTINE ptr_to_grid_y(arr_ptr, n_grid, grid_ptr)
         !$omp declare target
         ! Function arguments
@@ -411,6 +511,13 @@ CONTAINS
         grid_ptr(1:len) => arr_ptr(ip:ip+len-1)
     END SUBROUTINE ptr_to_grid_y
 
+    !> @brief Get pointer to 1d grid-specific field (only z direction)
+    !!
+    !! Mirrors core get_grid1 method but uses fields available on the target device.
+    !! Apply only for z-direction.
+    !! @param[in]     arr_ptr  Pointer to field data
+    !! @param[in]     n_grid   Grid index
+    !! @param[in,out] grid_ptr 1d-pointer to grid-specific field data
     SUBROUTINE ptr_to_grid_z(arr_ptr, n_grid, grid_ptr)
         !$omp declare target
         ! Function arguments
@@ -426,6 +533,12 @@ CONTAINS
         grid_ptr(1:len) => arr_ptr(ip:ip+len-1)
     END SUBROUTINE ptr_to_grid_z
 
+    !> @brief Get pointer to 3d grid-specific field (only x direction)
+    !!
+    !! Mirrors core get_grid3 method but uses fields available on the target device.
+    !! @param[in]     arr_ptr  Pointer to field data
+    !! @param[in]     n_grid   Grid index
+    !! @param[in,out] grid_ptr 3d-pointer to grid-specific field data
     SUBROUTINE ptr_to_grid3(arr_ptr, n_grid, grid_ptr)
         !$omp declare target
         ! Function arguments
