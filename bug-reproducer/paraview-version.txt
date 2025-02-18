@@ -1,0 +1,28 @@
+Client Information:
+Version: 5.13.1-749-g7d48519d05
+VTK Version: 9.4.0.rc2-253-gd7f64c0249
+Qt Version: 5.15.3
+vtkIdType size: 64bits
+Embedded Python: On
+Python Library Path: /usr/lib/python3.10
+Python Library Version: 3.10.12 (main, Jan 17 2025, 14:35:34) [GCC 11.4.0]
+Python Numpy Support: On
+Python Numpy Path: /home/jakob/.local/lib/python3.10/site-packages/numpy
+Python Numpy Version: 1.26.4
+Python Matplotlib Support: On
+Python Matplotlib Path: /home/jakob/.local/lib/python3.10/site-packages/matplotlib
+Python Matplotlib Version: 3.9.2
+Python Testing: Off
+MPI Enabled: On
+Disable Registry: Off
+Test Directory: 
+Data Directory: 
+SMP Backend: TBB
+SMP Max Number of Threads: 16
+OpenGL Vendor: NVIDIA Corporation
+OpenGL Version: 3.2.0 NVIDIA 535.183.01
+OpenGL Renderer: NVIDIA GeForce RTX 3070/PCIe/SSE2
+Accelerated filters overrides available: No
+
+Connection Information:
+Remote Connection: No
