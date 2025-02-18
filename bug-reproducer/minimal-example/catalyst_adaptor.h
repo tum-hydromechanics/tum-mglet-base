@@ -47,9 +47,9 @@ void execute(unsigned timestep, float time) {
     int ii = 33;
     int jj = 33;
     int kk = 2;
-    coords["dims/i"] = 33;
-    coords["dims/j"] = 33;
-    coords["dims/k"] = 2;
+    coords["dims/i"] = ii + 1;
+    coords["dims/j"] = jj + 1;
+    coords["dims/k"] = kk + 1;
     coords["spacing/dx"] = 1.0;
     coords["spacing/dy"] = 1.0;
     coords["spacing/dz"] = 1.0;
@@ -80,9 +80,9 @@ void execute(unsigned timestep, float time) {
     int ii = 33;
     int jj = 33;
     int kk = 3;
-    coords["dims/i"] = 33;
-    coords["dims/j"] = 33;
-    coords["dims/k"] = 3;
+    coords["dims/i"] = ii + 1;
+    coords["dims/j"] = jj + 1;
+    coords["dims/k"] = kk + 1;
     coords["spacing/dx"] = 0.5;
     coords["spacing/dy"] = 0.5;
     coords["spacing/dz"] = 0.5;
