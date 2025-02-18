@@ -272,12 +272,12 @@ CONTAINS
                     "type", "uniform")
                 CALL catalyst_conduit_node_set_path_char8_str(topo_node, &
                     "coordset", "coords")
-                CALL catalyst_conduit_node_set_path_int32(topo_node, &
-                    "elements/origin/i0", 0)
-                CALL catalyst_conduit_node_set_path_int32(topo_node, &
-                    "elements/origin/j0", 0)
-                CALL catalyst_conduit_node_set_path_int32(topo_node, &
-                    "elements/origin/k0", 0)
+                !CALL catalyst_conduit_node_set_path_int32(topo_node, &
+                !    "elements/origin/i0", 0)
+                !CALL catalyst_conduit_node_set_path_int32(topo_node, &
+                !    "elements/origin/j0", 0)
+                !CALL catalyst_conduit_node_set_path_int32(topo_node, &
+                !    "elements/origin/k0", 0)
 
                 ! Comment out nestsets, this implementation provides the skeleton for child-parent relationships
                 ! However, as per https://gitlab.kitware.com/vtk/vtk/-/blob/master/IO/CatalystConduit/vtkConduitToDataObject.cxx
@@ -381,6 +381,10 @@ CONTAINS
                 END DO
             END DO
         END DO
+
+        IF (myid == 0) THEN
+            !CALL catalyst_conduit_node_print(exec_node)
+        END IF
 
         CALL start_timer(813)
         err = c_catalyst_execute(exec_node)

@@ -1,0 +1,44 @@
+catalyst: 
+  state: 
+    timestep: 5
+    time: 0.00800000037997961
+  channels: 
+    grid: 
+      type: "amrmesh"
+      data: 
+        grid_00000001_00000000: 
+          state: 
+            domain_id: 1
+            cycle: 5
+            time: 0.00800000037997961
+            level: 0
+          coordsets: 
+            coords: 
+              type: "uniform"
+              dims: 
+                i: 33
+                j: 33
+                k: 2
+              origin: 
+                x: 0.0
+                y: 0.0
+                z: 0.0
+              spacing: 
+                dx: 1.0
+                dy: 1.0
+                dz: 1.0
+          topologies: 
+            topo: 
+              type: "uniform"
+              coordset: "coords"
+              elements: 
+                origin: 
+                  i0: 0
+                  j0: 0
+                  k0: 0
+          fields: 
+            U: 
+              association: "element"
+              topology: "topo"
+              volume_dependent: "false"
+              values: [0.0, 0.0, 0.0, ..., -4.37113882867379e-08, -4.37113882867379e-08]

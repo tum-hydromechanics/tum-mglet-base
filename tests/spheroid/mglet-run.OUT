@@ -1,0 +1,307 @@
+
+M G L E T - Multi Grid Large Eddy Turbulence
+
+MPI INFORMATION:
+    Processes:     2
+    Serial IO:     F
+    MPI version:   Open MPI v4.1.2, package: Debian OpenMPI, ident: 4.1.2, repo rev: v4.1.2, Nov 24, 2021 
+
+IEEE aritmetic flags:
+    Underflow:     gradual
+    FPE traps:     divide_by_zero invalid overflow
+
+BUILD INFORMATION:
+    Date:          Feb 10 2025
+    Time:          17:03:51
+    Compiler:      GCC version 13.1.0
+    Options:       -cpp -I /usr/lib/x86_64-linux-gnu/fortran/gfortran-mod-15/openmpi -I /usr/lib/x86_64-linux-gnu/openmpi/lib -I /usr/include/hdf5/openmpi -I /usr/include -imultiarch x86_64-linux-gnu -D _MGLET_IFK64_=1 -mtune=generic -march=x86-64 -g -O3 -Wall -Wextra -Wpedantic -Wno-maybe-uninitialized -Wno-unused-dummy-argument -Wno-uninitialized -std=f2018 -fPIC -fimplicit-none -ffpe-trap=invalid,zero,overflow -fopenmp-simd -ffree-line-length-none -J ../../modules -fpre-include=/usr/include/finclude/math-vector-fortran.h
+    OpenMP:        disabled
+
+COMPILED PRECISION:
+    REAL:          4 bytes
+    INTEGER:       4 bytes
+    INTEGER(ifk):  8 bytes
+
+JOB INFORMATION:
+    Date:          2025-02-18
+    Time:          14:59:12
+
+HDF5 collective IO: F
+
+Reading parameter file: parameters.json
+
+GRIDS PER LEVEL AND PROCESS:
+=======================================================
+ Level:           1      2      3      4      5    Sum
+-------------------------------------------------------
+ Rank     0:      1      4      9     16     16     46
+ Rank     1:      0      4      9     16     16     45
+-------------------------------------------------------
+ Sum:             1      8     18     32     32     91
+=======================================================
+
+ARRAY DIMENSIONS:
+    idim3d:        2146176
+    idim2d:        59616
+    idim1d:        1656
+
+Read gridspacing arrays in  0.003 seconds
+
+CONNECT STATISTICS:
+    Faces:             346    with geometry:     346
+    Lines:             944    with geometry:     944
+    Corners:           688    with geometry:     688
+
+Using 'ghostcell' immersed boundary method
+
+BLOCKING:                       READING GEOMETRIES, WTIME:           0.000
+ STL: ./body.001.stl is ASCII, containing 215640 triangles
+BLOCKING:      FIND CELLS INTERSECTED BY TRIANGLES, WTIME:           0.136
+BLOCKING:                   FILLING OF FLUID CELLS, WTIME:           0.319
+ Filling finished in 3 iterations
+BLOCKING:                             FILLFOLLOWER, WTIME:           0.430
+ Found 0 points in fluid
+BLOCKING:            FINISHING INTERSECTED CORNERS, WTIME:           0.430
+BLOCKING:                REMOVING DEAD WATER ZONES, WTIME:           1.058
+ Totwasser finished in 6 iterations
+ Found 162726 blocked, 0 totwasser and 4082970 open cells
+BLOCKING:     WRITE GEOMETRY DATA, CREATE STENCILS, WTIME:           1.151
+BLOCKING:                           WRITE STENCILS, WTIME:           1.437
+BLOCKING:                        BLOCKING COMPLETE, WTIME:           1.442
+
+NO SCALAR
+
+ITSTEP, WTIME, DELTA:        0           0.000           0.000
+ITTOT, TIME, DT:             0      0.00000000      2.0000E-02
+LEVEL:  1 IPC=   0 DIVMAX=   8.2552E-02 CFLMAX=   0.03127
+LEVEL:  2 IPC=   0 DIVMAX=   3.0169E-01 CFLMAX=   0.06418
+LEVEL:  3 IPC=   0 DIVMAX=   1.3704E+00 CFLMAX=   0.13121
+LEVEL:  4 IPC=   0 DIVMAX=   6.4474E+00 CFLMAX=   0.27131
+LEVEL:  5 IPC=   0 DIVMAX=   2.3435E+01 CFLMAX=   0.73025
+
+mglet: /home/jakob/uni/hydro-project/paraview/VTK/Common/DataModel/vtkAMRBox.cxx:370: void vtkAMRBox::Refine(int): Assertion `"pre: Input refinement ratio must be >= 1" && (r >= 1)' failed.
+
+Program received signal SIGABRT: Process abort signal.
+
+Backtrace for this error:
+
+Program received signal SIGSEGV: Segmentation fault - invalid memory reference.
+
+Backtrace for this error:
+#0  0x7850dbc23970 in ???
+#1  0x7850dbc22ad5 in ???
+#2  0x7850dae4251f in ???
+	at ./signal/../sysdeps/unix/sysv/linux/x86_64/libc_sigaction.c:0
+#3  0x7850dae969fc in __pthread_kill_implementation
+	at ./nptl/pthread_kill.c:44
+#4  0x7850dae969fc in __pthread_kill_internal
+	at ./nptl/pthread_kill.c:78
+#5  0x7850dae969fc in __GI___pthread_kill
+	at ./nptl/pthread_kill.c:89
+#6  0x7850dae42475 in __GI_raise
+	at ../sysdeps/posix/raise.c:26
+#7  0x7850dae287f2 in __GI_abort
+	at ./stdlib/abort.c:79
+#8  0x7850dae2871a in __assert_fail_base
+	at ./assert/assert.c:94
+#9  0x7850dae39e95 in __GI___assert_fail
+	at ./assert/assert.c:103
+#10  0x7850c357e770 in _ZN9vtkAMRBox6RefineEi
+	at /home/jakob/uni/hydro-project/paraview/VTK/Common/DataModel/vtkAMRBox.cxx:370
+#11  0x7850c3c795a9 in _ZN17vtkAMRInformation32CalculateParentChildRelationShipEjRSt6vectorIS0_IjSaIjEESaIS2_EES5_
+	at /home/jakob/uni/hydro-project/paraview/VTK/Common/DataModel/vtkAMRInformation.cxx:638
+#12  0x7850c3c78963 in _ZN17vtkAMRInformation30GenerateParentChildInformationEv
+	at /home/jakob/uni/hydro-project/paraview/VTK/Common/DataModel/vtkAMRInformation.cxx:541
+#13  0x7850cabeb22e in _ZN23vtkParallelAMRUtilities10BlankCellsEP17vtkOverlappingAMRP25vtkMultiProcessController
+	at /home/jakob/uni/hydro-project/paraview/VTK/Filters/AMR/vtkParallelAMRUtilities.cxx:121
+#0  0x74e1cba23970 in ???
+#1  0x74e1cba22ad5 in ???
+#2  0x74e1caa4251f in ???
+	at ./signal/../sysdeps/unix/sysv/linux/x86_64/libc_sigaction.c:0
+#3  0x74e1b54fabe0 in _ZNKSt4lessIjEclERKjS2_
+	at /usr/include/c++/13/bits/stl_function.h:408
+#4  0x74e1b551732d in _ZNSt8_Rb_treeIjjSt9_IdentityIjESt4lessIjESaIjEE24_M_get_insert_unique_posERKj
+	at /usr/include/c++/13/bits/stl_tree.h:2118
+#5  0x74e1b5515211 in _ZNSt8_Rb_treeIjjSt9_IdentityIjESt4lessIjESaIjEE16_M_insert_uniqueIRKjEESt4pairISt17_Rb_tree_iteratorIjEbEOT_
+	at /usr/include/c++/13/bits/stl_tree.h:2171
+#6  0x74e1b3a7b589 in _ZNSt3setIjSt4lessIjESaIjEE6insertERKj
+	at /usr/include/c++/13/bits/stl_set.h:514
+#7  0x74e1b3a757c4 in GetBoxesInIntersectingBins
+	at /home/jakob/uni/hydro-project/paraview/VTK/Common/DataModel/vtkAMRInformation.cxx:100
+#8  0x74e1b3a79c0d in _ZN17vtkAMRInformation32CalculateParentChildRelationShipEjRSt6vectorIS0_IjSaIjEESaIS2_EES5_
+	at /home/jakob/uni/hydro-project/paraview/VTK/Common/DataModel/vtkAMRInformation.cxx:739
+#9  0x74e1b3a78963 in _ZN17vtkAMRInformation30GenerateParentChildInformationEv
+	at /home/jakob/uni/hydro-project/paraview/VTK/Common/DataModel/vtkAMRInformation.cxx:541
+#10  0x74e1c014922e in _ZN23vtkParallelAMRUtilities10BlankCellsEP17vtkOverlappingAMRP25vtkMultiProcessController
+	at /home/jakob/uni/hydro-project/paraview/VTK/Filters/AMR/vtkParallelAMRUtilities.cxx:121
+#14  0x7850d048beb7 in _ZN22vtkConduitToDataObject11FillAMRMeshEP17vtkOverlappingAMRRKN11conduit_cpp4NodeE
+	at /home/jakob/uni/hydro-project/paraview/VTK/IO/CatalystConduit/vtkConduitToDataObject.cxx:378
+#15  0x7850d047f22d in _ZN16vtkConduitSource11GenerateAMREP13vtkDataObject
+	at /home/jakob/uni/hydro-project/paraview/VTK/IO/CatalystConduit/vtkConduitSource.cxx:104
+#16  0x7850d0480393 in _ZN16vtkConduitSource11RequestDataEP14vtkInformationPP20vtkInformationVectorS3_
+	at /home/jakob/uni/hydro-project/paraview/VTK/IO/CatalystConduit/vtkConduitSource.cxx:244
+#17  0x7850c408a3f5 in _ZN22vtkDataObjectAlgorithm14ProcessRequestEP14vtkInformationPP20vtkInformationVectorS3_
+	at /home/jakob/uni/hydro-project/paraview/VTK/Common/ExecutionModel/vtkDataObjectAlgorithm.cxx:75
+#18  0x7850c409c0ea in _ZN12vtkExecutive13CallAlgorithmEP14vtkInformationiPP20vtkInformationVectorS3_
+	at /home/jakob/uni/hydro-project/paraview/VTK/Common/ExecutionModel/vtkExecutive.cxx:723
+#19  0x7850c408d1c7 in _ZN23vtkDemandDrivenPipeline11ExecuteDataEP14vtkInformationPP20vtkInformationVectorS3_
+	at /home/jakob/uni/hydro-project/paraview/VTK/Common/ExecutionModel/vtkDemandDrivenPipeline.cxx:450
+#20  0x7850c407f732 in _ZN24vtkCompositeDataPipeline11ExecuteDataEP14vtkInformationPP20vtkInformationVectorS3_
+	at /home/jakob/uni/hydro-project/paraview/VTK/Common/ExecutionModel/vtkCompositeDataPipeline.cxx:151
+#21  0x7850c408c6cc in _ZN23vtkDemandDrivenPipeline14ProcessRequestEP14vtkInformationPP20vtkInformationVectorS3_
+	at /home/jakob/uni/hydro-project/paraview/VTK/Common/ExecutionModel/vtkDemandDrivenPipeline.cxx:249
+#22  0x7850c41e60d9 in _ZN32vtkStreamingDemandDrivenPipeline14ProcessRequestEP14vtkInformationPP20vtkInformationVectorS3_
+	at /home/jakob/uni/hydro-project/paraview/VTK/Common/ExecutionModel/vtkStreamingDemandDrivenPipeline.cxx:336
+#23  0x7850c4082c0c in _ZN24vtkCompositeDataPipeline15ForwardUpstreamEP14vtkInformation
+	at /home/jakob/uni/hydro-project/paraview/VTK/Common/ExecutionModel/vtkCompositeDataPipeline.cxx:721
+#24  0x7850c408c5c2 in _ZN23vtkDemandDrivenPipeline14ProcessRequestEP14vtkInformationPP20vtkInformationVectorS3_
+	at /home/jakob/uni/hydro-project/paraview/VTK/Common/ExecutionModel/vtkDemandDrivenPipeline.cxx:235
+#25  0x7850c41e60d9 in _ZN32vtkStreamingDemandDrivenPipeline14ProcessRequestEP14vtkInformationPP20vtkInformationVectorS3_
+	at /home/jakob/uni/hydro-project/paraview/VTK/Common/ExecutionModel/vtkStreamingDemandDrivenPipeline.cxx:336
+#26  0x7850c408cf70 in _ZN23vtkDemandDrivenPipeline10UpdateDataEi
+	at /home/jakob/uni/hydro-project/paraview/VTK/Common/ExecutionModel/vtkDemandDrivenPipeline.cxx:407
+#27  0x7850c41e65b3 in _ZN32vtkStreamingDemandDrivenPipeline6UpdateEiP20vtkInformationVector
+	at /home/jakob/uni/hydro-project/paraview/VTK/Common/ExecutionModel/vtkStreamingDemandDrivenPipeline.cxx:426
+#28  0x7850c41e6438 in _ZN32vtkStreamingDemandDrivenPipeline6UpdateEi
+	at /home/jakob/uni/hydro-project/paraview/VTK/Common/ExecutionModel/vtkStreamingDemandDrivenPipeline.cxx:389
+#29  0x7850c576a597 in _ZN16vtkSISourceProxy14UpdatePipelineEidb
+	at /home/jakob/uni/hydro-project/paraview/Remoting/ServerManager/vtkSISourceProxy.cxx:243
+#30  0x7850ba7673b8 in _Z23vtkSISourceProxyCommandP26vtkClientServerInterpreterP13vtkObjectBasePKcRK21vtkClientServerStreamRS5_Pv
+	at /home/jakob/uni/hydro-project/paraview-build/CMakeFiles/vtkRemotingServerManagerCS/vtkSISourceProxyClientServer.cxx:142
+#31  0x7850d011cd8f in _ZN26vtkClientServerInterpreter19CallCommandFunctionEPKcP13vtkObjectBaseS1_RK21vtkClientServerStreamRS4_
+	at /home/jakob/uni/hydro-project/paraview/Remoting/ClientServerStream/vtkClientServerInterpreter.cxx:798
+#32  0x7850d011afc6 in _ZN26vtkClientServerInterpreter20ProcessCommandInvokeERK21vtkClientServerStreami
+	at /home/jakob/uni/hydro-project/paraview/Remoting/ClientServerStream/vtkClientServerInterpreter.cxx:412
+#33  0x7850d011a40f in _ZN26vtkClientServerInterpreter17ProcessOneMessageERK21vtkClientServerStreami
+	at /home/jakob/uni/hydro-project/paraview/Remoting/ClientServerStream/vtkClientServerInterpreter.cxx:253
+#34  0x7850d011a26e in _ZN26vtkClientServerInterpreter13ProcessStreamERK21vtkClientServerStream
+	at /home/jakob/uni/hydro-project/paraview/Remoting/ClientServerStream/vtkClientServerInterpreter.cxx:223
+#35  0x7850c5710065 in _ZN16vtkPVSessionCore21ExecuteStreamInternalERK21vtkClientServerStreamb
+	at /home/jakob/uni/hydro-project/paraview/Remoting/ServerManager/vtkPVSessionCore.cxx:608
+#36  0x7850c570fdf5 in _ZN16vtkPVSessionCore13ExecuteStreamEjRK21vtkClientServerStreamb
+	at /home/jakob/uni/hydro-project/paraview/Remoting/ServerManager/vtkPVSessionCore.cxx:578
+#11  0x74e1c3e8beb7 in _ZN22vtkConduitToDataObject11FillAMRMeshEP17vtkOverlappingAMRRKN11conduit_cpp4NodeE
+	at /home/jakob/uni/hydro-project/paraview/VTK/IO/CatalystConduit/vtkConduitToDataObject.cxx:378
+#37  0x7850c570b7cb in _ZN16vtkPVSessionBase13ExecuteStreamEjRK21vtkClientServerStreamb
+	at /home/jakob/uni/hydro-project/paraview/Remoting/ServerManager/vtkPVSessionBase.cxx:153
+#12  0x74e1c3e7f22d in _ZN16vtkConduitSource11GenerateAMREP13vtkDataObject
+	at /home/jakob/uni/hydro-project/paraview/VTK/IO/CatalystConduit/vtkConduitSource.cxx:104
+#13  0x74e1c3e80393 in _ZN16vtkConduitSource11RequestDataEP14vtkInformationPP20vtkInformationVectorS3_
+	at /home/jakob/uni/hydro-project/paraview/VTK/IO/CatalystConduit/vtkConduitSource.cxx:244
+#14  0x74e1b3e8a3f5 in _ZN22vtkDataObjectAlgorithm14ProcessRequestEP14vtkInformationPP20vtkInformationVectorS3_
+	at /home/jakob/uni/hydro-project/paraview/VTK/Common/ExecutionModel/vtkDataObjectAlgorithm.cxx:75
+#15  0x74e1b3e9c0ea in _ZN12vtkExecutive13CallAlgorithmEP14vtkInformationiPP20vtkInformationVectorS3_
+	at /home/jakob/uni/hydro-project/paraview/VTK/Common/ExecutionModel/vtkExecutive.cxx:723
+#16  0x74e1b3e8d1c7 in _ZN23vtkDemandDrivenPipeline11ExecuteDataEP14vtkInformationPP20vtkInformationVectorS3_
+	at /home/jakob/uni/hydro-project/paraview/VTK/Common/ExecutionModel/vtkDemandDrivenPipeline.cxx:450
+#17  0x74e1b3e7f732 in _ZN24vtkCompositeDataPipeline11ExecuteDataEP14vtkInformationPP20vtkInformationVectorS3_
+	at /home/jakob/uni/hydro-project/paraview/VTK/Common/ExecutionModel/vtkCompositeDataPipeline.cxx:151
+#18  0x74e1b3e8c6cc in _ZN23vtkDemandDrivenPipeline14ProcessRequestEP14vtkInformationPP20vtkInformationVectorS3_
+	at /home/jakob/uni/hydro-project/paraview/VTK/Common/ExecutionModel/vtkDemandDrivenPipeline.cxx:249
+#19  0x74e1b3fe60d9 in _ZN32vtkStreamingDemandDrivenPipeline14ProcessRequestEP14vtkInformationPP20vtkInformationVectorS3_
+	at /home/jakob/uni/hydro-project/paraview/VTK/Common/ExecutionModel/vtkStreamingDemandDrivenPipeline.cxx:336
+#20  0x74e1b3e82c0c in _ZN24vtkCompositeDataPipeline15ForwardUpstreamEP14vtkInformation
+	at /home/jakob/uni/hydro-project/paraview/VTK/Common/ExecutionModel/vtkCompositeDataPipeline.cxx:721
+#21  0x74e1b3e8c5c2 in _ZN23vtkDemandDrivenPipeline14ProcessRequestEP14vtkInformationPP20vtkInformationVectorS3_
+	at /home/jakob/uni/hydro-project/paraview/VTK/Common/ExecutionModel/vtkDemandDrivenPipeline.cxx:235
+#22  0x74e1b3fe60d9 in _ZN32vtkStreamingDemandDrivenPipeline14ProcessRequestEP14vtkInformationPP20vtkInformationVectorS3_
+	at /home/jakob/uni/hydro-project/paraview/VTK/Common/ExecutionModel/vtkStreamingDemandDrivenPipeline.cxx:336
+#23  0x74e1b3e8cf70 in _ZN23vtkDemandDrivenPipeline10UpdateDataEi
+	at /home/jakob/uni/hydro-project/paraview/VTK/Common/ExecutionModel/vtkDemandDrivenPipeline.cxx:407
+#24  0x74e1b3fe65b3 in _ZN32vtkStreamingDemandDrivenPipeline6UpdateEiP20vtkInformationVector
+	at /home/jakob/uni/hydro-project/paraview/VTK/Common/ExecutionModel/vtkStreamingDemandDrivenPipeline.cxx:426
+#25  0x74e1b3fe6438 in _ZN32vtkStreamingDemandDrivenPipeline6UpdateEi
+	at /home/jakob/uni/hydro-project/paraview/VTK/Common/ExecutionModel/vtkStreamingDemandDrivenPipeline.cxx:389
+#26  0x74e1b556a597 in _ZN16vtkSISourceProxy14UpdatePipelineEidb
+	at /home/jakob/uni/hydro-project/paraview/Remoting/ServerManager/vtkSISourceProxy.cxx:243
+#27  0x74e1aa5673b8 in _Z23vtkSISourceProxyCommandP26vtkClientServerInterpreterP13vtkObjectBasePKcRK21vtkClientServerStreamRS5_Pv
+	at /home/jakob/uni/hydro-project/paraview-build/CMakeFiles/vtkRemotingServerManagerCS/vtkSISourceProxyClientServer.cxx:142
+#28  0x74e1c288ad8f in _ZN26vtkClientServerInterpreter19CallCommandFunctionEPKcP13vtkObjectBaseS1_RK21vtkClientServerStreamRS4_
+	at /home/jakob/uni/hydro-project/paraview/Remoting/ClientServerStream/vtkClientServerInterpreter.cxx:798
+#29  0x74e1c2888fc6 in _ZN26vtkClientServerInterpreter20ProcessCommandInvokeERK21vtkClientServerStreami
+	at /home/jakob/uni/hydro-project/paraview/Remoting/ClientServerStream/vtkClientServerInterpreter.cxx:412
+#30  0x74e1c288840f in _ZN26vtkClientServerInterpreter17ProcessOneMessageERK21vtkClientServerStreami
+	at /home/jakob/uni/hydro-project/paraview/Remoting/ClientServerStream/vtkClientServerInterpreter.cxx:253
+#31  0x74e1c288826e in _ZN26vtkClientServerInterpreter13ProcessStreamERK21vtkClientServerStream
+	at /home/jakob/uni/hydro-project/paraview/Remoting/ClientServerStream/vtkClientServerInterpreter.cxx:223
+#38  0x7850c58a527b in _ZN10vtkSMProxy13ExecuteStreamERK21vtkClientServerStreambj
+	at /home/jakob/uni/hydro-project/paraview/Remoting/ServerManager/vtkSMProxy.cxx:2424
+#32  0x74e1b5510065 in _ZN16vtkPVSessionCore21ExecuteStreamInternalERK21vtkClientServerStreamb
+	at /home/jakob/uni/hydro-project/paraview/Remoting/ServerManager/vtkPVSessionCore.cxx:608
+#33  0x74e1b550fdf5 in _ZN16vtkPVSessionCore13ExecuteStreamEjRK21vtkClientServerStreamb
+	at /home/jakob/uni/hydro-project/paraview/Remoting/ServerManager/vtkPVSessionCore.cxx:578
+#34  0x74e1b550b7cb in _ZN16vtkPVSessionBase13ExecuteStreamEjRK21vtkClientServerStreamb
+	at /home/jakob/uni/hydro-project/paraview/Remoting/ServerManager/vtkPVSessionBase.cxx:153
+#39  0x7850c58570ff in _ZN15vtkSMOutputPort22UpdatePipelineInternalEdb
+	at /home/jakob/uni/hydro-project/paraview/Remoting/ServerManager/vtkSMOutputPort.cxx:337
+#40  0x7850c5856f79 in _ZN15vtkSMOutputPort14UpdatePipelineEv
+	at /home/jakob/uni/hydro-project/paraview/Remoting/ServerManager/vtkSMOutputPort.cxx:321
+#41  0x7850c592f51a in _ZN16vtkSMSourceProxy14UpdatePipelineEv
+	at /home/jakob/uni/hydro-project/paraview/Remoting/ServerManager/vtkSMSourceProxy.cxx:331
+#42  0x7850c597313b in _ZN18vtkSMWriterFactory12CreateWriterEPKcP16vtkSMSourceProxyjb
+	at /home/jakob/uni/hydro-project/paraview/Remoting/ServerManager/vtkSMWriterFactory.cxx:304
+#43  0x7850d2f2eaff in _ZN6detail12CreateWriterEP19vtkInSituPipelineIOP16vtkSMSourceProxy
+	at /home/jakob/uni/hydro-project/paraview/Clients/InSitu/vtkInSituPipelineIO.cxx:31
+#44  0x7850d2f2f5cb in _ZN19vtkInSituPipelineIO7ExecuteEid
+	at /home/jakob/uni/hydro-project/paraview/Clients/InSitu/vtkInSituPipelineIO.cxx:87
+#35  0x74e1b56a527b in _ZN10vtkSMProxy13ExecuteStreamERK21vtkClientServerStreambj
+	at /home/jakob/uni/hydro-project/paraview/Remoting/ServerManager/vtkSMProxy.cxx:2424
+#45  0x7850d2f1b12e in _ZN29vtkInSituInitializationHelper16ExecutePipelinesEidRKSt6vectorINSt7__cxx1112basic_stringIcSt11char_traitsIcESaIcEEESaIS6_EESA_
+	at /home/jakob/uni/hydro-project/paraview/Clients/InSitu/vtkInSituInitializationHelper.cxx:495
+#46  0x7850d2f1a8e5 in _ZN29vtkInSituInitializationHelper16ExecutePipelinesEPK17conduit_node_impl
+	at /home/jakob/uni/hydro-project/paraview/Clients/InSitu/vtkInSituInitializationHelper.cxx:433
+#36  0x74e1b56570ff in _ZN15vtkSMOutputPort22UpdatePipelineInternalEdb
+	at /home/jakob/uni/hydro-project/paraview/Remoting/ServerManager/vtkSMOutputPort.cxx:337
+#37  0x74e1b5656f79 in _ZN15vtkSMOutputPort14UpdatePipelineEv
+	at /home/jakob/uni/hydro-project/paraview/Remoting/ServerManager/vtkSMOutputPort.cxx:321
+#47  0x7850d2f4b091 in catalyst_execute_paraview
+	at /home/jakob/uni/hydro-project/paraview/Clients/InSitu/catalyst/ParaViewCatalyst.cxx:520
+#48  0x7850dba226e3 in catalyst_execute
+	at /home/jakob/uni/hydro-project/catalyst/src/catalyst/catalyst_api.c:277
+#49  0x5d2f1d60d252 in catalyst_adaptor_execute
+	at /home/jakob/uni/hydro-project/tum-mglet-base/src/plugins/catalyst_mod.F90:390
+#50  0x5d2f1d60d375 in __catalyst_mod_MOD_sample_catalyst
+	at /home/jakob/uni/hydro-project/tum-mglet-base/src/plugins/catalyst_mod.F90:507
+#51  0x5d2f1d97a269 in __plugins_mod_MOD_timeintegrate_plugins
+	at /home/jakob/uni/hydro-project/tum-mglet-base/src/core/plugins_mod.F90:125
+#52  0x5d2f1d608a44 in __timeloop_mod_MOD_timeloop
+	at /home/jakob/uni/hydro-project/tum-mglet-base/src/timeloop_mod.F90:240
+#53  0x5d2f1d6069c6 in MAIN__
+	at /home/jakob/uni/hydro-project/tum-mglet-base/src/mglet.F90:46
+#54  0x5d2f1d6069c6 in main
+	at /home/jakob/uni/hydro-project/tum-mglet-base/src/mglet.F90:2
+#38  0x74e1b572f51a in _ZN16vtkSMSourceProxy14UpdatePipelineEv
+	at /home/jakob/uni/hydro-project/paraview/Remoting/ServerManager/vtkSMSourceProxy.cxx:331
+#39  0x74e1b577313b in _ZN18vtkSMWriterFactory12CreateWriterEPKcP16vtkSMSourceProxyjb
+	at /home/jakob/uni/hydro-project/paraview/Remoting/ServerManager/vtkSMWriterFactory.cxx:304
+#40  0x74e1c8041aff in _ZN6detail12CreateWriterEP19vtkInSituPipelineIOP16vtkSMSourceProxy
+	at /home/jakob/uni/hydro-project/paraview/Clients/InSitu/vtkInSituPipelineIO.cxx:31
+#41  0x74e1c80425cb in _ZN19vtkInSituPipelineIO7ExecuteEid
+	at /home/jakob/uni/hydro-project/paraview/Clients/InSitu/vtkInSituPipelineIO.cxx:87
+#42  0x74e1c802e12e in _ZN29vtkInSituInitializationHelper16ExecutePipelinesEidRKSt6vectorINSt7__cxx1112basic_stringIcSt11char_traitsIcESaIcEEESaIS6_EESA_
+	at /home/jakob/uni/hydro-project/paraview/Clients/InSitu/vtkInSituInitializationHelper.cxx:495
+#43  0x74e1c802d8e5 in _ZN29vtkInSituInitializationHelper16ExecutePipelinesEPK17conduit_node_impl
+	at /home/jakob/uni/hydro-project/paraview/Clients/InSitu/vtkInSituInitializationHelper.cxx:433
+#44  0x74e1c805e091 in catalyst_execute_paraview
+	at /home/jakob/uni/hydro-project/paraview/Clients/InSitu/catalyst/ParaViewCatalyst.cxx:520
+#45  0x74e1cb6226e3 in catalyst_execute
+	at /home/jakob/uni/hydro-project/catalyst/src/catalyst/catalyst_api.c:277
+#46  0x5d0821991252 in catalyst_adaptor_execute
+	at /home/jakob/uni/hydro-project/tum-mglet-base/src/plugins/catalyst_mod.F90:390
+#47  0x5d0821991375 in __catalyst_mod_MOD_sample_catalyst
+	at /home/jakob/uni/hydro-project/tum-mglet-base/src/plugins/catalyst_mod.F90:507
+#48  0x5d0821cfe269 in __plugins_mod_MOD_timeintegrate_plugins
+	at /home/jakob/uni/hydro-project/tum-mglet-base/src/core/plugins_mod.F90:125
+#49  0x5d082198ca44 in __timeloop_mod_MOD_timeloop
+	at /home/jakob/uni/hydro-project/tum-mglet-base/src/timeloop_mod.F90:240
+#50  0x5d082198a9c6 in MAIN__
+	at /home/jakob/uni/hydro-project/tum-mglet-base/src/mglet.F90:46
+#51  0x5d082198a9c6 in main
+	at /home/jakob/uni/hydro-project/tum-mglet-base/src/mglet.F90:2
+--------------------------------------------------------------------------
+Primary job  terminated normally, but 1 process returned
+a non-zero exit code. Per user-direction, the job has been aborted.
+--------------------------------------------------------------------------
+--------------------------------------------------------------------------
+mpirun noticed that process rank 1 with PID 0 on node jakob exited on signal 6 (Aborted).
+--------------------------------------------------------------------------

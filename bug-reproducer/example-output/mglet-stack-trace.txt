@@ -1,0 +1,120 @@
+mglet: /home/jakob/uni/hydro-project/paraview/VTK/Common/DataModel/vtkAMRBox.cxx:370: void vtkAMRBox::Refine(int): Assertion `"pre: Input refinement ratio must be >= 1" && (r >= 1)' failed.
+
+Program received signal SIGABRT: Process abort signal.
+
+Backtrace for this error:
+#0  0x7a2f9ae23970 in ???
+#1  0x7a2f9ae22ad5 in ???
+#2  0x7a2f99e4251f in ???
+        at ./signal/../sysdeps/unix/sysv/linux/x86_64/libc_sigaction.c:0
+#3  0x7a2f99e969fc in __pthread_kill_implementation
+        at ./nptl/pthread_kill.c:44
+#4  0x7a2f99e969fc in __pthread_kill_internal
+        at ./nptl/pthread_kill.c:78
+#5  0x7a2f99e969fc in __GI___pthread_kill
+        at ./nptl/pthread_kill.c:89
+#6  0x7a2f99e42475 in __GI_raise
+        at ../sysdeps/posix/raise.c:26
+#7  0x7a2f99e287f2 in __GI_abort
+        at ./stdlib/abort.c:79
+#8  0x7a2f99e2871a in __assert_fail_base
+        at ./assert/assert.c:94
+#9  0x7a2f99e39e95 in __GI___assert_fail
+        at ./assert/assert.c:103
+#10  0x7a2f8f17e770 in _ZN9vtkAMRBox6RefineEi
+        at /home/jakob/uni/hydro-project/paraview/VTK/Common/DataModel/vtkAMRBox.cxx:370
+#11  0x7a2f8f8795a9 in _ZN17vtkAMRInformation32CalculateParentChildRelationShipEjRSt6vectorIS0_IjSaIjEESaIS2_EES5_
+        at /home/jakob/uni/hydro-project/paraview/VTK/Common/DataModel/vtkAMRInformation.cxx:638
+#12  0x7a2f8f878963 in _ZN17vtkAMRInformation30GenerateParentChildInformationEv
+        at /home/jakob/uni/hydro-project/paraview/VTK/Common/DataModel/vtkAMRInformation.cxx:541
+#13  0x7a2f940b922e in _ZN23vtkParallelAMRUtilities10BlankCellsEP17vtkOverlappingAMRP25vtkMultiProcessController
+        at /home/jakob/uni/hydro-project/paraview/VTK/Filters/AMR/vtkParallelAMRUtilities.cxx:121
+#14  0x7a2f95db1eb7 in _ZN22vtkConduitToDataObject11FillAMRMeshEP17vtkOverlappingAMRRKN11conduit_cpp4NodeE
+        at /home/jakob/uni/hydro-project/paraview/VTK/IO/CatalystConduit/vtkConduitToDataObject.cxx:378
+#15  0x7a2f95da522d in _ZN16vtkConduitSource11GenerateAMREP13vtkDataObject
+        at /home/jakob/uni/hydro-project/paraview/VTK/IO/CatalystConduit/vtkConduitSource.cxx:104
+#16  0x7a2f95da6393 in _ZN16vtkConduitSource11RequestDataEP14vtkInformationPP20vtkInformationVectorS3_
+        at /home/jakob/uni/hydro-project/paraview/VTK/IO/CatalystConduit/vtkConduitSource.cxx:244
+#17  0x7a2f8fc8a3f5 in _ZN22vtkDataObjectAlgorithm14ProcessRequestEP14vtkInformationPP20vtkInformationVectorS3_
+        at /home/jakob/uni/hydro-project/paraview/VTK/Common/ExecutionModel/vtkDataObjectAlgorithm.cxx:75
+#18  0x7a2f8fc9c0ea in _ZN12vtkExecutive13CallAlgorithmEP14vtkInformationiPP20vtkInformationVectorS3_
+        at /home/jakob/uni/hydro-project/paraview/VTK/Common/ExecutionModel/vtkExecutive.cxx:723
+#19  0x7a2f8fc8d1c7 in _ZN23vtkDemandDrivenPipeline11ExecuteDataEP14vtkInformationPP20vtkInformationVectorS3_
+        at /home/jakob/uni/hydro-project/paraview/VTK/Common/ExecutionModel/vtkDemandDrivenPipeline.cxx:450
+#20  0x7a2f8fc7f732 in _ZN24vtkCompositeDataPipeline11ExecuteDataEP14vtkInformationPP20vtkInformationVectorS3_
+        at /home/jakob/uni/hydro-project/paraview/VTK/Common/ExecutionModel/vtkCompositeDataPipeline.cxx:151
+#21  0x7a2f8fc8c6cc in _ZN23vtkDemandDrivenPipeline14ProcessRequestEP14vtkInformationPP20vtkInformationVectorS3_
+        at /home/jakob/uni/hydro-project/paraview/VTK/Common/ExecutionModel/vtkDemandDrivenPipeline.cxx:249
+#22  0x7a2f8fde60d9 in _ZN32vtkStreamingDemandDrivenPipeline14ProcessRequestEP14vtkInformationPP20vtkInformationVectorS3_
+        at /home/jakob/uni/hydro-project/paraview/VTK/Common/ExecutionModel/vtkStreamingDemandDrivenPipeline.cxx:336
+#23  0x7a2f8fc82c0c in _ZN24vtkCompositeDataPipeline15ForwardUpstreamEP14vtkInformation
+        at /home/jakob/uni/hydro-project/paraview/VTK/Common/ExecutionModel/vtkCompositeDataPipeline.cxx:721
+#24  0x7a2f8fc8c5c2 in _ZN23vtkDemandDrivenPipeline14ProcessRequestEP14vtkInformationPP20vtkInformationVectorS3_
+        at /home/jakob/uni/hydro-project/paraview/VTK/Common/ExecutionModel/vtkDemandDrivenPipeline.cxx:235
+#25  0x7a2f8fde60d9 in _ZN32vtkStreamingDemandDrivenPipeline14ProcessRequestEP14vtkInformationPP20vtkInformationVectorS3_
+        at /home/jakob/uni/hydro-project/paraview/VTK/Common/ExecutionModel/vtkStreamingDemandDrivenPipeline.cxx:336
+#26  0x7a2f8fc8cf70 in _ZN23vtkDemandDrivenPipeline10UpdateDataEi
+        at /home/jakob/uni/hydro-project/paraview/VTK/Common/ExecutionModel/vtkDemandDrivenPipeline.cxx:407
+#27  0x7a2f8fde65b3 in _ZN32vtkStreamingDemandDrivenPipeline6UpdateEiP20vtkInformationVector
+        at /home/jakob/uni/hydro-project/paraview/VTK/Common/ExecutionModel/vtkStreamingDemandDrivenPipeline.cxx:426
+#28  0x7a2f8fde6438 in _ZN32vtkStreamingDemandDrivenPipeline6UpdateEi
+        at /home/jakob/uni/hydro-project/paraview/VTK/Common/ExecutionModel/vtkStreamingDemandDrivenPipeline.cxx:389
+#29  0x7a2f9596a597 in _ZN16vtkSISourceProxy14UpdatePipelineEidb
+        at /home/jakob/uni/hydro-project/paraview/Remoting/ServerManager/vtkSISourceProxy.cxx:243
+#30  0x7a2f81d673b8 in _Z23vtkSISourceProxyCommandP26vtkClientServerInterpreterP13vtkObjectBasePKcRK21vtkClientServerStreamRS5_Pv
+        at /home/jakob/uni/hydro-project/paraview-build/CMakeFiles/vtkRemotingServerManagerCS/vtkSISourceProxyClientServer.cxx:142
+#31  0x7a2f95d33d8f in _ZN26vtkClientServerInterpreter19CallCommandFunctionEPKcP13vtkObjectBaseS1_RK21vtkClientServerStreamRS4_
+        at /home/jakob/uni/hydro-project/paraview/Remoting/ClientServerStream/vtkClientServerInterpreter.cxx:798
+#32  0x7a2f95d31fc6 in _ZN26vtkClientServerInterpreter20ProcessCommandInvokeERK21vtkClientServerStreami
+        at /home/jakob/uni/hydro-project/paraview/Remoting/ClientServerStream/vtkClientServerInterpreter.cxx:412
+#33  0x7a2f95d3140f in _ZN26vtkClientServerInterpreter17ProcessOneMessageERK21vtkClientServerStreami
+        at /home/jakob/uni/hydro-project/paraview/Remoting/ClientServerStream/vtkClientServerInterpreter.cxx:253
+#34  0x7a2f95d3126e in _ZN26vtkClientServerInterpreter13ProcessStreamERK21vtkClientServerStream
+        at /home/jakob/uni/hydro-project/paraview/Remoting/ClientServerStream/vtkClientServerInterpreter.cxx:223
+#35  0x7a2f95910065 in _ZN16vtkPVSessionCore21ExecuteStreamInternalERK21vtkClientServerStreamb
+        at /home/jakob/uni/hydro-project/paraview/Remoting/ServerManager/vtkPVSessionCore.cxx:608
+#36  0x7a2f9590fdf5 in _ZN16vtkPVSessionCore13ExecuteStreamEjRK21vtkClientServerStreamb
+        at /home/jakob/uni/hydro-project/paraview/Remoting/ServerManager/vtkPVSessionCore.cxx:578
+#37  0x7a2f9590b7cb in _ZN16vtkPVSessionBase13ExecuteStreamEjRK21vtkClientServerStreamb
+        at /home/jakob/uni/hydro-project/paraview/Remoting/ServerManager/vtkPVSessionBase.cxx:153
+#38  0x7a2f95aa527b in _ZN10vtkSMProxy13ExecuteStreamERK21vtkClientServerStreambj
+        at /home/jakob/uni/hydro-project/paraview/Remoting/ServerManager/vtkSMProxy.cxx:2424
+#39  0x7a2f95a570ff in _ZN15vtkSMOutputPort22UpdatePipelineInternalEdb
+        at /home/jakob/uni/hydro-project/paraview/Remoting/ServerManager/vtkSMOutputPort.cxx:337
+#40  0x7a2f95a56f79 in _ZN15vtkSMOutputPort14UpdatePipelineEv
+        at /home/jakob/uni/hydro-project/paraview/Remoting/ServerManager/vtkSMOutputPort.cxx:321
+#41  0x7a2f95b2f51a in _ZN16vtkSMSourceProxy14UpdatePipelineEv
+        at /home/jakob/uni/hydro-project/paraview/Remoting/ServerManager/vtkSMSourceProxy.cxx:331
+#42  0x7a2f95b7313b in _ZN18vtkSMWriterFactory12CreateWriterEPKcP16vtkSMSourceProxyjb
+        at /home/jakob/uni/hydro-project/paraview/Remoting/ServerManager/vtkSMWriterFactory.cxx:304
+#43  0x7a2f95f47aff in _ZN6detail12CreateWriterEP19vtkInSituPipelineIOP16vtkSMSourceProxy
+        at /home/jakob/uni/hydro-project/paraview/Clients/InSitu/vtkInSituPipelineIO.cxx:31
+#44  0x7a2f95f485cb in _ZN19vtkInSituPipelineIO7ExecuteEid
+        at /home/jakob/uni/hydro-project/paraview/Clients/InSitu/vtkInSituPipelineIO.cxx:87
+#45  0x7a2f95f3412e in _ZN29vtkInSituInitializationHelper16ExecutePipelinesEidRKSt6vectorINSt7__cxx1112basic_stringIcSt11char_traitsIcESaIcEEESaIS6_EESA_
+        at /home/jakob/uni/hydro-project/paraview/Clients/InSitu/vtkInSituInitializationHelper.cxx:495
+#46  0x7a2f95f338e5 in _ZN29vtkInSituInitializationHelper16ExecutePipelinesEPK17conduit_node_impl
+        at /home/jakob/uni/hydro-project/paraview/Clients/InSitu/vtkInSituInitializationHelper.cxx:433
+#47  0x7a2f95f64091 in catalyst_execute_paraview
+        at /home/jakob/uni/hydro-project/paraview/Clients/InSitu/catalyst/ParaViewCatalyst.cxx:520
+#48  0x7a2f9aa226e3 in catalyst_execute
+        at /home/jakob/uni/hydro-project/catalyst/src/catalyst/catalyst_api.c:277
+#49  0x5ad8d49d8283 in catalyst_adaptor_execute
+        at /home/jakob/uni/hydro-project/tum-mglet-base/src/plugins/catalyst_mod.F90:390
+#50  0x5ad8d49d83a5 in __catalyst_mod_MOD_sample_catalyst
+        at /home/jakob/uni/hydro-project/tum-mglet-base/src/plugins/catalyst_mod.F90:507
+#51  0x5ad8d4d45299 in __plugins_mod_MOD_timeintegrate_plugins
+        at /home/jakob/uni/hydro-project/tum-mglet-base/src/core/plugins_mod.F90:125
+#52  0x5ad8d49d3a44 in __timeloop_mod_MOD_timeloop
+        at /home/jakob/uni/hydro-project/tum-mglet-base/src/timeloop_mod.F90:240
+#53  0x5ad8d49d19c6 in MAIN__
+        at /home/jakob/uni/hydro-project/tum-mglet-base/src/mglet.F90:46
+#54  0x5ad8d49d19c6 in main
+        at /home/jakob/uni/hydro-project/tum-mglet-base/src/mglet.F90:2
+--------------------------------------------------------------------------
+Primary job  terminated normally, but 1 process returned
+a non-zero exit code. Per user-direction, the job has been aborted.
+--------------------------------------------------------------------------
+--------------------------------------------------------------------------
+mpirun noticed that process rank 1 with PID 0 on node jakob exited on signal 6 (Aborted).
+--------------------------------------------------------------------------
