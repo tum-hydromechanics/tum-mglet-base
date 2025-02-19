@@ -59,6 +59,7 @@ void Initialize(int argc, char* argv[])
       node[name + "/args"].append().set_string("--argument3");
       node[name + "/args"].append().set_string("--channel-name=grid");
     }
+    node.print();
   }
 
   // indicate that we want to load ParaView-Catalyst
@@ -228,6 +229,7 @@ void Execute(unsigned int cycle, double time, AMR& amr)
     }
     // we copy the data since point_values will get deallocated
     other_field["values"] = point_values;
+    // mesh.print();
   }
 
 
