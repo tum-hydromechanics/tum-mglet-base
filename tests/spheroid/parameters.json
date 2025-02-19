@@ -53,7 +53,6 @@
     "uvwbulk": true,
 
     "catalyst": {
-        "path": "/usr/local/lib/catalyst/",
         "fields": ["P"],
         "repr": true
     }

@@ -48,7 +48,7 @@
         ]
     },
     "catalyst": {
-        "path": "/usr/local/lib/catalyst/",
-        "repr": true
+        "repr": true,
+        "fields": ["TEMP"]
     }
 }

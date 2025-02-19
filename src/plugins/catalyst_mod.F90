@@ -11,7 +11,6 @@ MODULE catalyst_mod
     TYPE(config_t) :: cata_conf
     CHARACTER(len=mglet_filename_max), ALLOCATABLE :: catascripts(:)
     CHARACTER(len=nchar_name), ALLOCATABLE :: fields(:)
-    CHARACTER(len=mglet_filename_max) :: catalyst_path
     CHARACTER(len=8) :: CATALYST_IMPL = "paraview"
     INTEGER(intk) :: nscripts, nfields
     LOGICAL :: is_repr
@@ -31,8 +30,6 @@ CONTAINS
         ! Catalyst setup
         CALL catalyst_conduit_node_set_path_char8_str(node, &
             "catalyst_load/implementation", CATALYST_IMPL)
-        !CALL catalyst_conduit_node_set_path_char8_str(node, &
-        !    "catalyst_load/search_paths/paraview", catalyst_path)
 
         ! Representative dataset
         IF (is_repr) THEN
@@ -232,14 +229,6 @@ CONTAINS
 
         ! Required values
         CALL fort7%get(cata_conf, "/catalyst")
-        ! Catalyst Path
-        IF ( cata_conf%is_char("/path") ) THEN
-            CALL cata_conf%get_value("/path", catalyst_path)
-        ELSE
-            WRITE(*,*) "Specifiy directory containing libcatalyst-paraview.so!"
-            CALL errr(__FILE__, __LINE__)
-        END IF
-
         ! Representative dataset
         IF ( cata_conf%is_logical("/repr") ) THEN
             CALL cata_conf%get_value("/repr", is_repr, .FALSE.)
