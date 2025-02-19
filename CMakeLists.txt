@@ -145,3 +145,10 @@ FetchContent_MakeAvailable(exprtk)
 add_subdirectory("cmake")
 add_subdirectory("src")
 add_subdirectory("tests")
+
+if(catalyst_FOUND)
+    target_compile_definitions(mglet
+    PRIVATE
+      "PARAVIEW_IMPL_DIR=\"${ParaView_CATALYST_DIR}\""
+      USE_CATALYST=1)
+endif()
