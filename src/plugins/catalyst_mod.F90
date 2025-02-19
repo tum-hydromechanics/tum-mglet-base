@@ -95,10 +95,6 @@ CONTAINS
         data_node = catalyst_conduit_node_fetch(channel_node, "data")
 
         DO ilvl = minlevel, maxlevel
-            IF (nmygridslvl(ilvl) == 0) THEN
-                !CALL add_dummy_grid(data_node, ilvl, itstep, timeph)
-            END IF
-
             DO igridlvl = 1, nmygridslvl(ilvl)
                 igrid = mygridslvl(igridlvl, ilvl)
                 CALL get_mgdims(kk, jj, ii, igrid)
@@ -177,10 +173,6 @@ CONTAINS
                 END DO
             END DO
         END DO
-
-        IF (myid == 0) THEN
-            !CALL catalyst_conduit_node_print(exec_node)
-        END IF
 
         CALL start_timer(813)
         err = c_catalyst_execute(exec_node)
