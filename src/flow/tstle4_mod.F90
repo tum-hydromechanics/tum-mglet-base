@@ -10,11 +10,23 @@
     PUBLIC :: tstle4
 
 CONTAINS
-    SUBROUTINE tstle4(uo_f, vo_f, wo_f, u_f, v_f, w_f, ut_f, vt_f, wt_f, p_f, g_f)
+    SUBROUTINE tstle4(uo_f, vo_f, wo_f, uo_x_f, uo_y_f, uo_z_f, &
+        vo_x_f, vo_y_f, vo_z_f, wo_x_f, wo_y_f, wo_z_f, &
+        u_f, v_f, w_f, ut_f, vt_f, wt_f, p_f, g_f)
+
         ! Subroutine arguments
         TYPE(field_t), INTENT(inout) :: uo_f
         TYPE(field_t), INTENT(inout) :: vo_f
         TYPE(field_t), INTENT(inout) :: wo_f
+        TYPE(field_t), INTENT(inout) :: uo_x_f
+        TYPE(field_t), INTENT(inout) :: uo_y_f
+        TYPE(field_t), INTENT(inout) :: uo_z_f
+        TYPE(field_t), INTENT(inout) :: vo_x_f
+        TYPE(field_t), INTENT(inout) :: vo_y_f
+        TYPE(field_t), INTENT(inout) :: vo_z_f
+        TYPE(field_t), INTENT(inout) :: wo_x_f
+        TYPE(field_t), INTENT(inout) :: wo_y_f
+        TYPE(field_t), INTENT(inout) :: wo_z_f
         TYPE(field_t), INTENT(in) :: u_f
         TYPE(field_t), INTENT(in) :: v_f
         TYPE(field_t), INTENT(in) :: w_f
@@ -27,7 +39,11 @@ CONTAINS
         ! Local variables
         TYPE(field_t), POINTER :: dx_f, dy_f, dz_f, ddx_f, ddy_f, ddz_f
         TYPE(field_t), POINTER :: rdx_f, rdy_f, rdz_f, rddx_f, rddy_f, rddz_f
+
         REAL(realk), POINTER, CONTIGUOUS, DIMENSION(:, :, :) :: uo, vo, wo
+        REAL(realk), POINTER, CONTIGUOUS, DIMENSION(:, :, :) :: uo_x, uo_y, uo_z
+        REAL(realk), POINTER, CONTIGUOUS, DIMENSION(:, :, :) :: vo_x, vo_y, vo_z
+        REAL(realk), POINTER, CONTIGUOUS, DIMENSION(:, :, :) :: wo_x, wo_y, wo_z
         REAL(realk), POINTER, CONTIGUOUS, DIMENSION(:, :, :) :: u, v, w
         REAL(realk), POINTER, CONTIGUOUS, DIMENSION(:, :, :) :: ut, vt, wt
         REAL(realk), POINTER, CONTIGUOUS, DIMENSION(:, :, :) :: p, g
@@ -38,11 +54,6 @@ CONTAINS
         INTEGER(intk) :: i, igrid
         INTEGER(intk) :: kk, jj, ii
         INTEGER(intk) :: nfro, nbac, nrgt, nlft, nbot, ntop
-
-        ! Local variables
-        REAL(realk), ALLOCATABLE :: uo_x(:,:,:), uo_y(:,:,:), uo_z(:,:,:)
-        REAL(realk), ALLOCATABLE :: vo_x(:,:,:), vo_y(:,:,:), vo_z(:,:,:)
-        REAL(realk), ALLOCATABLE :: wo_x(:,:,:), wo_y(:,:,:), wo_z(:,:,:)
 
         CALL start_timer(310)
 
@@ -72,17 +83,26 @@ CONTAINS
 
             CALL get_mgdims(kk, jj, ii, igrid)
 
-            ! Initialize arrays to zero
-            uo_x = 0.0_realk; uo_y = 0.0_realk; uo_z = 0.0_realk
-            vo_x = 0.0_realk; vo_y = 0.0_realk; vo_z = 0.0_realk
-            wo_x = 0.0_realk; wo_y = 0.0_realk; wo_z = 0.0_realk
-
-
             CALL get_mgbasb(nfro, nbac, nrgt, nlft, nbot, ntop, igrid)
 
             CALL uo_f%get_ptr(uo, igrid)
             CALL vo_f%get_ptr(vo, igrid)
             CALL wo_f%get_ptr(wo, igrid)
+
+            CALL uo_x_f%get_ptr(uo_x, igrid)
+            CALL uo_y_f%get_ptr(uo_y, igrid)
+            CALL uo_z_f%get_ptr(uo_z, igrid)
+            CALL vo_x_f%get_ptr(vo_x, igrid)
+            CALL vo_y_f%get_ptr(vo_y, igrid)
+            CALL vo_z_f%get_ptr(vo_z, igrid)
+            CALL wo_x_f%get_ptr(wo_x, igrid)
+            CALL wo_y_f%get_ptr(wo_y, igrid)
+            CALL wo_z_f%get_ptr(wo_z, igrid)
+
+            ! Initialize flux arrays to zero
+            uo_x = 0.0_realk; uo_y = 0.0_realk; uo_z = 0.0_realk
+            vo_x = 0.0_realk; vo_y = 0.0_realk; vo_z = 0.0_realk
+            wo_x = 0.0_realk; wo_y = 0.0_realk; wo_z = 0.0_realk
 
             CALL u_f%get_ptr(u, igrid)
             CALL v_f%get_ptr(v, igrid)
@@ -112,13 +132,14 @@ CONTAINS
             CALL rddz_f%get_ptr(rddz, igrid)
 
             CALL compute_flux(kk, jj, ii, u, v, w, ut, vt, wt, &
-                    uo_x,uo_y,uo_z,vo_x,vo_y,vo_z,wo_x,wo_y,wo_z,&
+                    uo_x, uo_y, uo_z, vo_x, vo_y, vo_z, wo_x, wo_y, wo_z, &
                     dx, dy, dz, ddx, ddy, ddz, rdx, rdy, rdz, p, g,&
                     rddx, rddy, rddz, nfro, nbac, nrgt, nlft, nbot, ntop)
 
-            CALL compute_balance(kk, jj, ii, u, v, w, uo,vo,wo,uo_x,uo_y,uo_z,vo_x,vo_y,vo_z,wo_x,wo_y,wo_z,&
-                     ddx, ddy, ddz,rdx, rdy, rdz, rddx, rddy, rddz,&
-                     nfro, nbac, nrgt, nlft, nbot, ntop,igrid)
+            CALL compute_balance(kk, jj, ii, u, v, w, uo, vo, wo, &
+                    uo_x, uo_y, uo_z, vo_x, vo_y, vo_z, wo_x, wo_y, wo_z, &
+                    ddx, ddy, ddz,rdx, rdy, rdz, rddx, rddy, rddz, &
+                    nfro, nbac, nrgt, nlft, nbot, ntop, igrid)
 
             CALL tstle4_par(kk, jj, ii, uo, vo, wo, u, v, w, ut, vt, wt, &
                     dx, dy, dz, ddx, ddy, ddz, rdx, rdy, rdz, rddx, rddy, rddz, &

@@ -35,6 +35,9 @@ CONTAINS
         TYPE(field_t), POINTER :: u, v, w, ut, vt, wt, pwu, pwv, pww, p, g
         TYPE(field_t), POINTER :: du, dv, dw
         TYPE(field_t) :: uo, vo, wo
+        TYPE(field_t) :: uo_x, uo_y, uo_z
+        TYPE(field_t) :: vo_x, vo_y, vo_z
+        TYPE(field_t) :: wo_x, wo_y, wo_z
 
         ! Just return if no flow is to be solved
         IF (.NOT. solve_flow) RETURN
@@ -56,9 +59,21 @@ CONTAINS
         CALL get_field(dv, "DV")
         CALL get_field(dw, "DW")
 
+        ! Initialization of local fields
         CALL uo%init("UO")
         CALL vo%init("VO")
         CALL wo%init("WO")
+
+        ! Flux values (names not optimal, to be improved later)
+        CALL uo_x%init("UO_X")
+        CALL uo_y%init("UO_Y")
+        CALL uo_z%init("UO_Z")
+        CALL vo_x%init("VO_X")
+        CALL vo_y%init("VO_Y")
+        CALL vo_z%init("VO_Z")
+        CALL wo_x%init("WO_X")
+        CALL wo_y%init("WO_Y")
+        CALL wo_z%init("WO_Z")
 
         ! Transporting velocities for the convective terms
         ! Only CC use a different transporting velocity
@@ -92,7 +107,9 @@ CONTAINS
         END IF
 
         ! TSTLE4 zeroize uo, vo, wo before use internally
-        CALL tstle4(uo, vo, wo, pwu, pwv, pww, ut, vt, wt, p, g)
+        CALL tstle4(uo, vo, wo, uo_x, uo_y, uo_z, &
+            vo_x, vo_y, vo_z, wo_x, wo_y, wo_z, &
+            pwu, pwv, pww, ut, vt, wt, p, g)
         CALL boussinesqterm(uo, vo, wo)
         CALL coriolisterm(uo, vo, wo)
 
