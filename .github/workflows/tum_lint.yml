@@ -4,19 +4,6 @@ on:
   push:
     branches:
       - 'master'
-      - 'michael/**'
-      - 'lukas/**'
-      - 'yoshi/**'
-      - 'simon/**'
-      - 'philip/**'
-      - 'julius/**'
-      - 'javier/**'
-      - 'feyza/**'
-      - 'jakob/**'
-      - 'mohammadreza/**'
-      - 'particle/**'
-      - 'softwarelab/**'
-      - 'catalyst/**'
   pull_request:
     branches: [ master ]
 
