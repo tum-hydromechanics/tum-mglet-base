@@ -1,4 +1,4 @@
-MODULE tstle4_mod
+﻿MODULE tstle4_mod
     USE core_mod
     USE flowcore_mod
     USE lesmodel_mod, ONLY: ilesmodel
@@ -10,8 +10,7 @@ MODULE tstle4_mod
     PUBLIC :: tstle4
 
 CONTAINS
-    SUBROUTINE tstle4(uo_f, vo_f, wo_f, u_f, v_f, w_f, ut_f, vt_f, wt_f, &
-            p_f, g_f)
+    SUBROUTINE tstle4(uo_f, vo_f, wo_f, u_f, v_f, w_f, ut_f, vt_f, wt_f, p_f, g_f)
         ! Subroutine arguments
         TYPE(field_t), INTENT(inout) :: uo_f
         TYPE(field_t), INTENT(inout) :: vo_f
@@ -40,6 +39,11 @@ CONTAINS
         INTEGER(intk) :: kk, jj, ii
         INTEGER(intk) :: nfro, nbac, nrgt, nlft, nbot, ntop
 
+        ! Local variables
+        REAL(realk), ALLOCATABLE :: uo_x(:,:,:), uo_y(:,:,:), uo_z(:,:,:)
+        REAL(realk), ALLOCATABLE :: vo_x(:,:,:), vo_y(:,:,:), vo_z(:,:,:)
+        REAL(realk), ALLOCATABLE :: wo_x(:,:,:), wo_y(:,:,:), wo_z(:,:,:)
+        
         CALL start_timer(310)
 
         ! Set all the output to zero everywhere before we start!
@@ -65,8 +69,20 @@ CONTAINS
 
         DO i = 1, nmygrids
             igrid = mygrids(i)
-
+            
             CALL get_mgdims(kk, jj, ii, igrid)
+        
+            ! Allocate temporary arrays for flux components
+            ALLOCATE(uo_x(kk, jj, ii), uo_y(kk, jj, ii), uo_z(kk, jj, ii))
+            ALLOCATE(vo_x(kk, jj, ii), vo_y(kk, jj, ii), vo_z(kk, jj, ii))
+            ALLOCATE(wo_x(kk, jj, ii), wo_y(kk, jj, ii), wo_z(kk, jj, ii))
+            
+            ! Initialize arrays to zero
+            uo_x = 0.0_realk; uo_y = 0.0_realk; uo_z = 0.0_realk
+            vo_x = 0.0_realk; vo_y = 0.0_realk; vo_z = 0.0_realk
+            wo_x = 0.0_realk; wo_y = 0.0_realk; wo_z = 0.0_realk
+
+            
             CALL get_mgbasb(nfro, nbac, nrgt, nlft, nbot, ntop, igrid)
 
             CALL uo_f%get_ptr(uo, igrid)
@@ -100,20 +116,23 @@ CONTAINS
             CALL rddy_f%get_ptr(rddy, igrid)
             CALL rddz_f%get_ptr(rddz, igrid)
 
-            CALL tstle4_kon(kk, jj, ii, uo, vo, wo, u, v, w, ut, vt, wt, &
-                dx, dy, dz, ddx, ddy, ddz, rdx, rdy, rdz, rddx, rddy, rddz, &
-                nfro, nbac, nrgt, nlft, nbot, ntop)
+            CALL compute_flux(kk, jj, ii, u, v, w, ut, vt, wt, &
+                    uo_x,uo_y,uo_z,vo_x,vo_y,vo_z,wo_x,wo_y,wo_z,&
+                    dx, dy, dz, ddx, ddy, ddz, rdx, rdy, rdz, p, g,&
+                    rddx, rddy, rddz, nfro, nbac, nrgt, nlft, nbot, ntop)
 
-            CALL tstle4_diff(kk, jj, ii, uo, vo, wo, u, v, w, g, &
-                dx, dy, dz, ddx, ddy, ddz, rdx, rdy, rdz, rddx, rddy, rddz, &
-                nfro, nbac, nrgt, nlft, nbot, ntop)
-
-            CALL tstle4_gradp(kk, jj, ii, uo, vo, wo, p, dx, dy, dz, &
-                nfro, nbac, nrgt, nlft, nbot, ntop, igrid)
-
+            CALL compute_balance(kk, jj, ii, u, v, w, uo,vo,wo,uo_x,uo_y,uo_z,vo_x,vo_y,vo_z,wo_x,wo_y,wo_z,&
+                     ddx, ddy, ddz,rdx, rdy, rdz, rddx, rddy, rddz,&
+                     nfro, nbac, nrgt, nlft, nbot, ntop,igrid)
+            
             CALL tstle4_par(kk, jj, ii, uo, vo, wo, u, v, w, ut, vt, wt, &
-                dx, dy, dz, ddx, ddy, ddz, rdx, rdy, rdz, rddx, rddy, rddz, &
-                nfro, nbac, nrgt, nlft, nbot, ntop)
+                    dx, dy, dz, ddx, ddy, ddz, rdx, rdy, rdz, rddx, rddy, rddz, &
+                    nfro, nbac, nrgt, nlft, nbot, ntop)
+            
+            
+            DEALLOCATE(uo_x, uo_y, uo_z)
+            DEALLOCATE(vo_x, vo_y, vo_z)
+            DEALLOCATE(wo_x, wo_y, wo_z)
         END DO
 
         CALL stop_timer(310)
@@ -136,37 +155,29 @@ CONTAINS
     ! [2] Verstappen et al., SYMMETRY-PRESERVING DISCRETIZATIONS OF THE
     !     INCOMPRESSIBLE NAVIER-STOKES EQUATIONS, European Conference on
     !     Computational Fluid Dynamics, ECCOMAS CFD 2006
-    SUBROUTINE tstle4_kon(kk, jj, ii, uo, vo, wo, u, v, w, ut, vt, wt, &
-            dx, dy, dz, ddx, ddy, ddz, rdx, rdy, rdz, rddx, rddy, rddz, &
-            nfro, nbac, nrgt, nlft, nbot, ntop, bu, bv, bw)
+
+    SUBROUTINE compute_flux(kk, jj, ii, u, v, w, ut, vt, wt, &
+            uo_x,uo_y,uo_z,vo_x,vo_y,vo_z,wo_x,wo_y,wo_z,&
+            dx, dy, dz, ddx, ddy, ddz, rdx, rdy, rdz, p, g, &
+            rddx, rddy, rddz, nfro, nbac, nrgt, nlft, nbot, ntop)
+
         ! Subroutine arguments
         INTEGER(intk), INTENT(in) :: kk, jj, ii
-        REAL(realk), INTENT(inout) :: uo(kk, jj, ii), vo(kk, jj, ii), &
-            wo(kk, jj, ii)
         REAL(realk), INTENT(in) :: u(kk, jj, ii), v(kk, jj, ii), w(kk, jj, ii)
-        REAL(realk), INTENT(in) :: ut(kk, jj, ii), vt(kk, jj, ii), &
-            wt(kk, jj, ii)
+        REAL(realk), INTENT(in) :: ut(kk, jj, ii), vt(kk, jj, ii), wt(kk, jj, ii)
+        REAL(realk), INTENT(inout) :: uo_x(:,:,:), uo_y(:,:,:), uo_z(:,:,:)
+        REAL(realk), INTENT(inout) :: vo_x(:,:,:), vo_y(:,:,:), vo_z(:,:,:)
+        REAL(realk), INTENT(inout) :: wo_x(:,:,:), wo_y(:,:,:), wo_z(:,:,:)
         REAL(realk), INTENT(in) :: dx(ii), dy(jj), dz(kk)
         REAL(realk), INTENT(in) :: ddx(ii), ddy(jj), ddz(kk)
         REAL(realk), INTENT(in) :: rdx(ii), rdy(jj), rdz(kk)
+        REAL(realk), POINTER, CONTIGUOUS, DIMENSION(:, :, :) :: p, g
         REAL(realk), INTENT(in) :: rddx(ii), rddy(jj), rddz(kk)
         INTEGER, INTENT(in) :: nfro, nbac, nrgt, nlft, nbot, ntop
-        REAL(realk), INTENT(in), OPTIONAL :: bu(kk, jj, ii), bv(kk, jj, ii), &
-            bw(kk, jj, ii)
 
         ! Local variables
-        INTEGER(intk) :: k, j, i
-        INTEGER(intk) :: nbu, nfu, nrv, nbw, ntw, nlv
-        REAL(realk) :: ax, ay, az
-        REAL(realk) :: fw, fe, ft, fb, fn, fs
-        REAL(realk) :: qw, qe, qt, qb, qn, qs
-
-        ! Sanity check
-        IF (PRESENT(bu) .NEQV. PRESENT(bv) .OR. &
-                PRESENT(bu) .NEQV. PRESENT(bw)) THEN
-            CALL errr(__FILE__, __LINE__)
-        END IF
-
+        INTEGER :: nfu, nbu, nrv, nlv, nbw, ntw
+   
         nfu = 0
         nbu = 0
         nrv = 0
@@ -187,323 +198,306 @@ CONTAINS
         IF (nbot == 3) nbw = 1
         IF (ntop == 3) ntw = 1
 
-        DO i = 3-nfu, ii-3+nbu
-            DO j = 3, jj-2
-                DO k = 3, kk-2
+        !convection
+        CALL tstle4_kon(kk, jj, ii, uo_x, uo_y, uo_z, vo_x, vo_y, vo_z, wo_x, wo_y, wo_z, &
+        u, v, w, ut, vt, wt, dx, dy, dz, ddx, ddy, ddz, rdx, rdy, rdz, rddx, rddy, rddz, &
+        nfu, nbu, nrv, nlv, nbw, ntw)
+
+        CALL tstle4_diff(kk, jj, ii, uo_x, uo_y, uo_z, vo_x, vo_y, vo_z, wo_x, wo_y, wo_z, &
+        u, v, w, g, dx, dy, dz, ddx, ddy, ddz, rdx, rdy, rdz, rddx, rddy, rddz,& 
+        nfu, nbu, nrv, nlv, nbw, ntw)
+
+        CALL tstle4_gradp(kk, jj, ii, uo_x, vo_y, wo_z, p, ddx, ddy, ddz, nfu, nbu, nrv, nlv, nbw, ntw)
+    END SUBROUTINE compute_flux
+
+    SUBROUTINE tstle4_kon(kk, jj, ii, uo_x, uo_y, uo_z, vo_x, vo_y, vo_z, wo_x, wo_y, wo_z,&
+                u, v, w, ut, vt, wt, dx, dy, dz, ddx, ddy, ddz, rdx, rdy, rdz, rddx, rddy, rddz, &
+                nfu, nbu, nrv, nlv, nbw, ntw)
+        ! Subroutine arguments
+        INTEGER(intk), INTENT(in) :: kk, jj, ii
+        REAL(realk), INTENT(inout) :: uo_x(kk, jj, ii), uo_y(kk, jj, ii), uo_z(kk, jj, ii)
+        REAL(realk), INTENT(inout) :: vo_x(kk, jj, ii), vo_y(kk, jj, ii), vo_z(kk, jj, ii)
+        REAL(realk), INTENT(inout) :: wo_x(kk, jj, ii), wo_y(kk, jj, ii), wo_z(kk, jj, ii)
+        REAL(realk), INTENT(in) :: u(kk, jj, ii), v(kk, jj, ii), w(kk, jj, ii)
+        REAL(realk), INTENT(in) :: ut(kk, jj, ii), vt(kk, jj, ii), wt(kk, jj, ii)
+        REAL(realk), INTENT(in) :: dx(ii), dy(jj), dz(kk)
+        REAL(realk), INTENT(in) :: ddx(ii), ddy(jj), ddz(kk)
+        REAL(realk), INTENT(in) :: rdx(ii), rdy(jj), rdz(kk)
+        REAL(realk), INTENT(in) :: rddx(ii), rddy(jj), rddz(kk)
+        INTEGER, INTENT(in) :: nfu, nbu, nrv, nlv, nbw, ntw
+        
+        ! Local variables
+        INTEGER(intk) :: k, j, i
+        REAL(realk) :: ax, ay, az
+        REAL(realk) :: fe, fn, ft
+        REAL(realk) :: qe, qn, qt
+
+        !----------------------
+        ! u-equation
+        !----------------------
+        DO i = 2-nfu, ii-3+nbu
+            DO j = 2, jj-2
+                DO k = 2, kk-2
                     ax = ddy(j)*ddz(k)
                     ay = dx(i)*ddz(k)
                     az = dx(i)*ddy(j)
 
-                    fe = ax*(ut(k, j, i) + (ut(k, j, i+1) - ut(k, j, i)) &
-                        * 0.5*dx(i)/ddx(i+1))
-                    fw = ax*(ut(k, j, i-1) + (ut(k, j, i) - ut(k, j, i-1)) &
-                        * 0.5*dx(i-1)/ddx(i))
-                    fn = ay*(vt(k, j, i) + vt(k, j, i+1))*0.5
-                    fs = ay*(vt(k, j-1, i) + vt(k, j-1, i+1))*0.5
-                    ft = az*(wt(k, j, i) + wt(k, j, i+1))*0.5
-                    fb = az*(wt(k-1, j, i) + wt(k-1, j, i+1))*0.5
+                    fe = ax * (ut(k, j, i) + (ut(k, j, i+1) - ut(k, j, i)) * 0.5 * dx(i) / ddx(i+1))
+                    fn = ay * (vt(k, j, i) + vt(k, j, i+1)) * 0.5
+                    ft = az * (wt(k, j, i) + wt(k, j, i+1)) * 0.5
 
-                    qe = 0.5*fe*(u(k, j, i) + u(k, j, i+1))
-                    qw = 0.5*fw*(u(k, j, i-1) + u(k, j, i))
-                    qn = 0.5*fn*(u(k, j, i) + u(k, j+1, i))
-                    qs = 0.5*fs*(u(k, j-1, i) + u(k, j, i))
-                    qt = 0.5*ft*(u(k, j, i) + u(k+1, j, i))
-                    qb = 0.5*fb*(u(k-1, j, i) + u(k, j, i))
+                    qe = 0.5 * fe * (u(k, j, i) + u(k, j, i+1))
+                    qn = 0.5 * fn * (u(k, j, i) + u(k, j+1, i))
+                    qt = 0.5 * ft * (u(k, j, i) + u(k+1, j, i))
 
-                    uo(k, j, i) = -(qe-qw+qn-qs+qt-qb)
+                    uo_x(k, j, i) = -qe
+                    uo_y(k, j, i) = -qn
+                    uo_z(k, j, i) = -qt
                 END DO
 
-                IF (PRESENT(bu)) THEN
-                    DO k = 3, kk-2
-                        uo(k, j, i) = bu(k, j, i)*uo(k, j, i)
-                    END DO
-                ELSE
-                    DO k = 3, kk-2
-                        uo(k, j, i) = rdx(i)*rddy(j)*rddz(k)*uo(k, j, i)
-                    END DO
-                END IF
             END DO
         END DO
 
-        DO i = 3, ii-2
-            DO j = 3-nrv, jj-3+nlv
-                DO k = 3, kk-2
+        !----------------------
+        ! v-equation
+        !----------------------
+        DO i = 2, ii-2
+            DO j = 2-nrv, jj-3+nlv
+                DO k = 2, kk-2
                     ax = dy(j)*ddz(k)
                     ay = ddx(i)*ddz(k)
                     az = ddx(i)*dy(j)
 
-                    fe = ax*(ut(k, j, i) + ut(k, j+1, i))*0.5
-                    fw = ax*(ut(k, j, i-1) + ut(k, j+1, i-1))*0.5
-                    fn = ay*(vt(k, j, i) + (vt(k, j+1, i) - vt(k, j, i)) &
-                        * 0.5*dy(j)/ddy(j+1))
-                    fs = ay*(vt(k, j-1, i) + (vt(k, j, i) -vt(k, j-1, i)) &
-                        * 0.5*dy(j-1)/ddy(j))
-                    ft = az*(wt(k, j, i) + wt(k, j+1, i))*0.5
-                    fb = az*(wt(k-1, j, i) + wt(k-1, j+1, i))*0.5
+                    fe = ax * (ut(k, j, i) + ut(k, j+1, i)) * 0.5
+                    fn = ay * (vt(k, j, i) + (vt(k, j+1, i) - vt(k, j, i)) * 0.5 * dy(j) / ddy(j+1))
+                    ft = az * (wt(k, j, i) + wt(k, j+1, i)) * 0.5
 
-                    qe = 0.5*fe*(v(k, j, i) + v(k, j, i+1))
-                    qw = 0.5*fw*(v(k, j, i-1) + v(k, j, i))
-                    qn = 0.5*fn*(v(k, j, i) + v(k, j+1, i))
-                    qs = 0.5*fs*(v(k, j-1, i) + v(k, j, i))
-                    qt = 0.5*ft*(v(k, j, i) + v(k+1, j, i))
-                    qb = 0.5*fb*(v(k-1, j, i) + v(k, j, i))
+                    qe = 0.5 * fe * (v(k, j, i) + v(k, j, i+1))
+                    qn = 0.5 * fn * (v(k, j, i) + v(k, j+1, i))
+                    qt = 0.5 * ft * (v(k, j, i) + v(k+1, j, i))
 
-                    vo(k, j, i) = -(qe-qw+qn-qs+qt-qb)
+                    vo_x(k, j, i) = -qe
+                    vo_y(k, j, i) = -qn
+                    vo_z(k, j, i) = -qt
                 END DO
 
-                IF (PRESENT(bv)) THEN
-                    DO k = 3, kk-2
-                        vo(k, j, i) = bv(k, j, i)*vo(k, j, i)
-                    END DO
-                ELSE
-                    DO k = 3, kk-2
-                        vo(k, j, i) = rddx(i)*rdy(j)*rddz(k)*vo(k, j, i)
-                    END DO
-                END IF
             END DO
         END DO
 
-        DO i = 3, ii-2
-            DO j = 3, jj-2
-                DO k = 3-nbw, kk-3+ntw
+        !----------------------
+        ! w-equation
+        !----------------------
+        DO i = 2, ii-2
+            DO j = 2, jj-2
+                DO k = 2-nbw, kk-3+ntw
                     ax = ddy(j)*dz(k)
                     ay = ddx(i)*dz(k)
                     az = ddx(i)*ddy(j)
 
-                    fe = ax*(ut(k, j, i) + ut(k+1, j, i))*0.5
-                    fw = ax*(ut(k, j, i-1)+ ut(k+1, j, i-1))*0.5
-                    fn = ay*(vt(k, j, i) + vt(k+1, j, i))*0.5
-                    fs = ay*(vt(k, j-1, i)+ vt(k+1, j-1, i))*0.5
-                    ft = az*(wt(k, j, i) + (wt(k+1, j, i) - wt(k, j, i)) &
-                        * 0.5*dz(k)/ddz(k+1))
-                    fb = az*(wt(k-1, j, i) + (wt(k, j, i) - wt(k-1, j, i)) &
-                        * 0.5*dz(k-1)/ddz(k))
+                    fe = ax * (ut(k, j, i) + ut(k+1, j, i)) * 0.5
+                    fn = ay * (vt(k, j, i) + vt(k+1, j, i)) * 0.5
+                    ft = az * (wt(k, j, i) + (wt(k+1, j, i) - wt(k, j, i)) * 0.5 * dz(k) / ddz(k+1))
 
-                    qe = 0.5*fe*(w(k, j, i) + w(k, j, i+1))
-                    qw = 0.5*fw*(w(k, j, i-1) + w(k, j, i))
-                    qn = 0.5*fn*(w(k, j, i) + w(k, j+1, i))
-                    qs = 0.5*fs*(w(k, j-1, i) + w(k, j, i))
-                    qt = 0.5*ft*(w(k, j, i) + w(k+1, j, i))
-                    qb = 0.5*fb*(w(k-1, j, i) + w(k, j, i))
+                    qe = 0.5 * fe * (w(k, j, i) + w(k, j, i+1))
+                    qn = 0.5 * fn * (w(k, j, i) + w(k, j+1, i))
+                    qt = 0.5 * ft * (w(k, j, i) + w(k+1, j, i))
 
-                    wo(k, j, i) = -(qe-qw+qn-qs+qt-qb)
+                    wo_x(k, j, i) = -qe
+                    wo_y(k, j, i) = -qn
+                    wo_z(k, j, i) = -qt
                 END DO
 
-                IF (PRESENT(bw)) THEN
-                    DO k = 3-nbw, kk-3+ntw
-                        wo(k, j, i) = bw(k, j, i)*wo(k, j, i)
-                    END DO
-                ELSE
-                    DO k = 3-nbw, kk-3+ntw
-                        wo(k, j, i) = rddx(i)*rddy(j)*rdz(k)*wo(k, j, i)
-                    END DO
-                END IF
             END DO
         END DO
     END SUBROUTINE tstle4_kon
 
 
-    SUBROUTINE tstle4_diff(kk, jj, ii, uo, vo, wo, u, v, w, g, &
-            dx, dy, dz, ddx, ddy, ddz, rdx, rdy, rdz, rddx, rddy, rddz, &
-            nfro, nbac, nrgt, nlft, nbot, ntop)
+    SUBROUTINE tstle4_diff(kk, jj, ii, uo_x, uo_y, uo_z, vo_x, vo_y, vo_z, wo_x, wo_y, wo_z, &
+                u, v, w, g, dx, dy, dz, ddx, ddy, ddz, rdx, rdy, rdz, rddx, rddy, rddz, &
+                nfu, nbu, nrv, nlv, nbw, ntw)
         ! Subroutine arguments
         INTEGER(intk), INTENT(in) :: kk, jj, ii
-        REAL(realk), INTENT(inout) :: uo(kk, jj, ii), vo(kk, jj, ii), &
-            wo(kk, jj, ii)
+        REAL(realk), INTENT(inout) :: uo_x(kk, jj, ii), uo_y(kk, jj, ii), uo_z(kk, jj, ii)
+        REAL(realk), INTENT(inout) :: vo_x(kk, jj, ii), vo_y(kk, jj, ii), vo_z(kk, jj, ii)
+        REAL(realk), INTENT(inout) :: wo_x(kk, jj, ii), wo_y(kk, jj, ii), wo_z(kk, jj, ii)
         REAL(realk), INTENT(in) :: u(kk, jj, ii), v(kk, jj, ii), w(kk, jj, ii)
         REAL(realk), INTENT(in) :: g(kk, jj, ii)
         REAL(realk), INTENT(in) :: dx(ii), dy(jj), dz(kk)
         REAL(realk), INTENT(in) :: ddx(ii), ddy(jj), ddz(kk)
         REAL(realk), INTENT(in) :: rdx(ii), rdy(jj), rdz(kk)
         REAL(realk), INTENT(in) :: rddx(ii), rddy(jj), rddz(kk)
-        INTEGER, INTENT(in) :: nfro, nbac, nrgt, nlft, nbot, ntop
+        INTEGER, INTENT(in) :: nfu, nbu, nrv, nlv, nbw, ntw
 
         ! Local variables
-        INTEGER(intk) :: k, j, i
-        INTEGER(intk) :: nbu, nfu, nrv, nbw, ntw, nlv
-        INTEGER(intk) :: iles
+        INTEGER(intk) :: i, j, k
         REAL(realk) :: ax, ay, az
-        REAL(realk) :: ge, gw, gn, gs, gt, gb
-        REAL(realk) :: qw, qe, qt, qb, qn, qs
-        REAL(realk) :: st, qc, fak
+        REAL(realk) :: ge, gn, gt
+        REAL(realk) :: qe, qn, qt
+        REAL(realk) :: fak
+        
 
-        nfu = 0
-        nbu = 0
-        nrv = 0
-        nlv = 0
-        nbw = 0
-        ntw = 0
-
-        ! CON = 7
-        IF (nbac == 7) nbu = 1
-        IF (nlft == 7) nlv = 1
-        IF (ntop == 7) ntw = 1
-
-        ! OP1 = 3
-        IF (nfro == 3) nfu = 1
-        IF (nbac == 3) nbu = 1
-        IF (nrgt == 3) nrv = 1
-        IF (nlft == 3) nlv = 1
-        IF (nbot == 3) nbw = 1
-        IF (ntop == 3) ntw = 1
-
-        iles = 1
-        IF (ilesmodel == 0) iles = 0
-
-        CALL swcle3d(kk, jj, ii, uo, vo, wo, u, v, w, &
-            ddx, ddy, ddz, nfro, nbac, nrgt, nlft, nbot, ntop)
-
-        DO i = 3-nfu, ii-3+nbu
-            DO j = 3, jj-2
-                DO k = 3, kk-2
+        fak = 1.0 / rho
+        
+        !----------------------
+        ! u-diffusion equation
+        !----------------------
+        DO i = 2-nfu, ii-3+nbu
+            DO j = 2, jj-2
+                DO k = 2, kk-2
                     ax = ddy(j)*ddz(k)
                     ay = dx(i)*ddz(k)
                     az = dx(i)*ddy(j)
 
                     ge = g(k, j, i+1)
-                    gw = g(k, j, i)
-                    gn = g(k, j, i)*g(k, j+1, i) &
-                        /MAX(g(k, j, i) + g(k, j+1, i), gmol) &
-                        + g(k, j, i+1)*g(k, j+1, i+1) &
-                        /MAX(g(k, j, i+1) + g(k, j+1, i+1), gmol)
-                    gs = g(k, j-1, i)*g(k, j, i) &
-                        /MAX(g(k, j-1, i) + g(k, j, i), gmol) &
-                        + g(k, j-1, i+1)*g(k, j, i+1) &
-                        /MAX(g(k, j-1, i+1) + g(k, j, i+1), gmol)
-                    gt = g(k, j, i)*g(k+1, j, i) &
-                        /MAX(g(k, j, i) + g(k+1, j, i), gmol) &
-                        + g(k, j, i+1)*g(k+1, j, i+1) &
-                        /MAX(g(k, j, i+1) + g(k+1, j, i+1), gmol)
-                    gb = g(k-1, j, i)*g(k, j, i) &
-                        /MAX(g(k-1, j, i) + g(k, j, i), gmol) &
-                        + g(k-1, j, i+1)*g(k, j, i+1) &
-                        /MAX(g(k-1, j, i+1) + g(k, j, i+1), gmol)
+                    gn = g(k, j, i)*g(k, j+1, i) / MAX(g(k, j, i) + g(k, j+1, i), gmol) + &
+                        g(k, j, i+1)*g(k, j+1, i+1) / MAX(g(k, j, i+1) + g(k, j+1, i+1), gmol)
+                    gt = g(k, j, i)*g(k+1, j, i) / MAX(g(k, j, i) + g(k+1, j, i), gmol) + &
+                        g(k, j, i+1)*g(k+1, j, i+1) / MAX(g(k, j, i+1) + g(k+1, j, i+1), gmol)
 
-                    qe = -ge*ax*rddx(i+1)*(u(k, j, i+1) - u(k, j, i))
-                    qw = -gw*ax*rddx(i)*(u(k, j, i) - u(k, j, i-1))
-                    qn = -gn*ay*rdy(j)*(u(k, j+1, i) - u(k, j, i))
-                    qs = -gs*ay*rdy(j-1)*(u(k, j, i) - u(k, j-1, i))
-                    qt = -gt*az*rdz(k)*(u(k+1, j, i) - u(k, j, i))
-                    qb = -gb*az*rdz(k-1)*(u(k, j, i) - u(k-1, j, i))
+                    qe = ge*ax*rddx(i+1)*(u(k, j, i+1) - u(k, j, i))
+                    qn = gn*ay*rdy(j)*(u(k, j+1, i) - u(k, j, i))
+                    qt = gt*az*rdz(k)*(u(k+1, j, i) - u(k, j, i))
 
-                    st = ((ge*(u(k, j, i+1) - u(k, j, i))*rddx(i+1)) &
-                        - (gw*(u(k, j, i) - u(k, j, i-1))*rddx(i)))*ax &
-                        + ((gn*(v(k, j, i+1) - v(k, j, i))) &
-                        - (gs*(v(k, j-1, i+1) - v(k, j-1, i))))*ddz(k) &
-                        + ((gt*(w(k, j, i+1) - w(k, j, i))) &
-                        - (gb*(w(k-1, j, i+1) - w(k-1, j, i))))*ddy(j)
-                    qc = st*iles
-
-                    fak = 1.0/rho*rddy(j)*rdx(i)*rddz(k)
-                    uo(k, j, i) = uo(k, j, i) - fak*(qe-qw+qn-qs+qt-qb-qc)
+                    
+                    
+                    uo_x(k, j, i) = uo_x(k, j, i) + fak*qe
+                    uo_y(k, j, i) = uo_y(k, j, i) + fak*qn
+                    uo_z(k, j, i) = uo_z(k, j, i) + fak*qt
+                    
                 END DO
             END DO
         END DO
 
-        DO i = 3, ii-2
-            DO j = 3-nrv, jj-3+nlv
-                DO k = 3, kk-2
+        !----------------------
+        ! v-diffusion equation
+        !----------------------
+        DO i = 2, ii-2
+            DO j = 2-nrv, jj-3+nlv
+                DO k = 2, kk-2
                     ax = dy(j)*ddz(k)
                     ay = ddx(i)*ddz(k)
                     az = ddx(i)*dy(j)
 
-                    ge = g(k, j, i)*g(k, j, i+1) &
-                        /MAX(g(k, j, i) + g(k, j, i+1), gmol) &
-                        + g(k, j+1, i)*g(k, j+1, i+1) &
-                        /MAX(g(k, j+1, i) + g(k, j+1, i+1), gmol)
-                    gw = g(k, j, i-1)*g(k, j, i) &
-                        /MAX(g(k, j, i-1) + g(k, j, i), gmol) &
-                        + g(k, j+1, i-1)*g(k, j+1, i) &
-                        /MAX(g(k, j+1, i-1) + g(k, j+1, i), gmol)
+                    ge = g(k, j, i)*g(k, j, i+1) / MAX(g(k, j, i) + g(k, j, i+1), gmol) + &
+                        g(k, j+1, i)*g(k, j+1, i+1) / MAX(g(k, j+1, i) + g(k, j+1, i+1), gmol)
                     gn = g(k, j+1, i)
-                    gs = g(k, j, i)
-                    gt = g(k, j, i)*g(k+1, j, i) &
-                        /MAX(g(k, j, i) + g(k+1, j, i), gmol) &
-                        + g(k, j+1, i)*g(k+1, j+1, i) &
-                        /MAX(g(k, j+1, i) + g(k+1, j+1, i), gmol)
-                    gb = g(k-1, j, i)*g(k, j, i) &
-                        /MAX(g(k-1, j, i) + g(k, j, i), gmol) &
-                        + g(k-1, j+1, i)*g(k, j+1, i) &
-                        /MAX(g(k-1, j+1, i) + g(k, j+1, i), gmol)
+                    gt = g(k, j, i)*g(k+1, j, i) / MAX(g(k, j, i) + g(k+1, j, i), gmol) + &
+                        g(k, j+1, i)*g(k+1, j+1, i) / MAX(g(k, j+1, i) + g(k+1, j+1, i), gmol)
 
-                    qe = -ge*ax*rdx(i) * (v(k, j, i+1) - v(k, j, i))
-                    qw = -gw*ax*rdx(i-1) * (v(k, j, i) - v(k, j, i-1))
-                    qn = -gn*ay*rddy(j+1) * (v(k, j+1, i) - v(k, j, i))
-                    qs = -gs*ay*rddy(j) * (v(k, j, i) - v(k, j-1, i))
-                    qt = -gt*az*rdz(k) * (v(k+1, j, i) - v(k, j, i))
-                    qb = -gb*az*rdz(k-1) * (v(k, j, i) - v(k-1, j, i))
+                    qe = ge*ax*rdx(i)*(v(k, j, i+1) - v(k, j, i))
+                    qn = gn*ay*rddy(j+1)*(v(k, j+1, i) - v(k, j, i))
+                    qt = gt*az*rdz(k)*(v(k+1, j, i) - v(k, j, i))
 
-                    st = ((ge*(u(k, j+1, i) - u(k, j, i))) &
-                        - (gw*(u(k, j+1, i-1) - u(k, j, i-1))))*ddz(k) &
-                        + ((gn*(v(k, j+1, i) - v(k, j, i))*rddy(j+1)) &
-                        - (gs*(v(k, j, i) - v(k, j-1, i))*rddy(j)))*ay &
-                        + ((gt*(w(k, j+1, i) - w(k, j, i))) &
-                        - (gb*(w(k-1, j+1, i)- w(k-1, j, i))))*ddx(i)
-                    qc = st * iles
-
-                    fak = 1.0/rho*rddx(i)*rdy(j)*rddz(k)
-                    vo(k, j, i) = vo(k, j, i) - fak*(qe-qw+qn-qs+qt-qb-qc)
+                    !fak = 1.0 / rho
+                    
+                    vo_x(k, j, i) = vo_x(k, j, i) + fak*qe
+                    vo_y(k, j, i) = vo_y(k, j, i) + fak*qn
+                    vo_z(k, j, i) = vo_z(k, j, i) + fak*qt
                 END DO
             END DO
         END DO
 
-        DO i = 3, ii-2
-            DO j = 3, jj-2
-                DO k = 3-nbw, kk-3+ntw
+        !----------------------
+        ! w-diffusion equation
+        !----------------------
+        DO i = 2, ii-2
+            DO j = 2, jj-2
+                DO k = 2-nbw, kk-3+ntw
                     ax = ddy(j)*dz(k)
                     ay = ddx(i)*dz(k)
                     az = ddx(i)*ddy(j)
 
-                    ge = g(k, j, i)*g(k, j, i+1) &
-                        /MAX(g(k, j, i) + g(k, j, i+1), gmol) &
-                        + g(k+1, j, i)*g(k+1, j, i+1) &
-                        /MAX(g(k+1, j, i) + g(k+1, j, i+1), gmol)
-                    gw = g(k, j, i-1)*g(k, j, i) &
-                        /MAX(g(k, j, i-1) + g(k, j, i), gmol) &
-                        + g(k+1, j, i-1)*g(k+1, j, i) &
-                        /MAX(g(k+1, j, i-1) + g(k+1, j, i), gmol)
-                    gn = g(k, j, i)*g(k, j+1, i) &
-                        /MAX(g(k, j, i) + g(k, j+1, i), gmol) &
-                        + g(k+1, j, i)*g(k+1, j+1, i) &
-                        /MAX(g(k+1, j, i) + g(k+1, j+1, i), gmol)
-                    gs = g(k, j-1, i)*g(k, j, i) &
-                        /MAX(g(k, j-1, i) + g(k, j, i), gmol) &
-                        + g(k+1, j-1, i)*g(k+1, j, i) &
-                        /MAX(g(k+1, j-1, i) + g(k+1, j, i), gmol)
+                    ge = g(k, j, i)*g(k, j, i+1) / MAX(g(k, j, i) + g(k, j, i+1), gmol) + &
+                        g(k+1, j, i)*g(k+1, j, i+1) / MAX(g(k+1, j, i) + g(k+1, j, i+1), gmol)
+                    gn = g(k, j, i)*g(k, j+1, i) / MAX(g(k, j, i) + g(k, j+1, i), gmol) + &
+                        g(k+1, j, i)*g(k+1, j+1, i) / MAX(g(k+1, j, i) + g(k+1, j+1, i), gmol)
                     gt = g(k+1, j, i)
-                    gb = g(k, j, i)
 
-                    qe = -ge*ax*rdx(i) * (w(k, j, i+1) - w(k, j, i))
-                    qw = -gw*ax*rdx(i-1) * (w(k, j, i) - w(k, j, i-1))
-                    qn = -gn*ay*rdy(j) * (w(k, j+1, i) - w(k, j, i))
-                    qs = -gs*ay*rdy(j-1) * (w(k, j, i) - w(k, j-1, i))
-                    qt = -gt*az*rddz(k+1)* (w(k+1, j, i) - w(k, j, i))
-                    qb = -gb*az*rddz(k) * (w(k, j, i) - w(k-1, j, i))
+                    qe = ge*ax*rdx(i)*(w(k, j, i+1) - w(k, j, i))
+                    qn = gn*ay*rdy(j)*(w(k, j+1, i) - w(k, j, i))
+                    qt = gt*az*rddz(k+1)*(w(k+1, j, i) - w(k, j, i))
 
-                    st = ((ge*(u(k+1, j, i) - u(k, j, i))) &
-                        - (gw*(u(k+1, j, i-1) - u(k, j, i-1))))*ddy(j) &
-                        + ((gn*(v(k+1, j, i) - v(k, j, i))) &
-                        - (gs*(v(k+1, j-1, i) - v(k, j-1, i))))*ddx(i) &
-                        + ((gt*(w(k+1, j, i) - w(k, j, i))*rddz(k+1)) &
-                        - (gb*(w(k, j, i) - w(k-1, j, i))*rddz(k)))*az
-                    qc = st * iles
-
-                    fak = 1.0/rho*rddx(i)*rddy(j)*rdz(k)
-                    wo(k, j, i) = wo(k, j, i) - fak*(qe-qw+qn-qs+qt-qb-qc)
+                    !fak = 1.0 / rho
+                    wo_x(k, j, i) = wo_x(k, j, i) + fak*qe
+                    wo_y(k, j, i) = wo_y(k, j, i) + fak*qn
+                    wo_z(k, j, i) = wo_z(k, j, i) + fak*qt
                 END DO
             END DO
         END DO
     END SUBROUTINE tstle4_diff
 
-
-    SUBROUTINE tstle4_gradp(kk, jj, ii, uo, vo, wo, p, dx, dy, dz, &
-            nfro, nbac, nrgt, nlft, nbot, ntop, igrid)
+    SUBROUTINE tstle4_gradp(kk, jj, ii, uo_x, vo_y, wo_z, p, ddx, ddy, ddz, nfu, nbu, nrv, nlv, nbw, ntw)
         ! Subroutine arguments
         INTEGER(intk), INTENT(in) :: kk, jj, ii
-        REAL(realk), INTENT(inout) :: uo(kk, jj, ii), vo(kk, jj, ii), &
-            wo(kk, jj, ii)
+        REAL(realk), INTENT(inout) :: uo_x(kk, jj, ii), vo_y(kk, jj, ii), wo_z(kk, jj, ii)
         REAL(realk), INTENT(in) :: p(kk, jj, ii)
-        REAL(realk), INTENT(in) :: dx(ii), dy(jj), dz(kk)
+        REAL(realk), INTENT(in) :: ddx(ii), ddy(jj), ddz(kk)
+        INTEGER, INTENT(in) :: nfu, nbu, nrv, nlv, nbw, ntw
+
+        ! Local variables
+        INTEGER(intk) :: k, j, i
+        REAL(realk) :: ax, ay, az, fak, qe, qn, qt
+
+        
+        fak = 1.0 / rho
+        !----------------------
+        ! u-gradient equation
+        !----------------------
+        DO i = 2-nfu, ii-3+nbu
+            DO j = 2, jj-2
+                DO k = 2, kk-2
+                    ax = ddy(j)*ddz(k)
+                    qe = p(k, j, i+1) * ax
+                    ! fak = 1.0 / rho
+                    uo_x(k, j, i) = uo_x(k, j, i) - fak * qe
+                END DO
+            END DO
+        END DO
+
+        !----------------------
+        ! v-gradient equation
+        !----------------------
+        DO i = 2, ii-2
+            DO j = 2-nrv, jj-3+nlv
+                DO k = 2, kk-2
+                    ay = ddx(i)*ddz(k)
+                    qn = p(k, j+1, i) * ay
+                    !fak = 1.0 / rho
+                    vo_y(k, j, i) = vo_y(k, j, i) - fak * qn
+                END DO
+            END DO
+        END DO
+
+        !----------------------
+        ! w-gradient equation
+        !----------------------
+        DO i = 2, ii-2
+            DO j = 2, jj-2
+                DO k = 2-nbw, kk-3+ntw
+                    az = ddx(i)*ddy(j)
+                    qt = p(k+1, j, i) * az
+                    !fak = 1.0 / rho
+                    wo_z(k, j, i) = wo_z(k, j, i) - fak * qt
+                END DO
+            END DO
+        END DO
+    END SUBROUTINE tstle4_gradp
+
+
+    SUBROUTINE compute_balance(kk, jj, ii, u, v, w, uo,vo,wo,& 
+                                uo_x,uo_y,uo_z,vo_x,vo_y,vo_z,wo_x,wo_y,wo_z,&
+                                 ddx, ddy, ddz,rdx, rdy, rdz, rddx, rddy, rddz,&
+                                nfro, nbac, nrgt, nlft, nbot, ntop,igrid)
+        ! Subroutine arguments
+        INTEGER(intk), INTENT(in) :: kk, jj, ii
+        REAL(realk), INTENT(inout) :: uo(kk, jj, ii), vo(kk, jj, ii), wo(kk, jj, ii)
+        REAL(realk), INTENT(in) :: u(kk, jj, ii), v(kk, jj, ii), w(kk, jj, ii)
+        REAL(realk), INTENT(in) :: uo_x(kk, jj, ii),uo_y(kk, jj, ii),uo_z(kk, jj, ii)
+        REAL(realk), INTENT(in) :: vo_x(kk, jj, ii),vo_y(kk, jj, ii),vo_z(kk, jj, ii)
+        REAL(realk), INTENT(in) :: wo_x(kk, jj, ii),wo_y(kk, jj, ii),wo_z(kk, jj, ii)
+        REAL(realk), INTENT(in) :: ddx(ii), ddy(jj), ddz(kk)
+        REAL(realk), INTENT(in) :: rdx(ii), rdy(jj), rdz(kk)
+        REAL(realk), INTENT(in) :: rddx(ii), rddy(jj), rddz(kk)
         INTEGER, INTENT(in) :: nfro, nbac, nrgt, nlft, nbot, ntop
         INTEGER, INTENT(in) :: igrid
 
@@ -511,8 +505,12 @@ CONTAINS
         INTEGER(intk) :: k, j, i
         INTEGER(intk) :: nbu, nfu, nrv, nbw, ntw, nlv
         INTEGER(intk) :: gradpflag
-        REAL(realk) :: gpx, gpy, gpz
+        REAL(realk) :: gpx, gpy, gpz, fak
+        REAL(realk) :: p_x, p_y,p_z
+        REAL(realk) :: uo_xyz,vo_xyz,wo_xyz
+        
 
+        ! Initialize boundary conditions
         nfu = 0
         nbu = 0
         nrv = 0
@@ -520,53 +518,65 @@ CONTAINS
         nbw = 0
         ntw = 0
 
-        ! CON = 7
+        ! Boundary flags
         IF (nbac == 7) nbu = 1
         IF (nlft == 7) nlv = 1
         IF (ntop == 7) ntw = 1
 
-        ! OP1 = 3
         IF (nfro == 3) nfu = 1
         IF (nbac == 3) nbu = 1
         IF (nrgt == 3) nrv = 1
         IF (nlft == 3) nlv = 1
         IF (nbot == 3) nbw = 1
         IF (ntop == 3) ntw = 1
-
+        
         CALL get_gradpxflag(gradpflag, igrid)
         gpx = gradp(1)*gradpflag
         gpy = gradp(2)*gradpflag
         gpz = gradp(3)*gradpflag
+        
+        fak = 1.0/rho
+
+        
 
         DO i = 3-nfu, ii-3+nbu
             DO j = 3, jj-2
                 DO k = 3, kk-2
-                    uo(k, j, i) = uo(k, j, i) - 1.0/(rho*dx(i)) &
-                        *(p(k, j, i+1) - p(k, j, i) + gpx*dx(i))
+                    p_x = -gpx*fak !pressure 
+                    uo_xyz = (uo_x(k, j, i)-uo_x(k, j, i-1) + uo_y(k, j, i)- uo_y(k, j-1, i)+uo_z(k, j, i)- uo_z(k-1, j, i))
+                    uo(k, j, i) = uo_xyz*rdx(i)*rddy(j)*rddz(k)+ p_x 
                 END DO
             END DO
         END DO
 
-        DO i = 3, ii-2
-            DO j = 3-nrv, jj-3+nlv
-                DO k = 3, kk-2
-                    vo(k, j, i) = vo(k, j, i) - 1.0/(rho*dy(j)) &
-                        *(p(k, j+1, i) - p(k, j, i) + gpy*dy(j))
+        
+        DO i = 3, ii - 2
+            DO j = 3 - nrv, jj - 3 + nlv
+                DO k = 3, kk - 2
+                    p_y = -gpy*fak
+                    vo_xyz = (vo_x(k, j, i)-vo_x(k, j, i-1)+ vo_y(k, j, i)- vo_y(k, j-1, i)+ vo_z(k, j, i)-vo_z(k-1, j, i))
+                    vo(k, j, i) = vo_xyz*rddx(i)*rdy(j)*rddz(k)+ p_y
                 END DO
             END DO
         END DO
 
+        
         DO i = 3, ii-2
             DO j = 3, jj-2
                 DO k = 3-nbw, kk-3+ntw
-                    wo(k, j, i) = wo(k, j, i) - 1.0/(rho*dz(k)) &
-                        *(p(k+1, j, i) - p(k, j, i) + gpz*dz(k))
+                    p_z = -gpz*fak
+                    wo_xyz = (wo_x(k, j, i)-wo_x(k, j, i-1)+wo_y(k, j, i)- wo_y(k, j-1, i)+wo_z(k, j, i)-wo_z(k-1, j, i))
+                    wo(k, j, i) = wo_xyz*rddx(i)*rddy(j)*rdz(k)+p_z
                 END DO
             END DO
         END DO
-    END SUBROUTINE tstle4_gradp
+        
+        CALL swcle3d(kk, jj, ii, uo, vo, wo, u, v, w, &
+                ddx, ddy, ddz, nfro, nbac, nrgt, nlft, nbot, ntop)  
 
+    END SUBROUTINE compute_balance
 
+    
     SUBROUTINE tstle4_par(kk, jj, ii, uo, vo, wo, u, v, w, ut, vt, wt, &
             dx, dy, dz, ddx, ddy, ddz, rdx, rdy, rdz, rddx, rddy, rddz, &
             nfro, nbac, nrgt, nlft, nbot, ntop)
@@ -1790,9 +1800,8 @@ CONTAINS
         DEALLOCATE(wcw)
     END SUBROUTINE tstle4_par
 
-
     SUBROUTINE swcle3d(kk, jj, ii, uo, vo, wo, u, v, w, ddx, ddy, ddz, &
-            nfro, nbac, nrgt, nlft, nbot, ntop)
+        nfro, nbac, nrgt, nlft, nbot, ntop)
 
         ! Subroutine arguments
         INTEGER(intk), INTENT(in) :: kk, jj, ii
