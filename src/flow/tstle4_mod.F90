@@ -43,7 +43,7 @@ CONTAINS
         REAL(realk), ALLOCATABLE :: uo_x(:,:,:), uo_y(:,:,:), uo_z(:,:,:)
         REAL(realk), ALLOCATABLE :: vo_x(:,:,:), vo_y(:,:,:), vo_z(:,:,:)
         REAL(realk), ALLOCATABLE :: wo_x(:,:,:), wo_y(:,:,:), wo_z(:,:,:)
-        
+
         CALL start_timer(310)
 
         ! Set all the output to zero everywhere before we start!
@@ -69,20 +69,15 @@ CONTAINS
 
         DO i = 1, nmygrids
             igrid = mygrids(i)
-            
+
             CALL get_mgdims(kk, jj, ii, igrid)
-        
-            ! Allocate temporary arrays for flux components
-            ALLOCATE(uo_x(kk, jj, ii), uo_y(kk, jj, ii), uo_z(kk, jj, ii))
-            ALLOCATE(vo_x(kk, jj, ii), vo_y(kk, jj, ii), vo_z(kk, jj, ii))
-            ALLOCATE(wo_x(kk, jj, ii), wo_y(kk, jj, ii), wo_z(kk, jj, ii))
-            
+
             ! Initialize arrays to zero
             uo_x = 0.0_realk; uo_y = 0.0_realk; uo_z = 0.0_realk
             vo_x = 0.0_realk; vo_y = 0.0_realk; vo_z = 0.0_realk
             wo_x = 0.0_realk; wo_y = 0.0_realk; wo_z = 0.0_realk
 
-            
+
             CALL get_mgbasb(nfro, nbac, nrgt, nlft, nbot, ntop, igrid)
 
             CALL uo_f%get_ptr(uo, igrid)
@@ -124,15 +119,11 @@ CONTAINS
             CALL compute_balance(kk, jj, ii, u, v, w, uo,vo,wo,uo_x,uo_y,uo_z,vo_x,vo_y,vo_z,wo_x,wo_y,wo_z,&
                      ddx, ddy, ddz,rdx, rdy, rdz, rddx, rddy, rddz,&
                      nfro, nbac, nrgt, nlft, nbot, ntop,igrid)
-            
+
             CALL tstle4_par(kk, jj, ii, uo, vo, wo, u, v, w, ut, vt, wt, &
                     dx, dy, dz, ddx, ddy, ddz, rdx, rdy, rdz, rddx, rddy, rddz, &
                     nfro, nbac, nrgt, nlft, nbot, ntop)
-            
-            
-            DEALLOCATE(uo_x, uo_y, uo_z)
-            DEALLOCATE(vo_x, vo_y, vo_z)
-            DEALLOCATE(wo_x, wo_y, wo_z)
+
         END DO
 
         CALL stop_timer(310)
@@ -177,7 +168,7 @@ CONTAINS
 
         ! Local variables
         INTEGER :: nfu, nbu, nrv, nlv, nbw, ntw
-   
+
         nfu = 0
         nbu = 0
         nrv = 0
@@ -204,7 +195,7 @@ CONTAINS
         nfu, nbu, nrv, nlv, nbw, ntw)
 
         CALL tstle4_diff(kk, jj, ii, uo_x, uo_y, uo_z, vo_x, vo_y, vo_z, wo_x, wo_y, wo_z, &
-        u, v, w, g, dx, dy, dz, ddx, ddy, ddz, rdx, rdy, rdz, rddx, rddy, rddz,& 
+        u, v, w, g, dx, dy, dz, ddx, ddy, ddz, rdx, rdy, rdz, rddx, rddy, rddz,&
         nfu, nbu, nrv, nlv, nbw, ntw)
 
         CALL tstle4_gradp(kk, jj, ii, uo_x, vo_y, wo_z, p, ddx, ddy, ddz, nfu, nbu, nrv, nlv, nbw, ntw)
@@ -225,7 +216,7 @@ CONTAINS
         REAL(realk), INTENT(in) :: rdx(ii), rdy(jj), rdz(kk)
         REAL(realk), INTENT(in) :: rddx(ii), rddy(jj), rddz(kk)
         INTEGER, INTENT(in) :: nfu, nbu, nrv, nlv, nbw, ntw
-        
+
         ! Local variables
         INTEGER(intk) :: k, j, i
         REAL(realk) :: ax, ay, az
@@ -334,10 +325,10 @@ CONTAINS
         REAL(realk) :: ge, gn, gt
         REAL(realk) :: qe, qn, qt
         REAL(realk) :: fak
-        
+
 
         fak = 1.0 / rho
-        
+
         !----------------------
         ! u-diffusion equation
         !----------------------
@@ -358,12 +349,12 @@ CONTAINS
                     qn = gn*ay*rdy(j)*(u(k, j+1, i) - u(k, j, i))
                     qt = gt*az*rdz(k)*(u(k+1, j, i) - u(k, j, i))
 
-                    
-                    
+
+
                     uo_x(k, j, i) = uo_x(k, j, i) + fak*qe
                     uo_y(k, j, i) = uo_y(k, j, i) + fak*qn
                     uo_z(k, j, i) = uo_z(k, j, i) + fak*qt
-                    
+
                 END DO
             END DO
         END DO
@@ -389,7 +380,7 @@ CONTAINS
                     qt = gt*az*rdz(k)*(v(k+1, j, i) - v(k, j, i))
 
                     !fak = 1.0 / rho
-                    
+
                     vo_x(k, j, i) = vo_x(k, j, i) + fak*qe
                     vo_y(k, j, i) = vo_y(k, j, i) + fak*qn
                     vo_z(k, j, i) = vo_z(k, j, i) + fak*qt
@@ -438,7 +429,7 @@ CONTAINS
         INTEGER(intk) :: k, j, i
         REAL(realk) :: ax, ay, az, fak, qe, qn, qt
 
-        
+
         fak = 1.0 / rho
         !----------------------
         ! u-gradient equation
@@ -484,7 +475,7 @@ CONTAINS
     END SUBROUTINE tstle4_gradp
 
 
-    SUBROUTINE compute_balance(kk, jj, ii, u, v, w, uo,vo,wo,& 
+    SUBROUTINE compute_balance(kk, jj, ii, u, v, w, uo,vo,wo,&
                                 uo_x,uo_y,uo_z,vo_x,vo_y,vo_z,wo_x,wo_y,wo_z,&
                                  ddx, ddy, ddz,rdx, rdy, rdz, rddx, rddy, rddz,&
                                 nfro, nbac, nrgt, nlft, nbot, ntop,igrid)
@@ -508,7 +499,7 @@ CONTAINS
         REAL(realk) :: gpx, gpy, gpz, fak
         REAL(realk) :: p_x, p_y,p_z
         REAL(realk) :: uo_xyz,vo_xyz,wo_xyz
-        
+
 
         ! Initialize boundary conditions
         nfu = 0
@@ -529,27 +520,27 @@ CONTAINS
         IF (nlft == 3) nlv = 1
         IF (nbot == 3) nbw = 1
         IF (ntop == 3) ntw = 1
-        
+
         CALL get_gradpxflag(gradpflag, igrid)
         gpx = gradp(1)*gradpflag
         gpy = gradp(2)*gradpflag
         gpz = gradp(3)*gradpflag
-        
+
         fak = 1.0/rho
 
-        
+
 
         DO i = 3-nfu, ii-3+nbu
             DO j = 3, jj-2
                 DO k = 3, kk-2
-                    p_x = -gpx*fak !pressure 
+                    p_x = -gpx*fak !pressure
                     uo_xyz = (uo_x(k, j, i)-uo_x(k, j, i-1) + uo_y(k, j, i)- uo_y(k, j-1, i)+uo_z(k, j, i)- uo_z(k-1, j, i))
-                    uo(k, j, i) = uo_xyz*rdx(i)*rddy(j)*rddz(k)+ p_x 
+                    uo(k, j, i) = uo_xyz*rdx(i)*rddy(j)*rddz(k)+ p_x
                 END DO
             END DO
         END DO
 
-        
+
         DO i = 3, ii - 2
             DO j = 3 - nrv, jj - 3 + nlv
                 DO k = 3, kk - 2
@@ -560,7 +551,7 @@ CONTAINS
             END DO
         END DO
 
-        
+
         DO i = 3, ii-2
             DO j = 3, jj-2
                 DO k = 3-nbw, kk-3+ntw
@@ -570,13 +561,13 @@ CONTAINS
                 END DO
             END DO
         END DO
-        
+
         CALL swcle3d(kk, jj, ii, uo, vo, wo, u, v, w, &
-                ddx, ddy, ddz, nfro, nbac, nrgt, nlft, nbot, ntop)  
+                ddx, ddy, ddz, nfro, nbac, nrgt, nlft, nbot, ntop)
 
     END SUBROUTINE compute_balance
 
-    
+
     SUBROUTINE tstle4_par(kk, jj, ii, uo, vo, wo, u, v, w, ut, vt, wt, &
             dx, dy, dz, ddx, ddy, ddz, rdx, rdy, rdz, rddx, rddy, rddz, &
             nfro, nbac, nrgt, nlft, nbot, ntop)
