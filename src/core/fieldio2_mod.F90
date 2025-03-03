@@ -1325,7 +1325,7 @@ CONTAINS
             nsend = 0
             DO i = 1, niogrgrids
                 igrid = iogridinfo(1, i)
-                iproc = idprocofgrd(igrid)
+                iproc = iogridinfo(2, i)
                 nelems = iogridinfo(3, i)
 
                 ! Grids with no data are not communicated
