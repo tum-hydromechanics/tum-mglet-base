@@ -18,7 +18,9 @@ CONTAINS
 
         DO l = 1, nsca
             ! checking length of scalar name string
-            IF (LEN_TRIM(scalar(l)%name) + 4 > nchar_name) THEN
+            IF (LEN_TRIM(scalar(l)%name)*2 + 2 + 4 > nchar_name) THEN
+                WRITE(*,*) "Name ", LEN_TRIM(scalar(l)%name), " too long."
+                WRITE(*,*) "Scalar name should not exceed 5 characters."
                 CALL errr(__FILE__, __LINE__)
             END IF
 
