@@ -771,12 +771,12 @@ CONTAINS
         INTEGER(intk) :: i
         INTEGER(intk), ALLOCATABLE :: iogridinfo_all(:, :)
         INTEGER(int32) :: ierr
-        INTEGER(hid_t) :: dset_id, filespace, memspace, plist_id, memtype
+        INTEGER(hid_t) :: dset_id, filespace, memspace, dxpl_id, memtype
         INTEGER(hsize_t) :: shape1(1)
         INTEGER(hssize_t) :: npoints
         TYPE(offset_t), ALLOCATABLE, TARGET :: offset(:)
         TYPE(c_ptr) :: cptr
-
+        
         IF (.NOT. ioproc) RETURN
         CALL start_timer(102)
 
@@ -820,19 +820,19 @@ CONTAINS
         IF (ierr /= 0) CALL errr(__FILE__, __LINE__)
 
         ! Property list collectively for collective dataset write
-        CALL h5pcreate_f(H5P_DATASET_XFER_F, plist_id, ierr)
+        CALL h5pcreate_f(H5P_DATASET_XFER_F, dxpl_id, ierr)
         IF (ierr /= 0) CALL errr(__FILE__, __LINE__)
-
-        CALL h5pset_dxpl_mpio_f(plist_id, hdf5_io_mode, ierr)
+            
+        CALL h5pset_dxpl_mpio_f(dxpl_id, hdf5_io_mode, ierr)
         IF (ierr /= 0) CALL errr(__FILE__, __LINE__)
 
         CALL h5dwrite_f(dset_id, memtype, cptr, ierr, &
             file_space_id=filespace, mem_space_id=memspace, &
-            xfer_prp=plist_id)
+            xfer_prp=dxpl_id)
         IF (ierr /= 0) CALL errr(__FILE__, __LINE__)
 
         ! Close handles
-        CALL h5pclose_f(plist_id, ierr)
+        CALL h5pclose_f(dxpl_id, ierr)
         IF (ierr /= 0) CALL errr(__FILE__, __LINE__)
 
         CALL h5sclose_f(memspace, ierr)

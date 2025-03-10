@@ -113,6 +113,7 @@ CONTAINS
         INTEGER(kind=int32) :: ierr
 
         INTEGER(HID_T) :: plist_id
+        TYPE(MPI_Info) :: mpiinfo
 
         file_id = -1
         IF (.NOT. ioProc) THEN
@@ -146,9 +147,29 @@ CONTAINS
         CALL h5pset_coll_metadata_write_f(plist_id, .TRUE., ierr)
         IF (ierr < 0) CALL errr(__FILE__, __LINE__)
 
-        CALL h5pset_fapl_mpio_f(plist_id, iocomm%MPI_val, &
-            MPI_INFO_NULL%MPI_val, ierr)
-        IF (ierr /= 0) CALL errr(__FILE__, __LINE__)
+        IF (hdf5_io_mode == H5FD_MPIO_COLLECTIVE_F) THEN
+            ! Create MPI-info, possible to add stuff there in the future...
+            CALL MPI_Info_create(mpiinfo, ierr)
+            IF (ierr/=0) CALL errr(__FILE__, __LINE__)
+
+            ! Hint to enable collective buffering (cb)
+            ! (see paper "Performance Optimisation of the Parallel CFD Code MGLET across Different HPC Platforms")
+            CALL MPI_Info_set(mpiinfo,'romio_cb_write','enable', ierr)
+            IF (ierr/=0) CALL errr(__FILE__, __LINE__)
+
+            CALL h5pset_fapl_mpio_f(plist_id, iocomm%MPI_val, mpiinfo%MPI_val, ierr)
+            IF (ierr/=0) CALL errr(__FILE__, __LINE__)
+
+            ! The HDF5 library create a copy of the info object so we can
+            ! immediately close it
+            CALL MPI_Info_free(mpiinfo, ierr)
+            IF (ierr/=0) CALL errr(__FILE__, __LINE__)
+        ELSE
+            CALL h5pset_fapl_mpio_f(plist_id, iocomm%MPI_val, &
+                MPI_INFO_NULL%MPI_val, ierr)
+            IF (ierr /= 0) CALL errr(__FILE__, __LINE__)
+        END IF
+
 
         ! Determine if the in/output file already exists
         INQUIRE(file=filename, EXIST=fileexist)
