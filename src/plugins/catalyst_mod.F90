@@ -348,18 +348,23 @@ CONTAINS
         REAL(realk), INTENT(in) :: arr_f(kk, jj, ii)
         ! Local variables
         INTEGER :: k, j, i
+        REAL(realk) :: cellval
+
         ! Inversion of indices for usage in C
         DO i = 1, ii-2*nbl
             DO j = 1, jj-2*nbl
                 DO k = 1, kk-2*nbl
+                    ! Currently only supports a staggered grid that is offset by half a cell
+                    ! Following the formula: x_center = 0.5 * (x_stag_i + x_stag_i-1)
+                    cellval = arr_f(k+nbl, j+nbl, i+nbl)
                     IF (istag /= 0) THEN
-                        arr_c(i,j,k) = 0.5 * (arr_f(k+nbl, j+nbl, i+nbl) + arr_f(k+nbl, j+nbl, i+nbl-istag))
+                        arr_c(i,j,k) = 0.5 * (cellval + arr_f(k+nbl, j+nbl, i+nbl-istag))
                     ELSE IF (jstag /= 0) THEN
-                        arr_c(i,j,k) = 0.5 * (arr_f(k+nbl, j+nbl, i+nbl) + arr_f(k+nbl, j+nbl-jstag, i+nbl))
+                        arr_c(i,j,k) = 0.5 * (cellval + arr_f(k+nbl, j+nbl-jstag, i+nbl))
                     ELSE IF (kstag /= 0) THEN
-                        arr_c(i,j,k) = 0.5 * (arr_f(k+nbl, j+nbl, i+nbl) + arr_f(k+nbl-kstag, j+nbl, i+nbl))
+                        arr_c(i,j,k) = 0.5 * (cellval + arr_f(k+nbl-kstag, j+nbl, i+nbl))
                     ELSE
-                        arr_c(i, j, k) = arr_f(k+nbl, j+nbl, i+nbl)
+                        arr_c(i, j, k) = cellval
                     END IF
                 END DO
             END DO
