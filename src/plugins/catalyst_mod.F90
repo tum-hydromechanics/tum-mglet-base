@@ -336,14 +336,14 @@ CONTAINS
                 CALL get_mgdims(kk, jj, ii, igrid)
                 CALL f_t%get_ptr(arr, igrid)
                 CALL f_t_c%get_ptr(arr_c, igrid)
-                CALL field_to_c_grid(kk, jj, ii, nbl, arr_c, arr)
+                CALL field_to_c_grid(kk, jj, ii, nbl, f_t%istag, f_t%jstag, f_t%kstag, arr_c, arr)
             END DO
         END DO
     END SUBROUTINE field_to_c
 
-    PURE SUBROUTINE field_to_c_grid(kk, jj, ii, nbl, arr_c, arr_f)
+    PURE SUBROUTINE field_to_c_grid(kk, jj, ii, nbl, istag, jstag, kstag, arr_c, arr_f)
         ! Subroutine arguments
-        INTEGER(intk), INTENT(in) :: kk, jj, ii, nbl
+        INTEGER(intk), INTENT(in) :: kk, jj, ii, nbl, istag, jstag, kstag
         REAL(realk), INTENT(inout) :: arr_c(ii-2*nbl, jj-2*nbl, kk-2*nbl)
         REAL(realk), INTENT(in) :: arr_f(kk, jj, ii)
         ! Local variables
@@ -352,7 +352,15 @@ CONTAINS
         DO i = 1, ii-2*nbl
             DO j = 1, jj-2*nbl
                 DO k = 1, kk-2*nbl
-                    arr_c(i, j, k) = arr_f(k+nbl, j+nbl, i+nbl)
+                    IF (istag /= 0) THEN
+                        arr_c(i,j,k) = 0.5 * (arr_f(k+nbl, j+nbl, i+nbl) + arr_f(k+nbl, j+nbl, i+nbl-istag))
+                    ELSE IF (jstag /= 0) THEN
+                        arr_c(i,j,k) = 0.5 * (arr_f(k+nbl, j+nbl, i+nbl) + arr_f(k+nbl, j+nbl-jstag, i+nbl))
+                    ELSE IF (kstag /= 0) THEN
+                        arr_c(i,j,k) = 0.5 * (arr_f(k+nbl, j+nbl, i+nbl) + arr_f(k+nbl-kstag, j+nbl, i+nbl))
+                    ELSE
+                        arr_c(i, j, k) = arr_f(k+nbl, j+nbl, i+nbl)
+                    END IF
                 END DO
             END DO
         END DO
