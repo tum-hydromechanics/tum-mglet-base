@@ -32,8 +32,7 @@
         "solve": false
     },
     "catalyst": {
-        "path": "/usr/local/lib/catalyst/",
         "fields": ["U"],
-        "repr": true
+        "writevtkfile": true
     }
 }

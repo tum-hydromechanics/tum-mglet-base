@@ -54,6 +54,6 @@
 
     "catalyst": {
         "fields": ["P"],
-        "repr": true
+        "writevtkfile": true
     }
 }

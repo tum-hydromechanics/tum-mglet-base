@@ -13,7 +13,7 @@ MODULE catalyst_mod
     CHARACTER(len=nchar_name), ALLOCATABLE :: fields(:)
     CHARACTER(len=8) :: CATALYST_IMPL = "paraview"
     INTEGER(intk) :: nscripts, nfields
-    LOGICAL :: is_repr
+    LOGICAL :: writevtkfile
     LOGICAL :: has_catalyst = .FALSE.
 
     PUBLIC :: init_catalyst, sample_catalyst, finish_catalyst
@@ -31,8 +31,8 @@ CONTAINS
         CALL catalyst_conduit_node_set_path_char8_str(node, &
             "catalyst_load/implementation", CATALYST_IMPL)
 
-        ! Representative dataset
-        IF (is_repr) THEN
+        ! Write to vtk file
+        IF (writevtkfile) THEN
             CALL catalyst_conduit_node_set_path_char8_str(node, &
                 "catalyst/pipelines/0/type", "io")
             CALL catalyst_conduit_node_set_path_char8_str(node, &
@@ -221,12 +221,12 @@ CONTAINS
 
         ! Required values
         CALL fort7%get(cata_conf, "/catalyst")
-        ! Representative dataset
-        IF ( cata_conf%is_logical("/repr") ) THEN
-            CALL cata_conf%get_value("/repr", is_repr, .FALSE.)
+        ! Write to vtk file
+        IF ( cata_conf%is_logical("/writevtkfile") ) THEN
+            CALL cata_conf%get_value("/writevtkfile", writevtkfile, .FALSE.)
         ELSE
-            WRITE(*,*) "Specify whether to create a representative dataset!"
-            is_repr = .FALSE.
+            WRITE(*,*) "Specify whether to write fields to a vtk file with writevtkfile!"
+            writevtkfile = .FALSE.
         END IF
 
         ! Fields

@@ -48,7 +48,7 @@
         ]
     },
     "catalyst": {
-        "repr": true,
+        "writevtkfile": true,
         "fields": ["TEMP"]
     }
 }
