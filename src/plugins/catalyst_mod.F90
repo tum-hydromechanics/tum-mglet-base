@@ -60,7 +60,7 @@ CONTAINS
     END SUBROUTINE catalyst_adaptor_initialize
 
     SUBROUTINE catalyst_adaptor_execute(itstep, ittot, timeph, dt)
-        USE grids_mod, ONLY: minlevel, maxlevel, nmygridslvl, get_children
+        USE grids_mod, ONLY: minlevel, maxlevel, nmygridslvl
         ! Subroutine arguments
         INTEGER(intk), INTENT(in) :: itstep
         INTEGER(intk), INTENT(in) :: ittot
