@@ -31,9 +31,6 @@ MODULE grids_mod
     INTEGER(intk), ALLOCATABLE, PROTECTED :: nmygridslvl(:)
     INTEGER(intk), ALLOCATABLE, PROTECTED :: mygridslvl(:, :)
 
-    INTEGER(intk), ALLOCATABLE, PROTECTED :: nchildren(:)
-    INTEGER(intk), ALLOCATABLE, PROTECTED, TARGET :: childofgrd(:, :)
-
     ! From cobound.h
     INTEGER(intk), ALLOCATABLE, PROTECTED :: nboconds(:, :)
     INTEGER(intk), ALLOCATABLE, PROTECTED :: itypboconds(:, :, :)
@@ -49,7 +46,7 @@ MODULE grids_mod
     PUBLIC :: init_grids, finish_grids, get_bbox, get_gradpxflag, get_bcprms, &
         get_imygrid, get_mgdims, get_level, iposition, jposition, kposition, &
         iparent, get_neighbours, level, get_kk, get_jj, get_ii, get_mgbasb, &
-        get_bc_ctyp, get_gridvolume, get_nbcprms, rewrite_grids, get_children
+        get_bc_ctyp, get_gridvolume, get_nbcprms, rewrite_grids
 
     ! Public data arrays
     PUBLIC :: ngrid, minlevel, maxlevel, maxgrdsoflvl, noflevel, igrdoflevel, &
@@ -109,8 +106,6 @@ CONTAINS
 
         ! Set boundary conditions, pointers
         CALL init_gridstructure()
-
-        CALL build_children()
     END SUBROUTINE init_grids
 
 
@@ -133,8 +128,6 @@ CONTAINS
         DEALLOCATE(nboconds)
         DEALLOCATE(itypboconds)
         DEALLOCATE(idprocofgrd)
-        DEALLOCATE(nchildren)
-        DEALLOCATE(childofgrd)
 
         ngrid = 0
         nmygrids = 0
@@ -142,6 +135,7 @@ CONTAINS
         maxlevel = 0
         maxgrdsoflvl = 0
     END SUBROUTINE finish_grids
+
 
     SUBROUTINE setcolevel()
         ! Subroutine arguments
@@ -1036,52 +1030,4 @@ CONTAINS
         bcond%nbocd = 1
         bcond%type(1:LEN(nix), 1) = TRANSFER(nix, bcond%type(1:LEN(nix), 1))
     END SUBROUTINE set_nix
-
-    SUBROUTINE build_children()
-        INTEGER(intk) :: igrid, p
-        INTEGER(intk) :: maxchild
-    
-        ALLOCATE(nchildren(ngrid))
-        nchildren = 0
-    
-        ! Count number of children for each parent
-        DO igrid = 1, ngrid
-            p = gridinfo(igrid)%iparent
-            IF (p > 0) THEN
-                IF (p < 1 .OR. p > ngrid) THEN
-                    WRITE(*,*) "Invalid iparent = ", p, " for child ", igrid
-                    CALL errr(__FILE__, __LINE__)
-                END IF
-                nchildren(p) = nchildren(p) + 1
-            END IF
-        END DO
-    
-        ! Max number of children --> allocate
-        maxchild = MAXVAL(nchildren)
-        IF (maxchild > 0) THEN
-            ALLOCATE(childofgrd(maxchild, ngrid))
-        ELSE
-            ALLOCATE(childofgrd(1, ngrid))
-        END IF
-        childofgrd = 0
-    
-        ! Fill array by scanning again
-        nchildren = 0
-        DO igrid = 1, ngrid
-            p = gridinfo(igrid)%iparent
-            IF (p > 0) THEN
-                nchildren(p) = nchildren(p) + 1
-                childofgrd(nchildren(p), p) = igrid
-            END IF
-        END DO
-    END SUBROUTINE build_children
-    
-    SUBROUTINE get_children(igrid, children, nchild)
-        INTEGER(intk), INTENT(in)  :: igrid
-        INTEGER(intk), INTENT(out)  :: nchild
-        INTEGER(intk), POINTER, INTENT(out) :: children(:)
-        
-        nchild = nchildren(igrid)
-        children => childofgrd(:, igrid)
-    END SUBROUTINE get_children
 END MODULE grids_mod
