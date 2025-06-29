@@ -130,24 +130,7 @@ contains
       CALL generate_mesh()
    END SUBROUTINE set_geometry
 
-   SUBROUTINE print_geometry()
-      PRINT *, "==== Current Geometry Parameters ===="
-      PRINT *, "Inner Radius (inR): ", inR
-      PRINT *, "Outer Radius (outR): ", outR
-      PRINT *, "Blade Length: ", BladeLength
-      PRINT *, "Tank Size: ", TankSize
-      PRINT *, "Angular Velocity (w): ", w
-      PRINT *, "Area Time Step (area_dt): ", area_dt
-      PRINT *, "Rotation Time Step (rotate_dt): ", rotate_dt
-      PRINT *, "Total Rotation Time (tmax): ", tmax
-      PRINT *, "Center Position: ", centrePoint
-      PRINT *, "Grid dx: ", grid_dx
-      PRINT *, "Grid dy: ", grid_dy
-      PRINT *, "Blade1 Initial Angle: ", previous_startangle1
-      PRINT *, "Blade2 Initial Angle: ", previous_startangle2
-      PRINT *, "==== Current Mesh Grid ====", Xgrid
-   END SUBROUTINE print_geometry
-
+   
    function trapezoid_area(points) result(area)
       implicit none
       real(8), intent(in) :: points(4, 2)
@@ -709,53 +692,5 @@ contains
 
 end module Grid_Area
 
-PROGRAM learn
-   USE Grid_Area
-   IMPLICIT NONE
 
-   REAL(8) :: rinR, routR, rBlade, rTank, rw
-   REAL(8) :: rAreaDT, rRotateDT, rtmax
-   REAL(8) :: rCentre(2), rdx, rdy, rAngle1, rAngle2
-   integer ::L, nsteps
-   ! user input
-   PRINT *, "Enter inner radius:"
-   READ (*, *) rinR
-   PRINT *, "Enter outer radius:"
-   READ (*, *) routR
-   PRINT *, "Enter blade length:"
-   READ (*, *) rBlade
-   PRINT *, "Enter tank size:"
-   READ (*, *) rTank
-   PRINT *, "Enter angular velocity:"
-   READ (*, *) rw
-   PRINT *, "Enter area time step:"
-   READ (*, *) rAreaDT
-   PRINT *, "Enter rotate time step:"
-   READ (*, *) rRotateDT
-   PRINT *, "Enter total rotate time:"
-   READ (*, *) rtmax
-   PRINT *, "Enter center point coordinates (x y):"
-   READ (*, *) rCentre(1), rCentre(2)
-   PRINT *, "Enter grid dx:"
-   READ (*, *) rdx
-   PRINT *, "Enter grid dy:"
-   READ (*, *) rdy
-   PRINT *, "Enter blade 1 initial angle:"
-   READ (*, *) rAngle1
-   PRINT *, "Enter blade 2 initial angle:"
-   READ (*, *) rAngle2
-
-   CALL set_geometry(rinR, routR, rBlade, rTank, rw, rAreaDT, rRotateDT, rtmax, &
-                     rCentre, rdx, rdy, rAngle1, rAngle2)
-
-   CALL print_geometry
-   !calculate grid
-   call Area_Calculation(15)
-
-   nsteps = INT(aint(rtmax/rRotateDT))
-   do L = 0, nsteps
-      call Area_Calculation(L)
-   end do
-   print *, show
-END PROGRAM learn
 
