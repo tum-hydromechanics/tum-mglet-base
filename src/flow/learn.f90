@@ -1,6 +1,5 @@
 module Grid_Area
-   !ceshi
-   qqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqq
+   USE core_mod
    IMPLICIT NONE
    PRIVATE
 
@@ -12,6 +11,10 @@ module Grid_Area
    PUBLIC :: Area_Calculation
 
    !  private
+   REAL(8), private :: rCentre(2)
+   REAL(8), private :: rTank
+   REAL(8), private :: rw
+   REAL(8), private :: rtmax
    LOGICAL, PROTECTED :: has_Grid_Area = .FALSE.
    REAL(8), private :: inR
    REAL(8), private :: outR
@@ -36,15 +39,26 @@ contains
 
       ! leaving inactive if no parameters specified
       has_Grid_Area = .FALSE.
-      ! IF (.NOT. fort7%exists("/flow/Grid_Area")) RETURN   
-
+      ! IF (.NOT. fort7%exists("/flow/Grid_Area_Calculation")) RETURN   
 
       ! retrieving rotation rate vector from parameters.json
-
+      !centre position
+       CALL fort7%get_array("/flow/Grid_Area_Calculation/rCentre", rCentre)
+      !tank size
+       CALL fort7%get_array("/flow/Grid_Area_Calculation/rTank", rTank)
+      !angular velocity
+       CALL fort7%get_array("/flow/Grid_Area_Calculation/rw", rw)
+      !total simulation time
+       CALL fort7%get_array("/flow/Grid_Area_Calculation/rtmax", rtmax)
       ! display obtained parameters
-      ! IF (myid == 0) THEN
-      !    WRITE (*, '("grid TERM:")')
-      ! END IF
+      IF (myid == 0) THEN
+            WRITE(*, '("Calculate_Grid_Area TERM:")')
+            WRITE(*, '(2X, "CentrePosition: ", 2(G0, 1X))') rCentre
+            WRITE(*, '(2X, "TankSize: ", 1(G0, 1X))') rTank
+            WRITE(*, '(2X, "AngularVelocity: ", 1(G0, 1X))') rw
+            WRITE(*, '(2X, "total_simulation_time: ", 1(G0, 1X))') rtmax
+            WRITE(*, '()')
+        END IF
 
       ! set active
       has_Grid_Area = .TRUE.
