@@ -1,0 +1,36 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<Xdmf>
+  <Domain>
+    <Grid Name="MGLET" GridType="Collection" CollectionType="Spatial">
+      <Time Value="10.0"/>
+      <Grid Name="level-0" GridType="Collection" CollectionType="Spatial">
+        <Grid Name="grid-0" GridType="Uniform">
+          <Topology TopologyType="3DCoRectMesh" Dimensions="45 45 45"/>
+          <Geometry GeometryType="ORIGIN_DXDYDZ">
+            <DataItem Format="XML" Dimensions="3">-2.1999999999999997 -2.1999999999999997 -2.15</DataItem>
+            <DataItem Format="XML" Dimensions="3">0.09999999999999999 0.09999999999999999 0.09999999999999999</DataItem>
+          </Geometry>
+          <Attribute Name="U" Center="Cell" AttributeType="Scalar">
+            <DataItem ItemType="HyperSlab" Dimensions="44 44 44">
+              <DataItem Format="XML" Dimensions="3 2" NumberType="Int">0 0   1 1   1 85184</DataItem>
+              <DataItem Format="HDF" Dimensions="2 85184" NumberType="Float" Precision="4">fields.h5:/VOLUMEFIELDS/U/LEVEL0</DataItem>
+            </DataItem>
+          </Attribute>
+        </Grid>
+        <Grid Name="grid-1" GridType="Uniform">
+          <Topology TopologyType="3DCoRectMesh" Dimensions="45 45 45"/>
+          <Geometry GeometryType="ORIGIN_DXDYDZ">
+            <DataItem Format="XML" Dimensions="3">-2.1999999999999997 -2.1999999999999997 1.85</DataItem>
+            <DataItem Format="XML" Dimensions="3">0.09999999999999999 0.09999999999999999 0.10000000000000002</DataItem>
+          </Geometry>
+          <Attribute Name="U" Center="Cell" AttributeType="Scalar">
+            <DataItem ItemType="HyperSlab" Dimensions="44 44 44">
+              <DataItem Format="XML" Dimensions="3 2" NumberType="Int">1 0   1 1   1 85184</DataItem>
+              <DataItem Format="HDF" Dimensions="2 85184" NumberType="Float" Precision="4">fields.h5:/VOLUMEFIELDS/U/LEVEL0</DataItem>
+            </DataItem>
+          </Attribute>
+        </Grid>
+      </Grid>
+    </Grid>
+  </Domain>
+</Xdmf>

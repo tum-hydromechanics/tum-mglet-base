@@ -1,0 +1,34 @@
+{
+    "time": {
+        "mtstep": 100,
+        "dt":0.1,
+        "itinfo": 1,
+        "targetcflmax": 1.0,
+        "tstat": 0.0,
+        "tend": 10.0
+    },
+    "io": {
+        "grids": "grids.h5",
+        "infile": "fields.h5",
+        "outfile": "fields.h5"
+    },
+    "ib": {
+        "type": "noib"
+    },
+    "flow": {
+        "gmol": 1.53e-05,
+        "rho": 1.0,
+    
+        "pressuresolver": {
+            "type": "sor",
+            "epcorr": 3.9,
+            "nouter": 2,
+            "ninner": 5,
+            "omega": 1.1,
+            "loglevel": 3
+        },
+        "lesmodel": {
+            "model": "none"
+        }
+    }
+}

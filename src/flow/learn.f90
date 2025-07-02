@@ -398,9 +398,14 @@ contains
       real(8) ::area, New_area
       real(8), dimension(4, 2) :: trapezoid_Point
       real(8) :: trapezoid_Area_calculated
+
+      !check status
+      IF (.NOT. has_Grid_Area) RETURN
+
       t = step*rotate_dt
       add_angle = w*t
       show = 0.0d0
+      
       !sectror1
       sector1_startAngle = previous_startangle1 + add_angle
       sector1_endAngle = angle1 + add_angle

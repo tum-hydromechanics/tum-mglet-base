@@ -1,0 +1,65 @@
+ TIMING RESULTS:
+   Average time per instance.
+   Minimum and maximum average instance time per process.
+   Average number of instances per process.
+   Average total time.
+ 
+   MPI_Wtick:   1.000E-09
+ 
+ INCLUSIVE TIME:
+   idx                           region      average     minimum     maximum   instances       total
+     1                            MGLET    3.149E+01   3.149E+01   3.149E+01   1.000E+00   3.149E+01
+     2                         TIMELOOP    3.019E+01   3.019E+01   3.019E+01   1.000E+00   3.019E+01
+   100                         FIELDIO2    7.310E-04   7.310E-04   7.310E-04   9.000E+00   6.579E-03
+   103                    FIELDIO2_READ    4.490E-04   4.490E-04   4.490E-04   9.000E+00   4.041E-03
+   104                 FIELDIO2_SCATTER    1.975E-05   1.975E-05   1.975E-05   9.000E+00   1.778E-04
+   150                         CONNECT2    2.269E-05   2.269E-05   2.269E-05   8.025E+03   1.821E-01
+   180                          PLUGINS    1.986E-06   1.986E-06   1.986E-06   3.000E+02   5.958E-04
+   181            PLUGINS_TIMEINTEGRATE    1.055E-06   1.055E-06   1.055E-06   1.000E+02   1.055E-04
+   182                   PLUGINS_ITINFO    1.591E-06   1.591E-06   1.591E-06   1.000E+02   1.591E-04
+   183              PLUGINS_POSTPROCESS    2.424E-06   2.424E-06   2.424E-06   1.000E+02   2.424E-04
+   210                           PARENT    1.014E-06   1.014E-06   1.014E-06   1.710E+03   1.734E-03
+   220                             FTOC    1.008E-06   1.008E-06   1.008E-06   3.307E+03   3.335E-03
+   221                       FTOC_BEGIN    2.952E-07   2.952E-07   2.952E-07   3.307E+03   9.762E-04
+   222                         FTOC_END    2.307E-07   2.307E-07   2.307E-07   3.307E+03   7.629E-04
+   230                             CTOF    2.219E-06   2.219E-06   2.219E-06   6.000E+02   1.331E-03
+   231                       CTOF_BEGIN    6.495E-07   6.495E-07   6.495E-07   6.000E+02   3.897E-04
+   232                         CTOF_END    8.270E-07   8.270E-07   8.270E-07   6.000E+02   4.962E-04
+   240                           DIVCAL    3.675E-04   3.675E-04   3.675E-04   3.000E+02   1.102E-01
+   300                             FLOW    6.864E-02   6.864E-02   6.864E-02   4.010E+02   2.752E+01
+   310                      FLOW_TSTLE4    4.473E-03   4.473E-03   4.473E-03   3.000E+02   1.342E+00
+   320                     FLOW_MGPOISL    7.415E-02   7.415E-02   7.415E-02   3.000E+02   2.225E+01
+   321                    FLOW_MGPOISIT    5.292E-03   5.292E-03   5.292E-03   6.000E+02   3.175E+00
+   340                 FLOW_SETIBVALUES    2.625E-03   2.625E-03   2.625E-03   1.010E+02   2.652E-01
+   341                 FLOW_GETIBVALUES    2.279E-06   2.279E-06   2.279E-06   3.000E+02   6.837E-04
+   342              FLOW_SETPOINTVALUES    1.071E-03   1.071E-03   1.071E-03   3.010E+02   3.222E-01
+   350                      FLOW_ITINFO    2.582E-02   2.582E-02   2.582E-02   1.010E+02   2.608E+00
+ 
+ EXCLUSIVE TIME:
+   idx                           region      average     minimum     maximum   instances       total
+     1                            MGLET    1.288E+00   1.288E+00   1.288E+00   1.000E+00   1.288E+00
+     2                         TIMELOOP    2.671E+00   2.671E+00   2.671E+00   1.000E+00   2.671E+00
+   100                         FIELDIO2    2.622E-04   2.622E-04   2.622E-04   9.000E+00   2.360E-03
+   103                    FIELDIO2_READ    4.490E-04   4.490E-04   4.490E-04   9.000E+00   4.041E-03
+   104                 FIELDIO2_SCATTER    1.975E-05   1.975E-05   1.975E-05   9.000E+00   1.778E-04
+   150                         CONNECT2    2.269E-05   2.269E-05   2.269E-05   8.025E+03   1.821E-01
+   180                          PLUGINS    2.958E-07   2.958E-07   2.958E-07   3.000E+02   8.874E-05
+   181            PLUGINS_TIMEINTEGRATE    1.055E-06   1.055E-06   1.055E-06   1.000E+02   1.055E-04
+   182                   PLUGINS_ITINFO    1.591E-06   1.591E-06   1.591E-06   1.000E+02   1.591E-04
+   183              PLUGINS_POSTPROCESS    2.424E-06   2.424E-06   2.424E-06   1.000E+02   2.424E-04
+   210                           PARENT    1.014E-06   1.014E-06   1.014E-06   1.710E+03   1.734E-03
+   220                             FTOC    4.824E-07   4.824E-07   4.824E-07   3.307E+03   1.595E-03
+   221                       FTOC_BEGIN    2.952E-07   2.952E-07   2.952E-07   3.307E+03   9.762E-04
+   222                         FTOC_END    2.307E-07   2.307E-07   2.307E-07   3.307E+03   7.629E-04
+   230                             CTOF    7.424E-07   7.424E-07   7.424E-07   6.000E+02   4.455E-04
+   231                       CTOF_BEGIN    6.495E-07   6.495E-07   6.495E-07   6.000E+02   3.897E-04
+   232                         CTOF_END    8.270E-07   8.270E-07   8.270E-07   6.000E+02   4.962E-04
+   240                           DIVCAL    3.675E-04   3.675E-04   3.675E-04   3.000E+02   1.102E-01
+   300                             FLOW    1.850E-03   1.850E-03   1.850E-03   4.010E+02   7.419E-01
+   310                      FLOW_TSTLE4    4.473E-03   4.473E-03   4.473E-03   3.000E+02   1.342E+00
+   320                     FLOW_MGPOISL    6.297E-02   6.297E-02   6.297E-02   3.000E+02   1.889E+01
+   321                    FLOW_MGPOISIT    5.179E-03   5.179E-03   5.179E-03   6.000E+02   3.107E+00
+   340                 FLOW_SETIBVALUES    2.231E-03   2.231E-03   2.231E-03   1.010E+02   2.253E-01
+   341                 FLOW_GETIBVALUES    2.279E-06   2.279E-06   2.279E-06   3.000E+02   6.837E-04
+   342              FLOW_SETPOINTVALUES    1.042E-03   1.042E-03   1.042E-03   3.010E+02   3.137E-01
+   350                      FLOW_ITINFO    2.582E-02   2.582E-02   2.582E-02   1.010E+02   2.608E+00
