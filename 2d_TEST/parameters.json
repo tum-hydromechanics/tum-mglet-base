@@ -5,7 +5,7 @@
         "itinfo": 1,
         "targetcflmax": 1.0,
         "tstat": 0.0,
-        "tend": 10.0
+        "tend": 1.0
     },
     "io": {
         "grids": "grids.h5",
@@ -29,6 +29,12 @@
         },
         "lesmodel": {
             "model": "none"
+        }
+        "Grid_Area_Calculation": {
+            "rCentre": [7.65, 7.65],  
+            "rTank": 15.7,           
+            "rw": 2.3,              
+            "rtmax": 1.0         
         }
     }
 }

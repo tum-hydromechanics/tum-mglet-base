@@ -15,6 +15,7 @@ add_library(flow STATIC
     timeintegration_mod.F90
     tstle4_mod.F90
     wernerwengle_mod.F90
+    learn.F90
 )
 
 target_include_directories(flow
