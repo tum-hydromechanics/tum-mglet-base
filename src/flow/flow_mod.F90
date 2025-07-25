@@ -24,7 +24,7 @@ CONTAINS
         USE itinfo_mod, ONLY: init_itinfo
         USE boussinesqterm_mod, ONLY: init_boussinesqterm
         USE coriolisterm_mod, ONLY: init_coriolisterm
-
+        USE ActuatorMomentumInject, ONLY: init_ActuatorMomentumInject
         ! Local variables
         TYPE(field_t), POINTER :: u, v, w
         TYPE(field_t), POINTER :: pwu, pwv, pww
@@ -60,7 +60,9 @@ CONTAINS
         CALL init_pressuresolver()
         CALL init_boussinesqterm()
         CALL init_coriolisterm()
+        CALL init_ActuatorMomentumInject()
         CALL init_itinfo(dcont)
+        
 
         ! Need to call this here - cannot be in flowcore because that
         ! create a circular dependency
@@ -95,7 +97,7 @@ CONTAINS
         USE ib_mod
         USE boussinesqterm_mod, ONLY: finish_boussinesqterm
         USE coriolisterm_mod, ONLY: finish_coriolisterm
-
+        USE ActuatorMomentumInject, ONLY: finish_ActuatorMomentumInject
         IF (.NOT. has_flow) RETURN
 
         IF (solve_flow) THEN
@@ -110,6 +112,7 @@ CONTAINS
             CALL finish_itinfo
             CALL finish_boussinesqterm()
             CALL finish_coriolisterm()
+            CALL finish_ActuatorMomentumInject() 
             CALL finish_pressuresolver()
         END IF
 

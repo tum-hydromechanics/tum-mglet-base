@@ -2,6 +2,7 @@ add_library(flow STATIC
     bound_flow_mod.F90
     boussinesqterm_mod.F90
     coriolisterm_mod.F90
+    ActuatorMomentumInject_mod.F90
     flowcore_mod.F90
     flow_mod.F90
     flowstat_mod.F90
@@ -15,7 +16,7 @@ add_library(flow STATIC
     timeintegration_mod.F90
     tstle4_mod.F90
     wernerwengle_mod.F90
-    learn.F90
+    
 )
 
 target_include_directories(flow

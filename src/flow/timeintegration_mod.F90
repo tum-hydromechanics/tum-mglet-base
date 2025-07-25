@@ -12,6 +12,7 @@ MODULE timeintegration_mod
     USE setboundarybuffers_mod
     USE boussinesqterm_mod, ONLY: boussinesqterm
     USE coriolisterm_mod, ONLY: coriolisterm
+    USE ActuatorMomentumInject, ONLY: calculate_ActuatorMomentumInject
 
     IMPLICIT NONE(type, external)
     PRIVATE
@@ -95,6 +96,8 @@ CONTAINS
         CALL tstle4(uo, vo, wo, pwu, pwv, pww, ut, vt, wt, p, g)
         CALL boussinesqterm(uo, vo, wo)
         CALL coriolisterm(uo, vo, wo)
+        CALL calculate_ActuatorMomentumInject(ittot, uo, vo, wo)
+        
 
         ! dU_j = A_j*dU_(j-1) + dt*uo
         ! U_j = U_(j-1) + B_j*dU_j
