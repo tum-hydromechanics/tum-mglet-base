@@ -5,10 +5,11 @@ MODULE ActuatorMomentumInject
    PRIVATE
 
    !public
-   PUBLIC :: init_ActuatorMomentumInject, finish_ActuatorMomentumInject,calculate_ActuatorMomentumInject
-  
+   PUBLIC :: init_ActuatorMomentumInject, finish_ActuatorMomentumInject, calculate_ActuatorMomentumInject
+   
    !  private
    REAL(realk), PRIVATE :: rCentre(2)           ! Coordinates of the Propeller rotation center (x, y)
+   REAL(realk), PRIVATE :: Propeller_Z_coordination ! Propeller location in z-direction
    REAL(realk), PRIVATE :: rw                   ! Angular velocity (rad/s)
    LOGICAL, PROTECTED :: has_ActuatorMomentumInject = .FALSE.  !  ! activity flag 
    REAL(realk), PRIVATE :: inR                  ! Inner radius of the actuator zone
@@ -20,8 +21,8 @@ MODULE ActuatorMomentumInject
    REAL(realk), PRIVATE :: previous_startangle2 ! Start angle 2 from previous timestep (blade 2)
    REAL(realk), PRIVATE :: angle1               ! Current blade angle 1
    REAL(realk), PRIVATE :: angle2               ! Current blade angle 2
-   REAL(realk), PRIVATE :: blade_height         ! Height of the Propeller in z-direction
-   REAL(realk), ALLOCATABLE, PRIVATE :: show(:, :)  ! 2D array storing swept area fraction 
+   REAL(realk), PRIVATE  :: momsrc_x, momsrc_y, momsrc_z   ! momentum source
+   
 
 contains
    SUBROUTINE init_ActuatorMomentumInject()
@@ -32,6 +33,8 @@ contains
     ! retrieving parameters from parameters.json
     !centre position
     CALL fort7%get_array("/flow/ActuatorMomentumInject_info/rCentre", rCentre)
+    !Z location
+    CALL fort7%get_value("/flow/ActuatorMomentumInject_info/Propeller_Z_coordination", Propeller_Z_coordination)
     !angular velocity 
     CALL fort7%get_value("/flow/ActuatorMomentumInject_info/rw", rw)
     !inner radius 
@@ -45,8 +48,10 @@ contains
     !initial angles 
     CALL fort7%get_value("/flow/ActuatorMomentumInject_info/previous_startangle1", previous_startangle1)
     CALL fort7%get_value("/flow/ActuatorMomentumInject_info/previous_startangle2", previous_startangle2)
-    !blade height 
-    CALL fort7%get_value("/flow/ActuatorMomentumInject_info/blade_height", blade_height)
+    ! momentum source
+    CALL fort7%get_value("/flow/Momentum_Source/momsrc_x", momsrc_x)
+    CALL fort7%get_value("/flow/Momentum_Source/momsrc_y", momsrc_y)
+    CALL fort7%get_value("/flow/Momentum_Source/momsrc_z", momsrc_z)
       !calculate angles
        angle1 = previous_startangle1 + area_dt*rw
        angle2 = previous_startangle2 + area_dt*rw
@@ -61,7 +66,10 @@ contains
             WRITE(*, '(2X, "RotateTimeStep: ", 1(G0, 1X))') rotate_dt
             WRITE(*, '(2X, "InitialAngle1: ", 1(G0, 1X))') previous_startangle1
             WRITE(*, '(2X, "InitialAngle2: ", 1(G0, 1X))') previous_startangle2
-            WRITE(*, '(2X, "BladeHeight: ", 1(G0, 1X))') blade_height
+            WRITE(*, '(2X, "Propeller_Z_coordination: ", 1(G0, 1X))') Propeller_Z_coordination
+            WRITE(*, '(2X, "Momentum_source_x: ", 1(G0, 1X))') momsrc_x
+            WRITE(*, '(2X, "Momentum_source_y: ", 1(G0, 1X))') momsrc_y
+            WRITE(*, '(2X, "Momentum_source_z: ", 1(G0, 1X))') momsrc_z
             WRITE(*, '()')
         END IF
 
@@ -309,27 +317,31 @@ contains
       INTEGER(intk), INTENT(IN) :: ittot
       TYPE(field_t), INTENT(INOUT) :: uo, vo, wo
       INTEGER(intk) :: i, igrid, kk, jj, ii
-      REAL(realk), ALLOCATABLE :: show_3d(:, :, :)
+      REAL(realk), ALLOCATABLE :: momentum_inject_area_3d(:, :, :) ! 3D array storing swept area fraction
       REAL(realk), POINTER, CONTIGUOUS :: uo_arr(:,:,:), vo_arr(:,:,:), wo_arr(:,:,:)
       
       DO i = 1, nmygrids
           igrid = mygrids(i)
           CALL get_mgdims(kk, jj, ii, igrid)
+           IF (ALLOCATED(momentum_inject_area_3d)) DEALLOCATE(momentum_inject_area_3d)
+           ALLOCATE(momentum_inject_area_3d(kk, jj, ii))
+           momentum_inject_area_3d = 0.0_realk
+           
           CALL uo%get_ptr(uo_arr, igrid)
           CALL vo%get_ptr(vo_arr, igrid)
           CALL wo%get_ptr(wo_arr, igrid)
-          CALL Area_Calculation_single_grid(ittot, show_3d, igrid)
-          CALL inject_momentum_source(kk, jj, ii, uo_arr, vo_arr, wo_arr, show_3d)
+          CALL Area_Calculation_single_grid(ittot, momentum_inject_area_3d, igrid)
+          CALL inject_momentum_source(kk, jj, ii, uo_arr, vo_arr, wo_arr, momentum_inject_area_3d)
           
-          IF (ALLOCATED(show_3d)) DEALLOCATE(show_3d)
+          IF (ALLOCATED(momentum_inject_area_3d)) DEALLOCATE(momentum_inject_area_3d)
       END DO
    END SUBROUTINE calculate_ActuatorMomentumInject
    
    !calculate area in every grid,output 3D matrix
-   SUBROUTINE Area_Calculation_single_grid(step, show_result, igrid)
+   SUBROUTINE Area_Calculation_single_grid(step, momentum_inject_area_3d, igrid)
       use, intrinsic :: ieee_arithmetic
       INTEGER(intk), INTENT(IN) :: step
-      REAL(realk), INTENT(OUT), ALLOCATABLE :: show_result(:, :, :)
+      REAL(realk), INTENT(INOUT), ALLOCATABLE :: momentum_inject_area_3d(:, :, :)
       INTEGER(intk), INTENT(IN) :: igrid
       
       
@@ -379,8 +391,7 @@ contains
       TYPE(field_t), POINTER :: dx_f, dy_f, dz_f, ddx_f, ddy_f, ddz_f
       REAL(realk), POINTER, CONTIGUOUS :: dx_ptr(:), dy_ptr(:), dz_ptr(:)
       REAL(realk), POINTER, CONTIGUOUS :: ddx_ptr(:), ddy_ptr(:), ddz_ptr(:)
-      
-      REAL(realk), ALLOCATABLE :: show_3d(:, :, :)
+      REAL(realk), ALLOCATABLE :: momentum_inject_area(:, :)  ! 2D array storing swept area fraction 
       INTEGER(intk) :: z_layer
    
       !check status
@@ -447,10 +458,10 @@ contains
          END DO
       END DO
       
-      IF (.NOT. ALLOCATED(show)) THEN
-         ALLOCATE(show(nj-1, ni-1))
+      IF (.NOT. ALLOCATED(momentum_inject_area)) THEN
+         ALLOCATE(momentum_inject_area(nj-1, ni-1))
       END IF
-      show = 0.0_realk
+      momentum_inject_area = 0.0_realk
       
       
       DO j = 3, nj-2
@@ -481,7 +492,7 @@ contains
             
             ! 4 vertices all inside sector
             if (sum(q) == 4) then
-               show(j, k) = 1
+               momentum_inject_area(j, k) = 1
 
                ! 3 vertices inside sector
             elseif (sum(q) == 3) then
@@ -557,10 +568,10 @@ contains
                   end if
                   !calculate cut area
                   area = triangle_area(coordinateA, orthoPoint, coordinateB)
-                  show(j, k) = ((dx_ptr(k)*dy_ptr(j)) - area)/(dx_ptr(k)*dy_ptr(j))
+                  momentum_inject_area(j, k) = ((dx_ptr(k)*dy_ptr(j)) - area)/(dx_ptr(k)*dy_ptr(j))
                        ! Limit the result to reasonable range
-                  IF (show(j, k) < 0.0_realk) show(j, k) = 0.0_realk
-                  IF (show(j, k) > 1.0_realk) show(j, k) = 1.0_realk
+                  IF (momentum_inject_area(j, k) < 0.0_realk) momentum_inject_area(j, k) = 0.0_realk
+                  IF (momentum_inject_area(j, k) > 1.0_realk) momentum_inject_area(j, k) = 1.0_realk
 
                   ! 2 vertices inside sector
             elseif (sum(q) == 2) then
@@ -644,10 +655,10 @@ contains
                   trapezoid_Point(4, 1) = coordinateD(1)
                   trapezoid_Point(4, 2) = coordinateD(2)
                   trapezoid_Area_calculated = trapezoid_area(trapezoid_Point)
-                  show(j, k) = ((dx_ptr(k)*dy_ptr(j)) - trapezoid_Area_calculated)/(dx_ptr(k)*dy_ptr(j))
+                  momentum_inject_area(j, k) = ((dx_ptr(k)*dy_ptr(j)) - trapezoid_Area_calculated)/(dx_ptr(k)*dy_ptr(j))
                        ! Limit the result to reasonable range
-                  IF (show(j, k) < 0.0_realk) show(j, k) = 0.0_realk
-                  IF (show(j, k) > 1.0_realk) show(j, k) = 1.0_realk
+                  IF (momentum_inject_area(j, k) < 0.0_realk) momentum_inject_area(j, k) = 0.0_realk
+                  IF (momentum_inject_area(j, k) > 1.0_realk) momentum_inject_area(j, k) = 1.0_realk
 
                   ! 1 vertices inside sector
             elseif (sum(q) == 1) then
@@ -722,10 +733,10 @@ contains
                   end if
                end if
                   New_area = triangle_area(coordinateE, New_orthoPoint, coordinateF)
-                  show(j, k) = (New_area)/(dx_ptr(k)*dy_ptr(j))
+                  momentum_inject_area(j, k) = (New_area)/(dx_ptr(k)*dy_ptr(j))
                    ! Limit the result to reasonable range
-                  IF (show(j, k) < 0.0_realk) show(j, k) = 0.0_realk
-                  IF (show(j, k) > 1.0_realk) show(j, k) = 1.0_realk
+                  IF (momentum_inject_area(j, k) < 0.0_realk) momentum_inject_area(j, k) = 0.0_realk
+                  IF (momentum_inject_area(j, k) > 1.0_realk) momentum_inject_area(j, k) = 1.0_realk
             end if
          END DO
       END DO
@@ -735,59 +746,52 @@ contains
       ! form 3D matrix
       z_layer = 0
       DO k = 1, kk
-         IF (minz + (dz_ptr(k) * (k - 1)) <= blade_height .AND. &
-             minz + (dz_ptr(k) * k) > blade_height) THEN
+         IF (minz + (dz_ptr(k) * (k - 1)) <= Propeller_Z_coordination .AND. &
+             minz + (dz_ptr(k) * k) > Propeller_Z_coordination) THEN
             z_layer = k
             EXIT
          END IF
       END DO
       
       
-      IF (ALLOCATED(show_3d)) DEALLOCATE(show_3d)
-        ALLOCATE(show_3d(kk, jj, ii))
-      show_3d = 0.0_realk
+      
       
       DO j = 3, nj-2
          DO k = 3, ni-2
-            show_3d(z_layer, j, k) = show(j, k)
+            momentum_inject_area_3d(z_layer, j, k) = momentum_inject_area(j, k)
          END DO
       END DO
-      
-      IF (ALLOCATED(show_result)) DEALLOCATE(show_result)
-      ALLOCATE(show_result, SOURCE=show_3d)
    
+    IF (ALLOCATED(momentum_inject_area)) DEALLOCATE(momentum_inject_area)
+
    END SUBROUTINE Area_Calculation_single_grid
    
    !inject momentum in every grid
- SUBROUTINE inject_momentum_source(kk, jj, ii, uo, vo, wo, show_3d)     
+ SUBROUTINE inject_momentum_source(kk, jj, ii, uo, vo, wo, momentum_inject_area_3d)     
       INTEGER, INTENT(IN) :: kk, jj, ii
       REAL(realk), INTENT(INOUT) :: uo(kk, jj, ii), vo(kk, jj, ii), wo(kk, jj, ii)
-      REAL(realk):: momsrc_x, momsrc_y, momsrc_z
-      REAL(realk), INTENT(IN) :: show_3d(kk, jj, ii)
+      
+      REAL(realk), INTENT(IN) :: momentum_inject_area_3d(kk, jj, ii)
       INTEGER :: k, j, i
       REAL(realk) :: factor_x, factor_y, factor_z
       
-       CALL fort7%get_value("/flow/Momentum_Source/momsrc_x", momsrc_x)
-       CALL fort7%get_value("/flow/Momentum_Source/momsrc_y", momsrc_y)
-       CALL fort7%get_value("/flow/Momentum_Source/momsrc_z", momsrc_z)
-      
-         IF (ANY(ISNAN(show_3d))) THEN
-         PRINT *, "ERROR: show_3d contains NaNs"
+         IF (ANY(ISNAN(momentum_inject_area_3d))) THEN
+         PRINT *, "ERROR: momentum_inject_area_3d contains NaNs"
          STOP
          END IF
        !debug information
        !WRITE(*,*) 'inject: kk=', kk, 'jj=', jj, 'ii=', ii
        !WRITE(*,*) 'inject: momsrc_x=', momsrc_x, 'momsrc_y=', momsrc_y, 'momsrc_z=', momsrc_z
-       !WRITE(*,*) 'inject: show_3d max=', MAXVAL(show_3d), 'min=', MINVAL(show_3d)
+       !WRITE(*,*) 'inject: momentum_inject_area_3d max=', MAXVAL(momentum_inject_area_3d), 'min=', MINVAL(momentum_inject_area_3d)
        !WRITE(*,*) 'inject: uo max=', MAXVAL(uo), 'min=', MINVAL(uo)
        !WRITE(*,*) 'inject: vo max=', MAXVAL(vo), 'min=', MINVAL(vo)
        !WRITE(*,*) 'inject: wo max=', MAXVAL(wo), 'min=', MINVAL(wo)
      DO i = 3, ii-2
         DO j = 3, jj-2
            DO k = 3, kk-2
-              factor_x = 0.5 * (show_3d(k, j, i) + show_3d(k, j, i+1))
-              factor_y = 0.5 * (show_3d(k, j, i) + show_3d(k, j+1, i))
-              factor_z = 0.5 * (show_3d(k, j, i) + show_3d(k+1, j, i))
+              factor_x = 0.5 * (momentum_inject_area_3d(k, j, i) + momentum_inject_area_3d(k, j, i+1))
+              factor_y = 0.5 * (momentum_inject_area_3d(k, j, i) + momentum_inject_area_3d(k, j+1, i))
+              factor_z = 0.5 * (momentum_inject_area_3d(k, j, i) + momentum_inject_area_3d(k+1, j, i))
                
               uo(k, j, i) = uo(k, j, i) + (momsrc_x * factor_x) / rho
               vo(k, j, i) = vo(k, j, i) + (momsrc_y * factor_y) / rho
