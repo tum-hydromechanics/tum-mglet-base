@@ -282,11 +282,6 @@ CONTAINS
             CALL timekeeper%add_to_time(dt)
             CALL timekeeper%get_time(timeph)
 
-            ! Particle Concentration Field
-            IF (dsim_particles) THEN ! <------------------------------------particles
-                CALL update_particle_fields(itstep)
-            END IF
-
             ! Particle Snapshots
             IF (dsim_particles .AND. dwrite_psnapshots) THEN ! <------------------------------------particles
                 CALL write_psnapshot(ittot, timeph)
