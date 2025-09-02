@@ -25,7 +25,6 @@ MODULE particle_config_mod
     ! OUTPUT
     CHARACTER(len = 7) :: particle_terminal ! "particles/terminal"
     LOGICAL :: dwrite_particles_h5 ! "particles/dwrite_part_h5" File name:
-    LOGICAL :: dwrite_npc_field ! "particles/dwrite_npc"
     LOGICAL :: dwrite_psnapshots ! indirectly via "particles/snapshot_step"
 
     INTEGER(intk) :: psnapshot_step ! "particles/snapshot_step"
@@ -129,10 +128,6 @@ CONTAINS
         !- - - - - - - - - - - - - - - - - -
 
         CALL pconf%get_value("/dwrite_part_h5", dwrite_particles_h5, .FALSE.)
-
-        !- - - - - - - - - - - - - - - - - -
-
-        CALL pconf%get_value("/dwrite_npc", dwrite_npc_field, .FALSE.)
 
         !- - - - - - - - - - - - - - - - - -
 
@@ -552,7 +547,6 @@ CONTAINS
                     ! OUTPUT
                     WRITE(*, '("    Output:")')
                     WRITE(*, '("        Writing Particles H5:             ", L12)') dwrite_particles_h5
-                    WRITE(*, '("        Writing NPC Field:                ", L12)') dwrite_npc_field
                     WRITE(*, '("        Writing Particle Snapshots:       ", L12)') dwrite_psnapshots
                     WRITE(*, '("        Terminal Output:                  ", A12)') TRIM(particle_terminal)
                     IF (dwrite_psnapshots) THEN

@@ -10,7 +10,6 @@ MODULE particle_mod
     USE particle_timeintegration_mod
     USE particle_statistics_mod
     USE particle_snapshot_mod
-    USE particle_fields_mod
     USE particle_io_mod
 
     IMPLICIT NONE(type, external)
@@ -52,7 +51,6 @@ CONTAINS
             ! init_particle_diffusion()
             ! init_particle_timeintegration()
             ! init_particle_exchange()
-            ! init_particle_field()
             CALL set_timer(910, 'PSIM_CORE_INIT')
 
             ! PARTICLE TIMEINTEGRATION:
@@ -102,9 +100,6 @@ CONTAINS
 
             ! determine particle exchange connections and init particle exchange
             CALL init_particle_exchange()
-
-            ! set particle concentration field
-            CALL init_particle_field()
 
             !  DIFFUSION, TIMEINTEGRATION, STATISTICS AND SNAPSHOT INITIALIZATION IN TIMELOOP
 
