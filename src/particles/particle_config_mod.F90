@@ -45,13 +45,12 @@ MODULE particle_config_mod
     LOGICAL :: list_limit = .FALSE. ! indirectly via "particles/list_length"
 
     ! ADVECTION
+    LOGICAL :: duse_avg_flow = .FALSE. ! "particles/duse_avg_flow"
     LOGICAL :: dinterp_padvection = .TRUE. ! "particles/dinterp"
     CHARACTER(len=16) :: prkmethod ! "particles/rk_method"
 
     ! DIFFUSION / RANDOM WALK
-    LOGICAL :: ddiffusion = .TRUE. ! indirectly via "particles/dturb_diff" and "particles/D"
-    LOGICAL :: dturb_diff ! "particles/dturb_diff"
-    LOGICAL :: dinterp_pdiffusion = .TRUE. ! "particles/dinterp"
+    LOGICAL :: ddiffusion = .TRUE. ! indirectly via "particles/D"
     CHARACTER(len = 16) :: random_walk_mode ! "particles/random_walk_mode"
     REAL(realk) :: truncation_limit ! "particles/truncation_limit"
     REAL(realk) :: D(3) ! "particles/D"
@@ -244,10 +243,10 @@ CONTAINS
         CALL pconf%get_value("/dinterp", dinterp, .TRUE.)
 
         dinterp_padvection = dinterp
-        dinterp_pdiffusion = dinterp
 
         != = = = = = = = = = ADVECTION = = = = = = = = = =
 
+        CALL pconf%get_value("/duse_avg_flow", duse_avg_flow, .FALSE.)
 
         CALL pconf%get_value("/rk_method", prkmethod, "euler")
 
@@ -260,8 +259,6 @@ CONTAINS
         != = = = = = = = = = DIFFUSION = = = = = = = = = =
 
         ddiffusion = .TRUE.
-
-        CALL pconf%get_value("/dturb_diff", dturb_diff, .FALSE.)
 
         !- - - - - - - - - - - - - - - - - -
 
@@ -320,13 +317,9 @@ CONTAINS
 
         !- - - - - - - - - - - - - - - - - -
 
-        IF (D(1) <= EPSILON(D(1)) .AND. D(2) <= EPSILON(D(2)) .AND. D(3) <= EPSILON(D(3)) .AND. .NOT. dturb_diff) THEN
+        IF (D(1) <= EPSILON(D(1)) .AND. D(2) <= EPSILON(D(2)) .AND. D(3) <= EPSILON(D(3))) THEN
             ddiffusion = .FALSE.
             dput_seed = .FALSE.
-        END IF
-
-        IF (.NOT. dturb_diff) THEN
-            dinterp_pdiffusion = .FALSE.
         END IF
 
         != = = = = = = = = = STATISTICS = = = = = = = = = =
@@ -575,10 +568,6 @@ CONTAINS
                     WRITE(*, '("    Diffusion:")')
                     WRITE(*, '("        Simulating Diffusion:             ", L12)') ddiffusion
                     IF (ddiffusion) THEN
-                    WRITE(*, '("        Simulating turbulent Diffusion:   ", L12)') dturb_diff
-                    IF (dturb_diff) THEN
-                    WRITE(*, '("        Interpolating Diffusion:          ", L12)') dinterp_pdiffusion
-                    END IF
                     WRITE(*, '("        Random Walk Mode:                 ", A12)') TRIM(random_walk_mode)
                     WRITE(*, '("        Symmetric Truncation Limit:       ", F12.3)') truncation_limit
                     WRITE(*, '("        Global Diffusion Const. Dx:       ", E12.3)') D(1)
