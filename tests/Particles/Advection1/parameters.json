@@ -16,7 +16,7 @@
     },
     "flow": {
         "tu_level": 0.0,
-    	"solve": true,
+    	"solve": false,
         "gmol": 0.01,
         "rho": 1.0,
         "uinf": ["var a := 1.0; a", "var b := 0; b", "var c := 0.0; c"],
@@ -50,7 +50,7 @@
     "snapshots": {
         "itsamp": 10,
         "tstart": 0.0,
-        "fields": ["U", "V", "W", "P", "NPC"]
+        "fields": ["U", "V", "W", "P"]
     },
     "particles": {
         "dread_part_h5": false,

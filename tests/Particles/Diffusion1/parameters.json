@@ -50,7 +50,7 @@
     "snapshots": {
         "itsamp": 500,
         "tstart": 0.0,
-        "fields": ["U", "V", "W", "P", "NPC"]
+        "fields": ["U", "V", "W", "P"]
     },
     "particles": {
         "dread_part_h5": false,
