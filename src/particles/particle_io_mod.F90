@@ -335,6 +335,12 @@ CONTAINS
         END DO
 
         ! Extend list of necessary
+
+        IF (list_limit .AND. npart > plist_len) THEN
+            WRITE(*, '("ERROR on Process ", I0, ": Number of particles to be read from particles.h5 exceeds the given list limit!")') myid
+            CALL errr(__FILE__, __LINE__)
+        END IF
+
         IF (npart > plist%max_np) THEN
             addlen = npart - plist%max_np
             CALL reallocate_particle_list(plist, addlen)
@@ -391,10 +397,6 @@ CONTAINS
 
         plist%ifinal = cpart
         plist%active_np = cpart
-
-        IF (list_limit .AND. plist%max_np > plist_len) THEN
-            WRITE(*,*) "WARNING in read_particle_list (h5): Specified List Limit exceeded while reading particles!"
-        END IF
 
         IF (cpart /= npart) THEN
             WRITE(*,*) "Counter unequal number of particles"

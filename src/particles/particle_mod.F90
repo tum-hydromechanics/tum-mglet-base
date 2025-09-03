@@ -6,6 +6,7 @@ MODULE particle_mod
 
     USE fields_mod
 
+    USE particle_list_mod
     USE particle_runtimestat_mod
     USE particle_timeintegration_mod
     USE particle_statistics_mod
@@ -91,6 +92,16 @@ CONTAINS
 
             IF (dread_particles_h5) THEN
                 CALL read_particles_h5("particles.h5")
+
+                CALL MPI_Allreduce(my_particle_list%active_np, global_np, 1, mglet_mpi_int, MPI_SUM, MPI_COMM_WORLD)
+
+                IF (myid == 0) THEN
+                    IF (TRIM(particle_terminal) == "normal" .OR. TRIM(particle_terminal) == "verbose") THEN
+                        WRITE(*, '("INITIALIZATION OF ", I0, " PARTICLE(S) SUCCESSFULLY COMPLETED.")') global_np
+                        WRITE(*, '()')
+                    END IF
+                END IF
+
             END IF
 
             ! generate diffusion field

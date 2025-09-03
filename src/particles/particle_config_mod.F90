@@ -203,20 +203,20 @@ CONTAINS
         ! (for now, as simple as possible)
         CALL pconf%get_value("/particle_level", particle_level, maxlevel)
 
-        CALL pconf%get_value("/list_length", plist_len, -1)
+        CALL pconf%get_value("/list_length", plist_len, 0)
 
         list_limit = .TRUE.
 
-        IF (plist_len <= 0_intk) THEN
+        IF (plist_len < 1_intk) THEN
 
             IF (myid == 0) THEN
                 IF (TRIM(particle_terminal) == "normal" .OR. TRIM(particle_terminal) == "verbose") THEN
-                    WRITE(*, *) "WARNING: Maximum Particle List Length must be a positve Integer. Using automatic List Length instead."
-                    WRITE(*, '()')
+                    WRITE(*, *) "ERROR: Maximum Particle List Length must be a positve Integer!"
+                    CALL errr(__FILE__, __LINE__)
                 END IF
             END IF
 
-            plist_len = -1
+            plist_len = 0
             list_limit = .FALSE.
 
         END IF

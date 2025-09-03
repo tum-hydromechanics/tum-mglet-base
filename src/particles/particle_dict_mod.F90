@@ -152,7 +152,7 @@ CONTAINS
             IF (global_np < dict_np) THEN
                 IF (TRIM(particle_terminal) == "normal" .OR. TRIM(particle_terminal) == "verbose") THEN
                     WRITE(*,'("Warning: The number of registered particles is smaller than the specified number of particles in ParticleDict.txt.")')
-                    WRITE(*,'("Warning: This is likely caused by a limited length of the particle lists.")')
+                    WRITE(*,'("Warning: This is likely caused by a limited list length or incosistencies/invalid positions in the ParticleDict.txt file.")')
                     WRITE(*, '()')
                 END IF
             END IF

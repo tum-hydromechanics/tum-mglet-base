@@ -68,13 +68,6 @@ CONTAINS    !===================================
             my_particle_list%max_np = plist_len
             ALLOCATE(my_particle_list%particles(plist_len))
 
-            IF (myid == 0) THEN
-                IF (TRIM(particle_terminal) == "normal" .OR. TRIM(particle_terminal) == "verbose") THEN
-                    WRITE(*, '("INITIALIZATION OF ", I0, " PARTICLE(S) SUCCESSFULLY COMPLETED.")') global_np
-                    WRITE(*, '()')
-                END IF
-            END IF
-
             CALL stop_timer(910)
             CALL stop_timer(900)
             RETURN
