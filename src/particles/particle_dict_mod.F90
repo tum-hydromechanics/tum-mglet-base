@@ -23,7 +23,8 @@ CONTAINS
         REAL(realk), ALLOCATABLE, INTENT(inout) :: x_arr(:), y_arr(:), z_arr(:)
 
         !local variables
-        INTEGER(intk) :: i, ipart, igrid, unit, dict_len
+        LOGICAL :: grid_found
+        INTEGER(intk) :: i, j, ipart, igrid, unit, dict_np, ntemp, global_np
         REAL(realk) :: xtemp, ytemp, ztemp
         REAL(realk) :: minx, maxx, miny, maxy, minz, maxz
 
@@ -33,7 +34,7 @@ CONTAINS
 
             IF (myid == 0) THEN
                 IF (TRIM(particle_terminal) == "normal" .OR. TRIM(particle_terminal) == "verbose") THEN
-                    WRITE(*, *) "WARNING: No file for reading particles detected! Using automated initial particle distribution instead."
+                    WRITE(*, *) "WARNING: No ParticleDict.txt detected! Using automated initial particle distribution instead."
                     WRITE(*, '()')
                 END IF
             END IF
@@ -46,11 +47,11 @@ CONTAINS
 
         OPEN(newunit = unit, file = 'ParticleDict.txt', status = 'OLD', action = 'READ')
 
-        READ(unit, fmt = *) dict_len
+        READ(unit, fmt = *) dict_np
 
         IF (myid == 0) THEN
             IF (TRIM(particle_terminal) == "normal" .OR. TRIM(particle_terminal) == "verbose") THEN
-                WRITE(*, '("READING ", I0, " PARTICLE(S) ON ", I0, " PROCESSES.")') dict_len, numprocs
+                WRITE(*, '("READING ", I0, " PARTICLE(S) ON ", I0, " PROCESSES.")') dict_np, numprocs
                 WRITE(*, '()')
             END IF
         END IF
@@ -62,11 +63,11 @@ CONTAINS
             ALLOCATE(y_arr(plist_len))
             ALLOCATE(z_arr(plist_len))
         ELSE
-            ALLOCATE(ipart_arr(dict_len))
-            ALLOCATE(igrid_arr(dict_len))
-            ALLOCATE(x_arr(dict_len))
-            ALLOCATE(y_arr(dict_len))
-            ALLOCATE(z_arr(dict_len))
+            ALLOCATE(ipart_arr(dict_np))
+            ALLOCATE(igrid_arr(dict_np))
+            ALLOCATE(x_arr(dict_np))
+            ALLOCATE(y_arr(dict_np))
+            ALLOCATE(z_arr(dict_np))
         END IF
 
         ! ParticleDict.txt is screened from top to bottom.
@@ -75,10 +76,13 @@ CONTAINS
         ! Hence, depending on the parameterization of the particle list and the dict length, some particles might not be registered!
 
         read_np = 0
+        ipart = 0
 
-        DO ipart = 1, dict_len
+        DO WHILE (ipart < dict_np .AND. read_np < SIZE(ipart_arr))
 
-            READ(unit, fmt = *) xtemp, ytemp, ztemp
+            READ(unit, fmt = *) ntemp, xtemp, ytemp, ztemp
+
+            grid_found = .FALSE.
 
             DO i = 1, nmygridslvl(particle_level)
 
@@ -109,35 +113,50 @@ CONTAINS
                     CYCLE
                 END IF
 
-                read_np = read_np + 1
+                grid_found = .TRUE.
 
-                ipart_arr(read_np) = ipart
-                igrid_arr(read_np) = igrid
-                x_arr(read_np) = xtemp
-                y_arr(read_np) = ytemp
-                z_arr(read_np) = ztemp
+                DO j = 1, ntemp
 
-                IF (TRIM(particle_terminal) == "verbose") THEN
-                    WRITE(*,'("Particle read on proc ", I0, ": ID = ", I0, " | x/y/z = ", 3F12.6)') myid, ipart, xtemp, ytemp, ztemp
-                    WRITE(*, '()')
-                END IF
+                    read_np = read_np + 1
+                    ipart = ipart + 1
+                    ipart_arr(read_np) = ipart
+                    igrid_arr(read_np) = igrid
+                    x_arr(read_np) = xtemp
+                    y_arr(read_np) = ytemp
+                    z_arr(read_np) = ztemp
+
+                    IF (TRIM(particle_terminal) == "verbose") THEN
+                        WRITE(*,'("Particle read on proc ", I0, ": ID = ", I0, " | x/y/z = ", 3F12.6)') myid, ipart, xtemp, ytemp, ztemp
+                        WRITE(*, '()')
+                    END IF
+
+                    IF (SIZE(ipart_arr) == read_np .OR. ipart == dict_np) THEN
+                        EXIT
+                    END IF
+
+                END DO
 
                 EXIT
 
             END DO
 
-            IF (SIZE(ipart_arr) == read_np) THEN
-                IF (ipart < dict_len) THEN
-                    IF (TRIM(particle_terminal) == "normal" .OR. TRIM(particle_terminal) == "verbose") THEN
-                        WRITE(*,'("Warning on proc ", I0, ": Maximum Number of Particles has been registered on this Proccess.")') myid
-                        WRITE(*, '("Stopped reading ParticleDict.txt, so specified Particles might be unregistered.")')
-                        WRITE(*, '()')
-                    END IF
-                END IF
-                EXIT
+            IF (.NOT. grid_found) THEN
+                ipart = ipart + ntemp
             END IF
 
         END DO
+
+        CALL MPI_Allreduce(read_np, global_np, 1, mglet_mpi_int, MPI_SUM, MPI_COMM_WORLD)
+
+        IF (myid == 0) THEN
+            IF (global_np < dict_np) THEN
+                IF (TRIM(particle_terminal) == "normal" .OR. TRIM(particle_terminal) == "verbose") THEN
+                    WRITE(*,'("Warning: The number of registered particles is smaller than the specified number of particles in ParticleDict.txt.")')
+                    WRITE(*,'("Warning: This is likely caused by a limited length of the particle lists.")')
+                    WRITE(*, '()')
+                END IF
+            END IF
+        END IF
 
         IF (myid == 0) THEN
             IF (TRIM(particle_terminal) == "normal" .OR. TRIM(particle_terminal) == "verbose") THEN

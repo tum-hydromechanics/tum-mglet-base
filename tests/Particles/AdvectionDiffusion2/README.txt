@@ -1,3 +1,4 @@
 DEFAULT SETUP:
-64 particles on 1x10 grids, starting as a point source. Uniform and steady flow as well as homogeneous and isotropic diffusion. Passing of connect and periodic boundaries.
+10000 particles on 1x10 grids, starting homogeneously distributed. Uniform and steady flow as well as homogeneous and isotropic diffusion.
+Particles pass connecting boundaries and periodic boundaries.
 

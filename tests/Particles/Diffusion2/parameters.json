@@ -51,7 +51,7 @@
         "dread_part_dict": true,
         "terminal": "normal",
         "snapshot_step": 5,
-        "list_length": 100,
+        "list_length": 1000,
         "dinterp": true,
         "dturb_diff": false,
         "random_walk_mode": "gaussian2",
