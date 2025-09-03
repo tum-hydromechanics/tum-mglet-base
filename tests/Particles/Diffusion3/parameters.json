@@ -54,7 +54,6 @@
         "snapshot_step": 1,
         "list_length": 100,
         "dinterp": true,
-        "dturb_diff": false,
         "random_walk_mode": "gaussian2",
         "truncation_limit": 2.0,
         "D":[0.02, 0.02, 0.0]

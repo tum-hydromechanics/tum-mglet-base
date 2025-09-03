@@ -58,7 +58,6 @@
         "list_length": 10000,
         "dinterp": true,
         "rk_method": "euler",
-        "dturb_diff": false,
         "random_walk_mode": "gaussian2",
         "truncation_limit": 2.0,
         "D":[0.004, 0.004, 0.004],
