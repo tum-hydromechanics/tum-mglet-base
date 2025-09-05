@@ -698,7 +698,7 @@ CONTAINS
     SUBROUTINE finish_particle_exchange()
 
         CALL start_timer(900)
-        CALL start_timer(910)
+        CALL start_timer(990)
         isInit = .FALSE.
 
         IF (ALLOCATED(sendConns)) DEALLOCATE(sendConns)
@@ -713,7 +713,7 @@ CONTAINS
         IF (ALLOCATED(nprecv)) DEALLOCATE(nprecv)
         IF (ALLOCATED(ndisprecv)) DEALLOCATE(ndisprecv)
 
-        CALL stop_timer(910)
+        CALL stop_timer(990)
         CALL stop_timer(900)
 
     END SUBROUTINE finish_particle_exchange

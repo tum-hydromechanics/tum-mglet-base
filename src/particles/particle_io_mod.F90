@@ -53,6 +53,9 @@ CONTAINS
         ! Local variables
         INTEGER(hid_t) :: file_id
 
+        CALL start_timer(900)
+        CALL start_timer(910)
+
         IF (myid == 0) THEN
             IF (TRIM(particle_terminal) == "normal" .OR. TRIM(particle_terminal) == "verbose") THEN
                 WRITE(*,'("Reading Particles from particles.h5 file.")')
@@ -68,6 +71,9 @@ CONTAINS
         ! global_np is the number of particles amongst all processes, held by the particle list module
         CALL MPI_Allreduce(my_particle_list%active_np, global_np, 1, mglet_mpi_int, MPI_SUM, MPI_COMM_WORLD)
 
+        CALL stop_timer(910)
+        CALL stop_timer(900)
+
     END SUBROUTINE read_particles_h5
 
 
@@ -80,10 +86,16 @@ CONTAINS
         ! Local variables
         INTEGER(hid_t) :: file_id
 
+        CALL start_timer(900)
+        CALL start_timer(990)
+
         ! Function body
         CALL hdf5common_open(filename, 'w', file_id)
         CALL write_particles_list(file_id, my_particle_list)
         CALL hdf5common_close(file_id)
+
+        CALL stop_timer(990)
+        CALL stop_timer(900)
 
     END SUBROUTINE write_particles_h5
 

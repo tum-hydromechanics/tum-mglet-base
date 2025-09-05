@@ -29,26 +29,13 @@ CONTAINS
             END IF
 
             ! --- TIMERS ---
-            ! TODO: restructure
-            ! 900: particles
-            !  910: initialization
-            !   911: init_particle_boundaries
-            !   ...
-            !  920: timeintegration
-            !   ...
-            !  930: timeloop extras
-            !   931: fields
-            !   932: statistics
-            !   933: snapshots
-            !  940: finishing
-            !   ...
 
-            ! PARTICLES : includes all other timers
+            ! PARTICLES: includes all other timers
             CALL set_timer(900, 'PARTICLE_SIMULATION')
 
             ! PARTICLE SIMULATION CORE INITIALIZATION:
             ! init_particle_boundaries()
-            ! init_particle_list()
+            ! init_particle_list(); read_particles_h5()
             ! init_particle_diffusion()
             ! init_particle_timeintegration()
             ! init_particle_exchange()
@@ -58,8 +45,7 @@ CONTAINS
             CALL set_timer(920, 'PSIM_TIMEINTEGRATION')
                 CALL set_timer(921, 'ADV_VELOCITY')
                 CALL set_timer(922, 'ADV_MOTION')
-                CALL set_timer(923, 'DIF_COEFF')
-                CALL set_timer(924, 'DIF_RW_GENERATION')
+                CALL set_timer(924, 'DIF_RN_GENERATION')
                 CALL set_timer(925, 'DIF_MOTION')
 
             ! PARTICLE BOUNDARY INTERACTION:
@@ -78,7 +64,7 @@ CONTAINS
 
             ! PARTICLE SIMULATION CORE FINISHING:
             ! finish_particle_boundaries()
-            ! finish_particle_list()
+            ! finish_particle_list(); write_particles_h5()
             ! finish_particle_exchange()
             ! finish_particle_timeintegration()
             ! finish_particle_config()
@@ -104,15 +90,10 @@ CONTAINS
 
             END IF
 
-            ! generate diffusion field
-            !CALL init_particle_diffusion() EDIT: MUST BE DONE IN INIT TIMELOOP AFTER INIT_STATISTICS
-            ! init backup fields for particle timeintegration
-            !CALL init_particle_timeintegration() EDIT: MUST BE DONE IN INIT TIMELOOP AFTER INIT_STATISTICS
-
             ! determine particle exchange connections and init particle exchange
             CALL init_particle_exchange()
 
-            !  DIFFUSION, TIMEINTEGRATION, STATISTICS AND SNAPSHOT INITIALIZATION IN TIMELOOP
+            ! DIFFUSION, TIMEINTEGRATION, STATISTICS AND SNAPSHOT INITIALIZATION IN TIMELOOP
 
         ELSE
 

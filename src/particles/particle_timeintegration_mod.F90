@@ -81,6 +81,8 @@ CONTAINS
         CALL start_timer(900)
         CALL start_timer(920)
 
+        CALL start_timer(921)
+
         ALLOCATE(pdx_pot(my_particle_list%ifinal))
         ALLOCATE(pdy_pot(my_particle_list%ifinal))
         ALLOCATE(pdz_pot(my_particle_list%ifinal))
@@ -103,7 +105,7 @@ CONTAINS
         END IF
 
         IF (duse_avg_flow) THEN
-            ! flow is not solved, use the point values deduced from the average flow field
+            ! use the point values deduced from the average flow field
             CALL get_field(pwu_f, "PWU_AVG")
             CALL get_field(pwv_f, "PWV_AVG")
             CALL get_field(pww_f, "PWW_AVG")
@@ -118,6 +120,8 @@ CONTAINS
                 CALL get_field(pww_f, "W")
             END IF
         END IF
+
+        CALL stop_timer(921)
 
         IF (myid == 0) THEN
             IF (TRIM(particle_terminal) == "verbose") THEN
@@ -148,22 +152,6 @@ CONTAINS
             temp_coord(2) = my_particle_list%particles(i)%y
             temp_coord(3) = my_particle_list%particles(i)%z
 
-            CALL get_mgdims(kk, jj, ii, igrid)
-
-            ! Grid and Field Info
-            CALL x_f%get_ptr(x, igrid)
-            CALL y_f%get_ptr(y, igrid)
-            CALL z_f%get_ptr(z, igrid)
-
-            IF (dinterp_padvection) THEN
-                CALL dx_f%get_ptr(dx, igrid)
-                CALL dy_f%get_ptr(dy, igrid)
-                CALL dz_f%get_ptr(dz, igrid)
-                CALL ddx_f%get_ptr(ddx, igrid)
-                CALL ddy_f%get_ptr(ddy, igrid)
-                CALL ddz_f%get_ptr(ddz, igrid)
-            END IF
-
             ! checking consistency (Debug)
             gfound = 1
             DO ig = 1, nMyGrids
@@ -185,9 +173,26 @@ CONTAINS
             ! --- ADVECTION ---
             CALL start_timer(921)
 
+            ! Grid and Field Info
+            CALL get_mgdims(kk, jj, ii, igrid)
+            CALL x_f%get_ptr(x, igrid)
+            CALL y_f%get_ptr(y, igrid)
+            CALL z_f%get_ptr(z, igrid)
+
+            IF (dinterp_padvection) THEN
+                CALL dx_f%get_ptr(dx, igrid)
+                CALL dy_f%get_ptr(dy, igrid)
+                CALL dz_f%get_ptr(dz, igrid)
+                CALL ddx_f%get_ptr(ddx, igrid)
+                CALL ddy_f%get_ptr(ddy, igrid)
+                CALL ddz_f%get_ptr(ddz, igrid)
+            END IF
+
             CALL pwu_f%get_ptr(pwu, igrid)
             CALL pwv_f%get_ptr(pwv, igrid)
             CALL pww_f%get_ptr(pww, igrid)
+
+            CALL stop_timer(921)
 
             ! for particle runtime statistics (terminal output)
             IF (TRIM(particle_terminal) == "normal" .OR. TRIM(particle_terminal) == "verbose") THEN
@@ -196,8 +201,10 @@ CONTAINS
                 pdz_eff_tot = 0.0
             END IF
 
+
             DO irk = 1, prkscheme%nrk
 
+                CALL start_timer(921)
                 CALL prkscheme%get_coeffs(A, B, irk)
 
                 ! should be obsolete as the effective displacement is also zeroized in move_particle
@@ -246,21 +253,19 @@ CONTAINS
                     psim_max_adv_dz = MAX(psim_max_adv_dz, ABS(pdz_eff_tot))
                 END IF
 
-            END DO
+                CALL stop_timer(921)
 
-            CALL stop_timer(921)
+            END DO
 
             ! --- DIFFSUION ---
 
             IF (ddiffusion) THEN
-                CALL start_timer(923)
 
                 IF (TRIM(particle_terminal) == "verbose") THEN
                     WRITE(*,'("---------- Particle Diffusion ----------")')
                     WRITE(*, '()')
                 END IF
 
-                CALL stop_timer(923)
                 CALL start_timer(924)
                 CALL generate_diffusive_displacement(dt, D(1), D(2), D(3), pdx_diff, pdy_diff, pdz_diff)
                 CALL stop_timer(924)

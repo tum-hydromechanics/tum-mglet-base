@@ -21,9 +21,7 @@ MODULE particle_core_mod
         ! Particle state definitions:
         ! ...-2/-1/0 : particle is inactive
         !  1 : particle is active, no further information specified
-        !  2 : particle is active, cell info has to be updated after displacement
-        !  3 : particle is active, grid and cell info have to be updated after displacement
-        !  4 : particle is active, particle has to be passed to other process after displacement
+        !  2, 3, ... : particle is active, futher information implied (currently out of use)
         INTEGER(c_intk) :: state = -1
 
         INTEGER(c_intk) :: ipart = -1

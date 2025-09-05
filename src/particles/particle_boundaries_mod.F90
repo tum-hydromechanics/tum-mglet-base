@@ -233,14 +233,14 @@ MODULE particle_boundaries_mod
     SUBROUTINE finish_particle_boundaries()
 
         CALL start_timer(900)
-        CALL start_timer(910)
+        CALL start_timer(990)
 
         CALL finish_obstacles()
 
         IF (ALLOCATED(particle_boundaries%face_neighbours)) DEALLOCATE(particle_boundaries%face_neighbours)
         IF (ALLOCATED(particle_boundaries%face_normals)) DEALLOCATE(particle_boundaries%face_normals)
 
-        CALL stop_timer(910)
+        CALL stop_timer(990)
         CALL stop_timer(900)
 
     END SUBROUTINE finish_particle_boundaries

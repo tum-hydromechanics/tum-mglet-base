@@ -174,6 +174,7 @@ CONTAINS
             RETURN
         END IF
 
+        CALL start_timer(900)
         CALL start_timer(950)
 
         DO i = 1, nmygrids
@@ -181,6 +182,7 @@ CONTAINS
         END DO
 
         CALL stop_timer(950)
+        CALL stop_timer(900)
 
     END SUBROUTINE advance_np_counter
 
