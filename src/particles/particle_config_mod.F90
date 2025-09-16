@@ -211,8 +211,7 @@ CONTAINS
 
             IF (myid == 0) THEN
                 IF (TRIM(particle_terminal) == "normal" .OR. TRIM(particle_terminal) == "verbose") THEN
-                    WRITE(*, *) "ERROR: Maximum Particle List Length must be a positve Integer!"
-                    CALL errr(__FILE__, __LINE__)
+                    WRITE(*, *) "WARNING: No list limit specified. List size gets set automatically!"
                 END IF
             END IF
 
