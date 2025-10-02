@@ -91,53 +91,58 @@ contains
    !calculate trapezoid area
    FUNCTION trapezoid_area(points) result(area)
       implicit none
-      real(realk), intent(in) :: points(4, 2)
-      real(realk) :: area
-      real(realk) :: sorted_points(4, 2)
-      real(realk) :: top_points(2, 2), bottom_points(2, 2)
-      real(realk) :: top_base, bottom_base, height
-      integer(intk) :: i, j, max_idx, k
-      real(realk) :: y_values(4)
+        real(realk), intent(in) :: points(4, 2)
+        real(realk) :: area
 
-      do i = 1, 4
-         do j = 1, 2
-            sorted_points(i, j) = points(i, j)
-         end do
-         y_values(i) = points(i, 2)
-      end do
+       
+        real(realk) :: centroid(2)
+        real(realk) :: sorted_points(4, 2)
+        real(realk) :: angles(4)
+        integer :: i, j
+        
+        
+        real(realk) :: temp_angle
+        real(realk) :: temp_point(2)
 
-      do i = 1, 3
-         max_idx = i
-         do j = i + 1, 4
-            if (sorted_points(j, 2) > sorted_points(max_idx, 2)) then
-               max_idx = j
-            end if
-         end do
-         if (max_idx /= i) then
-            do k = 1, 2
-               call swap(sorted_points(i, k), sorted_points(max_idx, k))
+        
+        centroid(1) = sum(points(:, 1)) / 4.0_realk
+        centroid(2) = sum(points(:, 2)) / 4.0_realk
+
+       
+        do i = 1, 4
+            angles(i) = atan2(points(i, 2) - centroid(2), points(i, 1) - centroid(1))
+        end do
+        
+        
+        sorted_points = points
+
+      
+        do i = 1, 3
+            do j = 1, 4 - i
+                if (angles(j) > angles(j+1)) then
+                    
+                    temp_angle = angles(j)
+                    angles(j) = angles(j+1)
+                    angles(j+1) = temp_angle
+
+                    
+                    temp_point(:) = sorted_points(j, :)
+                    sorted_points(j, :) = sorted_points(j+1, :)
+                    sorted_points(j+1, :) = temp_point(:)
+                end if
             end do
-         end if
-      end do
+        end do
 
-      top_points = sorted_points(1:2, :)
-      bottom_points = sorted_points(3:4, :)
-
-      top_base = abs(top_points(2, 1) - top_points(1, 1))
-      bottom_base = abs(bottom_points(2, 1) - bottom_points(1, 1))
-
-      height = (top_points(1, 2) + top_points(2, 2))/2.0_realk - (bottom_points(1, 2) + bottom_points(2, 2))/2.0_realk
-
-      area = 0.5_realk*(top_base + bottom_base)*height
-
-   contains
-      SUBROUTINE swap(a, b)
-         real(realk), intent(inout) :: a, b
-         real(realk) :: temp
-         temp = a
-         a = b
-         b = temp
-      END SUBROUTINE swap
+        area = 0.5_realk * abs( &
+            (sorted_points(1, 1) * sorted_points(2, 2) + &
+             sorted_points(2, 1) * sorted_points(3, 2) + &
+             sorted_points(3, 1) * sorted_points(4, 2) + &
+             sorted_points(4, 1) * sorted_points(1, 2)) - &
+            (sorted_points(1, 2) * sorted_points(2, 1) + &
+             sorted_points(2, 2) * sorted_points(3, 1) + &
+             sorted_points(3, 2) * sorted_points(4, 1) + &
+             sorted_points(4, 2) * sorted_points(1, 1)) &
+        )
    END FUNCTION trapezoid_area
 
    !identify grid Vertices 
@@ -313,7 +318,7 @@ contains
    END FUNCTION PointInSector
    
    !calculate velocity after mommentum injection 
-   SUBROUTINE calculate_ActuatorMomentumInject(ittot, uo, vo, wo)
+    SUBROUTINE calculate_ActuatorMomentumInject(ittot, uo, vo, wo)
       INTEGER(intk), INTENT(IN) :: ittot
       TYPE(field_t), INTENT(INOUT) :: uo, vo, wo
       INTEGER(intk) :: i, igrid, kk, jj, ii
@@ -323,14 +328,22 @@ contains
       DO i = 1, nmygrids
           igrid = mygrids(i)
           CALL get_mgdims(kk, jj, ii, igrid)
-           IF (ALLOCATED(momentum_inject_area_3d)) DEALLOCATE(momentum_inject_area_3d)
-           ALLOCATE(momentum_inject_area_3d(kk, jj, ii))
-           momentum_inject_area_3d = 0.0_realk
-           
+          IF (ALLOCATED(momentum_inject_area_3d)) DEALLOCATE(momentum_inject_area_3d)
+          ALLOCATE(momentum_inject_area_3d(kk, jj, ii))
+          momentum_inject_area_3d = 0.0_realk
+             IF (ANY(ISNAN(momentum_inject_area_3d))) THEN
+             PRINT *, "ERROR: momentum_inject_area_3d contains NaNs"
+             STOP
+             END IF 
           CALL uo%get_ptr(uo_arr, igrid)
           CALL vo%get_ptr(vo_arr, igrid)
           CALL wo%get_ptr(wo_arr, igrid)
           CALL Area_Calculation_single_grid(ittot, momentum_inject_area_3d, igrid)
+          
+             IF (ANY(ISNAN(momentum_inject_area_3d))) THEN
+             PRINT *, "ERROR: momentum_inject_area_3d contains NaNs"
+             STOP
+             END IF 
           CALL inject_momentum_source(kk, jj, ii, uo_arr, vo_arr, wo_arr, momentum_inject_area_3d)
           
           IF (ALLOCATED(momentum_inject_area_3d)) DEALLOCATE(momentum_inject_area_3d)
@@ -380,8 +393,15 @@ contains
       real(realk), allocatable :: coordinate23(:, :), coordinate24(:, :)
       real(realk), allocatable :: coordinate29(:, :), coordinate30(:, :)
       real(realk), allocatable :: coordinate35(:, :), coordinate36(:, :)
-      real(realk) ::area, New_area
+      real(realk) ::area, New_area,Zero_point_area
       real(realk), dimension(4, 2) :: trapezoid_Point
+
+      real(realk), dimension(4, 2) :: cell_vertices
+      real(realk), dimension(4, 2) :: intersection_points
+      integer(intk) :: n_intersections
+      real(realk) :: cell_p1(2), cell_p2(2), sector_p1(2), sector_p2(2)
+      real(realk) :: intersection(2)
+      integer(intk) :: i_cell_edge, i_sector_line
       real(realk) :: trapezoid_Area_calculated
       
       REAL(realk), ALLOCATABLE :: Xgrid(:, :), Ygrid(:, :)
@@ -393,6 +413,9 @@ contains
       REAL(realk), POINTER, CONTIGUOUS :: ddx_ptr(:), ddy_ptr(:), ddz_ptr(:)
       REAL(realk), ALLOCATABLE :: momentum_inject_area(:, :)  ! 2D array storing swept area fraction 
       INTEGER(intk) :: z_layer
+
+      
+      
    
       !check status
       IF (.NOT. has_ActuatorMomentumInject) RETURN
@@ -438,17 +461,11 @@ contains
       CALL get_field(dx_f, "DX")
       CALL get_field(dy_f, "DY")
       CALL get_field(dz_f, "DZ")
-      CALL get_field(ddx_f, "DDX")
-      CALL get_field(ddy_f, "DDY")
-      CALL get_field(ddz_f, "DDZ")
-      
+    
       CALL dx_f%get_ptr(dx_ptr, igrid)
       CALL dy_f%get_ptr(dy_ptr, igrid)
       CALL dz_f%get_ptr(dz_ptr, igrid)
-      CALL ddx_f%get_ptr(ddx_ptr, igrid)
-      CALL ddy_f%get_ptr(ddy_ptr, igrid)
-      CALL ddz_f%get_ptr(ddz_ptr, igrid)
-      
+     
       ALLOCATE(Xgrid(nj, ni), Ygrid(nj, ni))
       
       DO j = 1, nj
@@ -458,6 +475,8 @@ contains
          END DO
       END DO
       
+      !WRITE(*,*) 'Grid = ', igrid,' kk=', dx_ptr, 'jj=', dy_ptr
+
       IF (.NOT. ALLOCATED(momentum_inject_area)) THEN
          ALLOCATE(momentum_inject_area(nj-1, ni-1))
       END IF
@@ -737,12 +756,72 @@ contains
                    ! Limit the result to reasonable range
                   IF (momentum_inject_area(j, k) < 0.0_realk) momentum_inject_area(j, k) = 0.0_realk
                   IF (momentum_inject_area(j, k) > 1.0_realk) momentum_inject_area(j, k) = 1.0_realk
+                  !0 point inside
+            
+            elseif (sum(q) == 0) then   
+              
+               !rearrange vertice order
+                cell_vertices(1, :) = [x1, y1] 
+                cell_vertices(2, :) = [x2, y2] 
+                cell_vertices(3, :) = [x4, y4] 
+                cell_vertices(4, :) = [x3, y3] 
+                
+                n_intersections = 0
+                !sector1
+                 DO i_cell_edge = 1, 4
+                    cell_p1 = cell_vertices(i_cell_edge, :)
+                    cell_p2 = cell_vertices(MOD(i_cell_edge, 4) + 1, :)
+
+                    intersection = lineSegmentIntersection(cell_p1(1),cell_p1(2), cell_p2(1), cell_p2(2),innerStartX1, innerStartY1, OuterStartX1, OuterStartY1)
+                    if (.not. ieee_is_nan(intersection(1))) then
+                        n_intersections = n_intersections + 1
+                        intersection_points(n_intersections, :) = intersection
+                    endif
+   
+                    intersection = lineSegmentIntersection(cell_p1(1),cell_p1(2), cell_p2(1), cell_p2(2), innerEndX1, innerEndY1, OuterEndX1, OuterEndY1)
+                    if (.not. ieee_is_nan(intersection(1))) then
+                        n_intersections = n_intersections + 1
+                        intersection_points(n_intersections, :) = intersection
+                    endif
+                END DO
+                !sector2
+                if (n_intersections /= 4) then
+                    n_intersections = 0 
+                    DO i_cell_edge = 1, 4
+                        cell_p1 = cell_vertices(i_cell_edge, :)
+                        cell_p2 = cell_vertices(MOD(i_cell_edge, 4) + 1, :)
+                        intersection = lineSegmentIntersection(cell_p1(1),cell_p1(2), cell_p2(1), cell_p2(2), innerStartX2, innerStartY2, OuterStartX2, OuterStartY2)
+                        if (.not. ieee_is_nan(intersection(1))) then
+                            n_intersections = n_intersections + 1
+                            intersection_points(n_intersections, :) = intersection
+                        endif
+                        intersection = lineSegmentIntersection(cell_p1(1),cell_p1(2), cell_p2(1), cell_p2(2), innerEndX2, innerEndY2, OuterEndX2, OuterEndY2)
+                        if (.not. ieee_is_nan(intersection(1))) then
+                            n_intersections = n_intersections + 1
+                            intersection_points(n_intersections, :) = intersection
+                        endif
+                    END DO
+                endif
+                
+                if (n_intersections==4) then
+                  Zero_point_area = trapezoid_area(intersection_points)
+                  momentum_inject_area(j, k) = (Zero_point_area)/(dx_ptr(k)*dy_ptr(j))
+                       ! Limit the result to reasonable range
+                  IF (momentum_inject_area(j, k) < 0.0_realk) momentum_inject_area(j, k) = 0.0_realk
+                  IF (momentum_inject_area(j, k) > 1.0_realk) momentum_inject_area(j, k) = 1.0_realk
+                endif
+
+               
             end if
+           
          END DO
       END DO
-      
+         
+      !WRITE(*,*) 'Grid = ', igrid, ' Total area = ', SUM(momentum_inject_area)
       DEALLOCATE(Xgrid, Ygrid)
       
+         
+          
       ! form 3D matrix
       z_layer = 0
       DO k = 1, kk
@@ -761,6 +840,8 @@ contains
             momentum_inject_area_3d(z_layer, j, k) = momentum_inject_area(j, k)
          END DO
       END DO
+
+         
    
     IF (ALLOCATED(momentum_inject_area)) DEALLOCATE(momentum_inject_area)
 
@@ -775,10 +856,7 @@ contains
       INTEGER :: k, j, i
       REAL(realk) :: factor_x, factor_y, factor_z
       
-         IF (ANY(ISNAN(momentum_inject_area_3d))) THEN
-         PRINT *, "ERROR: momentum_inject_area_3d contains NaNs"
-         STOP
-         END IF
+      
        !debug information
        !WRITE(*,*) 'inject: kk=', kk, 'jj=', jj, 'ii=', ii
        !WRITE(*,*) 'inject: momsrc_x=', momsrc_x, 'momsrc_y=', momsrc_y, 'momsrc_z=', momsrc_z
