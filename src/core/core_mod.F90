@@ -34,7 +34,6 @@ MODULE core_mod
     USE simdfunctions_mod
     USE statistics_mod
     USE stencilio_mod
-    USE sym_name_mod
     USE tensormath_mod
     USE timekeeper_mod
     USE timer_mod
@@ -77,6 +76,9 @@ CONTAINS
         ! was compiled
         CALL IEEE_SET_FLAG(IEEE_ALL, .FALSE.)
         CALL IEEE_SET_HALTING_MODE(IEEE_ALL, saved_fpe_mode)
+
+        ! Set a random, unpredictable seed for the random number generator
+        CALL RANDOM_SEED()
 
         ! Need to set the communicators first before set_fp_traps or
         ! set_underflow_mode since they depend on them

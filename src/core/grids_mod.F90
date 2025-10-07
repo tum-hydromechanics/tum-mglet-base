@@ -249,7 +249,7 @@ CONTAINS
                 CALL errr(__FILE__, __LINE__)
             END IF
             itypboconds(ibocond, idir, igrid) = 19
-        ELSEIF (CTYP .EQ. 'NIX') THEN
+        ELSEIF (CTYP == 'NIX') THEN
             itypboconds(ibocond, idir, igrid) = 99
         ELSE
             itypboconds(ibocond, idir, igrid) = -HUGE(1_intk)
@@ -435,20 +435,20 @@ CONTAINS
 
 
     SUBROUTINE get_imygrid(imygrid, igrid)
-      INTEGER(intk), INTENT(in) :: igrid
-      INTEGER(intk), INTENT(out) :: imygrid
+        INTEGER(intk), INTENT(in) :: igrid
+        INTEGER(intk), INTENT(out) :: imygrid
 
-      LOGICAL :: found
+        LOGICAL :: found
 
-      found = .FALSE.
-      DO imygrid = 1, nmygrids
-         IF (mygrids(imygrid) == igrid) THEN
-             found = .TRUE.
-             EXIT
-         END IF
-      END DO
+        found = .FALSE.
+        DO imygrid = 1, nmygrids
+            IF (mygrids(imygrid) == igrid) THEN
+                found = .TRUE.
+                EXIT
+            END IF
+        END DO
 
-      IF (.NOT. found) CALL errr(__FILE__, __LINE__)
+        IF (.NOT. found) CALL errr(__FILE__, __LINE__)
     END SUBROUTINE get_imygrid
 
 

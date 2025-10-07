@@ -41,7 +41,7 @@ CONTAINS
         TYPE(field_t), POINTER :: g
 
         CALL fort7%get(lesconf, "/flow/lesmodel")
-        CALL lesconf%get_value("/model", clesmodel, "Smagorinsky")
+        CALL lesconf%get_value("/model", clesmodel, "smagorinsky")
 
         SELECT CASE (lower(clesmodel))
         CASE ("none")
@@ -135,9 +135,9 @@ CONTAINS
         CALL get_field(dy_f, "DY")
         CALL get_field(dz_f, "DZ")
 
-        CALL get_field(ddx_f, "DX")
-        CALL get_field(ddy_f, "DY")
-        CALL get_field(ddz_f, "DZ")
+        CALL get_field(ddx_f, "DDX")
+        CALL get_field(ddy_f, "DDY")
+        CALL get_field(ddz_f, "DDZ")
 
         CALL get_field(rddx_f, "RDDX")
         CALL get_field(rddy_f, "RDDY")
@@ -440,8 +440,8 @@ CONTAINS
 
 #if 0
         ! Alternative and slightly less performant implementation
-        gij%g = RESHAPE((/dudx, dudy, dudz, dvdx, dvdy, dvdz, &
-            dwdx, dwdy, dwdz/), (/3, 3/))
+        gij%g = RESHAPE([dudx, dudy, dudz, dvdx, dvdy, dvdz, &
+            dwdx, dwdy, dwdz], [3, 3])
 
         ! gg = g_ik*g_kj
         gg = gij%sqr()
@@ -495,8 +495,8 @@ CONTAINS
         REAL(realk) :: eig1, eig2, eig3
         REAL(realk) :: sigma1, sigma2, sigma3
 
-        gij%g = RESHAPE((/dudx, dudy, dudz, dvdx, dvdy, dvdz, &
-            dwdx, dwdy, dwdz/), (/3, 3/))
+        gij%g = RESHAPE([dudx, dudy, dudz, dvdx, dvdy, dvdz, &
+            dwdx, dwdy, dwdz], [3, 3])
 
         G = gij%t()*gij
         CALL G%eig_b(eig1, eig2, eig3)

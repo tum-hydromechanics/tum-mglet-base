@@ -210,11 +210,11 @@ CONTAINS
             IF (hdferr /= 0) CALL errr(__FILE__, __LINE__)
 
             CALL h5tinsert_f(offset_h5t, "OFFSET", &
-                 H5OFFSETOF(C_LOC(foo), C_LOC(foo%offset)), int64_h5t, hdferr)
+                H5OFFSETOF(C_LOC(foo), C_LOC(foo%offset)), int64_h5t, hdferr)
             IF (hdferr /= 0) CALL errr(__FILE__, __LINE__)
 
             CALL h5tinsert_f(offset_h5t, "LENGTH", &
-                 H5OFFSETOF(C_LOC(foo), C_LOC(foo%length)), int64_h5t, hdferr)
+                H5OFFSETOF(C_LOC(foo), C_LOC(foo%length)), int64_h5t, hdferr)
             IF (hdferr /= 0) CALL errr(__FILE__, __LINE__)
         END BLOCK
 
@@ -314,10 +314,10 @@ CONTAINS
         IF (ALLOCATED(io_counts)) DEALLOCATE(io_counts)
         IF (ALLOCATED(io_displs)) DEALLOCATE(io_displs)
 
-       IF (ALLOCATED(mygrids_io)) DEALLOCATE(mygrids_io)
-       IF (ALLOCATED(gridid_io)) DEALLOCATE(gridid_io)
-       nmygrids_io = 0
-       ngrid_io = 0
+        IF (ALLOCATED(mygrids_io)) DEALLOCATE(mygrids_io)
+        IF (ALLOCATED(gridid_io)) DEALLOCATE(gridid_io)
+        nmygrids_io = 0
+        ngrid_io = 0
     END SUBROUTINE finish_fieldio
 
 
@@ -381,11 +381,12 @@ CONTAINS
     END SUBROUTINE fieldio_write
 
 
-    SUBROUTINE fieldio_read(parent_id, field, required)
+    SUBROUTINE fieldio_read(parent_id, field, required, found)
         ! Subroutine arguments
         INTEGER(hid_t), INTENT(in) :: parent_id
         CLASS(basefield_t), INTENT(inout) :: field
         LOGICAL, INTENT(in), OPTIONAL :: required
+        LOGICAL, INTENT(out), OPTIONAL :: found
 
         ! Local variables
         INTEGER(hid_t) :: group_id
@@ -402,6 +403,10 @@ CONTAINS
         IF (ngrid_io /= ngrid) CALL errr(__FILE__, __LINE__)
         IF (nmygrids_io /= nmygrids) CALL errr(__FILE__, __LINE__)
 
+        IF (PRESENT(found)) THEN
+            found = .FALSE.
+        END IF
+
         ! Check if field is present
         IF (PRESENT(required)) THEN
             IF (ioproc) THEN
@@ -411,6 +416,7 @@ CONTAINS
             CALL MPI_Bcast(link_exists, 1, MPI_LOGICAL, 0, MPI_COMM_WORLD)
 
             IF ((.NOT. required) .AND. (.NOT. link_exists)) THEN
+                ! Found is initialized false
                 RETURN
             END IF
         END IF
@@ -425,6 +431,12 @@ CONTAINS
         CALL read_attrs(group_id, field)
 
         CALL hdf5common_group_close(group_id)
+
+        ! If it came this far without errors, the field was read successfully
+        IF (PRESENT(found)) THEN
+            found = .TRUE.
+        END IF
+
         CALL stop_timer(100)
     END SUBROUTINE fieldio_read
 
@@ -651,8 +663,9 @@ CONTAINS
             nrecv = 0
             DO i = 1, niogrgrids
                 igrid = iogridinfo(1, i)
-                iproc = idprocofgrd(igrid)
                 nelems = iogridinfo(3, i)
+                ! Rank in the WORLD communicator (not iogrcomm)
+                iproc = idprocofgrd(igrid)
 
                 ! Grids with no data are not communicated
                 IF (nelems == 0) CYCLE
@@ -666,11 +679,11 @@ CONTAINS
                 SELECT TYPE (buffer)
                 TYPE IS (REAL(realk))
                     CALL MPI_Irecv(buffer(bufptr), nelems, &
-                        field%mpi_dtype, iproc, igrid, iogrcomm, &
+                        field%mpi_dtype, iproc, igrid, MPI_COMM_WORLD, &
                         recvreq(nrecv))
                 TYPE IS (INTEGER(ifk))
                     CALL MPI_Irecv(buffer(bufptr), nelems, &
-                        field%mpi_dtype, iproc, igrid, iogrcomm, &
+                        field%mpi_dtype, iproc, igrid, MPI_COMM_WORLD, &
                         recvreq(nrecv))
                 END SELECT
                 bufptr = bufptr + nelems
@@ -733,10 +746,12 @@ CONTAINS
             SELECT TYPE (transposed)
             TYPE IS (REAL(realk))
                 CALL MPI_Isend(transposed(ptr), nelems, &
-                    field%mpi_dtype, 0, igrid, iogrcomm, sendreq(nsend))
+                    field%mpi_dtype, iorankworld, igrid, &
+                    MPI_COMM_WORLD, sendreq(nsend))
             TYPE IS (INTEGER(ifk))
                 CALL MPI_Isend(transposed(ptr), nelems, &
-                    field%mpi_dtype, 0, igrid, iogrcomm, sendreq(nsend))
+                    field%mpi_dtype, iorankworld, igrid, &
+                    MPI_COMM_WORLD, sendreq(nsend))
             END SELECT
         END DO
         CALL MPI_Waitall(nsend, sendreq, MPI_STATUSES_IGNORE)
@@ -1188,8 +1203,8 @@ CONTAINS
                 CALL errr(__FILE__, __LINE__)
             END SELECT
             CALL h5dread_f(dset_id, memtype, cptr, ierr, &
-                 file_space_id=filespace, mem_space_id=memspace, &
-                 xfer_prp=plist_id)
+                file_space_id=filespace, mem_space_id=memspace, &
+                xfer_prp=plist_id)
             IF (ierr /= 0) CALL errr(__FILE__, __LINE__)
             bufptr = bufptr + count_m
 
@@ -1310,10 +1325,12 @@ CONTAINS
             SELECT TYPE (field)
             TYPE IS (field_t)
                 CALL MPI_Irecv(field%arr(ptr), nelems, &
-                    field%mpi_dtype, 0, igrid, iogrcomm, recvreq(nrecv))
+                    field%mpi_dtype, iorankworld, igrid, &
+                    MPI_COMM_WORLD, recvreq(nrecv))
             TYPE IS (intfield_t)
                 CALL MPI_Irecv(field%arr(ptr), nelems, &
-                    field%mpi_dtype, 0, igrid, iogrcomm, recvreq(nrecv))
+                    field%mpi_dtype, iorankworld, igrid, &
+                    MPI_COMM_WORLD, recvreq(nrecv))
             END SELECT
         END DO
 
@@ -1325,8 +1342,9 @@ CONTAINS
             nsend = 0
             DO i = 1, niogrgrids
                 igrid = iogridinfo(1, i)
-                iproc = idprocofgrd(igrid)
                 nelems = iogridinfo(3, i)
+                ! Rank in the WORLD communicator (not iogrcomm)
+                iproc = idprocofgrd(igrid)
 
                 ! Grids with no data are not communicated
                 IF (nelems == 0) CYCLE
@@ -1335,11 +1353,11 @@ CONTAINS
                 SELECT TYPE (buffer)
                 TYPE IS (REAL(realk))
                     CALL MPI_Isend(buffer(bufptr), nelems, &
-                        field%mpi_dtype, iproc, igrid, iogrcomm, &
+                        field%mpi_dtype, iproc, igrid, MPI_COMM_WORLD, &
                         sendreq(nsend))
                 TYPE IS (INTEGER(ifk))
                     CALL MPI_Isend(buffer(bufptr), nelems, &
-                        field%mpi_dtype, iproc, igrid, iogrcomm, &
+                        field%mpi_dtype, iproc, igrid, MPI_COMM_WORLD, &
                         sendreq(nsend))
                 END SELECT
                 bufptr = bufptr + nelems

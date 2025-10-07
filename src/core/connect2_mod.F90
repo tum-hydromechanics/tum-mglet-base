@@ -93,7 +93,7 @@ MODULE connect2_mod
     CLASS(basefield_t), POINTER :: u => NULL(), v => NULL(), w => NULL(), &
         p1 => NULL(), p2 => NULL(), p3 => NULL()
 
-    INTEGER(intk), PARAMETER :: facelist(4, 26) = RESHAPE((/ &
+    INTEGER(intk), PARAMETER :: facelist(4, 26) = RESHAPE([ &
         1, 1, 0, 0, &
         1, 2, 0, 0, &
         1, 3, 0, 0, &
@@ -119,9 +119,9 @@ MODULE connect2_mod
         3, 2, 3, 5, &
         3, 2, 3, 6, &
         3, 2, 4, 5, &
-        3, 2, 4, 6 /), SHAPE(facelist))
+        3, 2, 4, 6], SHAPE(facelist))
 
-    INTEGER(intk), PARAMETER :: facenbr(26) = (/ &
+    INTEGER(intk), PARAMETER :: facenbr(26) = [ &
         2, &
         1, &
         4, &
@@ -147,7 +147,7 @@ MODULE connect2_mod
         22, &
         21, &
         20, &
-        19 /)
+        19]
 
     ! These patterns come from a Python program, however, it was discovered,
     ! that the GC fcorr-stencils need in inner corners a special rescue
@@ -160,7 +160,7 @@ MODULE connect2_mod
     !
     ! The original un-altered order of these faces are in the comment
     ! behind the adapted ones.
-    INTEGER(intk), PARAMETER :: rescue_dir(7, 26) = RESHAPE((/ &
+    INTEGER(intk), PARAMETER :: rescue_dir(7, 26) = RESHAPE([ &
         1, 0, 0, 0, 0, 0, 0, &
         2, 0, 0, 0, 0, 0, 0, &
         3, 0, 0, 0, 0, 0, 0, &
@@ -186,9 +186,9 @@ MODULE connect2_mod
         23, 11, 13, 15, 2, 3, 5, &
         24, 11, 14, 16, 2, 3, 6, &
         25, 12, 13, 17, 2, 4, 5, &
-        26, 12, 14, 18, 2, 4, 6 /), SHAPE(rescue_dir))
+        26, 12, 14, 18, 2, 4, 6], SHAPE(rescue_dir))
 
-    INTEGER(intk), PARAMETER :: rescue_nbr(7, 26) = RESHAPE((/ &
+    INTEGER(intk), PARAMETER :: rescue_nbr(7, 26) = RESHAPE([ &
         2, 0, 0, 0, 0, 0, 0, &
         1, 0, 0, 0, 0, 0, 0, &
         4, 0, 0, 0, 0, 0, 0, &
@@ -214,7 +214,7 @@ MODULE connect2_mod
         22, 21, 20, 26, 19, 25, 24, &
         21, 22, 19, 25, 20, 26, 23, &
         20, 19, 22, 24, 21, 23, 26, &
-        19, 20, 21, 23, 22, 24, 25 /), SHAPE(rescue_nbr))
+        19, 20, 21, 23, 22, 24, 25], SHAPE(rescue_nbr))
 
     PUBLIC :: connect, connect_int, init_connect2, finish_connect2
 
@@ -362,7 +362,7 @@ CONTAINS
         INTEGER(intk), INTENT(in), OPTIONAL :: ilevel, layers
 
         ! I am surprised this is allowed as these are not optional...
-        LOGICAL :: has_v1, has_v2, has_v3, has_s1, has_s2, has_s3
+        LOGICAL, INTENT(in) :: has_v1, has_v2, has_v3, has_s1, has_s2, has_s3
 
         ! Optional parameters to control special behaviour
         LOGICAL, OPTIONAL, INTENT(in) :: geom, corners, normal
@@ -405,7 +405,7 @@ CONTAINS
             END IF
             nVars = nVars + 3
         ELSE IF (has_v2 .OR. has_v3) THEN
-             WRITE(*, *) "If one vector arg is present, all three " &
+            WRITE(*, *) "If one vector arg is present, all three " &
                 // "must be present."
             CALL errr(__FILE__, __LINE__)
         END IF
@@ -776,7 +776,8 @@ CONTAINS
 
         ! Check that buffer does not overflow
         ! TODO: not correct for integer connects
-        IF (sendcounter + messagelength + thismessagelength > SIZE(sendbuf)) THEN
+        IF (sendcounter + messagelength + thismessagelength &
+                > SIZE(sendbuf)) THEN
             CALL errr(__FILE__, __LINE__)
         END IF
 
@@ -905,7 +906,8 @@ CONTAINS
         ! Check if send- and recv- face have elementary faces in common
         DO i = 1, facelist(1, ifacesend)
             DO j = 1, facelist(1, ifacerecv)
-                IF (facelist(i + 1, ifacesend) == facelist(j + 1, ifacerecv)) THEN
+                IF (facelist(i + 1, ifacesend) &
+                        == facelist(j + 1, ifacerecv)) THEN
                     iface = facelist(i + 1, ifacesend)
                     CALL start_and_stop_face(igrid, iface, istart, istop, &
                         jstart, jstop, kstart, kstop)
@@ -1096,7 +1098,8 @@ CONTAINS
 
         ! Sanity check of message length
         source_size = (istop-istart+1)*(jstop-jstart+1)*(kstop-kstart+1)
-        dest_size = (istop_d-istart_d+1)*(jstop_d-jstart_d+1)*(kstop_d-kstart_d+1)
+        dest_size = (istop_d-istart_d+1) &
+            *(jstop_d-jstart_d+1)*(kstop_d-kstart_d+1)
         IF (source_size /= dest_size) THEN
             CALL errr(__FILE__, __LINE__)
         END IF
@@ -1219,7 +1222,8 @@ CONTAINS
 
                 unpackLen = 0
                 DO i = 1, iRecv
-                    IF (recvIdxList(1, i) == recvList(idx) .AND. recvIdxList(2, i) > 0) THEN
+                    IF (recvIdxList(1, i) == recvList(idx) &
+                            .AND. recvIdxList(2, i) > 0) THEN
                         CALL read_buffer(i)
                         unpacklen = unpacklen + recvIdxList(2, i)
                     END IF
@@ -1392,7 +1396,8 @@ CONTAINS
                     recvConns(7, nRecv) = maxTag(iprocnbr)  ! Message tag
                     recvConns(8, nRecv) = iexchange  ! Geometry exchange flag
 
-                    sendcounts(iprocnbr) = sendcounts(iprocnbr) + SIZE(recvConns, 1)
+                    sendcounts(iprocnbr) = sendcounts(iprocnbr) &
+                        + SIZE(recvConns, 1)
                 END IF
             END DO
 
@@ -1443,7 +1448,8 @@ CONTAINS
                     recvConns(7, nRecv) = maxTag(iprocnbr)  ! Message tag
                     recvConns(8, nRecv) = iexchange  ! Geometry exchange flag
 
-                    sendcounts(iprocnbr) = sendcounts(iprocnbr) + SIZE(recvConns, 1)
+                    sendcounts(iprocnbr) = sendcounts(iprocnbr) &
+                        + SIZE(recvConns, 1)
                 END IF
             END DO
 
@@ -1497,7 +1503,8 @@ CONTAINS
                     recvConns(7, nRecv) = maxTag(iprocnbr)  ! Message tag
                     recvConns(8, nRecv) = iexchange  ! Geometry exchange flag
 
-                    sendcounts(iprocnbr) = sendcounts(iprocnbr) + SIZE(recvConns, 1)
+                    sendcounts(iprocnbr) = sendcounts(iprocnbr) &
+                        + SIZE(recvConns, 1)
                 END IF
             END DO
         END DO

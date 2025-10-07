@@ -222,7 +222,7 @@ CONTAINS
                         ut(k, j, i) = (at(k)*bw(k, j, i) - p3)*lpr(k, j, i)
                     END DO
                 END DO
-             END DO
+            END DO
 
             DO i = 3, ii-2
                 DO j = 3, jj-2
@@ -283,7 +283,7 @@ CONTAINS
                         rap(k, j, i) = divide0(1.0_realk, ap(k, j, i))
                     END DO
                 END DO
-             END DO
+            END DO
         END DO
     END SUBROUTINE init_sor
 
@@ -349,11 +349,13 @@ CONTAINS
         outer: DO ipcount = 1, nouter
             ! Inner pressure iterations
             ! HINT: 'res' is passed into mgpoisit as a temporary storage!!
+            CALL start_timer(322)
             DO ilevel = minlevel, maxlevel
                 CALL ctof(ilevel, hilf%arr, hilf%arr)
                 CALL parent(ilevel, s1=hilf)
                 CALL mgpoisit(ilevel, hilf, rhs, res, bp)
             END DO
+            CALL stop_timer(322)
 
             ! --- intermediate state ---
             ! every grid level has an inner solution

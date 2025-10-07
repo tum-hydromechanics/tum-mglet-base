@@ -485,8 +485,8 @@ CONTAINS
                     END IF
 
                     sarea = ax1*areau(k, j, i) + ax2*areau(k, j, i-1) &
-                          + ay1*areav(k, j, i) + ay2*areav(k, j-1, i) &
-                          + az1*areaw(k, j, i) + az2*areaw(k-1, j, i)
+                        + ay1*areav(k, j, i) + ay2*areav(k, j-1, i) &
+                        + az1*areaw(k, j, i) + az2*areaw(k-1, j, i)
 
                     refarea = ((dx + dy + dz)/3.0)**2
                     ! Nur wenn seara > 0 werden die ax... mit den
@@ -1126,7 +1126,7 @@ CONTAINS
         ! Local variables
         INTEGER(intk) :: k, j, i
         INTEGER(intk) :: cellcount, intcell
-        INTEGER(intk) :: ishift, jshift, kshift, foundnr
+        INTEGER(intk) :: ishift, jshift, kshift
         INTEGER(intk) :: pntxpoli, pntxpolr
         REAL(realk) :: div, acoeffstc, sarea
         REAL(realk) :: ax1, ax2, ay1, ay2, az1, az2
@@ -1138,7 +1138,7 @@ CONTAINS
         pntxpoli = 1
         pntxpolr = 1
         DO cellcount = 1, ncells
-            foundnr = xpoli(pntxpoli)
+            ! foundnr = xpoli(pntxpoli)
             pntxpoli = pntxpoli + 1
 
             intcell = xpoli(pntxpoli)
