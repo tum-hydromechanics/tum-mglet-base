@@ -2,7 +2,7 @@ MODULE setboundarybuffers_scalar_mod
     USE core_mod
     USE scacore_mod
 
-    IMPLICIT NONE(type, external)
+    IMPLICIT NONE
     PRIVATE
 
     ! Bound operation 'T' operate on U, V, W, P
