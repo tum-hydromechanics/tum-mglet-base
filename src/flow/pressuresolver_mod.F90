@@ -6,7 +6,7 @@ MODULE pressuresolver_mod
     USE itinfo_mod, ONLY: itinfo_sample
     USE plog_mod
 
-    IMPLICIT NONE (type, external)
+    IMPLICIT NONE
     PRIVATE
 
     ! Type of pressure solver

@@ -7,7 +7,7 @@ MODULE filling_mod
     USE ibconst_mod, ONLY: nloopmax
     USE parent_mod, ONLY: parent
 
-    IMPLICIT NONE (type, external)
+    IMPLICIT NONE
     PRIVATE
 
     PUBLIC :: fillfluid, blockquad_search, &

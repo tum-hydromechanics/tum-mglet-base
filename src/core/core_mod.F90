@@ -41,7 +41,7 @@ MODULE core_mod
     USE write3d_mod
     USE write_grids_mod
 
-    IMPLICIT NONE (type, external)
+    IMPLICIT NONE
     ! In this module everything is public. It exports all the public
     ! definitions from the other modules as well, which makes it easier
     ! to use them, you do not need to "USE" so many modules each place.

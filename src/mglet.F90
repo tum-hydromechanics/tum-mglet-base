@@ -10,7 +10,7 @@ PROGRAM main
     USE particle_mod, ONLY: init_particles, finish_particles   ! <------------------------------------partilces
 
 
-    IMPLICIT NONE (type, external)
+    IMPLICIT NONE
 
     LOGICAL :: exit_now
 

@@ -6,7 +6,7 @@ MODULE envvars_mod
     USE charfunc_mod
     USE comms_mod, ONLY: myid
 
-    IMPLICIT NONE (type, external)
+    IMPLICIT NONE
     PRIVATE
 
 #ifdef _MGLET_ENVPREFIX_

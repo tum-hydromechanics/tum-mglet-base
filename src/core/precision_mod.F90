@@ -4,7 +4,7 @@ MODULE precision_mod
 
     USE MPI_f08
 
-    IMPLICIT NONE (type, external)
+    IMPLICIT NONE
     PRIVATE
 
     ! Kind for REAL's

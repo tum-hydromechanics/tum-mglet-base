@@ -5,7 +5,7 @@ MODULE err_mod
 
     USE precision_mod
 
-    IMPLICIT NONE (type, external)
+    IMPLICIT NONE
     PRIVATE
 
     INTEGER(intk), PARAMETER :: maxcode = 255

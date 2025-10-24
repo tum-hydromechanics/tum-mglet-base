@@ -7,7 +7,7 @@ MODULE hdf5common_mod
     USE err_mod, ONLY: errr
     USE comms_mod, ONLY: iocomm, ioproc, myid, iogrcomm
 
-    IMPLICIT NONE (type, external)
+    IMPLICIT NONE
     PRIVATE
 
     ! Maximum number of dimensions for HDF5 dataset

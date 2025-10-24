@@ -4,7 +4,7 @@ MODULE gc_scastencils_mod
         wmcheckneighbor, choosestencil
     USE scacore_mod
 
-    IMPLICIT NONE (type, external)
+    IMPLICIT NONE
     PRIVATE
 
     TYPE(int_stencils_t), ALLOCATABLE, TARGET :: scaxpoli(:)

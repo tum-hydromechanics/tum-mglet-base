@@ -9,7 +9,7 @@ MODULE stencilio_mod
     USE precision_mod
     USE qsort_mod, ONLY: sortix
 
-    IMPLICIT NONE (type, external)
+    IMPLICIT NONE
     PRIVATE
 
     TYPE :: int_stencils_t

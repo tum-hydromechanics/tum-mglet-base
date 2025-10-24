@@ -2,7 +2,7 @@ MODULE scastat_mod
     USE core_mod
     USE scacore_mod
 
-    IMPLICIT NONE (type, external)
+    IMPLICIT NONE
     PRIVATE
 
     PUBLIC :: init_scastat, finish_scastat

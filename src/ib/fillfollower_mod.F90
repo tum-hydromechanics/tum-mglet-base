@@ -5,7 +5,7 @@ MODULE fillfollower_mod
         nmygrids, mygrids, field_t, mglet_mpi_int, get_field, errr, myid
     USE filling_mod, ONLY: blockquad_search
 
-    IMPLICIT NONE (type, external)
+    IMPLICIT NONE
     PRIVATE
 
     PUBLIC :: fillfollower

@@ -8,7 +8,7 @@ MODULE particle_exchange_mod
     USE particle_list_mod
     USE particle_statistics_mod
 
-    IMPLICIT NONE (type, external)
+    IMPLICIT NONE
 
     PRIVATE
 

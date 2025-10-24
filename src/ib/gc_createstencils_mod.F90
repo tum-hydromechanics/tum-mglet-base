@@ -4,7 +4,7 @@ MODULE gc_createstencils_mod
     ! Commom routines shared among flow, scalar etc. stencil creation
     ! TODO: Fix subroutine names in this file...
 
-    IMPLICIT NONE (type, external)
+    IMPLICIT NONE
     PRIVATE
 
     PUBLIC :: wmcheckneighbor, choosestencil, wmmultimatrix, wmaddcoefflist, &

@@ -2,7 +2,7 @@ MODULE blockluecken_mod
     USE core_mod, ONLY: realk, intk, mygrids, nmygrids, &
         get_mgdims, get_mgbasb, errr, field_t
 
-    IMPLICIT NONE (type, external)
+    IMPLICIT NONE
     PRIVATE
 
     PUBLIC :: blockluecken, blockluecken_grid

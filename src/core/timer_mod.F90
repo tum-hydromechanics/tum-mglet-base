@@ -7,7 +7,7 @@ MODULE timer_mod
         c_f_pointer
     USE MPI_f08
 
-    IMPLICIT NONE (type, external)
+    IMPLICIT NONE
     PRIVATE
 
     INTEGER(intk), PARAMETER :: maxtimers = 1000

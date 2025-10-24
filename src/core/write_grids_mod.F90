@@ -10,7 +10,7 @@ MODULE write_grids_mod
     USE fieldio2_mod, ONLY: init_fieldio, fieldio_write, finish_fieldio
     USE hdf5common_mod, ONLY: hdf5common_open, hdf5common_close
 
-    IMPLICIT NONE (type, external)
+    IMPLICIT NONE
     PRIVATE
 
     ! Public subroutines

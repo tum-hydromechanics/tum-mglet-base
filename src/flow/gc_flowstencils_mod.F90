@@ -5,7 +5,7 @@ MODULE gc_flowstencils_mod
         maccur, wmcheckneighbor, choosestencil, wmmultimatrix, wmaddcoefflist, &
         par_ftoc_norm
 
-    IMPLICIT NONE (type, external)
+    IMPLICIT NONE
     PRIVATE
 
     TYPE(int_stencils_t), ALLOCATABLE, TARGET :: fxpoli(:)

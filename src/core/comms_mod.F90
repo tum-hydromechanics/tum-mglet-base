@@ -15,7 +15,7 @@ MODULE comms_mod
     USE precision_mod, ONLY: int32
     USE MPI_f08
 
-    IMPLICIT NONE (type, external)
+    IMPLICIT NONE
     PRIVATE
 
     ! Communicator over shared memory space, i.e. one compute node

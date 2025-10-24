@@ -4,7 +4,7 @@ MODULE cutcorner_mod
     USE ibconst_mod, ONLY: maccur
     USE topol_mod, ONLY: topol_t
 
-    IMPLICIT NONE (type, external)
+    IMPLICIT NONE
     PRIVATE
 
     PUBLIC :: cutcorner, cutcorner_level, cutcorner_grid, calcint

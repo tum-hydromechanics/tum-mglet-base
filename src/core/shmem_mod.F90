@@ -10,7 +10,7 @@ MODULE shmem_mod
     USE err_mod, ONLY: errr
     USE precision_mod
 
-    IMPLICIT NONE (type, external)
+    IMPLICIT NONE
     PRIVATE
 
     TYPE, ABSTRACT :: shmem_arr

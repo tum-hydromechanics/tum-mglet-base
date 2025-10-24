@@ -1,7 +1,7 @@
 MODULE blockclosetoboundary_mod
     USE core_mod, ONLY: realk, intk
 
-    IMPLICIT NONE (type, external)
+    IMPLICIT NONE
     PRIVATE
 
     PUBLIC :: blockclosetoboundary

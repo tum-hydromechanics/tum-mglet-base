@@ -27,7 +27,7 @@ MODULE gc_blockbp_mod
     USE calcnormals_mod, ONLY: calcnormals
     USE gc_stencils_mod, ONLY: gc_stencils_t
 
-    IMPLICIT NONE (type, external)
+    IMPLICIT NONE
     PRIVATE
 
     TYPE, EXTENDS(blockbp_t) :: gc_blockbp_t

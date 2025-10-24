@@ -7,7 +7,7 @@ MODULE commbuf_mod
         ifk, ifk_bytes
     USE pointers_mod, ONLY: idim2d, idim3d
 
-    IMPLICIT NONE (type, external)
+    IMPLICIT NONE
     PRIVATE
 
     ! Maximum number of variables in any connect-call

@@ -2,7 +2,7 @@ MODULE parent_mod
     USE MPI_f08
     USE core_mod
 
-    IMPLICIT NONE (type, external)
+    IMPLICIT NONE
     PRIVATE
 
     ! Maximum number of connections on one single process, either

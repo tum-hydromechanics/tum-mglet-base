@@ -2,7 +2,7 @@ MODULE ctof_mod
     USE core_mod
     USE MPI_f08
 
-    IMPLICIT NONE (type, external)
+    IMPLICIT NONE
     PRIVATE
 
     ! Variable to indicate if the required data structures and MPI-types

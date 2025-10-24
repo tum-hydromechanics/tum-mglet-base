@@ -4,7 +4,7 @@ MODULE grids_mod
     USE gridio_mod, ONLY: gridinfo_t, bcond_t, maxboconds
     USE comms_mod, ONLY: myid
 
-    IMPLICIT NONE (type, external)
+    IMPLICIT NONE
     PRIVATE
 
     TYPE(gridinfo_t), ALLOCATABLE, TARGET :: gridinfo(:)

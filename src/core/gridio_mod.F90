@@ -7,7 +7,7 @@ MODULE gridio_mod
     USE hdf5common_mod
     USE precision_mod
 
-    IMPLICIT NONE (type, external)
+    IMPLICIT NONE
     PRIVATE
 
     ! Gridinfo table type

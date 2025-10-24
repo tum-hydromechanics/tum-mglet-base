@@ -2,7 +2,7 @@ MODULE blocknodes_mod
     USE core_mod, ONLY: realk, intk, mygrids, nmygrids, get_mgdims, get_ip3, &
         field_t, connect
 
-    IMPLICIT NONE (type, external)
+    IMPLICIT NONE
     PRIVATE
 
     PUBLIC :: blocknodes

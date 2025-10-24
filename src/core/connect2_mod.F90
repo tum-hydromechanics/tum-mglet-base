@@ -10,7 +10,7 @@ MODULE connect2_mod
     USE comms_mod, ONLY: myid, numprocs
     USE field_mod
 
-    IMPLICIT NONE (type, external)
+    IMPLICIT NONE
     PRIVATE
 
     ! Maximum number of connections on one single process, either

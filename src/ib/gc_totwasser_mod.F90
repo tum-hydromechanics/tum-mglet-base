@@ -8,7 +8,7 @@ MODULE gc_totwasser_mod
     USE parent_mod, ONLY: parent
     USE filling_mod, ONLY: blockparentboundary_p, blockquad_search
 
-    IMPLICIT NONE (type, external)
+    IMPLICIT NONE
     PRIVATE
 
     PUBLIC :: totwasser

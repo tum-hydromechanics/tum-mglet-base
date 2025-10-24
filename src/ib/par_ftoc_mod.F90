@@ -2,7 +2,7 @@ MODULE par_ftoc_mod
     USE MPI_f08
     USE core_mod
 
-    IMPLICIT NONE (type, external)
+    IMPLICIT NONE
     PRIVATE
 
     ! The information in the first dimension is sorted as follows:

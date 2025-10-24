@@ -8,7 +8,7 @@ MODULE ftoc_mod
     USE ibcore_mod, ONLY: ib
     USE MPI_f08
 
-    IMPLICIT NONE (type, external)
+    IMPLICIT NONE
     PRIVATE
 
     ! Variable to indicate if the required data structures have been created

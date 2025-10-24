@@ -1,7 +1,7 @@
 MODULE plog_mod
     USE core_mod
 
-    IMPLICIT NONE (type, external)
+    IMPLICIT NONE
     PRIVATE
 
     TYPE, BIND(C) :: plog_t

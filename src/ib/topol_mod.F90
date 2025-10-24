@@ -3,7 +3,7 @@ MODULE topol_mod
     USE core_mod
     USE, INTRINSIC :: ISO_C_BINDING, ONLY: C_F_POINTER
 
-    IMPLICIT NONE (type, external)
+    IMPLICIT NONE
     PRIVATE
 
     TYPE :: stldata_t

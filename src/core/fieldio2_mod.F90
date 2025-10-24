@@ -16,7 +16,7 @@ MODULE fieldio2_mod
 
     USE, INTRINSIC :: ISO_C_BINDING
 
-    IMPLICIT NONE (type, external)
+    IMPLICIT NONE
     PRIVATE
 
     LOGICAL :: is_init = .FALSE.

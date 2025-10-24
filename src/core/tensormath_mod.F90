@@ -1,7 +1,7 @@
 MODULE tensormath_mod
     USE precision_mod, ONLY: realk, intk
 
-    IMPLICIT NONE (type, external)
+    IMPLICIT NONE
     PRIVATE
 
     TYPE :: tensor_t
