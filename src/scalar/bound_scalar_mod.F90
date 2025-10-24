@@ -3,7 +3,7 @@ MODULE bound_scalar_mod
     USE scacore_mod
     USE flow_mod, ONLY: ilesmodel, gmol, rho, qwallfix
 
-    IMPLICIT NONE(type, external)
+    IMPLICIT NONE
     PRIVATE
 
     ! Bound operation 'T' operate on U, V, W, P

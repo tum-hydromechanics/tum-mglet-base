@@ -4,7 +4,7 @@ MODULE write3d_mod
     USE field_mod
     USE fields_mod
 
-    IMPLICIT NONE(type, external)
+    IMPLICIT NONE
     PRIVATE
 
     PUBLIC :: writevtk

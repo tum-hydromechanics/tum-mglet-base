@@ -28,7 +28,7 @@ MODULE ib_mod
     USE gc_mod, gc_constructor => constructor
     USE noib_mod, noib_constructor => constructor
 
-    IMPLICIT NONE(type, external)
+    IMPLICIT NONE
     ! In this module everything is public. It exports all the public
     ! definitions from the other modules as well, which makes it easier
     ! to use them, you do not need to "USE" so many modules each place.

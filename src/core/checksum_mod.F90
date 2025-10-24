@@ -5,7 +5,7 @@ MODULE checksum_mod
     USE pointers_mod, ONLY: get_ip3, idim3d
     USE, INTRINSIC :: ISO_C_BINDING, ONLY: C_PTR, C_LOC, C_LONG
 
-    IMPLICIT NONE(type, external)
+    IMPLICIT NONE
     PRIVATE
 
     INTERFACE

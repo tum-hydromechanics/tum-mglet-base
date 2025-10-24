@@ -7,7 +7,7 @@ MODULE gc_finishknotenbezelltyp_mod
     USE findinterface_mod, ONLY: findinterface2
     USE topol_mod, ONLY: topol_t
 
-    IMPLICIT NONE(type, external)
+    IMPLICIT NONE
     PRIVATE
 
     PUBLIC :: finishknotenbezelltyp

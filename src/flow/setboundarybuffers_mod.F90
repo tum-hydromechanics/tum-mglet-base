@@ -3,7 +3,7 @@ MODULE setboundarybuffers_mod
     USE ib_mod, ONLY: ib
     USE flowcore_mod
 
-    IMPLICIT NONE(type, external)
+    IMPLICIT NONE
     PRIVATE
 
     ! Bound operation 'T' operate on U, V, W, P

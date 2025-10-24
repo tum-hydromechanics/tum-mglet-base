@@ -2,7 +2,7 @@ MODULE plugins_mod
     USE precision_mod, ONLY: intk, realk
     USE timer_mod, ONLY: set_timer, start_timer, stop_timer
 
-    IMPLICIT NONE(type, external)
+    IMPLICIT NONE
     PRIVATE
 
     ABSTRACT INTERFACE

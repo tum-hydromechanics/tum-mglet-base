@@ -4,7 +4,7 @@ MODULE intfield_mod
     USE precision_mod, ONLY: intk, ifk, mglet_hdf5_ifk, mglet_mpi_ifk
     USE basefield_mod
 
-    IMPLICIT NONE(type, external)
+    IMPLICIT NONE
     PRIVATE
 
     TYPE, EXTENDS(basefield_t) :: intfield_t

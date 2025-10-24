@@ -1,7 +1,7 @@
 MODULE calcfacearea_mod
     USE core_mod, ONLY: realk, intk, divide0
 
-    IMPLICIT NONE(type, external)
+    IMPLICIT NONE
     PRIVATE
 
     PUBLIC :: calcfacedata, calcwallfacecenter, calcwallfacecenterrescue

@@ -10,7 +10,7 @@ MODULE corefields_mod
     USE pointers_mod
     USE precision_mod
 
-    IMPLICIT NONE(type, external)
+    IMPLICIT NONE
     PRIVATE
 
     ! For convenience in this routine

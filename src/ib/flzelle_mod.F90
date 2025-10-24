@@ -1,7 +1,7 @@
 MODULE flzelle_mod
     USE core_mod, ONLY: intk, errr
 
-    IMPLICIT NONE(type, external)
+    IMPLICIT NONE
     PRIVATE
 
     PUBLIC :: flzelle

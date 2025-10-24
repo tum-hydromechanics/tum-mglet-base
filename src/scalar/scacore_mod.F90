@@ -3,7 +3,7 @@ MODULE scacore_mod
     USE ib_mod, ONLY: ib, gc_t
     USE flow_mod, ONLY: has_flow
 
-    IMPLICIT NONE(type, external)
+    IMPLICIT NONE
     PRIVATE
 
     TYPE :: scalar_bc_t

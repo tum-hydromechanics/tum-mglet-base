@@ -5,7 +5,7 @@ MODULE gc_stencils_mod
         hdf5common_close, hdf5common_attr_write, get_ip3, myid, ind2sub, &
         get_fieldptr, get_field
     USE stencils_mod, ONLY: stencils_t
-    IMPLICIT NONE(type, external)
+    IMPLICIT NONE
     PRIVATE
 
     TYPE, EXTENDS(stencils_t) :: gc_stencils_t

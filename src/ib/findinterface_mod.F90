@@ -1,7 +1,7 @@
 MODULE findinterface_mod
     USE core_mod, ONLY: realk, intk, errr
 
-    IMPLICIT NONE(type, external)
+    IMPLICIT NONE
     PRIVATE
 
     INTERFACE findinterface2

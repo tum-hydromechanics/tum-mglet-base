@@ -1,7 +1,7 @@
 MODULE knotenundkanten_mod
     USE core_mod, ONLY: realk, intk, errr
 
-    IMPLICIT NONE(type, external)
+    IMPLICIT NONE
     PRIVATE
 
     PUBLIC :: knotenundkanten

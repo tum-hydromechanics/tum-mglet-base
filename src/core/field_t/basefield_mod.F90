@@ -8,7 +8,7 @@ MODULE basefield_mod
     USE precision_mod, ONLY: intk, realk
 
 
-    IMPLICIT NONE(type, external)
+    IMPLICIT NONE
     PRIVATE
 
     INTEGER(intk), PARAMETER :: nchar_name = 16

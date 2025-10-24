@@ -3,7 +3,7 @@ MODULE field_mod
     USE realfield_mod
     USE intfield_mod
 
-    IMPLICIT NONE(type, external)
+    IMPLICIT NONE
     PRIVATE
 
     PUBLIC :: basefield_t, field_t, intfield_t, buffer_t, get_len_i, nchar_name

@@ -5,7 +5,7 @@ MODULE config_mod
     USE, INTRINSIC :: ISO_FORTRAN_ENV, ONLY: int32, int64, real32, real64
     USE err_mod, ONLY: errr
 
-    IMPLICIT NONE(type, external)
+    IMPLICIT NONE
     PRIVATE
 
     TYPE :: config_t

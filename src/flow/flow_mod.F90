@@ -8,7 +8,7 @@ MODULE flow_mod
     USE wernerwengle_mod
     USE lesmodel_mod, ONLY: ilesmodel
 
-    IMPLICIT NONE(type, external)
+    IMPLICIT NONE
 
     PRIVATE :: init_uvwp
 

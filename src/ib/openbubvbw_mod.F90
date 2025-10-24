@@ -3,7 +3,7 @@ MODULE openbubvbw_mod
         get_mgdims, field_t
     USE ibcore_mod, ONLY: openaccur
 
-    IMPLICIT NONE(type, external)
+    IMPLICIT NONE
     PRIVATE
 
     PUBLIC :: openbubvbw

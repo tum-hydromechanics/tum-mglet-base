@@ -11,7 +11,7 @@ MODULE qsort_mod
     USE err_mod, ONLY: errr
     USE precision_mod, ONLY: intk, c_intk, int32, int64, real32, real64
 
-    IMPLICIT NONE(type, external)
+    IMPLICIT NONE
     PRIVATE
 
     INTERFACE
@@ -217,7 +217,7 @@ MODULE qsort_mod
     USE err_mod, ONLY: errr
     USE precision_mod, ONLY: intk, realk, int_bytes, real_bytes
 
-    IMPLICIT NONE(type, external)
+    IMPLICIT NONE
     PRIVATE
 
     TYPE, BIND(C) :: ctx_t

@@ -7,7 +7,7 @@ MODULE statistics_mod
     USE precision_mod
     USE timer_mod
 
-    IMPLICIT NONE(type, external)
+    IMPLICIT NONE
     PRIVATE
 
     ABSTRACT INTERFACE

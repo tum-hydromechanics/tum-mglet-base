@@ -3,7 +3,7 @@ MODULE buildinfo_mod
     USE precision_mod, ONLY: real_bytes, int_bytes, ifk_bytes, intk
     USE envvars_mod, ONLY: getenv_char_coll
 
-    IMPLICIT NONE(type, external)
+    IMPLICIT NONE
     PRIVATE
 
     INTEGER(intk) :: year, month, day, hour, minute, second

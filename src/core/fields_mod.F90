@@ -10,7 +10,7 @@ MODULE fields_mod
     USE precision_mod
     USE field_mod, ONLY: field_t, get_len_i, nchar_name
 
-    IMPLICIT NONE(type, external)
+    IMPLICIT NONE
     PRIVATE
 
     ! Fields storage array

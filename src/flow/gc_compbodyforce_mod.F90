@@ -6,7 +6,7 @@ MODULE gc_compbodyforce_mod
     USE ib_mod
     USE flowcore_mod
 
-    IMPLICIT NONE(type, external)
+    IMPLICIT NONE
     PRIVATE
 
     TYPE, BIND(C) :: bodyforce_t

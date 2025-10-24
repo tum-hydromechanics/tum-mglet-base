@@ -3,7 +3,7 @@ MODULE mgletmath_mod
     USE field_mod, ONLY: field_t
     USE grids_mod, ONLY: mygrids, nmygrids
 
-    IMPLICIT NONE(type, external)
+    IMPLICIT NONE
     PRIVATE
 
     PUBLIC :: zero_ghostlayers

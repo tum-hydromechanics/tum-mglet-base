@@ -2,7 +2,7 @@ MODULE wernerwengle_mod
     USE core_mod
     USE flowcore_mod, ONLY: rho, gmol
 
-    IMPLICIT NONE(type, external)
+    IMPLICIT NONE
     PRIVATE
 
     REAL(realk), PROTECTED :: cwa, cwb

@@ -4,7 +4,7 @@ MODULE freekante_mod
     USE topol_mod, ONLY: topol_t
     USE punktekoordinaten_mod, ONLY: punkteeinekante2
 
-    IMPLICIT NONE(type, external)
+    IMPLICIT NONE
     PRIVATE
 
     PUBLIC :: freekante

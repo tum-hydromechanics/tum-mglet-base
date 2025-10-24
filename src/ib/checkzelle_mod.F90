@@ -5,7 +5,7 @@ MODULE checkzelle_mod
     USE punktekoordinaten_mod, ONLY: punkteeinekante2
     USE topol_mod, ONLY: topol_t
 
-    IMPLICIT NONE(type, external)
+    IMPLICIT NONE
     PRIVATE
 
     PUBLIC :: checkzelle, checkzelle_grid

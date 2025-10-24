@@ -2,7 +2,7 @@ MODULE flowstat_mod
     USE core_mod
     USE flowcore_mod
 
-    IMPLICIT NONE(type, external)
+    IMPLICIT NONE
     PRIVATE
 
     PUBLIC :: init_flowstat, finish_flowstat

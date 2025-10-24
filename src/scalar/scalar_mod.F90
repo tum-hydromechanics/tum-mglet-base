@@ -4,7 +4,7 @@ MODULE scalar_mod
     USE timeintegrate_scalar_mod
     USE scacore_mod
 
-    IMPLICIT NONE(type, external)
+    IMPLICIT NONE
 
     ! PRIVATE ::
 

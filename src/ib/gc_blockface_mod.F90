@@ -1,6 +1,6 @@
 MODULE gc_blockface_mod
     USE core_mod, ONLY: intk, realk, field_t, nmygrids, mygrids, get_mgdims
-    IMPLICIT NONE(type, external)
+    IMPLICIT NONE
     PRIVATE
 
     PUBLIC :: blockface

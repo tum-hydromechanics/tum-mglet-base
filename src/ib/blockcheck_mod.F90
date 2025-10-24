@@ -2,7 +2,7 @@ MODULE blockcheck_mod
     USE core_mod, ONLY: realk, intk, mygridslvl, nmygridslvl, &
         minlevel, maxlevel, errr, field_t, get_mgdims
 
-    IMPLICIT NONE(type, external)
+    IMPLICIT NONE
     PRIVATE
 
     PUBLIC :: blockcheck, blockcheck_grid

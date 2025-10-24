@@ -1,7 +1,7 @@
 MODULE boussinesqterm_mod
     USE core_mod
 
-    IMPLICIT NONE(type, external)
+    IMPLICIT NONE
     PRIVATE
 
     LOGICAL, PROTECTED :: has_buoyancy = .FALSE.

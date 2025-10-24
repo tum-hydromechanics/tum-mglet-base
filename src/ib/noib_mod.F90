@@ -3,7 +3,7 @@ MODULE noib_mod
     USE ibmodel_mod, ONLY: ibmodel_t
     USE noib_restrict_mod, ONLY: noib_restrict_t
 
-    IMPLICIT NONE(type, external)
+    IMPLICIT NONE
     PRIVATE
 
     TYPE, EXTENDS(ibmodel_t) :: noib_t

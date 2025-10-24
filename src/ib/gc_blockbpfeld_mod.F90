@@ -1,7 +1,7 @@
 MODULE gc_blockbpfeld_mod
     USE core_mod, ONLY: realk, intk, nmygrids, mygrids, get_mgdims, field_t
 
-    IMPLICIT NONE(type, external)
+    IMPLICIT NONE
     PRIVATE
 
     PUBLIC :: blockbpfeld

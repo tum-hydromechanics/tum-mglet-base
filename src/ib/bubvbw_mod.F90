@@ -1,7 +1,7 @@
 MODULE bubvbw_mod
     USE core_mod
 
-    IMPLICIT NONE(type, external)
+    IMPLICIT NONE
     PRIVATE
 
     PUBLIC :: bubvbw

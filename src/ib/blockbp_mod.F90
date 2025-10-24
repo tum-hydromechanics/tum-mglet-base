@@ -3,7 +3,7 @@ MODULE blockbp_mod
     USE core_mod, ONLY: realk, intk, real64, config_t, mglet_filename_max, &
         errr, fort7, myid
     USE topol_mod, ONLY: topol_t
-    IMPLICIT NONE(type, external)
+    IMPLICIT NONE
     PRIVATE
 
     ! Common routines for blocking that IB models can inherit from

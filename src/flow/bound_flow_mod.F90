@@ -2,7 +2,7 @@ MODULE bound_flow_mod
     USE core_mod
     USE flowcore_mod
 
-    IMPLICIT NONE(type, external)
+    IMPLICIT NONE
     PRIVATE
 
     ! Bound operation 'T' operate on U, V, W, P

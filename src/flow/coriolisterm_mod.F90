@@ -2,7 +2,7 @@
 MODULE coriolisterm_mod
     USE core_mod
 
-    IMPLICIT NONE(type, external)
+    IMPLICIT NONE
     PRIVATE
 
     ! activity flag and rotation vector "omega"

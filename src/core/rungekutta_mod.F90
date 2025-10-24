@@ -3,7 +3,7 @@ MODULE rungekutta_mod
     USE err_mod, ONLY: errr
     USE precision_mod, ONLY: intk, realk
 
-    IMPLICIT NONE(type, external)
+    IMPLICIT NONE
     PRIVATE
 
     INTEGER(intk), PARAMETER :: maxnrk = 6

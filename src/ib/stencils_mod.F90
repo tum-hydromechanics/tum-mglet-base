@@ -2,7 +2,7 @@ MODULE stencils_mod
     USE HDF5
     USE MPI_f08
     USE core_mod
-    IMPLICIT NONE(type, external)
+    IMPLICIT NONE
     PRIVATE
 
     ! Common stencils: geometry, IB

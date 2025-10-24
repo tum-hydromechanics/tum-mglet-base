@@ -4,7 +4,7 @@ MODULE lesmodel_mod
     USE ib_mod
     USE wernerwengle_mod
 
-    IMPLICIT NONE(type, external)
+    IMPLICIT NONE
     PRIVATE
 
     INTEGER(intk), PARAMETER :: nchar = 16

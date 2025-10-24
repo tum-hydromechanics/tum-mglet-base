@@ -8,7 +8,7 @@ MODULE gc_mod
     USE gc_blockbp_mod, ONLY: gc_blockbp_t
     USE gc_stencils_mod, ONLY: gc_stencils_t
 
-    IMPLICIT NONE(type, external)
+    IMPLICIT NONE
     PRIVATE
 
     TYPE, EXTENDS(noib_t) :: gc_t

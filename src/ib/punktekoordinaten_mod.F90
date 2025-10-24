@@ -2,7 +2,7 @@ MODULE punktekoordinaten_mod
     USE core_mod, ONLY: realk, intk, errr
     USE cutcorner_mod, ONLY: calcint
 
-    IMPLICIT NONE(type, external)
+    IMPLICIT NONE
     PRIVATE
 
     PUBLIC :: punktekoordinaten, punkteeinekante, punkteeinekante2

@@ -13,7 +13,7 @@ MODULE particle_mod
     USE particle_snapshot_mod
     USE particle_io_mod
 
-    IMPLICIT NONE(type, external)
+    IMPLICIT NONE
 
 CONTAINS
 

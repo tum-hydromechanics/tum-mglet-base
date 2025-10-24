@@ -4,7 +4,7 @@ MODULE fort7_mod
     USE comms_mod, ONLY: myid
     USE err_mod
 
-    IMPLICIT NONE(type, external)
+    IMPLICIT NONE
     PRIVATE
 
     TYPE(config_t) :: fort7

@@ -4,7 +4,7 @@ MODULE readstl_mod
     USE, INTRINSIC :: ISO_C_BINDING, ONLY: c_char, c_int, c_null_char
     USE err_mod, ONLY: errr
 
-    IMPLICIT NONE(type, external)
+    IMPLICIT NONE
     PRIVATE
 
     INTERFACE

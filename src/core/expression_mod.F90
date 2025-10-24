@@ -3,7 +3,7 @@ MODULE expression_mod
     USE precision_mod, ONLY: realk, c_realk
     USE err_mod, ONLY: errr
 
-    IMPLICIT NONE(type, external)
+    IMPLICIT NONE
     PRIVATE
 
     INTERFACE

@@ -4,7 +4,7 @@ MODULE uvwbulk_mod
     USE MPI_f08
     USE ib_mod, ONLY: ib
 
-    IMPLICIT NONE(type, external)
+    IMPLICIT NONE
     PRIVATE
 
     TYPE, BIND(C) :: uvwbulk_t

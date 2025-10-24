@@ -1,5 +1,5 @@
 MODULE charfunc_mod
-    IMPLICIT NONE(type, external)
+    IMPLICIT NONE
     PRIVATE
 
     CHARACTER(26), PARAMETER :: cap = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'

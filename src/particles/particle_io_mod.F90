@@ -8,7 +8,7 @@ MODULE particle_io_mod
 
     USE particle_list_mod
 
-    IMPLICIT NONE(type, external)
+    IMPLICIT NONE
 
     PRIVATE
 

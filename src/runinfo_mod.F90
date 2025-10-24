@@ -5,7 +5,7 @@ MODULE runinfo_mod
 
     USE core_mod
 
-    IMPLICIT NONE(type, external)
+    IMPLICIT NONE
     PRIVATE
 
     INTEGER(intk), PARAMETER :: nchar_programname = 64

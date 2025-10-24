@@ -1,7 +1,7 @@
 MODULE gc_zelltyp_mod
     USE core_mod, ONLY: intk, realk, errr, ngrid, nmygrids, mygrids, &
         get_mgdims, get_ip3, field_t
-    IMPLICIT NONE(type, external)
+    IMPLICIT NONE
     PRIVATE
 
     PUBLIC :: zelltyp, zelltyp_grid

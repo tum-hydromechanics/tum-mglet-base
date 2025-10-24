@@ -10,7 +10,7 @@ MODULE calcauavaw_mod
     USE punktekoordinaten_mod, ONLY: punktekoordinaten
     USE topol_mod, ONLY: topol_t
 
-    IMPLICIT NONE(type, external)
+    IMPLICIT NONE
     PRIVATE
 
     PUBLIC :: calcauavaw

@@ -1,7 +1,7 @@
 MODULE flowcore_mod
     USE core_mod
 
-    IMPLICIT NONE(type, external)
+    IMPLICIT NONE
     PRIVATE
 
     ! Control parameters

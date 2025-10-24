@@ -2,7 +2,7 @@ MODULE simdfunctions_mod
     USE, INTRINSIC :: ISO_FORTRAN_ENV, ONLY: real32, real64
     USE precision_mod, ONLY: intk
 
-    IMPLICIT NONE(type, external)
+    IMPLICIT NONE
     PRIVATE
 
     INTERFACE cube_root

@@ -8,7 +8,7 @@ MODULE calcnormals_mod
     USE topol_mod, ONLY: topol_t
     USE stencils_mod, ONLY: stencils_t
 
-    IMPLICIT NONE(type, external)
+    IMPLICIT NONE
     PRIVATE
 
     LOGICAL, PARAMETER :: write_geom_with_gl = .TRUE.

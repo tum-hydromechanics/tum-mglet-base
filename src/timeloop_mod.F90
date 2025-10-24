@@ -7,7 +7,7 @@ MODULE timeloop_mod
 
     USE particle_mod ! <------------------------------------particles
 
-    IMPLICIT NONE(type, external)
+    IMPLICIT NONE
     PRIVATE
 
     ! Flag used to skip timeintegration entirely

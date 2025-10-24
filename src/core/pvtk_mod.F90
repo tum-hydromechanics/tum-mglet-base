@@ -1,7 +1,7 @@
 MODULE pvtk_mod
     USE, INTRINSIC :: ISO_C_BINDING, ONLY: c_char, c_null_char
 
-    IMPLICIT NONE(type, external)
+    IMPLICIT NONE
     PRIVATE
 
     INTERFACE

@@ -7,7 +7,7 @@ MODULE timeintegrate_scalar_mod
     USE itinfo_scalar_mod
     USE gc_scastencils_mod
 
-    IMPLICIT NONE(type, external)
+    IMPLICIT NONE
     PRIVATE
 
     PUBLIC :: timeintegrate_scalar, itinfo_scalar

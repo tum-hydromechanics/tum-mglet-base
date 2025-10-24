@@ -3,7 +3,7 @@ MODULE snapshots_mod
 
     USE core_mod
 
-    IMPLICIT NONE(type, external)
+    IMPLICIT NONE
     PRIVATE
 
     CHARACTER(len=mglet_filename_max) :: outfile

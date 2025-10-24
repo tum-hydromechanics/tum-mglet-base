@@ -1,7 +1,7 @@
 MODULE builtin_plugins_mod
     USE core_mod
 
-    IMPLICIT NONE(type, external)
+    IMPLICIT NONE
     PRIVATE
 
     PUBLIC :: register_builtin_plugins

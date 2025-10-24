@@ -2,7 +2,7 @@ MODULE blockbt_mod
     USE core_mod
     USE ib_mod, ONLY: ctof
 
-    IMPLICIT NONE(type, external)
+    IMPLICIT NONE
     PRIVATE
 
     PUBLIC :: blockbt

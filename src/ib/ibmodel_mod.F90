@@ -1,7 +1,7 @@
 MODULE ibmodel_mod
     USE core_mod, ONLY: realk, intk, field_t
 
-    IMPLICIT NONE(type, external)
+    IMPLICIT NONE
     PRIVATE
 
     TYPE, ABSTRACT :: restrict_t

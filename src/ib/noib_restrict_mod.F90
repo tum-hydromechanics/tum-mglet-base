@@ -2,7 +2,7 @@ MODULE noib_restrict_mod
     USE core_mod, ONLY: realk, intk, errr, get_fieldptr
     USE ibmodel_mod, ONLY: restrict_t
 
-    IMPLICIT NONE(type, external)
+    IMPLICIT NONE
     PRIVATE
 
     TYPE, EXTENDS(restrict_t) :: noib_restrict_t

@@ -3,7 +3,7 @@ MODULE bound_mod
     USE field_mod, ONLY: field_t
     USE grids_mod, ONLY: nmygridslvl, mygridslvl, nboconds, get_bc_ctyp
 
-    IMPLICIT NONE(type, external)
+    IMPLICIT NONE
     PRIVATE
 
     TYPE, ABSTRACT :: bound_t

@@ -16,7 +16,7 @@
 MODULE timekeeper_mod
     USE precision_mod, ONLY: real32, real64
 
-    IMPLICIT NONE(type, external)
+    IMPLICIT NONE
     PRIVATE
 
     TYPE :: timekeeper_t

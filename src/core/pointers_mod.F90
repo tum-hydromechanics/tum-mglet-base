@@ -4,7 +4,7 @@ MODULE pointers_mod
     USE comms_mod, ONLY: myid
     USE grids_mod, ONLY: ngrid, get_mgdims, mygrids, nmygrids, idprocofgrd
 
-    IMPLICIT NONE(type, external)
+    IMPLICIT NONE
     PRIVATE
 
     INTEGER(intk), PROTECTED :: idim3d, idim2d, idim1d

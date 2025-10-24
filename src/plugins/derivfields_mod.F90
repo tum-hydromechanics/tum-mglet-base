@@ -3,7 +3,7 @@ MODULE derivfields_mod
     USE MPI_f08
     USE ib_mod, ONLY: ib
 
-    IMPLICIT NONE(type, external)
+    IMPLICIT NONE
     PRIVATE
 
     INTEGER(intk) :: nfields

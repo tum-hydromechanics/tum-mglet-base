@@ -6,7 +6,7 @@ MODULE dlopen_mod
     USE comms_mod
     USE err_mod, ONLY: errr
 
-    IMPLICIT NONE(type, external)
+    IMPLICIT NONE
     PRIVATE
 
     INTEGER(intk), PARAMETER :: shlib_max = 16

@@ -13,7 +13,7 @@ MODULE timeintegration_mod
     USE boussinesqterm_mod, ONLY: boussinesqterm
     USE coriolisterm_mod, ONLY: coriolisterm
 
-    IMPLICIT NONE(type, external)
+    IMPLICIT NONE
     PRIVATE
 
     PUBLIC :: timeintegrate_flow, itinfo_flow

@@ -6,7 +6,7 @@ MODULE realfield_mod
     USE utils_mod, ONLY: get_stag_shift
     USE basefield_mod
 
-    IMPLICIT NONE(type, external)
+    IMPLICIT NONE
     PRIVATE
 
     TYPE :: buffer_t

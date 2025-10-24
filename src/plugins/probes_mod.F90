@@ -3,7 +3,7 @@ MODULE probes_mod
     USE MPI_f08
     USE HDF5
 
-    IMPLICIT NONE(type, external)
+    IMPLICIT NONE
     PRIVATE
 
     TYPE :: probearr_t

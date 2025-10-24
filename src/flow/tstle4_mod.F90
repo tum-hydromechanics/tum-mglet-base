@@ -4,7 +4,7 @@ MODULE tstle4_mod
     USE lesmodel_mod, ONLY: ilesmodel
     USE wernerwengle_mod, ONLY: tauwin
 
-    IMPLICIT NONE(type, external)
+    IMPLICIT NONE
     PRIVATE
 
     PUBLIC :: tstle4

@@ -3,7 +3,7 @@ MODULE utils_mod
     USE precision_mod, ONLY: intk, realk
     USE qsort_mod, ONLY: sortix
 
-    IMPLICIT NONE(type, external)
+    IMPLICIT NONE
     PRIVATE
 
     INTERFACE
