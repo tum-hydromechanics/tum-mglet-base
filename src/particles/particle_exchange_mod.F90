@@ -440,10 +440,16 @@ CONTAINS
         ! CAUTION: at this point, particle_list%particles(particle_list%ifinal)%state might be < 1 ("empty")
 
         CALL integrate_particles(particle_list, sendind)
+        
+        CALL particle_list%check(abort = .TRUE.)  
 
+        IF (dparticle_sorting) CALL particle_list%sort_by_grid()
+
+        CALL particle_list%check(abort = .TRUE.)          
+    
         ! Some safety checks
 
-        IF (TRIM(particle_terminal) == "verbose") THEN
+        IF (TRIM(particle_terminal) == "normal" .OR. TRIM(particle_terminal) == "verbose") THEN
             IF (myid /= 0) THEN
                 CALL MPI_Recv(dummy, 1, mglet_mpi_int, myid - 1, 900, &
                 MPI_COMM_WORLD, MPI_STATUS_IGNORE)
@@ -485,7 +491,7 @@ CONTAINS
         CALL MPI_Barrier(MPI_COMM_WORLD)! obsolete (?)
 
         ! TODO: make the following error gathering conditional for compilation as a debugging feature
-        IF (TRIM(particle_terminal) == "verbose") THEN
+        IF (TRIM(particle_terminal) == "normal") THEN
             CALL MPI_Allreduce(err_local, err_global, 1, mglet_mpi_int, MPI_MAX, MPI_COMM_WORLD)
             IF (err_global == 0) THEN
                 CALL write_particle_list_txt(ittot)

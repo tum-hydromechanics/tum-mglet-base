@@ -43,6 +43,8 @@ MODULE particle_config_mod
     INTEGER(intk) :: init_npart ! "particles/init_npart", only relevant if particles are not read
     INTEGER(intk) :: plist_len ! "particles/list_length"
     LOGICAL :: list_limit = .FALSE. ! indirectly via "particles/list_length"
+    ! TODO: make this input via parameters.json
+    LOGICAL :: dparticle_sorting = .TRUE.
 
     ! ADVECTION
     LOGICAL :: duse_avg_flow = .FALSE. ! "particles/duse_avg_flow"

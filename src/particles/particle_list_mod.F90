@@ -32,13 +32,30 @@ MODULE particle_list_mod
 
         CONTAINS
 
+            PROCEDURE :: check
+
+            PROCEDURE :: sort_by_grid
+
             PROCEDURE :: defragment
 
     END TYPE particle_list_t
 
     TYPE(particle_list_t) :: my_particle_list
 
+    LOGICAL :: plist_is_init = .FALSE.
+
+    INTEGER(intk) :: nmy_particle_grids
+
+    INTEGER(intk), ALLOCATABLE :: my_particle_grids(:)
+
+    INTEGER(intk), ALLOCATABLE :: particle_grid_ptr(:)
+
+    INTEGER(intk), ALLOCATABLE :: grids_np(:)
+
+    INTEGER(intk), ALLOCATABLE :: plist_displ(:)
+
     INTEGER(intk) :: global_np
+
 
     PUBLIC :: global_np, my_particle_list
 
@@ -47,12 +64,36 @@ CONTAINS    !===================================
     SUBROUTINE init_particle_list()
 
         ! local variables
-        INTEGER(intk) :: i, read_np, dummy
+        INTEGER(intk) :: i, j, igrid, counter, read_np, dummy
         INTEGER(intk), ALLOCATABLE :: ipart_arr(:), igrid_arr(:)
         REAL(realk), ALLOCATABLE :: x_arr(:), y_arr(:), z_arr(:)
 
         CALL start_timer(900)
         CALL start_timer(910)
+
+        ! initialize helper variables
+        nmy_particle_grids = nmygrids
+        ALLOCATE(my_particle_grids(nmy_particle_grids))
+        ! TODO: decouble my_particle_grids from mygrids
+        DO i = 1, nmy_particle_grids
+            my_particle_grids(i) = mygrids(i)
+        END DO
+
+        ALLOCATE(particle_grid_ptr(ngrid))
+        particle_grid_ptr = 0
+        DO igrid = 1, ngrid
+            DO j = 1, nmy_particle_grids
+                IF (igrid == my_particle_grids(j)) THEN
+                    particle_grid_ptr(igrid) = j
+                    EXIT
+                END IF
+            END DO
+        END DO
+
+        ALLOCATE(grids_np(nmy_particle_grids))
+        grids_np = 0
+        ALLOCATE(plist_displ(nmy_particle_grids)) 
+        plist_displ = 0
 
         my_particle_list%iproc = myid
 
@@ -110,6 +151,9 @@ CONTAINS    !===================================
                 CALL MPI_Allreduce(my_particle_list%active_np, global_np, 1, mglet_mpi_int, MPI_SUM, MPI_COMM_WORLD)
 
             END IF
+
+            ! TODO: relocate this
+            plist_is_init = .TRUE.
 
             DEALLOCATE(ipart_arr)
             DEALLOCATE(igrid_arr)
@@ -231,9 +275,154 @@ CONTAINS    !===================================
 
     !-----------------------------------
 
-    SUBROUTINE defragment(this)
+    SUBROUTINE check(this, abort)
+        
+        CLASS(particle_list_t), INTENT(inout) :: this
+        LOGICAL, INTENT(in) :: abort
 
-        ! SIMON: Here just as an idea...
+        INTEGER(intk) :: i
+
+        WRITE(*,*) "Checking Particle List..."
+
+        IF (this%ifinal /= this%active_np) THEN
+            IF (TRIM(particle_terminal) == "normal" .OR. TRIM(particle_terminal) == "verbose") THEN
+                WRITE(*, '("WARNING on proc ", I0, ": my_particle_list%active_np (", I0, ") does not coincide with my_particle_list%ifinal (", I0, ")" )') &
+                 myid, this%active_np, this%ifinal
+            END IF
+            IF (abort) CALL errr(__FILE__,__LINE__)
+        END IF
+
+        DO i = 1, this%ifinal
+            IF (this%particles(i)%state < 1) THEN
+                IF (TRIM(particle_terminal) == "normal" .OR. TRIM(particle_terminal) == "verbose") THEN
+                    WRITE(*, '("WARNING on proc ", I0, ": Particle list entry ", I0, " unexpectately holds and inactive Partcle!")') myid, i
+                END IF
+                IF (abort) CALL errr(__FILE__,__LINE__)
+            END IF
+        END DO
+
+    END SUBROUTINE
+
+    !-----------------------------------
+
+    ! this sorting routine is not performance optimized and not intended for use in each timestep!
+    SUBROUTINE sort_by_grid(this)
+        
+        ! Subroutine arguments 
+        CLASS(particle_list_t), INTENT(inout) :: this
+        
+        ! Local variales
+        INTEGER(intk) :: i, counter, pgrid, niterations
+        INTEGER(intk) :: sorted(this%ifinal)
+        INTEGER(intk) :: grid_ind(nmy_particle_grids)
+        LOGICAL :: found_unsorted_part, finished
+        TYPE(baseparticle_t) :: part_temp_new, part_temp_old
+
+        IF (this%ifinal < 1) RETURN
+
+        ! TODO: remove niterations
+        niterations = 0
+        sorted = 0
+        !CALL this%defragment()
+
+        grids_np = 0
+        DO i = 1, this%ifinal
+            niterations = niterations + 1
+            IF (this%particles(i)%state < 1) THEN
+                IF (TRIM(particle_terminal) == "normal" .OR. TRIM(particle_terminal) == "verbose") THEN
+                    WRITE(*, '("WARNING on proc ", I0, ": Particle list entry ", I0, " unexpectately holds and inactive Partcle!")') myid, i
+                    CALL errr(__FILE__, __LINE__)
+                END IF
+            END IF
+            pgrid = this%particles(i)%igrid
+            grids_np(particle_grid_ptr(pgrid)) = grids_np(particle_grid_ptr(pgrid)) + 1
+        END DO
+
+        IF (SUM(grids_np) /= this%ifinal) THEN
+            IF (TRIM(particle_terminal) == "normal" .OR. TRIM(particle_terminal) == "verbose") THEN
+                WRITE(*, '("WARNING on proc ", I0, ": ifinal does not equal number of particles counted!")') myid
+                CALL errr(__FILE__, __LINE__)
+                END IF
+        END IF
+
+        plist_displ = 0
+        DO i = 2, SIZE(plist_displ)
+            plist_displ(i) = plist_displ(i-1) + grids_np(i-1)
+        END DO 
+
+        grid_ind = 0
+        DO i = 1, SIZE(grid_ind)
+            grid_ind(i) = plist_displ(i) + 1
+        END DO 
+
+        counter = 0
+        DO i = 1, this%ifinal
+            niterations = niterations + 1
+            pgrid = this%particles(i)%igrid
+            
+            IF (grid_ind(particle_grid_ptr(pgrid)) == i) THEN
+
+                sorted(i) = 1
+                grid_ind(particle_grid_ptr(pgrid)) = grid_ind(particle_grid_ptr(pgrid)) + 1
+                counter = counter + 1
+
+                CYCLE
+
+            ELSE 
+                part_temp_old = this%particles(i)
+                part_temp_new = this%particles(grid_ind(particle_grid_ptr(pgrid)))
+                this%particles(grid_ind(particle_grid_ptr(pgrid))) = part_temp_old
+                sorted(i) = -1
+                sorted(grid_ind(particle_grid_ptr(pgrid))) = 1
+                grid_ind(particle_grid_ptr(pgrid)) = grid_ind(particle_grid_ptr(pgrid)) + 1
+                counter = counter + 1
+                EXIT
+
+            END IF
+            
+        END DO
+
+        finished = .FALSE.
+        DO WHILE (.NOT. finished)
+            part_temp_old = part_temp_new
+            pgrid = part_temp_old%igrid
+
+            counter = 0
+            found_unsorted_part = .FALSE.
+            DO WHILE (.NOT. found_unsorted_part .AND. .NOT. finished)
+                niterations = niterations + 1
+                IF (counter > this%ifinal - 1) THEN
+                    finished = .TRUE.
+                    EXIT
+                END IF
+                IF (sorted(MOD(grid_ind(particle_grid_ptr(pgrid)) + counter - 1, this%ifinal) + 1) == 0) THEN
+                    part_temp_new = this%particles(MOD(grid_ind(particle_grid_ptr(pgrid)) + counter - 1, this%ifinal) + 1)
+                    sorted(MOD(grid_ind(particle_grid_ptr(pgrid)) + counter - 1, this%ifinal) + 1) = -1
+                    found_unsorted_part = .TRUE.
+                ELSE 
+                    counter = counter + 1
+                END IF
+            END DO
+
+            this%particles(grid_ind(particle_grid_ptr(pgrid))) = part_temp_old
+            sorted(grid_ind(particle_grid_ptr(pgrid))) = 1
+            grid_ind(particle_grid_ptr(pgrid)) = grid_ind(particle_grid_ptr(pgrid)) + 1
+
+            IF (finished) EXIT
+        END DO
+
+        ! TODO: remove this temporary debugging feature 
+        WRITE(*, '("Particle Sorting: N iterations = ", I0, " (Ifinal = ", I0, ")")') niterations, this%ifinal
+        DO i = 1, this%ifinal
+            IF (sorted(i) == 0) CALL errr(__FILE__, __LINE__)
+        END DO 
+
+    END SUBROUTINE sort_by_grid
+
+
+    !-----------------------------------
+  
+    SUBROUTINE defragment(this)
 
         ! Subroutine arguments
         CLASS(particle_list_t), INTENT(inout) :: this
@@ -297,6 +486,7 @@ CONTAINS    !===================================
         END IF
 
     END SUBROUTINE defragment
+
 
     !-----------------------------------
 
