@@ -319,11 +319,12 @@ CONTAINS    !===================================
         TYPE(baseparticle_t) :: part_temp_new, part_temp_old
 
         IF (this%ifinal < 1) RETURN
-
+        
+        finished = .FALSE.
         ! TODO: remove niterations
         niterations = 0
+
         sorted = 0
-        !CALL this%defragment()
 
         grids_np = 0
         DO i = 1, this%ifinal
@@ -382,7 +383,8 @@ CONTAINS    !===================================
             
         END DO
 
-        finished = .FALSE.
+        IF (i - 1 == this%ifinal) finished = .TRUE.
+        
         DO WHILE (.NOT. finished)
             part_temp_old = part_temp_new
             pgrid = part_temp_old%igrid
