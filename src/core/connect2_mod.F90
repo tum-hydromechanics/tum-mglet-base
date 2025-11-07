@@ -93,6 +93,10 @@ MODULE connect2_mod
     CLASS(basefield_t), POINTER :: u => NULL(), v => NULL(), w => NULL(), &
         p1 => NULL(), p2 => NULL(), p3 => NULL()
 
+
+    ! the first column contains the number of 2D-faces the (2D, 1D or 0D)-face 
+    ! is uniquily defined by. Columns 2-4 hold these 2D faces. 
+    ! (face-id corresponds to line)
     INTEGER(intk), PARAMETER :: facelist(4, 26) = RESHAPE([ &
         1, 1, 0, 0, &
         1, 2, 0, 0, &
