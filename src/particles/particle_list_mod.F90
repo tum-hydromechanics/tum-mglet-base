@@ -58,7 +58,7 @@ MODULE particle_list_mod
 
     INTEGER(intk) :: global_np, local_np
 
-    PUBLIC :: global_np, local_np my_particle_list, guest_particle_list
+    PUBLIC :: global_np, local_np, my_particle_list ! , guest_particle_list
 
 CONTAINS    !===================================
 
@@ -78,7 +78,7 @@ CONTAINS    !===================================
         nmy_particle_grids = nmygridslvl(particle_level)
         ALLOCATE(my_particle_grids(nmy_particle_grids))
         DO i = 1, nmygridslvl(particle_level)
-            my_particle_grids(i) = mygridslvl(i)
+            my_particle_grids(i) = mygridslvl(i, particle_level)
         END DO
 
         ALLOCATE(particle_grid_ptr(ngrid))
