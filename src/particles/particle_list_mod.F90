@@ -46,18 +46,19 @@ MODULE particle_list_mod
 
     INTEGER(intk) :: nmy_particle_grids
 
-    INTEGER(intk), ALLOCATABLE :: my_particle_grids(:)
+    INTEGER(intk), ALLOCATABLE :: my_particle_grids(:)!, guest_particle_grids(:)
 
-    INTEGER(intk), ALLOCATABLE :: particle_grid_ptr(:)
+    INTEGER(intk), ALLOCATABLE :: particle_grid_ptr(:)!, guest_particle_grid_ptr(:)
 
-    INTEGER(intk), ALLOCATABLE :: grids_np(:)
+    INTEGER(intk), ALLOCATABLE :: grids_np_old(:)!, grids_np_new(:), &
+                                    !guest_grids_np_old(:), guest_grids_np_new(:)
 
-    INTEGER(intk), ALLOCATABLE :: plist_displ(:)
+    INTEGER(intk), ALLOCATABLE :: plist_displ_old(:)!, plist_displ_new(:), &
+                                    !guest_plist_displ_old(:),  guest_plist_displ_old(:)
 
-    INTEGER(intk) :: global_np
+    INTEGER(intk) :: global_np, local_np
 
-
-    PUBLIC :: global_np, my_particle_list
+    PUBLIC :: global_np, local_np my_particle_list, guest_particle_list
 
 CONTAINS    !===================================
 
@@ -71,12 +72,13 @@ CONTAINS    !===================================
         CALL start_timer(900)
         CALL start_timer(910)
 
+        ! >>>  INNITIALIZE LIST OF LOCAL PARTICLES  <<<
+
         ! initialize helper variables
-        nmy_particle_grids = nmygrids
+        nmy_particle_grids = nmygridslvl(particle_level)
         ALLOCATE(my_particle_grids(nmy_particle_grids))
-        ! TODO: decouble my_particle_grids from mygrids
-        DO i = 1, nmy_particle_grids
-            my_particle_grids(i) = mygrids(i)
+        DO i = 1, nmygridslvl(particle_level)
+            my_particle_grids(i) = mygridslvl(i)
         END DO
 
         ALLOCATE(particle_grid_ptr(ngrid))
@@ -90,10 +92,14 @@ CONTAINS    !===================================
             END DO
         END DO
 
-        ALLOCATE(grids_np(nmy_particle_grids))
-        grids_np = 0
-        ALLOCATE(plist_displ(nmy_particle_grids)) 
-        plist_displ = 0
+        ALLOCATE(grids_np_old(nmy_particle_grids))
+        grids_np_old = 0
+        !ALLOCATE(grids_np_new(nmy_particle_grids))
+        !grids_np_new = 0
+        ALLOCATE(plist_displ_old(nmy_particle_grids)) 
+        plist_displ_old = 0
+        !ALLOCATE(plist_displ_new(nmy_particle_grids)) 
+        !plist_displ_new = 0
 
         my_particle_list%iproc = myid
 
@@ -208,6 +214,8 @@ CONTAINS    !===================================
 
         END IF
 
+        local_np = my_particle_list%active_np
+
         IF (TRIM(particle_terminal) == "normal" .OR. TRIM(particle_terminal) == "verbose") THEN
             IF (myid /= 0) THEN
                 CALL MPI_Recv(dummy, 1, mglet_mpi_int, myid - 1, 900, &
@@ -220,7 +228,6 @@ CONTAINS    !===================================
             END IF
         END IF
 
-        ! TODO : remove ?
         CALL MPI_Barrier(MPI_COMM_WORLD)
 
         IF (myid == 0) THEN
@@ -326,7 +333,7 @@ CONTAINS    !===================================
 
         sorted = 0
 
-        grids_np = 0
+        grids_np_old = 0
         DO i = 1, this%ifinal
             niterations = niterations + 1
             IF (this%particles(i)%state < 1) THEN
@@ -336,24 +343,24 @@ CONTAINS    !===================================
                 END IF
             END IF
             pgrid = this%particles(i)%igrid
-            grids_np(particle_grid_ptr(pgrid)) = grids_np(particle_grid_ptr(pgrid)) + 1
+            grids_np_old(particle_grid_ptr(pgrid)) = grids_np_old(particle_grid_ptr(pgrid)) + 1
         END DO
 
-        IF (SUM(grids_np) /= this%ifinal) THEN
+        IF (SUM(grids_np_old) /= this%ifinal) THEN
             IF (TRIM(particle_terminal) == "normal" .OR. TRIM(particle_terminal) == "verbose") THEN
                 WRITE(*, '("WARNING on proc ", I0, ": ifinal does not equal number of particles counted!")') myid
                 CALL errr(__FILE__, __LINE__)
                 END IF
         END IF
 
-        plist_displ = 0
-        DO i = 2, SIZE(plist_displ)
-            plist_displ(i) = plist_displ(i-1) + grids_np(i-1)
+        plist_displ_old = 0
+        DO i = 2, SIZE(plist_displ_old)
+            plist_displ_old(i) = plist_displ_old(i-1) + grids_np_old(i-1)
         END DO 
 
         grid_ind = 0
         DO i = 1, SIZE(grid_ind)
-            grid_ind(i) = plist_displ(i) + 1
+            grid_ind(i) = plist_displ_old(i) + 1
         END DO 
 
         counter = 0

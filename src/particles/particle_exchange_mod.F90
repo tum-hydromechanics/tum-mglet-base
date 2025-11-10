@@ -53,6 +53,8 @@ MODULE particle_exchange_mod
     ! Variable to indicate if the connection information has been created
     LOGICAL :: isInit = .FALSE.
 
+    LOGICAL :: high_mem_sorting = .FALSE.
+
     PUBLIC :: init_particle_exchange, exchange_particles, finish_particle_exchange, get_target_grid
 
 CONTAINS
@@ -348,15 +350,24 @@ CONTAINS
         END IF
 
         ! Copy recieved particles into the list
-        ! CAUTION: at this point, particle_list%particles(particle_list%ifinal)%state might be < 1 ("empty")
-        CALL integrate_particles(particle_list, sendind)
-        CALL particle_list%check(abort = .TRUE.)  
+        ! CAUTION: up to here, particle_list%particles(particle_list%ifinal)%state might be < 1 ("empty")
+        IF (.NOT. dparticle_sorting) THEN
+            CALL integrate_particles_unsorted(particle_list, sendind)
+            CALL particle_list%check(abort = .TRUE.)
+        ELSE
+            IF (.NOT. high_mem_sorting) THEN
+                CALL integrate_particles_unsorted(particle_list, sendind)
+                CALL particle_list%check(abort = .TRUE.)
 
-        IF (dparticle_sorting) CALL particle_list%sort_by_grid()
-        CALL particle_list%check(abort = .TRUE.)          
+                CALL particle_list%sort_by_grid()
+                CALL particle_list%check(abort = .TRUE.)
+            ELSE
+                CALL integrate_particles_sorted(particle_list, sendind)
+                CALL particle_list%check(abort = .TRUE.)
+            END IF
+        END IF
     
         ! Some safety checks
-
         IF (TRIM(particle_terminal) == "normal" .OR. TRIM(particle_terminal) == "verbose") THEN
             IF (myid /= 0) THEN
                 CALL MPI_Recv(dummy, 1, mglet_mpi_int, myid - 1, 900, &
@@ -733,8 +744,8 @@ CONTAINS
 
 
     ! copy particles from recieve Buffer into passed particle list
-    ! ifinal not adapted yet
-    SUBROUTINE integrate_particles(particle_list, sendind)
+    ! ifinal input not adapted yet
+    SUBROUTINE integrate_particles_unsorted(particle_list, sendind)
 
         ! subroutine argument
         TYPE(particle_list_t), INTENT(inout) :: particle_list
@@ -801,8 +812,20 @@ CONTAINS
 
         END IF
 
-    END SUBROUTINE integrate_particles
+    END SUBROUTINE integrate_particles_unsorted
 
+    SUBROUTINE integrate_particles_sorted(particle_list, sendind)
+
+        ! subroutine argument
+        TYPE(particle_list_t), INTENT(inout) :: particle_list
+        INTEGER(intk), INTENT(in) :: sendind(sizeSendBuf)
+
+        !local variables
+        INTEGER(intk) :: i, j
+
+        CALL errr(__FILE__, __LINE__)
+
+    END SUBROUTINE integrate_particles_sorted
 
     ! for debugging
     SUBROUTINE write_buffer(ittot, btyp, suffix)
