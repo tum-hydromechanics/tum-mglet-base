@@ -44,19 +44,19 @@ MODULE particle_list_mod
 
     LOGICAL :: plist_is_init = .FALSE.
 
-    INTEGER(intk) :: nmy_particle_grids
+    INTEGER(intk) :: nmy_particle_grids, nmy_guest_particle_grids
+    
+    ! TODO: make the following arrays particle_list_t attributes if possible
 
-    INTEGER(intk), ALLOCATABLE :: my_particle_grids(:)!, guest_particle_grids(:)
+    INTEGER(intk), ALLOCATABLE :: my_particle_grids(:), my_guest_particle_grids(:)
 
-    INTEGER(intk), ALLOCATABLE :: particle_grid_ptr(:)!, guest_particle_grid_ptr(:)
+    INTEGER(intk), ALLOCATABLE :: particle_grid_ptr(:), guest_particle_grid_ptr(:)
 
-    INTEGER(intk), ALLOCATABLE :: grids_np_old(:)!, grids_np_new(:), &
-                                    !guest_grids_np_old(:), guest_grids_np_new(:)
+    INTEGER(intk), ALLOCATABLE :: grids_np(:), guest_grids_np(:)
+    
+    INTEGER(intk), ALLOCATABLE :: plist_displ_old(:)
 
-    INTEGER(intk), ALLOCATABLE :: plist_displ_old(:)!, plist_displ_new(:), &
-                                    !guest_plist_displ_old(:),  guest_plist_displ_old(:)
-
-    INTEGER(intk) :: global_np, local_np
+    INTEGER(intk) :: global_np, node_np, local_np
 
     PUBLIC :: global_np, local_np, my_particle_list ! , guest_particle_list
 
@@ -92,14 +92,10 @@ CONTAINS    !===================================
             END DO
         END DO
 
-        ALLOCATE(grids_np_old(nmy_particle_grids))
-        grids_np_old = 0
-        !ALLOCATE(grids_np_new(nmy_particle_grids))
-        !grids_np_new = 0
+        ALLOCATE(grids_np(nmy_particle_grids))
+        grids_np = 0
         ALLOCATE(plist_displ_old(nmy_particle_grids)) 
         plist_displ_old = 0
-        !ALLOCATE(plist_displ_new(nmy_particle_grids)) 
-        !plist_displ_new = 0
 
         my_particle_list%iproc = myid
 
@@ -333,7 +329,8 @@ CONTAINS    !===================================
 
         sorted = 0
 
-        grids_np_old = 0
+        ! TODO: replace by particle counting routine 
+        grids_np = 0
         DO i = 1, this%ifinal
             niterations = niterations + 1
             IF (this%particles(i)%state < 1) THEN
@@ -343,10 +340,10 @@ CONTAINS    !===================================
                 END IF
             END IF
             pgrid = this%particles(i)%igrid
-            grids_np_old(particle_grid_ptr(pgrid)) = grids_np_old(particle_grid_ptr(pgrid)) + 1
+            grids_np(particle_grid_ptr(pgrid)) = grids_np(particle_grid_ptr(pgrid)) + 1
         END DO
 
-        IF (SUM(grids_np_old) /= this%ifinal) THEN
+        IF (SUM(grids_np) /= this%ifinal) THEN
             IF (TRIM(particle_terminal) == "normal" .OR. TRIM(particle_terminal) == "verbose") THEN
                 WRITE(*, '("WARNING on proc ", I0, ": ifinal does not equal number of particles counted!")') myid
                 CALL errr(__FILE__, __LINE__)
@@ -355,7 +352,7 @@ CONTAINS    !===================================
 
         plist_displ_old = 0
         DO i = 2, SIZE(plist_displ_old)
-            plist_displ_old(i) = plist_displ_old(i-1) + grids_np_old(i-1)
+            plist_displ_old(i) = plist_displ_old(i-1) + grids_np(i-1)
         END DO 
 
         grid_ind = 0
@@ -421,7 +418,9 @@ CONTAINS    !===================================
         END DO
 
         ! TODO: remove this temporary debugging feature 
+
         WRITE(*, '("Particle Sorting: N iterations = ", I0, " (Ifinal = ", I0, ")")') niterations, this%ifinal
+
         DO i = 1, this%ifinal
             IF (sorted(i) == 0) CALL errr(__FILE__, __LINE__)
         END DO 
@@ -825,6 +824,10 @@ CONTAINS    !===================================
         WRITE(*, '()')
 
     END SUBROUTINE print_list_status
+
+    !-----------------------------------
+
+    !TODO: make a routine that counts particles per grid
 
     !-----------------------------------
 

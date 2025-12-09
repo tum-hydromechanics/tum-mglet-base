@@ -30,17 +30,21 @@ MODULE comms_mod
     ! Communicator for processes participating in IO operations
     TYPE(MPI_Comm), PROTECTED :: iocomm
 
+    ! Rank and number of processes in global communicator (MPI_COMM_WORLD)
+    INTEGER(int32), PROTECTED :: myid = -1, numprocs = -1
+
     ! Rank and number of processes in node-local SHM communicator (shmcomm)
     INTEGER(int32), PROTECTED :: shmid = -1, shmprocs = -1
+
+    ! Rank and number of processes in communicator of shm masters
+    INTEGER(int32), PROTECTED :: shm_masters_id = -1
+    INTEGER(int32), PROTECTED :: shm_masters_id_bcast = -1, num_shm_masters = -1
 
     ! Rank and number of processes in IO group (iogrcomm)
     INTEGER(int32), PROTECTED :: iogrid = -1, iogrprocs = -1
 
     ! Rank and number of processes in IO communicator (iocomm)
     INTEGER(int32), PROTECTED :: ioid = -1, ioprocs = -1
-
-    ! Rank and number of processes in global communicator (MPI_COMM_WORLD)
-    INTEGER(int32), PROTECTED :: myid = -1, numprocs = -1
 
     ! Number of compute nodes (i.e. number of ranks in iocomm)
     INTEGER(int32), PROTECTED :: numnodes = -1
@@ -63,7 +67,7 @@ MODULE comms_mod
     ! Public data items
     PUBLIC :: shmId, shmProcs, iogrId, iogrProcs, ioId, ioProcs, iorankworld, &
         myId, numProcs, ioProc, init_comms, numnodes, nodeid, finish_comms
-    PUBLIC :: shmcomm, shm_masters_comm, iogrcomm, iocomm
+    PUBLIC :: shmcomm, shm_masters_comm, iogrcomm, iocomm, shm_masters_id, shm_masters_id_bcast, num_shm_masters
 
 
 CONTAINS
@@ -135,7 +139,7 @@ CONTAINS
         CALL MPI_comm_rank(iogrcomm, iogrid)
         CALL MPI_comm_size(iogrcomm, iogrprocs)
 
-        ! Create I/O process communicator
+        ! Create I/O process communicator (different meaning of I/O process communicator? : see below)
         ! All the processes with rank 0 in iogrcomm actually do IO
         ioproc = .FALSE.
         iorankworld = -1
@@ -144,7 +148,7 @@ CONTAINS
             iorankworld = myid
         END IF
 
-        ! Reduction within I/O process communicator
+        ! Reduction within I/O process communicator (different meaning of I/O process communicator? : see above)
         CALL MPI_Allreduce(MPI_IN_PLACE, iorankworld, 1, MPI_INTEGER, &
             MPI_MAX, iogrcomm)
 
@@ -163,6 +167,13 @@ CONTAINS
         color = 1
         IF (shmid /= 0) color = MPI_UNDEFINED
         CALL MPI_Comm_split(MPI_COMM_WORLD, color, 0, shm_masters_comm)
+        IF (shmid == 0) THEN
+            CALL MPI_comm_rank(shm_masters_comm, shm_masters_id)
+            CALL MPI_comm_size(shm_masters_comm, num_shm_masters)
+            shm_masters_id_bcast = shm_masters_id
+        END IF
+        CALL MPI_Bcast(shm_masters_id_bcast, 1, MPI_INTEGER, 0, shmcomm)
+        CALL MPI_Bcast(num_shm_masters, 1, MPI_INTEGER, 0, shmcomm)
 
         ! Set number of compute nodes
         ! (rank 0 will always be an IO process)

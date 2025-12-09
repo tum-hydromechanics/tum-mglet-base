@@ -3,7 +3,7 @@ MODULE particle_interpolation_mod
     ! This module is responsible for:
     ! Interpolation of (staggered) fields at given point coordinates (particle location)
 
-    USE particle_core_mod
+    USE particle_basetype_mod
 
     IMPLICIT NONE
 

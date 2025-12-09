@@ -1,6 +1,6 @@
 MODULE particle_utils_mod
 
-    USE particle_core_mod
+    USE particle_basetype_mod
 
     IMPLICIT NONE
 
@@ -383,5 +383,58 @@ MODULE particle_utils_mod
         END IF
 
     END FUNCTION is_inside_grid
+
+    SUBROUTINE sort_conns_unique(list, sort_idx, check_redundancy, forbidden_val)
+        ! Input array to be sorted
+        INTEGER(int32), INTENT(inout) :: list(:,:)
+        INTEGER(intk), INTENT(in) :: sort_idx
+        LOGICAL, INTENT(in) :: check_redundancy 
+        INTEGER(intk), INTENT(in), OPTIONAL :: forbidden_val 
+
+        INTEGER(intk) :: i, j
+
+        ! Temporary storage
+        INTEGER(int32), ALLOCATABLE :: temp(:)
+
+        ALLOCATE(temp(SIZE(list, 1)))
+
+        ! Sort by sending processor number (field 2) (rising order)
+        DO i = 2, SIZE(list, 2)
+            j = i - 1
+            temp(:) = list(:,i)
+            DO WHILE (j >= 1)
+                IF (list(sort_idx, j) > temp(sort_idx)) THEN
+                    list(:,j+1) = list(:,j)
+                    j = j - 1
+                ELSE
+                    EXIT
+                END IF
+            END DO
+            list(:,j+1) = temp(:)
+        END DO
+
+        ! Check for redundant entries
+        IF (check_redundancy .AND. PRESENT(forbidden_val)) THEN
+            DO i = 2, SIZE(list, 2)
+                IF ( list(sort_idx, i) == list(sort_idx, i-1) ) THEN
+                    WRITE(*,*) 'Redundant listing: ', list(sort_idx, i)
+                    CALL errr(__FILE__, __LINE__)
+                END IF
+                IF (list(sort_idx, i) == forbidden_val) THEN
+                    WRITE(*,*) 'Forbidden Value listed:  ', list(sort_idx, i)
+                    CALL errr(__FILE__, __LINE__)
+                END IF
+            END DO
+        ELSEIF (check_redundancy) THEN
+            DO i = 2, SIZE(list, 2)
+                IF ( list(sort_idx, i) == list(sort_idx, i-1) ) THEN
+                    WRITE(*,*) 'Redundant listing: ', list(sort_idx, i)
+                    CALL errr(__FILE__, __LINE__)
+                END IF
+            END DO
+        END IF
+
+    END SUBROUTINE sort_conns_unique
+
 
 END MODULE particle_utils_mod

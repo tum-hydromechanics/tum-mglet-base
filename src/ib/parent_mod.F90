@@ -843,7 +843,7 @@ CONTAINS
             !
             ! See also setcobone.F
             DO iface = 1, 6
-                ! Get type of BC (assuming PAR is ibocond = 1)
+                ! Get type of BC (assuming PAR is ibocond = 1 (should be 8 ?)) 
                 itypbc = itypboconds(1, iface, igrid)
 
                 ! See also setcobone.F

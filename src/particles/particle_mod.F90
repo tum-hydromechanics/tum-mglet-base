@@ -12,7 +12,8 @@ MODULE particle_mod
     USE particle_statistics_mod
     USE particle_snapshot_mod
     USE particle_io_mod
-
+    USE particle_loadbalance_mod
+    
     IMPLICIT NONE
 
 CONTAINS
@@ -89,6 +90,8 @@ CONTAINS
                 END IF
 
             END IF
+            
+            CALL init_particle_loadbalance()
 
             ! determine particle exchange connections and init particle exchange
             CALL init_particle_exchange()

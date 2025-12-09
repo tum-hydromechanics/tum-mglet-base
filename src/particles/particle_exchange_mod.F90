@@ -7,6 +7,8 @@ MODULE particle_exchange_mod
     USE particle_runtimestat_mod, ONLY: psim_n_sent
     USE particle_list_mod
     USE particle_statistics_mod
+    USE particle_utils_mod
+    USE particle_loadbalance_mod
 
     IMPLICIT NONE
 
@@ -82,6 +84,8 @@ CONTAINS
             WRITE(*,*) 'Particle connect not initialized'
             CALL errr(__FILE__, __LINE__)
         END IF
+
+        IF (MOD(ittot, loadbalance_step) == 0) CALL set_loadbalance_connections()
 
         active_np_old = particle_list%active_np
 
@@ -249,7 +253,6 @@ CONTAINS
                 END IF
             END DO
 
-
         END DO
 
         ! resetting after incrementation
@@ -404,7 +407,7 @@ CONTAINS
         END IF
 
         ! TODO: make the following error gathering conditional for compilation as a debugging feature
-        IF (TRIM(particle_terminal) == "normal") THEN
+        IF (TRIM(particle_terminal) == "verbose") THEN
             CALL MPI_Allreduce(err_local, err_global, 1, mglet_mpi_int, MPI_MAX, MPI_COMM_WORLD)
             IF (err_global == 0) THEN
                 CALL write_particle_list_txt(ittot)
@@ -420,9 +423,9 @@ CONTAINS
             END IF
         END IF
 
-        DEALLOCATE(sendBufParticle)
-        DEALLOCATE(recvBufParticle)
-        DEALLOCATE(sendind)
+        IF (ALLOCATED(sendBufParticle)) DEALLOCATE(sendBufParticle)
+        IF (ALLOCATED(recvBufParticle)) DEALLOCATE(recvBufParticle)
+        IF (ALLOCATED(sendind)) DEALLOCATE(sendind)
 
         CALL stop_timer(940)
         CALL stop_timer(900)
@@ -503,7 +506,7 @@ CONTAINS
         END DO
 
         ! Sort symConns by process ID
-        CALL sort_conns_unique(symConns(:,1:nConns))
+        CALL sort_conns_unique(symConns(:,1:nConns), 2, .TRUE., myid)
 
         IF (TRIM(particle_terminal) == "verbose") THEN
             IF (myid /= 0) THEN
@@ -565,49 +568,6 @@ CONTAINS
         CALL stop_timer(900)
 
     END SUBROUTINE finish_particle_exchange
-
-
-    SUBROUTINE sort_conns_unique(list)
-        ! Input array to be sorted
-        INTEGER(int32), INTENT(inout) :: list(:,:)
-
-        INTEGER(intk) :: i, j
-
-        ! Temporary storage
-        INTEGER(int32) :: temp(4)
-
-        IF (SIZE(list, 1) /= SIZE(temp)) THEN
-            CALL errr(__FILE__, __LINE__)
-        END IF
-
-        ! Sort by sending processor number (field 2)
-        DO i = 2, SIZE(list, 2)
-            j = i - 1
-            temp(:) = list(:,i)
-            DO WHILE (j >= 1)
-                IF (list(2,j) > temp(2)) THEN
-                    list(:,j+1) = list(:,j)
-                    j = j - 1
-                ELSE
-                    EXIT
-                END IF
-            END DO
-            list(:,j+1) = temp(:)
-        END DO
-
-        ! Check for redundant entries
-        DO i = 2, SIZE(list, 2)
-            IF ( list(2,i) == list(2,i-1) ) THEN
-                WRITE(*,*) 'Redundant listing of neighbor process ', list(2,i)
-                CALL errr(__FILE__, __LINE__)
-            END IF
-            IF ( list(2,i) == myid ) THEN
-                WRITE(*,*) 'Self connection listed at ', list(2,i)
-                CALL errr(__FILE__, __LINE__)
-            END IF
-        END DO
-
-    END SUBROUTINE sort_conns_unique
 
 
     SUBROUTINE get_target_grid(particle, destgrid, destproc, iface)

@@ -1,7 +1,7 @@
 add_library(particles STATIC
     particle_config_mod.F90
     particle_runtimestat_mod.F90
-    particle_core_mod.F90
+    particle_basetype_mod.F90
     particle_list_mod.F90
     particle_utils_mod.F90
     particle_dict_mod.F90
@@ -10,6 +10,7 @@ add_library(particles STATIC
     particle_boundaries_mod.F90
     particle_statistics_mod.F90
     particle_exchange_mod.F90
+    particle_loadbalance_mod.F90
     particle_interpolation_mod.F90
     particle_diffusion_mod.F90
     particle_timeintegration_mod.F90

@@ -11,7 +11,7 @@ MODULE particle_diffusion_mod
     USE connect2_mod
 
     USE particle_config_mod
-    USE particle_core_mod
+    USE particle_basetype_mod
     USE particle_interpolation_mod
 
     IMPLICIT NONE
