@@ -442,7 +442,7 @@ MODULE particle_loadbalance_mod
 
                         my_burden_potential_shm(1) = 0
                         my_burden_potential_shm(2) = shmid
-                        IF (.NOT. shmid == i) THEN
+                        IF (.NOT. shmid == offload_order_on_nodes(2, i)) THEN
                             DO j = 1, nmy_particle_grids
                                 IF (my_burden_potential_shm(1) < MIN(particle_exess_on_nodes(shmid), grids_np_temp(j))) THEN
                                     ! TODO: dont use the maximum number of particles on grid but the highest number of particles per cell on that grid instead
@@ -467,7 +467,7 @@ MODULE particle_loadbalance_mod
                             EXIT
                         END IF
 
-                        IF (shmid == i) THEN
+                        IF (shmid == offload_order_on_nodes(2, i)) THEN
                             n_burden_conns = n_burden_conns + 1
 
                             ! Blocking receive
