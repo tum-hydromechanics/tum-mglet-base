@@ -141,7 +141,7 @@ CONTAINS
         ALLOCATE(z_sentry_lists(nmygrids))
 
         ! Counting the particles per grid
-        CALL plist%defragment()
+        CALL defragment(plist)
 
         DO ip = 1, plist%ifinal
             IF ( plist%particles(ip)%state > 0 ) THEN

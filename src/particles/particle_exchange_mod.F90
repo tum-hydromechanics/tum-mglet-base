@@ -356,17 +356,17 @@ CONTAINS
         ! CAUTION: up to here, particle_list%particles(particle_list%ifinal)%state might be < 1 ("empty")
         IF (.NOT. dparticle_sorting) THEN
             CALL integrate_particles_unsorted(particle_list, sendind)
-            CALL particle_list%check(abort = .TRUE.)
+            CALL check_plist(particle_list, abort = .TRUE.)
         ELSE
             IF (.NOT. high_mem_sorting) THEN
                 CALL integrate_particles_unsorted(particle_list, sendind)
-                CALL particle_list%check(abort = .TRUE.)
+                CALL check_plist(particle_list, abort = .TRUE.)
 
-                CALL particle_list%sort_by_grid()
-                CALL particle_list%check(abort = .TRUE.)
+                CALL sort_by_grid(particle_list)
+                CALL check_plist(particle_list, abort = .TRUE.)
             ELSE
                 CALL integrate_particles_sorted(particle_list, sendind)
-                CALL particle_list%check(abort = .TRUE.)
+                CALL check_plist(particle_list, abort = .TRUE.)
             END IF
         END IF
     

@@ -30,14 +30,6 @@ MODULE particle_list_mod
         ! array that hold the actual particles
         TYPE(baseparticle_t), ALLOCATABLE :: particles(:)
 
-        CONTAINS
-
-            PROCEDURE :: check
-
-            PROCEDURE :: sort_by_grid
-
-            PROCEDURE :: defragment
-
     END TYPE particle_list_t
 
     TYPE(particle_list_t) :: my_particle_list
@@ -54,7 +46,7 @@ MODULE particle_list_mod
 
     INTEGER(intk), ALLOCATABLE :: grids_np(:), guest_grids_np(:)
     
-    INTEGER(intk), ALLOCATABLE :: plist_displ_old(:)
+    INTEGER(intk), ALLOCATABLE :: plist_displ(:)
 
     INTEGER(intk) :: global_np, node_np, local_np
 
@@ -94,8 +86,8 @@ CONTAINS    !===================================
 
         ALLOCATE(grids_np(nmy_particle_grids))
         grids_np = 0
-        ALLOCATE(plist_displ_old(nmy_particle_grids)) 
-        plist_displ_old = 0
+        ALLOCATE(plist_displ(nmy_particle_grids)) 
+        plist_displ = 0
 
         my_particle_list%iproc = myid
 
@@ -278,25 +270,25 @@ CONTAINS    !===================================
 
     !-----------------------------------
 
-    SUBROUTINE check(this, abort)
+    SUBROUTINE check_plist(particle_list, abort)
         
-        CLASS(particle_list_t), INTENT(inout) :: this
+        TYPE(particle_list_t), INTENT(inout) :: particle_list
         LOGICAL, INTENT(in) :: abort
 
         INTEGER(intk) :: i
 
         WRITE(*,*) "Checking Particle List..."
 
-        IF (this%ifinal /= this%active_np) THEN
+        IF (particle_list%ifinal /= particle_list%active_np) THEN
             IF (TRIM(particle_terminal) == "normal" .OR. TRIM(particle_terminal) == "verbose") THEN
                 WRITE(*, '("WARNING on proc ", I0, ": my_particle_list%active_np (", I0, ") does not coincide with my_particle_list%ifinal (", I0, ")" )') &
-                 myid, this%active_np, this%ifinal
+                 myid, particle_list%active_np, particle_list%ifinal
             END IF
             IF (abort) CALL errr(__FILE__,__LINE__)
         END IF
 
-        DO i = 1, this%ifinal
-            IF (this%particles(i)%state < 1) THEN
+        DO i = 1, particle_list%ifinal
+            IF (particle_list%particles(i)%state < 1) THEN
                 IF (TRIM(particle_terminal) == "normal" .OR. TRIM(particle_terminal) == "verbose") THEN
                     WRITE(*, '("WARNING on proc ", I0, ": Particle list entry ", I0, " unexpectately holds and inactive Partcle!")') myid, i
                 END IF
@@ -308,20 +300,60 @@ CONTAINS    !===================================
 
     !-----------------------------------
 
-    ! this sorting routine is not performance optimized and not intended for use in each timestep!
-    SUBROUTINE sort_by_grid(this)
+    ! counts the number of particles on each grid in my_particle_grids
+    SUBROUTINE count_pog(particle_list, grids_np_arg, plist_displ_arg)
+
+        TYPE(particle_list_t), INTENT(in) :: particle_list
+        INTEGER(intk), INTENT(out) :: grids_np_arg(nmy_particle_grids)
+        INTEGER(intk), OPTIONAL, INTENT(out) :: plist_displ_arg(nmy_particle_grids)
+
+        INTEGER(intk) :: i, pgrid, niterations
+
+        grids_np_arg = 0
+        DO i = 1, particle_list%ifinal
+            niterations = niterations + 1
+            IF (particle_list%particles(i)%state < 1) THEN
+                IF (TRIM(particle_terminal) == "normal" .OR. TRIM(particle_terminal) == "verbose") THEN
+                    WRITE(*, '("WARNING on proc ", I0, ": Particle list entry ", I0, " unexpectately holds and inactive Partcle!")') myid, i
+                    CALL errr(__FILE__, __LINE__)
+                END IF
+            END IF
+            pgrid = particle_list%particles(i)%igrid
+            grids_np_arg(particle_grid_ptr(pgrid)) = grids_np_arg(particle_grid_ptr(pgrid)) + 1
+        END DO
+
+        IF (SUM(grids_np_arg) /= particle_list%ifinal) THEN
+            IF (TRIM(particle_terminal) == "normal" .OR. TRIM(particle_terminal) == "verbose") THEN
+                WRITE(*, '("WARNING on proc ", I0, ": ifinal does not equal number of particles counted!")') myid
+                CALL errr(__FILE__, __LINE__)
+                END IF
+        END IF
+
+        IF (PRESENT(plist_displ_arg)) THEN
+            plist_displ_arg = 0
+            DO i = 2, SIZE(plist_displ_arg)
+                plist_displ_arg(i) = plist_displ_arg(i-1) + grids_np_arg(i-1)
+            END DO
+        END IF
+
+    END SUBROUTINE count_pog
+
+    ! TODO: improve sort_by_grid
+    ! sorts particles according to their igrid, 
+    ! the order of grid blocks corresponds to the ordering in my_particle_grids
+    SUBROUTINE sort_by_grid(particle_list)
         
         ! Subroutine arguments 
-        CLASS(particle_list_t), INTENT(inout) :: this
+        TYPE(particle_list_t), INTENT(inout) :: particle_list
         
         ! Local variales
         INTEGER(intk) :: i, counter, pgrid, niterations
-        INTEGER(intk) :: sorted(this%ifinal)
+        INTEGER(intk) :: sorted(particle_list%ifinal)
         INTEGER(intk) :: grid_ind(nmy_particle_grids)
         LOGICAL :: found_unsorted_part, finished
         TYPE(baseparticle_t) :: part_temp_new, part_temp_old
 
-        IF (this%ifinal < 1) RETURN
+        IF (particle_list%ifinal < 1) RETURN
         
         finished = .FALSE.
         ! TODO: remove niterations
@@ -329,41 +361,17 @@ CONTAINS    !===================================
 
         sorted = 0
 
-        ! TODO: replace by particle counting routine 
-        grids_np = 0
-        DO i = 1, this%ifinal
-            niterations = niterations + 1
-            IF (this%particles(i)%state < 1) THEN
-                IF (TRIM(particle_terminal) == "normal" .OR. TRIM(particle_terminal) == "verbose") THEN
-                    WRITE(*, '("WARNING on proc ", I0, ": Particle list entry ", I0, " unexpectately holds and inactive Partcle!")') myid, i
-                    CALL errr(__FILE__, __LINE__)
-                END IF
-            END IF
-            pgrid = this%particles(i)%igrid
-            grids_np(particle_grid_ptr(pgrid)) = grids_np(particle_grid_ptr(pgrid)) + 1
-        END DO
-
-        IF (SUM(grids_np) /= this%ifinal) THEN
-            IF (TRIM(particle_terminal) == "normal" .OR. TRIM(particle_terminal) == "verbose") THEN
-                WRITE(*, '("WARNING on proc ", I0, ": ifinal does not equal number of particles counted!")') myid
-                CALL errr(__FILE__, __LINE__)
-                END IF
-        END IF
-
-        plist_displ_old = 0
-        DO i = 2, SIZE(plist_displ_old)
-            plist_displ_old(i) = plist_displ_old(i-1) + grids_np(i-1)
-        END DO 
+        CALL count_pog(particle_list, grids_np, plist_displ)
 
         grid_ind = 0
         DO i = 1, SIZE(grid_ind)
-            grid_ind(i) = plist_displ_old(i) + 1
+            grid_ind(i) = plist_displ(i) + 1
         END DO 
 
         counter = 0
-        DO i = 1, this%ifinal
+        DO i = 1, particle_list%ifinal
             niterations = niterations + 1
-            pgrid = this%particles(i)%igrid
+            pgrid = particle_list%particles(i)%igrid
             
             IF (grid_ind(particle_grid_ptr(pgrid)) == i) THEN
 
@@ -374,9 +382,9 @@ CONTAINS    !===================================
                 CYCLE
 
             ELSE 
-                part_temp_old = this%particles(i)
-                part_temp_new = this%particles(grid_ind(particle_grid_ptr(pgrid)))
-                this%particles(grid_ind(particle_grid_ptr(pgrid))) = part_temp_old
+                part_temp_old = particle_list%particles(i)
+                part_temp_new = particle_list%particles(grid_ind(particle_grid_ptr(pgrid)))
+                particle_list%particles(grid_ind(particle_grid_ptr(pgrid))) = part_temp_old
                 sorted(i) = -1
                 sorted(grid_ind(particle_grid_ptr(pgrid))) = 1
                 grid_ind(particle_grid_ptr(pgrid)) = grid_ind(particle_grid_ptr(pgrid)) + 1
@@ -387,7 +395,7 @@ CONTAINS    !===================================
             
         END DO
 
-        IF (i - 1 == this%ifinal) finished = .TRUE.
+        IF (i - 1 == particle_list%ifinal) finished = .TRUE.
         
         DO WHILE (.NOT. finished)
             part_temp_old = part_temp_new
@@ -397,20 +405,20 @@ CONTAINS    !===================================
             found_unsorted_part = .FALSE.
             DO WHILE (.NOT. found_unsorted_part .AND. .NOT. finished)
                 niterations = niterations + 1
-                IF (counter > this%ifinal - 1) THEN
+                IF (counter > particle_list%ifinal - 1) THEN
                     finished = .TRUE.
                     EXIT
                 END IF
-                IF (sorted(MOD(grid_ind(particle_grid_ptr(pgrid)) + counter - 1, this%ifinal) + 1) == 0) THEN
-                    part_temp_new = this%particles(MOD(grid_ind(particle_grid_ptr(pgrid)) + counter - 1, this%ifinal) + 1)
-                    sorted(MOD(grid_ind(particle_grid_ptr(pgrid)) + counter - 1, this%ifinal) + 1) = -1
+                IF (sorted(MOD(grid_ind(particle_grid_ptr(pgrid)) + counter - 1, particle_list%ifinal) + 1) == 0) THEN
+                    part_temp_new = particle_list%particles(MOD(grid_ind(particle_grid_ptr(pgrid)) + counter - 1, particle_list%ifinal) + 1)
+                    sorted(MOD(grid_ind(particle_grid_ptr(pgrid)) + counter - 1, particle_list%ifinal) + 1) = -1
                     found_unsorted_part = .TRUE.
                 ELSE 
                     counter = counter + 1
                 END IF
             END DO
 
-            this%particles(grid_ind(particle_grid_ptr(pgrid))) = part_temp_old
+            particle_list%particles(grid_ind(particle_grid_ptr(pgrid))) = part_temp_old
             sorted(grid_ind(particle_grid_ptr(pgrid))) = 1
             grid_ind(particle_grid_ptr(pgrid)) = grid_ind(particle_grid_ptr(pgrid)) + 1
 
@@ -419,31 +427,30 @@ CONTAINS    !===================================
 
         ! TODO: remove this temporary debugging feature 
 
-        WRITE(*, '("Particle Sorting: N iterations = ", I0, " (Ifinal = ", I0, ")")') niterations, this%ifinal
+        WRITE(*, '("Particle Sorting: N iterations = ", I0, " (Ifinal = ", I0, ")")') niterations, particle_list%ifinal
 
-        DO i = 1, this%ifinal
+        DO i = 1, particle_list%ifinal
             IF (sorted(i) == 0) CALL errr(__FILE__, __LINE__)
         END DO 
 
     END SUBROUTINE sort_by_grid
 
-
     !-----------------------------------
   
-    SUBROUTINE defragment(this)
+    SUBROUTINE defragment(particle_list)
 
         ! Subroutine arguments
-        CLASS(particle_list_t), INTENT(inout) :: this
+        TYPE(particle_list_t), INTENT(inout) :: particle_list
 
         ! Local variables
         INTEGER(intk) :: i, j, ifin, n
         LOGICAL :: cont
 
         ! local copy
-        ifin = this%ifinal
+        ifin = particle_list%ifinal
         cont = .TRUE.
 
-        IF ( this%active_np == ifin ) THEN
+        IF ( particle_list%active_np == ifin ) THEN
             ! all slots are occupied
             RETURN
         END IF
@@ -451,27 +458,27 @@ CONTAINS    !===================================
         DO i = 1, ifin
 
             ! search for empty slot
-            IF ( this%particles(i)%state < 1 ) THEN
+            IF ( particle_list%particles(i)%state < 1 ) THEN
 
                 ! search from the end of list and find particle to fill in
-                DO j = this%ifinal, 1, -1
+                DO j = particle_list%ifinal, 1, -1
                     ! finished if positions before "i" are considered
                     IF ( j < (i+1) ) THEN
                         cont = .FALSE.
                         EXIT
                     END IF
                     ! fill empty slot with last valid particle
-                    IF ( this%particles(j)%state >= 1 ) THEN
-                        this%particles(i) = this%particles(j)
-                        this%particles(j)%state = -1
-                        this%ifinal = j - 1
+                    IF ( particle_list%particles(j)%state >= 1 ) THEN
+                        particle_list%particles(i) = particle_list%particles(j)
+                        particle_list%particles(j)%state = -1
+                        particle_list%ifinal = j - 1
                         EXIT
                     END IF
                 END DO
 
                 ! empty slot could not be filled
                 IF ( .NOT. cont ) THEN
-                    this%ifinal = i - 1
+                    particle_list%ifinal = i - 1
                     EXIT
                 END IF
 
@@ -480,16 +487,16 @@ CONTAINS    !===================================
         END DO
 
         ! Debug check
-        DO i = 1, this%ifinal
-            IF ( this%particles(i)%state < 1 ) THEN
+        DO i = 1, particle_list%ifinal
+            IF ( particle_list%particles(i)%state < 1 ) THEN
                 WRITE(*,*) "defragmented list contains inactive particle at ", i
                 CALL errr(__FILE__, __LINE__)
             END IF
         END DO
 
         ! Some output (to be silenced later)
-        IF ( ifin /= this%ifinal ) THEN
-            n = ifin - this%ifinal
+        IF ( ifin /= particle_list%ifinal ) THEN
+            n = ifin - particle_list%ifinal
             WRITE(*,*) " - defragmentation: ", n, " slots cleared"
         END IF
 

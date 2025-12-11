@@ -16,8 +16,6 @@ MODULE offload_helper_mod
     INTEGER(intk), PARAMETER :: N_BASB = 6
     INTEGER(intk), PARAMETER :: N_FACES = 6
     INTEGER(intk), PARAMETER :: N_BC_RANGE = 2
-    INTEGER(intk), PARAMETER :: ISCA_FIELD = 1
-    INTEGER(intk), PARAMETER :: ISCA_LEVEL = 1
 
     ! ┌────────────────────────────────────────────────────────────────────────────┐
     ! | Keeps a pointer to the data that is required on the target device          |
@@ -30,16 +28,12 @@ MODULE offload_helper_mod
     ! Grid parameters
     INTEGER(intk), POINTER, CONTIGUOUS, DIMENSION(:) :: ip3d_offload, ip1d_offload
     INTEGER(intk), POINTER, CONTIGUOUS, DIMENSION(:, :) :: nboconds_offload
-    REAL(realk), POINTER, CONTIGUOUS, DIMENSION(:) :: rdx_offload, rdy_offload, rdz_offload
-    REAL(realk), POINTER, CONTIGUOUS, DIMENSION(:) :: rddx_offload, rddy_offload, rddz_offload
     REAL(realk), POINTER, CONTIGUOUS, DIMENSION(:) :: dx_offload, dy_offload, dz_offload
     REAL(realk), POINTER, CONTIGUOUS, DIMENSION(:) :: ddx_offload, ddy_offload, ddz_offload
-    REAL(realk), POINTER, CONTIGUOUS, DIMENSION(:) :: bt_offload
     ! Flow/Scalar fields
-    REAL(realk), POINTER, CONTIGUOUS, DIMENSION(:) :: u_offload, v_offload, w_offload, t_offload, g_offload
+    REAL(realk), POINTER, CONTIGUOUS, DIMENSION(:) :: u_offload, v_offload, w_offload
     
     ! ----- Newly encoded or global arrays -----
-    REAL(realk), POINTER, CONTIGUOUS, DIMENSION(:) :: qtu_offload, qtv_offload, qtw_offload
     INTEGER(intk), POINTER, CONTIGUOUS, DIMENSION(:) :: mgdims_offload, mgbasb_offload
     INTEGER(intk), POINTER, CONTIGUOUS, DIMENSION(:) :: encoded_ctyp_offload
     INTEGER(intk), POINTER, CONTIGUOUS, DIMENSION(:, :) :: bc_indexing
@@ -47,26 +41,21 @@ MODULE offload_helper_mod
     ! Make all data available on the target device
     !$omp declare target(ip3d_offload, ip1d_offload, mgdims_offload, mgbasb_offload)
     !$omp declare target(encoded_ctyp_offload, nboconds_offload, bc_indexing)
-    !$omp declare target(rdx_offload, rdy_offload, rdz_offload, rddx_offload, rddy_offload, rddz_offload)
     !$omp declare target(dx_offload, dy_offload, dz_offload, ddx_offload, ddy_offload, ddz_offload)
-    !$omp declare target(bt_offload)
-    !$omp declare target(u_offload, v_offload, w_offload, t_offload, g_offload)
-    !$omp declare target(qtu_offload, qtv_offload, qtw_offload)
+    !$omp declare target(u_offload, v_offload, w_offload)
 
     ! Public subroutines for host
     PUBLIC :: offload_fields, finish_offload_fields
 
     ! Public variables for host
-    PUBLIC :: ISCA_FIELD, ISCA_LEVEL
 
     ! Public subroutines for device
     PUBLIC :: ptr_to_grid_x, ptr_to_grid_y, ptr_to_grid_z, ptr_to_grid3, get_mgdims_target, get_mgbasb_target, &
         get_encoded_ctyp_offload
 
     ! Public variables for device
-    PUBLIC :: rdx_offload, rdy_offload, rdz_offload, rddx_offload, rddy_offload, rddz_offload, &
-        dx_offload, dy_offload, dz_offload, ddx_offload, ddy_offload, ddz_offload, bt_offload, &
-        u_offload, v_offload, w_offload, t_offload, g_offload, qtu_offload, qtv_offload, qtw_offload, nboconds_offload
+    PUBLIC :: dx_offload, dy_offload, dz_offload, ddx_offload, ddy_offload, ddz_offload, &
+        u_offload, v_offload, w_offload, nboconds_offload
 
 CONTAINS
     !> @brief Sets up field pointers for target device
@@ -78,7 +67,7 @@ CONTAINS
         CALL map_constant_grid_fields()
         CALL map_bc_data()
         CALL map_bc_encoding()
-        CALL map_flow_sca()
+        CALL map_flow()
     END SUBROUTINE offload_fields
 
     !> @brief Sets up grid data for target device
@@ -142,68 +131,43 @@ CONTAINS
     !! Maps fields to the target device.
     SUBROUTINE map_constant_grid_fields()
         ! Local variables
-        TYPE(field_t), POINTER :: rdx_f, rdy_f, rdz_f, rddx_f, rddy_f, rddz_f, dx_f, dy_f, dz_f, ddx_f, ddy_f, ddz_f, bt_f
+        TYPE(field_t), POINTER :: dx_f, dy_f, dz_f, ddx_f, ddy_f, ddz_f, bt_f
 
         ! Create copy for grid constants
-        CALL get_field(rdx_f, "RDX")
-        CALL get_field(rdy_f, "RDY")
-        CALL get_field(rdz_f, "RDZ")
-        CALL get_field(rddx_f, "RDDX")
-        CALL get_field(rddy_f, "RDDY")
-        CALL get_field(rddz_f, "RDDZ")
         CALL get_field(dx_f, "DX")
         CALL get_field(dy_f, "DY")
         CALL get_field(dz_f, "DZ")
         CALL get_field(ddx_f, "DDX")
         CALL get_field(ddy_f, "DDY")
         CALL get_field(ddz_f, "DDZ")
-        CALL get_field(bt_f, "BT")
         
-        rdx_offload => rdx_f%arr
-        rdy_offload => rdy_f%arr
-        rdz_offload => rdz_f%arr
-        rddx_offload => rddx_f%arr
-        rddy_offload => rddy_f%arr
-        rddz_offload => rddz_f%arr
         dx_offload => dx_f%arr
         dy_offload => dy_f%arr
         dz_offload => dz_f%arr
         ddx_offload => ddx_f%arr
         ddy_offload => ddy_f%arr
         ddz_offload => ddz_f%arr
-        bt_offload => bt_f%arr
 
-        !$omp target enter data map(to: rdx_offload, rdy_offload, rdz_offload, rddx_offload, rddy_offload, rddz_offload, &
-        !$omp& dx_offload, dy_offload, dz_offload, ddx_offload, ddy_offload, ddz_offload, bt_offload)
+        !$omp target enter data map(to: dx_offload, dy_offload, dz_offload, ddx_offload, ddy_offload, ddz_offload)
     END SUBROUTINE
 
     !> @brief Sets up flow fields for target device
     !!
-    !! Sets up pointers to flow fields U, V, W, G and the first scalar field.
-    !! Sets up global fields to hold values of qtu, qtv and qtw to keep this data purely on the target device.
+    !! Sets up pointers to flow fields U, V, W
     !! Maps fields to the target device.
-    SUBROUTINE map_flow_sca()
+    SUBROUTINE map_flow()
         ! Local variables
         TYPE(field_t), POINTER :: u_f, v_f, w_f, sca_f, g_f
 
         CALL get_field(u_f, "U")
         CALL get_field(v_f, "V")
         CALL get_field(w_f, "W")
-        CALL get_field(sca_f, scalar(ISCA_FIELD)%name)
-        CALL get_field(g_f, "G")
 
         u_offload => u_f%arr
         v_offload => v_f%arr
         w_offload => w_f%arr
-        t_offload => sca_f%arr
-        g_offload => g_f%arr
 
-        ALLOCATE(qtu_offload, source=u_f%arr)
-        ALLOCATE(qtv_offload, source=v_f%arr)
-        ALLOCATE(qtw_offload, source=w_f%arr)
-
-        !$omp target enter data map(to: u_offload, v_offload, w_offload, t_offload, g_offload, &
-        !$omp& qtu_offload, qtv_offload, qtw_offload)
+        !$omp target enter data map(to: u_offload, v_offload, w_offload)
     END SUBROUTINE
 
     !> @brief Sets up boundary condition encoding for target device
@@ -320,18 +284,12 @@ CONTAINS
     SUBROUTINE finish_offload_fields()
         !$omp target exit data map(delete: mgdims_offload, ip3d_offload, ip1d_offload)
         !$omp target exit data map(delete: nboconds_offload, mgbasb_offload)
-        !$omp target exit data map(delete: rdx_offload, rdy_offload, rdz_offload, rddx_offload, rddy_offload, rddz_offload, &
-        !$omp& dx_offload, dy_offload, dz_offload, ddx_offload, ddy_offload, ddz_offload, bt_offload)
-        !$omp target exit data map(delete: u_offload, v_offload, w_offload, t_offload, g_offload, &
-        !$omp& qtu_offload, qtv_offload, qtw_offload)
+        !$omp target exit data map(delete: dx_offload, dy_offload, dz_offload, ddx_offload, ddy_offload, ddz_offload, bt_offload)
+        !$omp target exit data map(delete: u_offload, v_offload, w_offload)
         !$omp target exit data map(delete: bc_indexing, encoded_ctyp_offload)
 
         DEALLOCATE(mgdims_offload)
         DEALLOCATE(mgbasb_offload)
-        DEALLOCATE(qtu_offload)
-        DEALLOCATE(qtv_offload)
-        DEALLOCATE(qtw_offload)
-        DEALLOCATE(bc_indexing)
         DEALLOCATE(encoded_ctyp_offload)
     END SUBROUTINE finish_offload_fields
 

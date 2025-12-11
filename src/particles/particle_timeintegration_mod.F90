@@ -58,7 +58,8 @@ CONTAINS
         REAL(realk), INTENT(in) :: dt
 
         ! local variables
-        !TYPE(baseparticle_t) :: particle_clone
+        INTEGER(intk) :: igrid, i, j, ii, jj, kk, gfound, ig, ipart, temp_grid
+        REAL(realk) :: pd_eff_tot(3), temp_coord(3)
         TYPE(field_t), POINTER :: x_f, y_f, z_f
         TYPE(field_t), POINTER :: dx_f, dy_f, dz_f, ddx_f, ddy_f, ddz_f
         TYPE(field_t), POINTER :: pwu_f, pwv_f, pww_f
@@ -67,29 +68,10 @@ CONTAINS
         REAL(realk), POINTER, CONTIGUOUS, DIMENSION(:) :: dx, dy, dz, ddx, ddy, ddz
         REAL(realk), POINTER, CONTIGUOUS, DIMENSION(:, :, :) :: pwu, pwv, pww
 
-        REAL(realk), ALLOCATABLE :: pdx_pot(:), pdy_pot(:), pdz_pot(:)
-
-        INTEGER(intk) :: igrid, i, ii, jj, kk, gfound, ig, temp_grid
-        REAL(realk) :: temp_coord(3)
-        REAL(realk) :: pu_adv, pv_adv, pw_adv
-        REAL(realk) :: pdx_adv, pdy_adv, pdz_adv, pdx_diff, pdy_diff, pdz_diff
-        REAL(realk) :: pdx_eff_tot, pdy_eff_tot, pdz_eff_tot, pdx_eff, pdy_eff, pdz_eff
-
-        INTEGER(intk) :: irk
-        REAL(realk) :: A, B
-
         CALL start_timer(900)
         CALL start_timer(920)
 
         CALL start_timer(921)
-
-        ALLOCATE(pdx_pot(my_particle_list%ifinal))
-        ALLOCATE(pdy_pot(my_particle_list%ifinal))
-        ALLOCATE(pdz_pot(my_particle_list%ifinal))
-
-        pdx_pot = 0.0
-        pdy_pot = 0.0
-        pdz_pot = 0.0
 
         CALL get_field(x_f, "X")
         CALL get_field(y_f, "Y")
@@ -120,7 +102,7 @@ CONTAINS
                 CALL get_field(pww_f, "W")
             END IF
         END IF
-
+        
         CALL stop_timer(921)
 
         IF (myid == 0) THEN
@@ -131,49 +113,24 @@ CONTAINS
             END IF
         END IF
 
-        ! algorithm for EXPLICIT RK schemes
-        DO i = 1, my_particle_list%ifinal
-
-            ! checking activity
-            IF (my_particle_list%particles(i)%state < 1) THEN
-                CYCLE
-            END IF
-
-            ! checking locality (Debug)
-            IF (my_particle_list%particles(i)%iproc /= myid) THEN
-                WRITE(*, '("ERROR: Particle on wrong proc at start of current timestep")')
-                CALL errr(__FILE__, __LINE__)
-            END IF
-
-            ! assigning igrid for clarity of the follwing expressions
-            igrid = my_particle_list%particles(i)%igrid
-            temp_grid = my_particle_list%particles(i)%igrid
-            temp_coord(1) = my_particle_list%particles(i)%x
-            temp_coord(2) = my_particle_list%particles(i)%y
-            temp_coord(3) = my_particle_list%particles(i)%z
+        CALL count_pog(my_particle_list, grids_np, plist_displ)
+        
+        DO i = 1, nmy_particle_grids
+            igrid = my_particle_grids(i)
 
             ! checking consistency (Debug)
             gfound = 1
-            DO ig = 1, nMyGrids
+            DO ig = 1, nmygrids
                 IF (igrid == mygrids(ig)) gfound = 1; EXIT
             END DO
-
+            
             IF (gfound == 0) THEN
                 WRITE(*, '("ERROR: Particle grid ", I0, " is not on this process (", I0, ")")') igrid, myid
                 CALL errr(__FILE__, __LINE__)
             END IF
 
-            ! for debugging
-            IF (TRIM(particle_terminal) == "verbose") THEN
-                WRITE(*,'("Pre Motion - Particle Status:")')
-                CALL print_particle_status(my_particle_list%particles(i))
-                WRITE(*, '()')
-            END IF
-
-            ! --- ADVECTION ---
             CALL start_timer(921)
 
-            ! Grid and Field Info
             CALL get_mgdims(kk, jj, ii, igrid)
             CALL x_f%get_ptr(x, igrid)
             CALL y_f%get_ptr(y, igrid)
@@ -194,121 +151,183 @@ CONTAINS
 
             CALL stop_timer(921)
 
-            ! for particle runtime statistics (terminal output)
-            IF (TRIM(particle_terminal) == "normal" .OR. TRIM(particle_terminal) == "verbose") THEN
-                pdx_eff_tot = 0.0
-                pdy_eff_tot = 0.0
-                pdz_eff_tot = 0.0
-            END IF
+            DO j = 1, grids_np(i)
 
+                ipart = plist_displ(i) + j
 
-            DO irk = 1, prkscheme%nrk
-
-                CALL start_timer(921)
-                CALL prkscheme%get_coeffs(A, B, irk)
-
-                ! should be obsolete as the effective displacement is also zeroized in move_particle
-                pdx_eff = 0.0
-                pdy_eff = 0.0
-                pdz_eff = 0.0
-
-                ! get particle velocity
-                IF (dinterp_padvection) THEN
-                    CALL interpolate_lincon(my_particle_list%particles(i), kk, jj, ii, x, y, z, dx, dy, dz, ddx, ddy, ddz, &
-                     pwu, pwv, pww, pu_adv, pv_adv, pw_adv)
-                ELSE
-                    CALL get_nearest_value(my_particle_list%particles(i), kk, jj, ii, x, y, z, &
-                     pwu, pwv, pww, pu_adv, pv_adv, pw_adv)
+                ! checking activity
+                IF (my_particle_list%particles(ipart)%state < 1) THEN
+                    CYCLE
                 END IF
 
-                CALL prkstep(pdx_pot(i), pdy_pot(i), pdz_pot(i), pu_adv, pv_adv, pw_adv, dt, A, B, pdx_adv, pdy_adv, pdz_adv)
+                ! checking locality (Debug)
+                IF (my_particle_list%particles(ipart)%iproc /= myid) THEN
+                    WRITE(*, '("ERROR: Particle on wrong proc at start of current timestep")')
+                    CALL errr(__FILE__, __LINE__)
+                END IF
+                
+                IF (.NOT. (igrid == my_particle_list%particles(ipart)%igrid)) THEN
+                    CALL errr(__FILE__, __LINE__)
+                END IF
 
                 ! for debugging
                 IF (TRIM(particle_terminal) == "verbose") THEN
-                    WRITE(*,'("---------- Advection RK Step: ", I0, " ----------")') irk
-                    WRITE(*,'("Intermediate Velocity ", F12.9, " ", F12.9, " ", F12.9)') pu_adv, pv_adv, pw_adv
-                    WRITE(*,'("Intermediate (potential) Displacement ", F12.9, " ", F12.9, " ", F12.9)') pdx_adv, pdy_adv, pdz_adv
+                    WRITE(*,'("Pre Motion - Particle Status:")')
+                    CALL print_particle_status(my_particle_list%particles(i))
                     WRITE(*, '()')
                 END IF
-                CALL stop_timer(921)
-
-                CALL start_timer(922)
-                ! Particle Boundary Interaction
-                CALL move_particle(my_particle_list%particles(i), pdx_adv, pdy_adv, pdz_adv, &
-                 pdx_eff, pdy_eff, pdz_eff, temp_coord, temp_grid)
-                CALL stop_timer(922)
-
-                CALL start_timer(921)
-                pdx_pot(i) = pdx_eff / B
-                pdy_pot(i) = pdy_eff / B
-                pdz_pot(i) = pdz_eff / B
-
-                IF (TRIM(particle_terminal) == "normal" .OR. TRIM(particle_terminal) == "verbose") THEN
-                    ! for particle runtime statistics (terminal output)
-                    pdx_eff_tot = pdx_eff_tot + pdx_eff
-                    pdy_eff_tot = pdy_eff_tot + pdy_eff
-                    pdz_eff_tot = pdz_eff_tot + pdz_eff
-                    psim_max_adv_dx = MAX(psim_max_adv_dx, ABS(pdx_eff_tot))
-                    psim_max_adv_dy = MAX(psim_max_adv_dy, ABS(pdy_eff_tot))
-                    psim_max_adv_dz = MAX(psim_max_adv_dz, ABS(pdz_eff_tot))
-                END IF
-
-                CALL stop_timer(921)
-
-            END DO
-
-            ! --- DIFFSUION ---
-
-            IF (ddiffusion) THEN
-
-                IF (TRIM(particle_terminal) == "verbose") THEN
-                    WRITE(*,'("---------- Particle Diffusion ----------")')
-                    WRITE(*, '()')
-                END IF
-
-                CALL start_timer(924)
-                CALL generate_diffusive_displacement(dt, D(1), D(2), D(3), pdx_diff, pdy_diff, pdz_diff)
-                CALL stop_timer(924)
-
-                CALL start_timer(925)
-                CALL move_particle(my_particle_list%particles(i), pdx_diff, pdy_diff, pdz_diff, &
-                 pdx_eff, pdy_eff, pdz_eff, temp_coord, temp_grid)
-                CALL stop_timer(925)
 
                 ! for particle runtime statistics (terminal output)
                 IF (TRIM(particle_terminal) == "normal" .OR. TRIM(particle_terminal) == "verbose") THEN
-                    pdx_eff_tot = pdx_eff_tot + pdx_eff
-                    pdy_eff_tot = pdy_eff_tot + pdy_eff
-                    pdz_eff_tot = pdz_eff_tot + pdz_eff
-                    psim_max_dif_dx = MAX(psim_max_dif_dx, ABS(pdx_eff))
-                    psim_max_dif_dy = MAX(psim_max_dif_dy, ABS(pdy_eff))
-                    psim_max_dif_dz = MAX(psim_max_dif_dz, ABS(pdz_eff))
+                    pd_eff_tot = 0.0
                 END IF
 
-            END IF
+                temp_grid = my_particle_list%particles(ipart)%igrid
+                temp_coord(1) = my_particle_list%particles(ipart)%x
+                temp_coord(2) = my_particle_list%particles(ipart)%y
+                temp_coord(3) = my_particle_list%particles(ipart)%z
 
-            ! for particle runtime statistics (terminal output)
-            IF (TRIM(particle_terminal) == "normal" .OR. TRIM(particle_terminal) == "verbose") THEN
-                IF (psim_max_disp < SQRT(pdx_eff_tot**2 + pdy_eff_tot**2 + pdz_eff_tot**2)) THEN
-                    psim_max_dx = pdx_eff_tot
-                    psim_max_dy = pdy_eff_tot
-                    psim_max_dz = pdz_eff_tot
-                    psim_max_disp = SQRT(pdx_eff_tot**2 + pdy_eff_tot**2 + pdz_eff_tot**2)
+                CALL particle_advection(my_particle_list%particles(ipart), temp_grid, temp_coord, pd_eff_tot, &
+                 kk, jj, ii, x, y, z, dx, dy, dz, ddx, ddy, ddz, pwu, pwv, pww, dt)
+                
+                CALL particle_diffusion(my_particle_list%particles(ipart), temp_grid, temp_coord, pd_eff_tot, dt)
+
+                ! for particle runtime statistics (terminal output)
+                IF (TRIM(particle_terminal) == "normal" .OR. TRIM(particle_terminal) == "verbose") THEN
+                    IF (psim_max_disp < SQRT(pd_eff_tot(1)**2 + pd_eff_tot(2)**2 + pd_eff_tot(3)**2)) THEN
+                        psim_max_dx = pd_eff_tot(1)
+                        psim_max_dy = pd_eff_tot(2)
+                        psim_max_dz = pd_eff_tot(3)
+                        psim_max_disp = SQRT(pd_eff_tot(1)**2 + pd_eff_tot(2)**2 + pd_eff_tot(3)**2)
+                    END IF
                 END IF
-            END IF
-
+            END DO 
         END DO
-
-        DEALLOCATE(pdx_pot)
-        DEALLOCATE(pdy_pot)
-        DEALLOCATE(pdz_pot)
 
         CALL stop_timer(920)
         CALL stop_timer(900)
 
     END SUBROUTINE timeintegrate_particles
 
+    SUBROUTINE particle_advection(particle, temp_grid, temp_coord, pd_eff_tot, kk, jj, ii, x, y, z, dx, dy, dz, ddx, ddy, ddz, pwu, pwv, pww, dt)
+
+        ! subroutine arguments
+        TYPE(baseparticle_t), INTENT(inout) :: particle
+        INTEGER(intk), INTENT(inout) :: temp_grid
+        REAL(realk), INTENT(inout) :: temp_coord(3)
+        REAL(realk), INTENT(inout) :: pd_eff_tot(3)
+        INTEGER(intk), INTENT(in) :: kk, jj, ii
+        REAL(realk), POINTER, CONTIGUOUS, DIMENSION(:), INTENT(in) :: x, y, z
+        REAL(realk), POINTER, CONTIGUOUS, DIMENSION(:), INTENT(in) :: dx, dy, dz, ddx, ddy, ddz
+        REAL(realk), POINTER, CONTIGUOUS, DIMENSION(:, :, :), INTENT(in) :: pwu, pwv, pww
+        REAL(realk), INTENT(in) :: dt
+        
+        ! local variables
+        INTEGER(intk) :: irk
+        REAL(realk) :: A, B
+        REAL(realk) :: pu_adv, pv_adv, pw_adv
+        REAL(realk) :: pdx_adv, pdy_adv, pdz_adv
+        REAL(realk) :: pdx_pot, pdy_pot, pdz_pot
+        REAL(realk) :: pdx_eff, pdy_eff, pdz_eff
+
+        CALL start_timer(921)
+        DO irk = 1, prkscheme%nrk
+
+            CALL prkscheme%get_coeffs(A, B, irk)
+
+            ! should be obsolete as the effective displacement is also zeroized in move_particle
+            pdx_eff = 0.0
+            pdy_eff = 0.0
+            pdz_eff = 0.0
+
+            ! get particle velocity
+            IF (dinterp_padvection) THEN
+                CALL interpolate_lincon(particle, kk, jj, ii, x, y, z, dx, dy, dz, ddx, ddy, ddz, &
+                 pwu, pwv, pww, pu_adv, pv_adv, pw_adv)
+            ELSE
+                CALL get_nearest_value(particle, kk, jj, ii, x, y, z, &
+                 pwu, pwv, pww, pu_adv, pv_adv, pw_adv)
+            END IF
+
+            CALL prkstep(pdx_pot, pdy_pot, pdz_pot, pu_adv, pv_adv, pw_adv, dt, A, B, pdx_adv, pdy_adv, pdz_adv)
+
+            ! for debugging
+            IF (TRIM(particle_terminal) == "verbose") THEN
+                WRITE(*,'("---------- Advection RK Step: ", I0, " ----------")') irk
+                WRITE(*,'("Intermediate Velocity ", F12.9, " ", F12.9, " ", F12.9)') pu_adv, pv_adv, pw_adv
+                WRITE(*,'("Intermediate (potential) Displacement ", F12.9, " ", F12.9, " ", F12.9)') pdx_adv, pdy_adv, pdz_adv
+                WRITE(*, '()')
+            END IF
+
+            ! Particle Boundary Interaction
+            CALL stop_timer(921)
+            CALL start_timer(922)
+            CALL move_particle(particle, pdx_adv, pdy_adv, pdz_adv, &
+             pdx_eff, pdy_eff, pdz_eff, temp_coord, temp_grid)
+            CALL stop_timer(922)
+            CALL start_timer(921)
+            pdx_pot = pdx_eff / B
+            pdy_pot = pdy_eff / B
+            pdz_pot = pdz_eff / B
+            
+            IF (TRIM(particle_terminal) == "normal" .OR. TRIM(particle_terminal) == "verbose") THEN
+                ! for particle runtime statistics (terminal output)
+                pd_eff_tot(1) = pd_eff_tot(1)+ pdx_eff
+                pd_eff_tot(2) = pd_eff_tot(2)+ pdx_eff
+                pd_eff_tot(3) = pd_eff_tot(3)+ pdx_eff
+                psim_max_adv_dx = MAX(psim_max_adv_dx, ABS(pd_eff_tot(1)))
+                psim_max_adv_dy = MAX(psim_max_adv_dy, ABS(pd_eff_tot(2)))
+                psim_max_adv_dz = MAX(psim_max_adv_dz, ABS(pd_eff_tot(3)))
+            END IF
+        END DO
+        CALL stop_timer(921)
+    
+    END SUBROUTINE particle_advection
+
+    SUBROUTINE particle_diffusion(particle, temp_grid, temp_coord, pd_eff_tot, dt)
+
+        ! subroutine arguments
+        TYPE(baseparticle_t), INTENT(inout) :: particle
+        INTEGER(intk), INTENT(inout) :: temp_grid
+        REAL(realk), INTENT(inout) :: temp_coord(3)
+        REAL(realk), INTENT(inout) :: pd_eff_tot(3)
+        REAL(realk), INTENT(in) :: dt
+
+        ! local variables
+        REAL(realk) :: pdx_diff, pdy_diff, pdz_diff
+        REAL(realk) :: pdx_eff, pdy_eff, pdz_eff
+
+        IF (TRIM(particle_terminal) == "verbose") THEN
+            WRITE(*,'("---------- Particle Diffusion ----------")')
+            WRITE(*, '()')
+        END IF
+
+        CALL start_timer(924)
+        CALL generate_diffusive_displacement(dt, D(1), D(2), D(3), pdx_diff, pdy_diff, pdz_diff)
+        CALL stop_timer(924)
+
+        CALL start_timer(925)
+        CALL move_particle(particle, pdx_diff, pdy_diff, pdz_diff, &
+             pdx_eff, pdy_eff, pdz_eff, temp_coord, temp_grid)
+        CALL stop_timer(925)
+
+        CALL start_timer(924)
+        IF (TRIM(particle_terminal) == "normal" .OR. TRIM(particle_terminal) == "verbose") THEN
+            ! for particle runtime statistics (terminal output)
+            pd_eff_tot(1) = pd_eff_tot(1)+ pdx_eff
+            pd_eff_tot(2) = pd_eff_tot(2)+ pdx_eff
+            pd_eff_tot(3) = pd_eff_tot(3)+ pdx_eff
+            psim_max_adv_dx = MAX(psim_max_adv_dx, ABS(pd_eff_tot(1)))
+            psim_max_adv_dy = MAX(psim_max_adv_dy, ABS(pd_eff_tot(2)))
+            psim_max_adv_dz = MAX(psim_max_adv_dz, ABS(pd_eff_tot(3)))
+        END IF
+        CALL stop_timer(924)
+
+    END SUBROUTINE particle_diffusion
+
     SUBROUTINE finish_particle_timeintegration()
+
+        CONTINUE
 
     END SUBROUTINE finish_particle_timeintegration
 
