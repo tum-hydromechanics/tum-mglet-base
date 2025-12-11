@@ -277,7 +277,9 @@ CONTAINS    !===================================
 
         INTEGER(intk) :: i
 
-        WRITE(*,*) "Checking Particle List..."
+        IF (TRIM(particle_terminal) == "verbose") THEN
+            WRITE(*,*) "Checking Particle List..."
+        END IF
 
         IF (particle_list%ifinal /= particle_list%active_np) THEN
             IF (TRIM(particle_terminal) == "normal" .OR. TRIM(particle_terminal) == "verbose") THEN

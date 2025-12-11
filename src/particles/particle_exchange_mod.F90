@@ -475,7 +475,7 @@ CONTAINS
             ! Check surfaces of grid
             DO iface = 1, 26
 
-                neighbour = particle_boundaries%face_neighbours(iface, igrid)
+                neighbour = particle_boundaries(igrid)%face_neighbours(iface)
 
                 IF (neighbour == igrid) THEN
                     CYCLE
@@ -618,7 +618,7 @@ CONTAINS
 
         ELSE IF (iface > 0) THEN
             ! particle moves across grid boundary
-            destgrid = particle_boundaries%face_neighbours(iface, particle%igrid)
+            destgrid = particle_boundaries(particle%igrid)%face_neighbours(iface)
             destproc = idprocofgrd(destgrid)
 
             IF (TRIM(particle_terminal) == "verbose") THEN

@@ -42,13 +42,13 @@ MODULE particle_boundaries_mod
     ! and each attribute has one dimension (that now holds igrid info) less
     TYPE :: particle_boundaries_t
 
-        INTEGER(intk), ALLOCATABLE :: face_neighbours(:, :)
+        INTEGER(intk) :: face_neighbours(26)
 
-        REAL(realk), ALLOCATABLE :: face_normals(:, :, :)
+        REAL(realk) :: face_normals(3, 26) = 0.0
 
     END TYPE particle_boundaries_t
 
-    TYPE(particle_boundaries_t) :: particle_boundaries
+    TYPE(particle_boundaries_t), ALLOCATABLE :: particle_boundaries(:)
 
     CHARACTER(len = 4) :: bc_coupling_mode = "SCAL" ! must be "FLOW", "SCAL" or "PART"
 
@@ -68,10 +68,7 @@ MODULE particle_boundaries_mod
         CALL start_timer(900)
         CALL start_timer(910)
 
-        ALLOCATE(particle_boundaries%face_normals(3, 26, ngrid))
-        particle_boundaries%face_normals = 0.0
-
-        ALLOCATE(particle_boundaries%face_neighbours(26, ngrid))
+        ALLOCATE(particle_boundaries(ngrid))
 
         ! CON : connective particle boundary (can be periodic)
         ! REF : reflective particle boundary
@@ -86,38 +83,38 @@ MODULE particle_boundaries_mod
 
                 CALL get_particle_bc(igrid, iface, bc_coupling_mode, ctyp)
 
-                particle_boundaries%face_neighbours(iface, igrid) = neighbours(iface)
+                particle_boundaries(igrid)%face_neighbours(iface) = neighbours(iface)
 
                 SELECT CASE(iface)
                     CASE(1)
                         IF (ctyp == "REF") THEN ! ctyp == "SWA"
-                            particle_boundaries%face_normals(1, 1, igrid) = 1.0
-                            particle_boundaries%face_neighbours(iface, igrid) = igrid
+                            particle_boundaries(igrid)%face_normals(1, 1) = 1.0
+                            particle_boundaries(igrid)%face_neighbours(iface) = igrid
                         END IF
                     CASE(2)
                         IF (ctyp == "REF") THEN
-                            particle_boundaries%face_normals(1, 2, igrid) = -1.0
-                            particle_boundaries%face_neighbours(iface, igrid) = igrid
+                            particle_boundaries(igrid)%face_normals(1, 2) = -1.0
+                            particle_boundaries(igrid)%face_neighbours(iface) = igrid
                         END IF
                     CASE(3)
                         IF (ctyp == "REF") THEN
-                            particle_boundaries%face_normals(2, 3, igrid) = 1.0
-                            particle_boundaries%face_neighbours(iface, igrid) = igrid
+                            particle_boundaries(igrid)%face_normals(2, 3) = 1.0
+                            particle_boundaries(igrid)%face_neighbours(iface) = igrid
                         END IF
                     CASE(4)
                         IF (ctyp == "REF") THEN
-                            particle_boundaries%face_normals(2, 4, igrid) = -1.0
-                            particle_boundaries%face_neighbours(iface, igrid) = igrid
+                            particle_boundaries(igrid)%face_normals(2, 4) = -1.0
+                            particle_boundaries(igrid)%face_neighbours(iface) = igrid
                         END IF
                     CASE(5)
                         IF (ctyp == "REF") THEN
-                            particle_boundaries%face_normals(3, 5, igrid) = 1.0
-                            particle_boundaries%face_neighbours(iface, igrid) = igrid
+                            particle_boundaries(igrid)%face_normals(3, 5) = 1.0
+                            particle_boundaries(igrid)%face_neighbours(iface) = igrid
                         END IF
                     CASE(6)
                         IF (ctyp == "REF") THEN
-                            particle_boundaries%face_normals(3, 6, igrid) = -1.0
-                            particle_boundaries%face_neighbours(iface, igrid) = igrid
+                            particle_boundaries(igrid)%face_normals(3, 6) = -1.0
+                            particle_boundaries(igrid)%face_neighbours(iface) = igrid
                         END IF
                 END SELECT
 
@@ -140,14 +137,14 @@ MODULE particle_boundaries_mod
                         END IF
 
                         DO j = 1, 3
-                            particle_boundaries%face_normals(j, iface, igrid) = &
-                            particle_boundaries%face_normals(j, iface, igrid) + particle_boundaries%face_normals(j, facelist_b(i, iface), igrid)
+                            particle_boundaries(igrid)%face_normals(j, iface) = &
+                            particle_boundaries(igrid)%face_normals(j, iface) + particle_boundaries(igrid)%face_normals(j, facelist_b(i, iface))
                         END DO
 
                     END IF
                 END DO
 
-                particle_boundaries%face_neighbours(iface, igrid) = igrid
+                particle_boundaries(igrid)%face_neighbours(iface) = igrid
                 found = .FALSE.
                 DO jface = 1, 26
                     IF (facelist_b(1, jface) /= connect_faces(1)) THEN
@@ -164,22 +161,22 @@ MODULE particle_boundaries_mod
                             END IF
                         END DO
                         IF (found .eqv. .TRUE.) THEN
-                            particle_boundaries%face_neighbours(iface, igrid) = neighbours(jface)
+                            particle_boundaries(igrid)%face_neighbours(iface) = neighbours(jface)
                         END IF
                     END IF
                 END DO
 
-                magnitude = SQRT(particle_boundaries%face_normals(1, iface, igrid)**2 + &
-                    particle_boundaries%face_normals(2, iface, igrid)**2 + &
-                    particle_boundaries%face_normals(3, iface, igrid)**2)
+                magnitude = SQRT(particle_boundaries(igrid)%face_normals(1, iface)**2 + &
+                    particle_boundaries(igrid)%face_normals(2, iface)**2 + &
+                    particle_boundaries(igrid)%face_normals(3, iface)**2)
 
                 DO j = 1, 3
                     ! EPSILON(magnitude) is an arbitrary value significantely smaller than 1 as
                     ! the shortest valid normal vector up to now should have a magnitude of 1
                     IF (magnitude <= EPSILON(magnitude)) THEN
-                        particle_boundaries%face_normals(j, iface, igrid) = 0.0
+                        particle_boundaries(igrid)%face_normals(j, iface) = 0.0
                     ELSE
-                        particle_boundaries%face_normals(j, iface, igrid) = particle_boundaries%face_normals(j, iface, igrid) / magnitude
+                        particle_boundaries(igrid)%face_normals(j, iface) = particle_boundaries(igrid)%face_normals(j, iface) / magnitude
                     END IF
                 END DO
 
@@ -206,11 +203,11 @@ MODULE particle_boundaries_mod
                     WRITE(*, *) "FACES:"
                     DO iface = 1, 26
                         WRITE(*, *) "Face:                 ", iface
-                        WRITE(*, *) "Neigbhour grid:       ", particle_boundaries%face_neighbours(iface, igrid)
+                        WRITE(*, *) "Neigbhour grid:       ", particle_boundaries(igrid)%face_neighbours(iface)
                         WRITE(*,'("Normal vector: ")')
-                        WRITE(*, *) "n1                    ", particle_boundaries%face_normals(1, iface, igrid)
-                        WRITE(*, *) "n2                    ", particle_boundaries%face_normals(2, iface, igrid)
-                        WRITE(*, *) "n3                    ", particle_boundaries%face_normals(3, iface, igrid)
+                        WRITE(*, *) "n1                    ", particle_boundaries(igrid)%face_normals(1, iface)
+                        WRITE(*, *) "n2                    ", particle_boundaries(igrid)%face_normals(2, iface)
+                        WRITE(*, *) "n3                    ", particle_boundaries(igrid)%face_normals(3, iface)
                         WRITE(*, *) " "
                     END DO
                 END DO
@@ -237,8 +234,7 @@ MODULE particle_boundaries_mod
 
         CALL finish_obstacles()
 
-        IF (ALLOCATED(particle_boundaries%face_neighbours)) DEALLOCATE(particle_boundaries%face_neighbours)
-        IF (ALLOCATED(particle_boundaries%face_normals)) DEALLOCATE(particle_boundaries%face_normals)
+        IF (ALLOCATED(particle_boundaries)) DEALLOCATE(particle_boundaries)
 
         CALL stop_timer(990)
         CALL stop_timer(900)
@@ -351,16 +347,16 @@ MODULE particle_boundaries_mod
 
             ELSEIF (0 < iface) THEN
 
-                destgrid = particle_boundaries%face_neighbours(iface, temp_grid)
+                destgrid = particle_boundaries(temp_grid)%face_neighbours(iface)
 
                 IF (TRIM(particle_terminal) == "verbose") THEN
                     WRITE(*, *) "Particle moved to Grid face ", iface, "with Target Grid ", destgrid, "."
                 END IF
 
                 CALL reflect_at_boundary(dx_from_here, dy_from_here, dz_from_here, &
-                 particle_boundaries%face_normals(1, iface, temp_grid), &
-                 particle_boundaries%face_normals(2, iface, temp_grid), &
-                 particle_boundaries%face_normals(3, iface, temp_grid), reflect)
+                 particle_boundaries(temp_grid)%face_normals(1, iface), &
+                 particle_boundaries(temp_grid)%face_normals(2, iface), &
+                 particle_boundaries(temp_grid)%face_normals(3, iface), reflect)
 
                 ! TODO (LONGTERM): restructure boundaries and particle motion such that particle coordinates
                 ! do not have to be updated during substeps! (performance)
