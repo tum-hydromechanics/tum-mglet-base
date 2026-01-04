@@ -39,6 +39,8 @@ CONTAINS    !===================================
     SUBROUTINE interpolate_lincon(particle, kk, jj, ii, x, y, z, dx, dy, dz, ddx, ddy, ddz, &
          v1, v2, v3, p_v1, p_v2, p_v3)
 
+        !$omp declare target
+
         ! subroutine arguments
         TYPE(baseparticle_t), INTENT(in) :: particle
         INTEGER(intk), INTENT(in) :: kk, jj, ii

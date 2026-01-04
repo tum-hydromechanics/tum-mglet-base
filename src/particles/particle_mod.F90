@@ -71,6 +71,8 @@ CONTAINS
             ! finish_particle_config()
             CALL set_timer(990, 'PSIM_CORE_FINISH')
 
+            CALL offload_fields()
+
             ! determine particle boundaries and their normal vectors
             CALL init_particle_boundaries()
 
@@ -122,6 +124,8 @@ CONTAINS
             CALL finish_particle_exchange()
 
             CALL finish_particle_boundaries()
+
+            CALL finish_offload_fields()
 
             ! stupid test case for read / write
 

@@ -269,7 +269,7 @@ CONTAINS
 
             IF (dsim_particles) THEN ! <------------------------------------particles
                 ! timeintegration of particles
-                CALL timeintegrate_particles(itstep, dt)
+                CALL timeintegrate_particles_target(itstep, dt)
                 ! migration of particles across grids and partly across MPI ranks (procs)
                 CALL exchange_particles(my_particle_list, ittot, itstep)
             END IF

@@ -72,6 +72,8 @@ MODULE particle_config_mod
     INTEGER(intk), ALLOCATABLE :: nslices(:) ! "particles/nslices"
     REAL(realk), ALLOCATABLE :: slice_levels(:) ! "particles/slice_levels"
 
+    !$omp declare target(D, truncation_limit, dread_obstacles_dict)
+
 CONTAINS
 
     SUBROUTINE init_particle_config()
@@ -617,6 +619,8 @@ CONTAINS
             END IF
         END IF
 
+        !$omp target enter data map(to: D, truncation_limit, dread_obstacles_dict)
+
         DEALLOCATE(seed)
 
         CALL MPI_Barrier(MPI_COMM_WORLD)
@@ -625,6 +629,7 @@ CONTAINS
 
     SUBROUTINE finish_particle_config()
 
+        !$omp target exit data map(delete: D, truncation_limit, dread_obstacles_dict)
         IF (ALLOCATED(nslices)) DEALLOCATE(nslices)
         IF (ALLOCATED(slice_levels)) DEALLOCATE(slice_levels)
         IF (ALLOCATED(particle_seed)) DEALLOCATE(particle_seed)

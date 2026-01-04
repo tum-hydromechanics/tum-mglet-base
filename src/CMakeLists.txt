@@ -42,6 +42,9 @@ target_link_libraries(mglet
     PRIVATE $<IF:$<BOOL:${MGLET_OPENMP}>,OpenMP::OpenMP_Fortran,>
 )
 
+target_compile_options(mglet PRIVATE ${OpenMP_C_FLAGS})
+target_link_options(mglet    PRIVATE ${OpenMP_C_FLAGS})
+
 # When using the NAG Fortran compiler, use the CXX linker (usually GCC),
 # otherwise link with Fortran compiler
 if (CMAKE_Fortran_COMPILER_ID STREQUAL "NAG")

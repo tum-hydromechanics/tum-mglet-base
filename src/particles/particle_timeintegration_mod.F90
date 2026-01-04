@@ -1,9 +1,12 @@
 MODULE particle_timeintegration_mod
 
+    USE omp_lib
+
     USE fields_mod
     USE ib_mod
     USE gc_flowstencils_mod
 
+    USE particle_ofields_mod
     USE particle_runtimestat_mod
     USE particle_list_mod
     USE particle_interpolation_mod
@@ -14,15 +17,36 @@ MODULE particle_timeintegration_mod
 
     TYPE(rk_2n_t) :: prkscheme
 
+    ! rk coefficients as arrays (for offloading) TODO: remove
+    INTEGER(intk) :: nrk_offload
+    REAL(realk), ALLOCATABLE :: A_offload(:)
+    REAL(realk), ALLOCATABLE :: B_offload(:) 
+
+    !$omp declare target(nrk_offload, A_offload, B_offload)
+
 CONTAINS
 
     SUBROUTINE init_particle_timeintegration()
+
+        ! local variables
+        INTEGER(intk) :: irk 
 
         CALL start_timer(900)
         CALL start_timer(910)
 
         ! init rk scheme
         CALL prkscheme%init(prkmethod)
+
+        nrk_offload = prkscheme%nrk
+        
+        ALLOCATE(A_offload(nrk_offload))
+        ALLOCATE(B_offload(nrk_offload))
+
+        DO irk = 1, nrk_offload
+            CALL prkscheme%get_coeffs(A_offload(irk), B_offload(irk), irk)
+        END DO
+
+        !$omp target enter data map(to: nrk_offload, A_offload, B_offload)
 
         IF (duse_avg_flow) THEN
 
@@ -46,6 +70,7 @@ CONTAINS
             END BLOCK
 
         END IF
+
         CALL stop_timer(910)
         CALL stop_timer(900)
 
@@ -235,11 +260,6 @@ CONTAINS
 
             CALL prkscheme%get_coeffs(A, B, irk)
 
-            ! should be obsolete as the effective displacement is also zeroized in move_particle
-            pdx_eff = 0.0
-            pdy_eff = 0.0
-            pdz_eff = 0.0
-
             ! get particle velocity
             IF (dinterp_padvection) THEN
                 CALL interpolate_lincon(particle, kk, jj, ii, x, y, z, dx, dy, dz, ddx, ddy, ddz, &
@@ -325,9 +345,160 @@ CONTAINS
 
     END SUBROUTINE particle_diffusion
 
+
+    SUBROUTINE timeintegrate_particles_target(itstep, dt)
+
+        ! subroutine arguments
+        INTEGER(intk), INTENT(in) :: itstep
+        REAL(realk), INTENT(in) :: dt
+
+        ! local variables
+        INTEGER(intk) :: igrid, i, j, ipart, temp_grid, device_nbr
+        REAL(realk) :: temp_x, temp_y, temp_z
+
+        !$omp target update to(u_offload, v_offload, w_offload)
+        
+        ! TODO: remove 
+        !$omp target update to(my_particle_list)
+
+        !$omp target
+        CALL count_pog_target(my_particle_list, grids_np, plist_displ)
+
+        device_nbr = omp_get_device_num()
+        WRITE(*, '("    Timeintegration on proc  ", I3)') myid
+        WRITE(*, '("    Operating device (nbr):  ", I3)') device_nbr
+        !$omp end target
+
+        !$omp target
+        !$omp teams distribute
+        DO i = 1, nmy_particle_grids
+
+            igrid = my_particle_grids(i)
+
+            BLOCK
+                INTEGER(intk) :: ii, jj, kk
+                REAL(realk), POINTER, CONTIGUOUS, DIMENSION(:) :: x, y, z
+                REAL(realk), POINTER, CONTIGUOUS, DIMENSION(:) :: dx, dy, dz, ddx, ddy, ddz
+                REAL(realk), POINTER, CONTIGUOUS, DIMENSION(:, :, :) :: pwu, pwv, pww
+
+                CALL get_mgdims_target(kk, jj, ii, igrid)
+
+                CALL ptr_to_grid_x(x_offload, igrid, x)
+                CALL ptr_to_grid_y(y_offload, igrid, y)
+                CALL ptr_to_grid_z(z_offload, igrid, z)
+
+                CALL ptr_to_grid_x(dx_offload, igrid, dx)
+                CALL ptr_to_grid_y(dy_offload, igrid, dy)
+                CALL ptr_to_grid_z(dz_offload, igrid, dz)
+                CALL ptr_to_grid_x(ddx_offload, igrid, ddx)
+                CALL ptr_to_grid_y(ddy_offload, igrid, ddy)
+                CALL ptr_to_grid_z(ddz_offload, igrid, ddz)
+
+                CALL ptr_to_grid3(u_offload, igrid, pwu)
+                CALL ptr_to_grid3(v_offload, igrid, pwv)
+                CALL ptr_to_grid3(w_offload, igrid, pww)
+
+                !$omp parallel do
+                DO j = 1, grids_np(i)
+
+                    ipart = plist_displ(i) + j
+
+                    temp_grid = my_particle_list%particles(ipart)%igrid
+                    temp_x = my_particle_list%particles(ipart)%x
+                    temp_y = my_particle_list%particles(ipart)%y
+                    temp_z = my_particle_list%particles(ipart)%z
+
+                    CALL particle_advection_target(my_particle_list%particles(ipart), temp_grid, temp_x, temp_y, temp_z, &
+                    kk, jj, ii, x, y, z, dx, dy, dz, ddx, ddy, ddz, pwu, pwv, pww, dt)
+                    
+                    CALL particle_diffusion_target(my_particle_list%particles(ipart), temp_grid, temp_x, temp_y, temp_z, dt)
+
+                    ! TODO: reintroduce particle runtime statistics
+                END DO 
+                !$omp end parallel do
+            END BLOCK
+        END DO
+        !$omp end teams distribute
+        !$omp end target
+
+        ! TODO: remove 
+        !$omp target update from(my_particle_list)
+
+    END SUBROUTINE timeintegrate_particles_target
+
+    SUBROUTINE particle_advection_target(particle, temp_grid, temp_x, temp_y, temp_z, kk, jj, ii, x, y, z, dx, dy, dz, ddx, ddy, ddz, pwu, pwv, pww, dt)
+
+        !$omp declare target
+
+        ! subroutine arguments
+        TYPE(baseparticle_t), INTENT(inout) :: particle
+        INTEGER(intk), INTENT(inout) :: temp_grid
+        REAL(realk), INTENT(inout) :: temp_x, temp_y, temp_z
+        INTEGER(intk), INTENT(in) :: kk, jj, ii
+        REAL(realk), POINTER, CONTIGUOUS, DIMENSION(:), INTENT(in) :: x, y, z
+        REAL(realk), POINTER, CONTIGUOUS, DIMENSION(:), INTENT(in) :: dx, dy, dz, ddx, ddy, ddz
+        REAL(realk), POINTER, CONTIGUOUS, DIMENSION(:, :, :), INTENT(in) :: pwu, pwv, pww
+        REAL(realk), INTENT(in) :: dt
+        
+        ! local variables
+        INTEGER(intk) :: irk
+        REAL(realk) :: pu_adv, pv_adv, pw_adv
+        REAL(realk) :: pdx_adv, pdy_adv, pdz_adv
+        REAL(realk) :: pdx_pot, pdy_pot, pdz_pot
+        REAL(realk) :: pdx_eff, pdy_eff, pdz_eff
+
+        DO irk = 1, nrk_offload
+
+            ! get particle velocity
+            CALL interpolate_lincon(particle, kk, jj, ii, x, y, z, dx, dy, dz, ddx, ddy, ddz, &
+             pwu, pwv, pww, pu_adv, pv_adv, pw_adv)
+
+            CALL prkstep(pdx_pot, pdy_pot, pdz_pot, pu_adv, pv_adv, pw_adv, dt, &
+             A_offload(irk), B_offload(irk), pdx_adv, pdy_adv, pdz_adv)
+
+            ! Particle Boundary Interaction
+            CALL move_particle_target(particle, pdx_adv, pdy_adv, pdz_adv, &
+             pdx_eff, pdy_eff, pdz_eff, temp_x, temp_y, temp_z, temp_grid)
+             
+            pdx_pot = pdx_eff / B_offload(irk)
+            pdy_pot = pdy_eff / B_offload(irk)
+            pdz_pot = pdz_eff / B_offload(irk)
+            
+            ! TODO: reintroduce particle runtime statistics
+        END DO
+
+    END SUBROUTINE particle_advection_target
+
+    SUBROUTINE particle_diffusion_target(particle, temp_grid, temp_x, temp_y, temp_z, dt)
+
+        !$omp declare target
+
+        ! subroutine arguments
+        TYPE(baseparticle_t), INTENT(inout) :: particle
+        INTEGER(intk), INTENT(inout) :: temp_grid
+        REAL(realk), INTENT(inout) :: temp_x, temp_y, temp_z
+        REAL(realk), INTENT(in) :: dt
+
+        ! local variables
+        REAL(realk) :: pdx_diff, pdy_diff, pdz_diff
+        REAL(realk) :: pdx_eff, pdy_eff, pdz_eff
+
+        CALL generate_diffusive_displacement_target(dt, D(1), D(2), D(3), pdx_diff, pdy_diff, pdz_diff)
+
+        CALL move_particle_target(particle, pdx_diff, pdy_diff, pdz_diff, &
+             pdx_eff, pdy_eff, pdz_eff, temp_x, temp_y, temp_z, temp_grid)
+
+        ! TODO: reintroduce particle runtime statistics
+
+    END SUBROUTINE particle_diffusion_target
+
+
     SUBROUTINE finish_particle_timeintegration()
 
-        CONTINUE
+        !$omp target exit data map(delete: nrk_offload, A_offload, B_offload)
+
+        DEALLOCATE(A_offload)
+        DEALLOCATE(B_offload)
 
     END SUBROUTINE finish_particle_timeintegration
 

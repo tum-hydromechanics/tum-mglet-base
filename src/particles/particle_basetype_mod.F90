@@ -8,7 +8,9 @@ MODULE particle_basetype_mod
     USE field_mod
     USE fields_mod
 
+    USE particle_ofields_mod
     USE particle_config_mod
+    USE particle_ofields_mod
 
     IMPLICIT NONE
 
@@ -465,5 +467,232 @@ CONTAINS
         END IF
 
     END SUBROUTINE print_particle_status
+
+
+    ! determine the pressurce cell that a particle is on from its coordinates and grid
+    SUBROUTINE set_particle_cell_target(particle)
+
+        !$omp declare target
+
+        ! subroutine arguments
+        TYPE(baseparticle_t), INTENT(inout) :: particle
+
+        ! local variables
+        INTEGER(intk) :: k, j, i, kk, jj, ii, counter, max_iterations = 10
+
+        REAL(realk), POINTER, CONTIGUOUS, DIMENSION(:) :: x, y, z
+        REAL(realk) :: diff_old, diff_new
+        REAL(realk) :: minx, maxx, miny, maxy, minz, maxz
+
+
+        CALL get_bbox_target(minx, maxx, miny, maxy, minz, maxz, particle%igrid)
+
+        CALL ptr_to_grid_x(x_offload, particle%igrid, x)
+        CALL ptr_to_grid_y(y_offload, particle%igrid, y)
+        CALL ptr_to_grid_z(z_offload, particle%igrid, z)
+
+        CALL get_mgdims_target(kk, jj, ii, particle%igrid)
+
+        ! the following assumes that the grid coordinates X/Y/Z are each sorted such that for any i < j and any direction x_k, x_k(i) < x_k(j) !
+        ! the following procedure is capable of handling stretched grids!
+
+        ! find nearest x(i):
+        counter = 1
+
+        i = 3 + NINT((ii - 5) * (particle%x - minx) / (maxx - minx), intk)
+        particle%ijkcell(1) = i
+        diff_old = ABS(x(i) - particle%x)
+        diff_new = 0
+
+        DO WHILE (diff_new < diff_old .AND. counter <= max_iterations)
+            particle%ijkcell(1) = i
+            diff_old = ABS(x(i) - particle%x)
+            IF (x(i) <= particle%x) THEN
+                ! the denominator of the fraction will NOT be zero because x(i) /= maxx for all i
+                i = i + CEILING((ii - 2 - i) * (particle%x - x(i)) / (maxx - x(i)), intk)
+                i = MAX(i, 3) ! probalby unneccessary
+                i = MIN(i, ii-2) ! probalby unneccessary
+            ELSEIF (x(i) > particle%x) THEN
+                i = 3 + FLOOR((i - 2) * (particle%x - minx) / (x(i) - minx), intk)
+                i = MAX(i, 3) ! probalby unneccessary
+                i = MIN(i, ii-2) ! probalby unneccessary
+            ELSE
+                EXIT
+            END IF
+            diff_new = ABS(x(i) - particle%x)
+
+            counter = counter + 1
+        END DO
+
+        IF (i < 3) THEN
+            i = 3
+            particle%ijkcell(1) = i
+        ELSEIF (i > (ii - 2)) THEN
+            i = ii - 2
+            particle%ijkcell(1) = i
+        END IF
+
+        ! find nearest y(j):
+        counter = 1
+
+        j = 3 + NINT((jj - 5) * (particle%y - miny) / (maxy - miny), intk)
+        particle%ijkcell(2) = j
+        diff_old = ABS(y(j) - particle%y)
+        diff_new = 0
+
+        DO WHILE (diff_new < diff_old .AND. counter <= max_iterations)
+            particle%ijkcell(2) = j
+            diff_old = ABS(y(j) - particle%y)
+            IF (y(j) <= particle%y) THEN
+            ! the denominator of the fraction will NOT be zero because y(j) /= maxx for all j
+                j = j + CEILING((jj - 2 - j) * (particle%y - y(j)) / (maxy - y(j)), intk)
+                j = MAX(j, 3) ! probalby unneccessary
+                j = MIN(j, jj-2) ! probalby unneccessary
+            ELSEIF (y(j) > particle%y) THEN
+                j = 3 + FLOOR((j - 2) * (particle%y - miny) / (y(j) - miny), intk)
+                j = MAX(j, 3) ! probalby unneccessary
+                j = MIN(j, jj-2) ! probalby unneccessary
+            ELSE
+                EXIT
+            END IF
+            diff_new = ABS(y(j) - particle%y)
+
+            counter = counter + 1
+        END DO
+
+        IF (j < 3) THEN
+            j = 3
+            particle%ijkcell(2) = j
+        ELSEIF (j > (jj - 2)) THEN
+            j = jj - 2
+            particle%ijkcell(2) = j
+        END IF
+
+        ! find nearest z(k):
+        counter = 1
+
+        k = 3 + NINT((kk - 5) * (particle%z - minz) / (maxz - minz), intk)
+        particle%ijkcell(3) = k
+        diff_old = ABS(z(k) - particle%z)
+        diff_new = 0
+
+        DO WHILE (diff_new < diff_old .AND. counter <= max_iterations)
+            particle%ijkcell(3) = k
+            diff_old = ABS(z(k) - particle%z)
+            IF (z(k) <= particle%z) THEN
+                ! the denominator of the fraction will NOT be zero because z(k) /= maxx for all k
+                k = k + CEILING((kk - 2 - k) * (particle%z - z(k)) / (maxz - z(k)), intk)
+                k = MAX(k, 3) ! probalby unneccessary
+                k = MIN(k, kk-2) ! probalby unneccessary
+            ELSEIF (z(k) > particle%z) THEN
+                k = 3 + FLOOR((k - 2) * (particle%z - minz) / (z(k) - minz), intk)
+                k = MAX(k, 3) ! probalby unneccessary
+                k = MIN(k, kk-2) ! probalby unneccessary
+            ELSE
+                EXIT
+            END IF
+            diff_new = ABS(z(k) - particle%z)
+
+            counter = counter + 1
+        END DO
+
+        IF (k < 3) THEN
+            k = 3
+            particle%ijkcell(3) = k
+        ELSEIF (i > (ii - 2)) THEN
+            k = kk - 2
+            particle%ijkcell(3) = k
+        END IF
+
+        ! TODO: rethink this safety operation
+        CALL update_particle_cell_target(particle)
+
+    END SUBROUTINE set_particle_cell_target
+
+    ! determine the pressurce cell that a particle is on from its coordinates, grid and previous presuure cell
+    SUBROUTINE update_particle_cell_target(particle)
+
+        !$omp declare target
+
+        ! subroutine arguments
+        TYPE(baseparticle_t), INTENT(inout) :: particle
+
+        ! local variables
+        REAL(realk), POINTER, CONTIGUOUS, DIMENSION(:) :: x, y, z
+        REAL(realk), POINTER, CONTIGUOUS, DIMENSION(:) :: dx, dy, dz
+
+        REAL(realk) :: diff_old, diff_new
+        REAL(realk) :: minx, maxx, miny, maxy, minz, maxz
+        INTEGER(intk) :: k, j, i, kk, jj, ii, istep, jstep, kstep
+
+        CALL ptr_to_grid_x(x_offload, particle%igrid, x)
+        CALL ptr_to_grid_y(y_offload, particle%igrid, y)
+        CALL ptr_to_grid_z(z_offload, particle%igrid, z)
+
+        CALL ptr_to_grid_x(dx_offload, particle%igrid, dx)
+        CALL ptr_to_grid_y(dy_offload, particle%igrid, dy)
+        CALL ptr_to_grid_z(dz_offload, particle%igrid, dz)
+
+        CALL get_mgdims_target(kk, jj, ii, particle%igrid)
+        CALL get_bbox_target(minx, maxx, miny, maxy, minz, maxz, particle%igrid)
+
+        !IF (particle%ijkcell(1) < 1 .OR. particle%ijkcell(1) > ii) CALL errr(__FILE__, __LINE__)
+        !IF (particle%ijkcell(2) < 1 .OR. particle%ijkcell(2) > jj) CALL errr(__FILE__, __LINE__)
+        !IF (particle%ijkcell(3) < 1 .OR. particle%ijkcell(3) > kk) CALL errr(__FILE__, __LINE__)
+
+        ! the following assumes that the grid coordinates X/Y/Z are each sorted such that for any i < j and any direction x, x(i) < x(j) !
+        ! the following procedure is capable of handling stretched grids!
+
+        ! find nearest x:
+        istep = INT(SIGN(1.0_realk, particle%x - x(particle%ijkcell(1))), intk)
+
+        i = MIN(MAX(particle%ijkcell(1) + istep, 1_intk), ii)
+
+        diff_old = ABS(x(particle%ijkcell(1)) - particle%x)
+        diff_new = ABS(x(i) - particle%x)
+
+        DO WHILE (diff_new < diff_old)
+            i = i + istep
+            IF (i < 1_intk .OR. i > ii) EXIT
+            diff_old = diff_new
+            diff_new = ABS(x(i) - particle%x)
+        END DO
+
+        particle%ijkcell(1) = MIN(MAX(i - istep, 1_intk), ii) ! MIN/MAX should be obsolete here
+
+        ! find nearest y:
+        jstep = INT(SIGN(1.0_realk, particle%y - y(particle%ijkcell(2))), intk)
+
+        j = MIN(MAX(particle%ijkcell(2) + jstep, 1_intk), jj)
+
+        diff_old = ABS(y(particle%ijkcell(2)) - particle%y)
+        diff_new = ABS(y(j) - particle%y)
+
+        DO WHILE (diff_new < diff_old)
+            j = j + jstep
+            IF (j < 1_intk .OR. j > jj) EXIT
+            diff_old = diff_new
+            diff_new = ABS(y(j) - particle%y)
+        END DO
+
+        particle%ijkcell(2) = MIN(MAX(j - jstep, 1_intk), jj) ! MIN/MAX should be obsolete here
+
+        ! find nearest z:
+        kstep = INT(SIGN(1.0_realk, particle%z - z(particle%ijkcell(3))), intk)
+
+        k = MIN(MAX(particle%ijkcell(3) + kstep, 1_intk), kk)
+
+        diff_old = ABS(z(particle%ijkcell(3)) - particle%z)
+        diff_new = ABS(z(k) - particle%z)
+
+        DO WHILE (diff_new < diff_old)
+            k = k + kstep
+            IF (k < 1_intk .OR. k > kk) EXIT
+            diff_old = diff_new
+            diff_new = ABS(z(k) - particle%z)
+        END DO
+
+        particle%ijkcell(3) = MIN(MAX(k - kstep, 1_intk), kk) ! MIN/MAX should be obsolete here
+    END SUBROUTINE update_particle_cell_target
 
 END MODULE particle_basetype_mod

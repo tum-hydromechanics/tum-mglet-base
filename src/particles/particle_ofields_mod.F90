@@ -1,12 +1,14 @@
-MODULE offload_helper_mod
+MODULE particle_ofields_mod
     USE precision_mod, ONLY: intk, realk
     USE pointers_mod, ONLY: ip3d, ip1d
-    USE grids_mod, ONLY: nmygrids, get_mgdims, get_mgbasb, nboconds, get_bc_ctyp
+    USE grids_mod, ONLY: nmygrids, get_mgdims, get_mgbasb, get_bbox, nboconds, get_bc_ctyp
     USE err_mod, ONLY: errr
     USE fields_mod
     USE realfield_mod
-    USE scacore_mod
     USE flowcore_mod
+    USE ib_mod
+
+    USE particle_config_mod
 
     IMPLICIT NONE(type, external)
     PRIVATE
@@ -28,6 +30,7 @@ MODULE offload_helper_mod
     ! Grid parameters
     INTEGER(intk), POINTER, CONTIGUOUS, DIMENSION(:) :: ip3d_offload, ip1d_offload
     INTEGER(intk), POINTER, CONTIGUOUS, DIMENSION(:, :) :: nboconds_offload
+    REAL(realk), POINTER, CONTIGUOUS, DIMENSION(:) :: x_offload, y_offload, z_offload
     REAL(realk), POINTER, CONTIGUOUS, DIMENSION(:) :: dx_offload, dy_offload, dz_offload
     REAL(realk), POINTER, CONTIGUOUS, DIMENSION(:) :: ddx_offload, ddy_offload, ddz_offload
     ! Flow/Scalar fields
@@ -35,12 +38,14 @@ MODULE offload_helper_mod
     
     ! ----- Newly encoded or global arrays -----
     INTEGER(intk), POINTER, CONTIGUOUS, DIMENSION(:) :: mgdims_offload, mgbasb_offload
+    INTEGER(intk), POINTER, CONTIGUOUS, DIMENSION(:) :: bbox_offload
     INTEGER(intk), POINTER, CONTIGUOUS, DIMENSION(:) :: encoded_ctyp_offload
     INTEGER(intk), POINTER, CONTIGUOUS, DIMENSION(:, :) :: bc_indexing
 
-    ! Make all data available on the target device
-    !$omp declare target(ip3d_offload, ip1d_offload, mgdims_offload, mgbasb_offload)
+    ! DONT USE DECLARE TARGET FOR VARIABLES AS THIS SEEMS TO INDUCE IMPLICIT MAPPING 
+    !$omp declare target(ip3d_offload, ip1d_offload, mgdims_offload, mgbasb_offload, bbox_offload)
     !$omp declare target(encoded_ctyp_offload, nboconds_offload, bc_indexing)
+    !$omp declare target(x_offload, y_offload, z_offload)
     !$omp declare target(dx_offload, dy_offload, dz_offload, ddx_offload, ddy_offload, ddz_offload)
     !$omp declare target(u_offload, v_offload, w_offload)
 
@@ -50,11 +55,12 @@ MODULE offload_helper_mod
     ! Public variables for host
 
     ! Public subroutines for device
-    PUBLIC :: ptr_to_grid_x, ptr_to_grid_y, ptr_to_grid_z, ptr_to_grid3, get_mgdims_target, get_mgbasb_target, &
+    PUBLIC :: ptr_to_grid_x, ptr_to_grid_y, ptr_to_grid_z, ptr_to_grid3, get_bbox_target, get_mgdims_target, get_mgbasb_target, &
         get_encoded_ctyp_offload
 
     ! Public variables for device
-    PUBLIC :: dx_offload, dy_offload, dz_offload, ddx_offload, ddy_offload, ddz_offload, &
+    PUBLIC :: x_offload, y_offload, z_offload, &
+        dx_offload, dy_offload, dz_offload, ddx_offload, ddy_offload, ddz_offload, &
         u_offload, v_offload, w_offload, nboconds_offload
 
 CONTAINS
@@ -76,25 +82,41 @@ CONTAINS
     !! Sets up pointers to ip3d and ip1d.
     !! Maps fields to the target device.
     SUBROUTINE map_grid_data()
+
         ! Local variables
-        INTEGER(intk) :: igrid, i, mgdims_arr_size, kk, jj, ii
+        INTEGER(intk) :: igrid, i, mgdims_arr_size, bbox_arr_size, kk, jj, ii
+        REAL(realk) :: minx, maxx, miny, maxy, minz, maxz
 
         ! Create grids_mod copy to offload
-        mgdims_arr_size = N_DIMS * nmygrids
+        mgdims_arr_size = 3 * ngrid
         ALLOCATE(mgdims_offload(mgdims_arr_size))
-        DO igrid = 1, nmygrids
-            i = (igrid - 1) * N_DIMS + 1
+        DO igrid = 1, ngrid
+            i = (igrid - 1) * 3 + 1
             CALL get_mgdims(kk, jj, ii, igrid)
             mgdims_offload(i) = ii
             mgdims_offload(i+1) = jj
             mgdims_offload(i+2) = kk
         END DO
 
+        ! Create grids_mod copy to offload
+        bbox_arr_size = 6 * ngrid
+        ALLOCATE(bbox_offload(bbox_arr_size))
+        DO igrid = 1, ngrid
+            i = (igrid - 1) * 6 + 1
+            CALL get_bbox(minx, maxx, miny, maxy, minz, maxz, igrid)
+            bbox_offload(i) = minx
+            bbox_offload(i+1) = maxx
+            bbox_offload(i+2) = miny
+            bbox_offload(i+3) = maxy
+            bbox_offload(i+4) = minz
+            bbox_offload(i+5) = maxz
+        END DO
+
         ! Create pointers to pointers_mod fields just to have all omp directives to map data in this file
         ip3d_offload => ip3d
         ip1d_offload => ip1d
         
-        !$omp target enter data map(to: ip3d_offload, ip1d_offload, mgdims_offload)
+        !$omp target enter data map(to: ip3d_offload, ip1d_offload, mgdims_offload, bbox_offload)
     END SUBROUTINE
 
     !> @brief Sets up boundary condition representation for target device
@@ -131,16 +153,22 @@ CONTAINS
     !! Maps fields to the target device.
     SUBROUTINE map_constant_grid_fields()
         ! Local variables
-        TYPE(field_t), POINTER :: dx_f, dy_f, dz_f, ddx_f, ddy_f, ddz_f, bt_f
+        TYPE(field_t), POINTER :: x_f, y_f, z_f, dx_f, dy_f, dz_f, ddx_f, ddy_f, ddz_f, bt_f
 
         ! Create copy for grid constants
+        CALL get_field(x_f, "X")
+        CALL get_field(y_f, "Y")
+        CALL get_field(z_f, "Z")
         CALL get_field(dx_f, "DX")
         CALL get_field(dy_f, "DY")
         CALL get_field(dz_f, "DZ")
         CALL get_field(ddx_f, "DDX")
         CALL get_field(ddy_f, "DDY")
         CALL get_field(ddz_f, "DDZ")
-        
+
+        x_offload => x_f%arr
+        y_offload => y_f%arr
+        z_offload => z_f%arr
         dx_offload => dx_f%arr
         dy_offload => dy_f%arr
         dz_offload => dz_f%arr
@@ -148,6 +176,7 @@ CONTAINS
         ddy_offload => ddy_f%arr
         ddz_offload => ddz_f%arr
 
+        !$omp target enter data map(to: x_offload, y_offload, z_offload)
         !$omp target enter data map(to: dx_offload, dy_offload, dz_offload, ddx_offload, ddy_offload, ddz_offload)
     END SUBROUTINE
 
@@ -159,9 +188,22 @@ CONTAINS
         ! Local variables
         TYPE(field_t), POINTER :: u_f, v_f, w_f, sca_f, g_f
 
-        CALL get_field(u_f, "U")
-        CALL get_field(v_f, "V")
-        CALL get_field(w_f, "W")
+        IF (duse_avg_flow) THEN
+            ! use the point values deduced from the average flow field
+            CALL get_field(u_f, "PWU_AVG")
+            CALL get_field(v_f, "PWV_AVG")
+            CALL get_field(w_f, "PWW_AVG")
+        ELSE
+            IF (ib%type == "GHOSTCELL") THEN
+                CALL get_field(u_f, "PWU")
+                CALL get_field(v_f, "PWV")
+                CALL get_field(w_f, "PWW")
+            ELSE
+                CALL get_field(u_f, "U")
+                CALL get_field(v_f, "V")
+                CALL get_field(w_f, "W")
+            END IF
+        END IF
 
         u_offload => u_f%arr
         v_offload => v_f%arr
@@ -283,13 +325,15 @@ CONTAINS
     !! Exits all fields on the target device
     SUBROUTINE finish_offload_fields()
         !$omp target exit data map(delete: mgdims_offload, ip3d_offload, ip1d_offload)
-        !$omp target exit data map(delete: nboconds_offload, mgbasb_offload)
-        !$omp target exit data map(delete: dx_offload, dy_offload, dz_offload, ddx_offload, ddy_offload, ddz_offload, bt_offload)
+        !$omp target exit data map(delete: nboconds_offload, mgbasb_offload, bbox_offload)
+        !$omp target exit data map(delete: x_offload, y_offload, z_offload)
+        !$omp target exit data map(delete: dx_offload, dy_offload, dz_offload, ddx_offload, ddy_offload, ddz_offload)
         !$omp target exit data map(delete: u_offload, v_offload, w_offload)
         !$omp target exit data map(delete: bc_indexing, encoded_ctyp_offload)
 
         DEALLOCATE(mgdims_offload)
         DEALLOCATE(mgbasb_offload)
+        DEALLOCATE(bbox_offload)
         DEALLOCATE(encoded_ctyp_offload)
     END SUBROUTINE finish_offload_fields
 
@@ -333,12 +377,31 @@ CONTAINS
 
         ! Local variablees
         INTEGER(intk) :: i
-        i = (igrid - 1) * N_DIMS + 1
+        i = (igrid - 1) * 3 + 1
 
         ii = mgdims_offload(i)
         jj = mgdims_offload(i+1)
         kk = mgdims_offload(i+2)
     END SUBROUTINE get_mgdims_target
+
+    SUBROUTINE get_bbox_target(minx, maxx, miny, maxy, minz, maxz, igrid)
+
+        !$omp declare target
+
+        REAL(realk), INTENT(OUT) :: minx, maxx, miny, maxy, minz, maxz
+        INTEGER(intk), INTENT(IN) :: igrid
+
+        ! local variables
+        INTEGER(intk) :: i
+
+        i = (igrid - 1) * 6 + 1
+        minx = bbox_offload(i)
+        maxx = bbox_offload(i+1)
+        miny = bbox_offload(i+2)
+        maxy = bbox_offload(i+3)
+        minz = bbox_offload(i+4)
+        maxz = bbox_offload(i+5)
+    END SUBROUTINE get_bbox_target
 
     !> @brief Get field length 1d in x-direction
     !!
@@ -503,4 +566,4 @@ CONTAINS
         CALL get_ip3_target(ip, n_grid)
         grid_ptr(1:kk, 1:jj, 1:ii) => arr_ptr(ip:ip+kk*jj*ii-1)
     END SUBROUTINE ptr_to_grid3
-END MODULE offload_helper_mod
+END MODULE particle_ofields_mod

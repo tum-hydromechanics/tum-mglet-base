@@ -47,6 +47,9 @@ MODULE particle_obstacles_mod
     ! list that holds one obstacle_pointer_t per grid (all grids, not limited to those on this process)
     TYPE(obstacle_pointer_t), ALLOCATABLE :: my_obstacle_pointers(:)
 
+    ! list that holds the number of obstacles relevant for this pro per grid
+    INTEGER(intk), ALLOCATABLE :: n_my_obstacles_on_grid(:) 
+
     ! TODO: change this value?
     ! factor to compute the minimum distance between obstacles for which no intermediate obstacle is generated
     ! using EPSILON(realk)
@@ -56,6 +59,8 @@ MODULE particle_obstacles_mod
     REAL(realk), PARAMETER :: radius_ratio = 0.348
 
     REAL(realk) :: aura
+
+    !$omp declare target(my_obstacles, my_obstacle_pointers, n_my_obstacles_on_grid, aura)
 
 CONTAINS    !===================================
 
@@ -79,6 +84,8 @@ CONTAINS    !===================================
 
         IF (.NOT. dread_obstacles_dict) THEN
             ALLOCATE(my_obstacles(0))
+            ALLOCATE(n_my_obstacles_on_grid(ngrid))
+            n_my_obstacles_on_grid = 0
             RETURN
         END IF
 
@@ -125,7 +132,11 @@ CONTAINS    !===================================
 
         ALLOCATE(counter_array(ngrid))
         counter_array = 0
+
         ALLOCATE(my_obstacle_pointers(ngrid))
+
+        ALLOCATE(n_my_obstacles_on_grid(ngrid))
+        n_my_obstacles_on_grid = 0
 
         OPEN(newunit = unit, file = 'ObstaclesDict.txt', status = 'OLD', action = 'READ')
 
@@ -381,6 +392,10 @@ CONTAINS    !===================================
             END IF
         END IF
 
+        DO igrid = 1, ngrid
+            n_my_obstacles_on_grid(igrid) = SIZE(my_obstacle_pointers(igrid)%grid_obstacles)
+        END DO
+
         ! obsolete ?
         CALL MPI_Barrier(MPI_COMM_WORLD)
 
@@ -411,6 +426,7 @@ CONTAINS    !===================================
         ! local variables
         INTEGER(intk) :: i
 
+        DEALLOCATE(n_my_obstacles_on_grid)
         IF (ALLOCATED(my_obstacles)) DEALLOCATE(my_obstacles)
         IF (ALLOCATED(my_obstacle_pointers)) THEN
             DO i = 1, SIZE(my_obstacle_pointers)

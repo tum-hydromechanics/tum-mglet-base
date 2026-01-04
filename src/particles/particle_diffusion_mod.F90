@@ -28,6 +28,8 @@ MODULE particle_diffusion_mod
 
     ! truncation limit stored in config mod
     REAL(realk) :: truncation_factor
+    
+    !$omp declare target(truncation_factor)
 
 CONTAINS
 
@@ -59,6 +61,8 @@ CONTAINS
                 WRITE(*, '()')
             END IF
         END IF
+
+        !$omp target enter data map(to: truncation_factor)
 
         CALL stop_timer(910)
         CALL stop_timer(900)
@@ -293,7 +297,69 @@ CONTAINS
 
     END SUBROUTINE get_truncation_factor
 
+    SUBROUTINE generate_diffusive_displacement_target(dt, D_x, D_y, D_z, pdx, pdy, pdz)
+
+        !$omp declare target
+
+        ! subroutine arguments
+        REAL(realk), INTENT(in) :: dt
+        REAL(realk), INTENT(in) :: D_x, D_y, D_z
+        REAL(realk), INTENT(out) :: pdx, pdy, pdz
+
+        ! local variables
+        REAL(realk) :: sigx, sigy, sigz, ranx, rany, ranz
+
+        sigx = SQRT(2 * D_x * dt)
+        CALL gaussian_dist_target(0.0_realk, sigx, ranx)
+        pdx = ranx ! diffusion length
+
+        sigy = SQRT(2 * D_y * dt)
+        CALL gaussian_dist_target(0.0_realk, sigy, rany)
+        pdy = rany ! diffusion length
+
+        sigz = SQRT(2 * D_z * dt)
+        CALL gaussian_dist_target(0.0_realk, sigz, ranz)
+        pdz = ranz ! diffusion length
+
+    END SUBROUTINE generate_diffusive_displacement_target
+
+    SUBROUTINE gaussian_dist_target(mu, sigma, R)
+
+        !$omp declare target
+
+        ! subroutine arguments
+        REAL(realk), INTENT(in) :: mu, sigma
+        REAL(realk), INTENT(out) :: R
+
+        ! local variables
+        REAL(realk) :: rand1, rand2, P
+        LOGICAL :: found
+
+        found = .FALSE.
+
+        DO WHILE (.NOT. found)
+
+            CALL RANDOM_NUMBER(rand1)
+            rand1 = truncation_limit / truncation_factor * (rand1 - 0.5) * 2.0
+
+            P = EXP(-(rand1 ** 2) / 2)
+
+            CALL RANDOM_NUMBER(rand2)
+
+            IF (rand2 <= P) THEN
+                ! linear transformation to match given mean and standard deviation
+                R = mu + sigma * truncation_factor * rand1
+                found = .TRUE.
+            END IF
+
+        END DO
+
+    END SUBROUTINE gaussian_dist_target
+
+
     SUBROUTINE finish_particle_diffusion()
+
+        !$omp target exit data map(delete: truncation_factor)
 
     END SUBROUTINE finish_particle_diffusion
 

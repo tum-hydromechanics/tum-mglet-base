@@ -50,6 +50,8 @@ MODULE particle_list_mod
 
     INTEGER(intk) :: global_np, node_np, local_np
 
+    !$omp declare target(nmy_particle_grids, particle_grid_ptr)
+
     PUBLIC :: global_np, local_np, my_particle_list ! , guest_particle_list
 
 CONTAINS    !===================================
@@ -224,6 +226,9 @@ CONTAINS    !===================================
                 WRITE(*, '()')
             END IF
         END IF
+        
+        !$omp target enter data map(to: my_particle_list)
+        !$omp target enter data map(to: grids_np, plist_displ, particle_grid_ptr)
 
         CALL stop_timer(910)
         CALL stop_timer(900)
@@ -316,7 +321,7 @@ CONTAINS    !===================================
             niterations = niterations + 1
             IF (particle_list%particles(i)%state < 1) THEN
                 IF (TRIM(particle_terminal) == "normal" .OR. TRIM(particle_terminal) == "verbose") THEN
-                    WRITE(*, '("WARNING on proc ", I0, ": Particle list entry ", I0, " unexpectately holds and inactive Partcle!")') myid, i
+                    WRITE(*, '("ERROR on proc ", I0, ": Particle list entry ", I0, " unexpectately holds and inactive Partcle!")') myid, i
                     CALL errr(__FILE__, __LINE__)
                 END IF
             END IF
@@ -326,9 +331,9 @@ CONTAINS    !===================================
 
         IF (SUM(grids_np_arg) /= particle_list%ifinal) THEN
             IF (TRIM(particle_terminal) == "normal" .OR. TRIM(particle_terminal) == "verbose") THEN
-                WRITE(*, '("WARNING on proc ", I0, ": ifinal does not equal number of particles counted!")') myid
+                WRITE(*, '("ERROR on proc ", I0, ": ifinal does not equal number of particles counted!")') myid
                 CALL errr(__FILE__, __LINE__)
-                END IF
+            END IF
         END IF
 
         IF (PRESENT(plist_displ_arg)) THEN
@@ -339,6 +344,31 @@ CONTAINS    !===================================
         END IF
 
     END SUBROUTINE count_pog
+
+    ! counts the number of particles on each grid in my_particle_grids (adapted to run on gpu)
+    SUBROUTINE count_pog_target(particle_list, grids_np_arg, plist_displ_arg)
+
+        !$omp declare target
+
+        TYPE(particle_list_t), INTENT(in) :: particle_list
+        INTEGER(intk), INTENT(out) :: grids_np_arg(nmy_particle_grids)
+        INTEGER(intk), INTENT(out) :: plist_displ_arg(nmy_particle_grids)
+
+        INTEGER(intk) :: i, pgrid, niterations
+
+        grids_np_arg = 0
+        DO i = 1, particle_list%ifinal
+            niterations = niterations + 1
+            pgrid = particle_list%particles(i)%igrid
+            grids_np_arg(particle_grid_ptr(pgrid)) = grids_np_arg(particle_grid_ptr(pgrid)) + 1
+        END DO
+
+        plist_displ_arg = 0
+        DO i = 2, SIZE(plist_displ_arg)
+            plist_displ_arg(i) = plist_displ_arg(i-1) + grids_np_arg(i-1)
+        END DO
+
+    END SUBROUTINE count_pog_target
 
     ! TODO: improve sort_by_grid
     ! sorts particles according to their igrid, 
@@ -890,6 +920,9 @@ CONTAINS    !===================================
     END SUBROUTINE write_particle_list_txt
 
     SUBROUTINE finish_particle_list()
+
+        !$omp target exit data map(delete: grids_np, plist_displ)
+        !$omp target exit data map(delete: my_particle_list)
 
         IF (ALLOCATED(my_particle_list%particles)) DEALLOCATE(my_particle_list%particles)
 

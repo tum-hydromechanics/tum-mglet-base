@@ -1,4 +1,5 @@
 add_library(particles STATIC
+    particle_ofields_mod.F90
     particle_config_mod.F90
     particle_runtimestat_mod.F90
     particle_basetype_mod.F90
@@ -27,4 +28,6 @@ target_link_libraries(particles
     PRIVATE core
     PRIVATE flow
     PRIVATE ${MPI_Fortran_LIBRARIES}
+    PRIVATE $<IF:$<BOOL:${MGLET_OPENMP}>,OpenMP::OpenMP_Fortran,>
+    #PRIVATE $<IF:$<BOOL:${MGLET_OPENMP}>,OpenMP::OpenMP_C,>
 )

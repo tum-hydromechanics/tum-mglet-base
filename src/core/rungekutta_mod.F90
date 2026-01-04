@@ -381,6 +381,8 @@ CONTAINS
     ! dX_{j} = dt * B_{j} * ( A_{j} * dXeff_{j-1} + U(X_{j-1}) )
     PURE SUBROUTINE prkstep(dx_pot, dy_pot, dz_pot, u, v, w, dt, A, B, dx, dy, dz)
 
+        !$omp declare target
+
         ! Subroutine arguments
         REAL(realk), INTENT(inout) :: dx_pot, dy_pot, dz_pot
         REAL(realk), INTENT(in) :: u, v, w, dt
