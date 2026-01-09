@@ -51,7 +51,7 @@ MODULE particle_boundaries_mod
 
     TYPE(particle_boundaries_t), ALLOCATABLE :: particle_boundaries(:)
 
-    CHARACTER(len = 4) :: bc_coupling_mode = "SCAL" ! must be "FLOW", "SCAL" or "PART"
+    CHARACTER(len = 4) :: bc_coupling_mode = "FLOW" ! must be "FLOW", "SCAL" or "PART"
 
     !$omp declare target(particle_boundaries)
 

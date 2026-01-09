@@ -269,7 +269,11 @@ CONTAINS
 
             IF (dsim_particles) THEN ! <------------------------------------particles
                 ! timeintegration of particles
+#ifdef _MGLET_OPENMP_
                 CALL timeintegrate_particles_target(itstep, dt)
+#else
+                CALL timeintegrate_particles(itstep, dt)
+#endif
                 ! migration of particles across grids and partly across MPI ranks (procs)
                 CALL exchange_particles(my_particle_list, ittot, itstep)
             END IF
@@ -299,8 +303,9 @@ CONTAINS
                 IF (myid == 0) WRITE(*, '()')
 
                 IF (dsim_particles) THEN ! itinfo for particles works differently than the other itinfo procedures and is improvable!
-                    CALL itinfo_particles() ! <------------------------------------particles
-                    IF (myid == 0) WRITE(*, '()')
+                    ! TODO: reactivate
+                    !CALL itinfo_particles() ! <------------------------------------particles
+                    !IF (myid == 0) WRITE(*, '()')
                 END IF
                 ! Call plugins
                 CALL itinfo_plugins(itstep, ittot, timeph, dt)

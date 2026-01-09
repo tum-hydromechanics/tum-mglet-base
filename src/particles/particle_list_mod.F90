@@ -50,9 +50,10 @@ MODULE particle_list_mod
 
     INTEGER(intk) :: global_np, node_np, local_np
 
-    !$omp declare target(nmy_particle_grids, particle_grid_ptr)
-
+    !$omp declare target(my_particle_grids, particle_grid_ptr, grids_np, plist_displ)
+    
     PUBLIC :: global_np, local_np, my_particle_list ! , guest_particle_list
+    PUBLIC :: count_pog_target
 
 CONTAINS    !===================================
 
@@ -220,6 +221,8 @@ CONTAINS    !===================================
 
         CALL MPI_Barrier(MPI_COMM_WORLD)
 
+        CALL sort_by_grid(my_particle_list)
+
         IF (myid == 0) THEN
             IF (TRIM(particle_terminal) == "normal" .OR. TRIM(particle_terminal) == "verbose") THEN
                 WRITE(*, '("INITIALIZATION OF ", I0, " PARTICLE(S) SUCCESSFULLY COMPLETED.")') global_np
@@ -227,8 +230,9 @@ CONTAINS    !===================================
             END IF
         END IF
         
-        !$omp target enter data map(to: my_particle_list)
-        !$omp target enter data map(to: grids_np, plist_displ, particle_grid_ptr)
+
+        !$omp target enter data map(alloc: my_particle_list)
+        !$omp target enter data map(to: my_particle_grids, grids_np, plist_displ, particle_grid_ptr, nmy_particle_grids)
 
         CALL stop_timer(910)
         CALL stop_timer(900)
@@ -346,26 +350,22 @@ CONTAINS    !===================================
     END SUBROUTINE count_pog
 
     ! counts the number of particles on each grid in my_particle_grids (adapted to run on gpu)
-    SUBROUTINE count_pog_target(particle_list, grids_np_arg, plist_displ_arg)
-
+    SUBROUTINE count_pog_target(particle_list)
+        
         !$omp declare target
-
         TYPE(particle_list_t), INTENT(in) :: particle_list
-        INTEGER(intk), INTENT(out) :: grids_np_arg(nmy_particle_grids)
-        INTEGER(intk), INTENT(out) :: plist_displ_arg(nmy_particle_grids)
+        INTEGER(intk) :: i, pgrid
 
-        INTEGER(intk) :: i, pgrid, niterations
+        grids_np = 0
+        plist_displ = 0
 
-        grids_np_arg = 0
         DO i = 1, particle_list%ifinal
-            niterations = niterations + 1
             pgrid = particle_list%particles(i)%igrid
-            grids_np_arg(particle_grid_ptr(pgrid)) = grids_np_arg(particle_grid_ptr(pgrid)) + 1
+            grids_np(particle_grid_ptr(pgrid)) = grids_np(particle_grid_ptr(pgrid)) + 1
         END DO
 
-        plist_displ_arg = 0
-        DO i = 2, SIZE(plist_displ_arg)
-            plist_displ_arg(i) = plist_displ_arg(i-1) + grids_np_arg(i-1)
+        DO i = 2, SIZE(plist_displ)
+            plist_displ(i) = plist_displ(i-1) + grids_np(i-1)
         END DO
 
     END SUBROUTINE count_pog_target

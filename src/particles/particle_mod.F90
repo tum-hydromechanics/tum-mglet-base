@@ -71,7 +71,9 @@ CONTAINS
             ! finish_particle_config()
             CALL set_timer(990, 'PSIM_CORE_FINISH')
 
+#ifdef _MGLET_OPENMP_
             CALL offload_fields()
+#endif
 
             ! determine particle boundaries and their normal vectors
             CALL init_particle_boundaries()
@@ -125,7 +127,9 @@ CONTAINS
 
             CALL finish_particle_boundaries()
 
+#ifdef _MGLET_OPENMP_
             CALL finish_offload_fields()
+#endif
 
             ! stupid test case for read / write
 

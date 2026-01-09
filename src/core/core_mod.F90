@@ -85,7 +85,9 @@ CONTAINS
         ! set_underflow_mode since they depend on them
         CALL init_comms()
 
+#ifdef _MGLET_OPENMP_
         CALL init_openmp()
+#endif
 
         ! Allow the user to set desired halting and underflow modes via
         ! environment variables

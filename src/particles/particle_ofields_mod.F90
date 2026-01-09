@@ -71,8 +71,13 @@ CONTAINS
     SUBROUTINE offload_fields()        
         CALL map_grid_data()
         CALL map_constant_grid_fields()
+        
+        ! particle boundary conditions are handled by thee particle_boundaries_mod
+        ! (for particles, flow/sclalar boundary information is only needed at initialization)
+        ! hence the following mapping is obsolete for particles
         CALL map_bc_data()
         CALL map_bc_encoding()
+        
         CALL map_flow()
     END SUBROUTINE offload_fields
 
@@ -280,21 +285,23 @@ CONTAINS
         ! Encodes a ctyp boundary condition type to an integer
         SELECT CASE(ctyp)
         CASE ("FIX")
-            bctypid = 1
-        CASE ("SIO")
             bctypid = 2
+        CASE ("SIO")
+            bctypid = 0
         CASE ("CON")
-            bctypid = 3
-        CASE ("SLI")
-            bctypid = 4
-        CASE ("SWA")
-            bctypid = 5
-        CASE ("NOS")
-            bctypid = 6
-        CASE ("OP1")
             bctypid = 7
+        CASE ("SLI")
+            bctypid = 6
+        CASE ("SWA")
+            bctypid = 0
+        CASE ("NOS")
+            bctypid = 5
+        CASE ("OP1")
+            bctypid = 3
         CASE ("PAR")
             bctypid = 8
+        CASE('NRE')
+            bctypid = 18
         CASE DEFAULT
             CALL errr(__FILE__, __LINE__)
         END SELECT

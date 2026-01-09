@@ -85,7 +85,7 @@ CONTAINS
             CALL errr(__FILE__, __LINE__)
         END IF
 
-        IF (MOD(ittot, loadbalance_step) == 0) CALL set_loadbalance_connections()
+        !IF (MOD(ittot, loadbalance_step) == 0) CALL set_loadbalance_connections()
 
         active_np_old = particle_list%active_np
 
@@ -163,209 +163,205 @@ CONTAINS
             END IF
         END DO
 
-        IF (numprocs == 1) THEN
-            CALL stop_timer(940)
-            CALL stop_timer(900)
-            RETURN
-        END IF
+        IF (numprocs > 1) THEN
+            ! posting NON-blocking receives
+            ! int MPI_Irecv(void *buf, int count,
+            !     MPI_Datatype datatype, int source,
+            !     int tag, MPI_Comm comm, MPI_Request *request)
+            DO i = 1, nConns
+                iprocnbr = symConns(2, i)
+                CALL MPI_Irecv( nprecv(i), 1, mglet_mpi_int, &
+                iprocnbr, 123, MPI_COMM_WORLD, recvreqs(i) )
+            END DO
 
-        ! posting NON-blocking receives
-        ! int MPI_Irecv(void *buf, int count,
-        !     MPI_Datatype datatype, int source,
-        !     int tag, MPI_Comm comm, MPI_Request *request)
-        DO i = 1, nConns
-            iprocnbr = symConns(2, i)
-            CALL MPI_Irecv( nprecv(i), 1, mglet_mpi_int, &
-            iprocnbr, 123, MPI_COMM_WORLD, recvreqs(i) )
-        END DO
+            ! posting non-blocking (!) sends
+            ! int MPI_Isend(const void *buf, int count,
+            !     MPI_Datatype datatype, int dest, int tag,
+            !     MPI_Comm comm, MPI_Request *request)
+            DO i = 1, nConns
+                iprocnbr = symConns(2, i)
+                CALL MPI_Isend( npsend(i), 1, mglet_mpi_int, &
+                iprocnbr, 123, MPI_COMM_WORLD, sendreqs(i) )
+            END DO
 
-        ! posting non-blocking (!) sends
-        ! int MPI_Isend(const void *buf, int count,
-        !     MPI_Datatype datatype, int dest, int tag,
-        !     MPI_Comm comm, MPI_Request *request)
-        DO i = 1, nConns
-            iprocnbr = symConns(2, i)
-            CALL MPI_Isend( npsend(i), 1, mglet_mpi_int, &
-            iprocnbr, 123, MPI_COMM_WORLD, sendreqs(i) )
-        END DO
+            ! displacements for start of section for one destination
+            ndispsend = -1
+            IF (SIZE(ndispsend) > 0) ndispsend(1) = 1
+            DO i = 2, nConns
+                IF ( npsend(i-1) < 0 ) THEN
+                    WRITE(*,*) 'Negative npsend value'
+                    CALL errr(__FILE__, __LINE__)
+                END IF
+                ndispsend(i) = ndispsend(i-1) + npsend(i-1)
+            END DO
 
-        ! displacements for start of section for one destination
-        ndispsend = -1
-        IF (SIZE(ndispsend) > 0) ndispsend(1) = 1
-        DO i = 2, nConns
-            IF ( npsend(i-1) < 0 ) THEN
-                WRITE(*,*) 'Negative npsend value'
-                CALL errr(__FILE__, __LINE__)
-            END IF
-            ndispsend(i) = ndispsend(i-1) + npsend(i-1)
-        END DO
+            ! allocate send buffer and copy particles insections
+            sizeSendBuf = SUM(npsend)
+            ALLOCATE(sendind(sizeSendBuf))
+            ALLOCATE(sendBufParticle(sizeSendBuf))
 
-        ! allocate send buffer and copy particles insections
-        sizeSendBuf = SUM(npsend)
-        ALLOCATE(sendind(sizeSendBuf))
-        ALLOCATE(sendBufParticle(sizeSendBuf))
-
-        IF (TRIM(particle_terminal) == "normal" .OR. TRIM(particle_terminal) == "verbose") THEN
-            psim_n_sent = psim_n_sent + SUM(npsend)
-        END IF
-
-        j = 1
-        DO i = 1, particle_list%ifinal
-            ! jumping inactive particles
-            IF (particle_list%particles(i)%state < 1) THEN
-                CYCLE
-            END IF
-            ! jumping local particles
-            IF (particle_list%particles(i)%iproc == myid) THEN
-                CYCLE
+            IF (TRIM(particle_terminal) == "normal" .OR. TRIM(particle_terminal) == "verbose") THEN
+                psim_n_sent = psim_n_sent + SUM(npsend)
             END IF
 
-            ! buffer is filled
-            DO iproc = 1, nConns
-                IF ( symConns(2, iproc) == particle_list%particles(i)%iproc ) THEN
+            j = 1
+            DO i = 1, particle_list%ifinal
+                ! jumping inactive particles
+                IF (particle_list%particles(i)%state < 1) THEN
+                    CYCLE
+                END IF
+                ! jumping local particles
+                IF (particle_list%particles(i)%iproc == myid) THEN
+                    CYCLE
+                END IF
 
-                    pos = ndispsend(iproc)
+                ! buffer is filled
+                DO iproc = 1, nConns
+                    IF ( symConns(2, iproc) == particle_list%particles(i)%iproc ) THEN
 
-                    IF ( pos > sizeSendBuf ) THEN
-                        WRITE(*,*) 'Send buffer size exceeded'
+                        pos = ndispsend(iproc)
+
+                        IF ( pos > sizeSendBuf ) THEN
+                            WRITE(*,*) 'Send buffer size exceeded'
+                            CALL errr(__FILE__, __LINE__)
+                        ELSE IF ( pos < 1 ) THEN
+                            WRITE(*,*) 'Invalid buffer index', pos
+                            CALL errr(__FILE__, __LINE__)
+                        ELSE
+                            ! copy particle into buffer
+                            sendBufParticle(pos) = particle_list%particles(i)
+                        END IF
+
+                        ! increment the position wherer future particle for
+                        ! this destination process will be stored in the buffer
+                        ndispsend(iproc) = ndispsend(iproc) + 1
+
+                        ! setting the local particle as inactive (active in buffer)
+                        particle_list%particles(i)%ipart = -1
+                        particle_list%particles(i)%state = -1
+                        particle_list%active_np = particle_list%active_np - 1
+
+                        ! collect indices of particles list entries that will be empty after MPI send
+                        sendind(j) = i
+                        j = j + 1
+
+                    END IF
+                END DO
+
+            END DO
+
+            ! resetting after incrementation
+            ndispsend = -1; ndispsend(1) = 1
+            DO i = 2, nConns
+                ndispsend(i) = ndispsend(i-1) + npsend(i-1)
+            END DO
+
+            ! buffer must be full with valid particles without gaps
+            DO i = 1, sizeSendBuf
+                IF ( sendBufParticle(i)%state < 1 ) THEN
+                    WRITE(*,*) 'Proc', myid, ': Invalid send buffer entry at ', i
+                    CALL errr(__FILE__, __LINE__)
+                END IF
+            END DO
+
+            ! checking if communication done (one call should suffice...)
+            CALL MPI_Waitall(nConns, sendreqs, MPI_STATUSES_IGNORE)
+            CALL MPI_Waitall(nConns, recvreqs, MPI_STATUSES_IGNORE)
+
+            ! displacements for start of section for one source
+            ndisprecv = -1;
+            IF (SIZE(ndisprecv) > 0) ndisprecv(1) = 1
+            DO i = 2, nConns
+                IF ( nprecv(i-1) < 0 ) THEN
+                    WRITE(*,*) 'Invalid number of received particles'
+                    CALL errr(__FILE__, __LINE__)
+                END IF
+                ndisprecv(i) = ndisprecv(i-1) + nprecv(i-1)
+            END DO
+
+            sizeRecvBuf = SUM(nprecv)
+            ALLOCATE(recvBufParticle(sizeRecvBuf))
+
+            ! Check if list is long enough and add additional space if not
+            IF (particle_list%max_np - particle_list%active_np < sizeRecvBuf) THEN
+                CALL reallocate_particle_list(particle_list, INT(1.0 * (sizeRecvBuf - (particle_list%max_np - particle_list%active_np))))
+            END IF
+
+            ! posting NON-blocking receives
+            ! int MPI_Irecv(void *buf, int count,
+            !     MPI_Datatype datatype, int source,
+            !     int tag, MPI_Comm comm, MPI_Request *request)
+            cRecv = 0
+            DO i = 1, nConns
+                iprocnbr = symConns(2, i)
+                pos = ndisprecv(i)
+                num = nprecv(i)
+                IF ( num > 0 ) THEN
+                    cRecv = cRecv + 1
+                    CALL MPI_Irecv( recvBufParticle(pos), num, particle_mpitype, &
+                    iprocnbr, 321, MPI_COMM_WORLD, recvreqs(cRecv) )
+                END IF
+            END DO
+
+            ! posting NON-blocking sends
+            ! int MPI_Isend(const void *buf, int count,
+            !     MPI_Datatype datatype, int dest, int tag,
+            !     MPI_Comm comm, MPI_Request *request)
+            cSend = 0
+            DO i = 1, nConns
+                iprocnbr = symConns(2, i)
+                pos = ndispsend(i)
+                num = npsend(i)
+                IF ( num > 0 ) THEN
+                    cSend = cSend + 1
+                    CALL MPI_Isend( sendBufParticle(pos), num, particle_mpitype, &
+                    iprocnbr, 321, MPI_COMM_WORLD, sendreqs(cSend) )
+                END IF
+            END DO
+
+            ! checking if communication done (one call should suffice...)
+            CALL MPI_Waitall(cSend, sendreqs, MPI_STATUSES_IGNORE)
+            CALL MPI_Waitall(cRecv, recvreqs, MPI_STATUSES_IGNORE)
+
+            ! some checks and assigning the new cell indices
+            IF (sizeRecvBuf > 0) THEN
+                DO i = 1, sizeRecvBuf
+                    ! check if correctly delivered
+                    IF (recvBufParticle(i)%state < 1) THEN
+                        WRITE(*,*) "Inactive particle delivered"
                         CALL errr(__FILE__, __LINE__)
-                    ELSE IF ( pos < 1 ) THEN
-                        WRITE(*,*) 'Invalid buffer index', pos
+                    END IF
+                    ! check if correctly delivered
+                    IF (recvBufParticle(i)%iproc /= myid) THEN
+                        WRITE(*,*) "Particle delivered to wrong proc", i, recvBufParticle(i)%iproc, myid
                         CALL errr(__FILE__, __LINE__)
-                    ELSE
-                        ! copy particle into buffer
-                        sendBufParticle(pos) = particle_list%particles(i)
                     END IF
 
-                    ! increment the position wherer future particle for
-                    ! this destination process will be stored in the buffer
-                    ndispsend(iproc) = ndispsend(iproc) + 1
+                    CALL set_particle_cell(recvBufParticle(i))
 
-                    ! setting the local particle as inactive (active in buffer)
-                    particle_list%particles(i)%ipart = -1
-                    particle_list%particles(i)%state = -1
-                    particle_list%active_np = particle_list%active_np - 1
+                    ! for gridstat
+                    CALL stop_timer(940)
+                    CALL register_particle(recvBufParticle(i), itstep)
+                    CALL start_timer(940)
 
-                    ! collect indices of particles list entries that will be empty after MPI send
-                    sendind(j) = i
-                    j = j + 1
-
-                END IF
-            END DO
-
-        END DO
-
-        ! resetting after incrementation
-        ndispsend = -1; ndispsend(1) = 1
-        DO i = 2, nConns
-            ndispsend(i) = ndispsend(i-1) + npsend(i-1)
-        END DO
-
-        ! buffer must be full with valid particles without gaps
-        DO i = 1, sizeSendBuf
-            IF ( sendBufParticle(i)%state < 1 ) THEN
-                WRITE(*,*) 'Proc', myid, ': Invalid send buffer entry at ', i
-                CALL errr(__FILE__, __LINE__)
+                END DO
             END IF
-        END DO
-
-        ! checking if communication done (one call should suffice...)
-        CALL MPI_Waitall(nConns, sendreqs, MPI_STATUSES_IGNORE)
-        CALL MPI_Waitall(nConns, recvreqs, MPI_STATUSES_IGNORE)
-
-        ! displacements for start of section for one source
-        ndisprecv = -1;
-        IF (SIZE(ndisprecv) > 0) ndisprecv(1) = 1
-        DO i = 2, nConns
-            IF ( nprecv(i-1) < 0 ) THEN
-                WRITE(*,*) 'Invalid number of received particles'
-                CALL errr(__FILE__, __LINE__)
-            END IF
-            ndisprecv(i) = ndisprecv(i-1) + nprecv(i-1)
-        END DO
-
-        sizeRecvBuf = SUM(nprecv)
-        ALLOCATE(recvBufParticle(sizeRecvBuf))
-
-        ! Check if list is long enough and add additional space if not
-        IF (particle_list%max_np - particle_list%active_np < sizeRecvBuf) THEN
-            CALL reallocate_particle_list(particle_list, INT(1.0 * (sizeRecvBuf - (particle_list%max_np - particle_list%active_np))))
-        END IF
-
-        ! posting NON-blocking receives
-        ! int MPI_Irecv(void *buf, int count,
-        !     MPI_Datatype datatype, int source,
-        !     int tag, MPI_Comm comm, MPI_Request *request)
-        cRecv = 0
-        DO i = 1, nConns
-            iprocnbr = symConns(2, i)
-            pos = ndisprecv(i)
-            num = nprecv(i)
-            IF ( num > 0 ) THEN
-                cRecv = cRecv + 1
-                CALL MPI_Irecv( recvBufParticle(pos), num, particle_mpitype, &
-                iprocnbr, 321, MPI_COMM_WORLD, recvreqs(cRecv) )
-            END IF
-        END DO
-
-        ! posting NON-blocking sends
-        ! int MPI_Isend(const void *buf, int count,
-        !     MPI_Datatype datatype, int dest, int tag,
-        !     MPI_Comm comm, MPI_Request *request)
-        cSend = 0
-        DO i = 1, nConns
-            iprocnbr = symConns(2, i)
-            pos = ndispsend(i)
-            num = npsend(i)
-            IF ( num > 0 ) THEN
-                cSend = cSend + 1
-                CALL MPI_Isend( sendBufParticle(pos), num, particle_mpitype, &
-                iprocnbr, 321, MPI_COMM_WORLD, sendreqs(cSend) )
-            END IF
-        END DO
-
-        ! checking if communication done (one call should suffice...)
-        CALL MPI_Waitall(cSend, sendreqs, MPI_STATUSES_IGNORE)
-        CALL MPI_Waitall(cRecv, recvreqs, MPI_STATUSES_IGNORE)
-
-        ! some checks and assigning the new cell indices
-        IF (sizeRecvBuf > 0) THEN
-            DO i = 1, sizeRecvBuf
-                ! check if correctly delivered
-                IF (recvBufParticle(i)%state < 1) THEN
-                    WRITE(*,*) "Inactive particle delivered"
-                    CALL errr(__FILE__, __LINE__)
-                END IF
-                ! check if correctly delivered
-                IF (recvBufParticle(i)%iproc /= myid) THEN
-                    WRITE(*,*) "Particle delivered to wrong proc", i, recvBufParticle(i)%iproc, myid
-                    CALL errr(__FILE__, __LINE__)
-                END IF
-
-                CALL set_particle_cell(recvBufParticle(i))
-
-                ! for gridstat
-                CALL stop_timer(940)
-                CALL register_particle(recvBufParticle(i), itstep)
-                CALL start_timer(940)
-
-            END DO
         END IF
 
         ! Copy recieved particles into the list
         ! CAUTION: up to here, particle_list%particles(particle_list%ifinal)%state might be < 1 ("empty")
         IF (.NOT. dparticle_sorting) THEN
-            CALL integrate_particles_unsorted(particle_list, sendind)
+            IF (numprocs > 1) CALL integrate_particles_unsorted(particle_list, sendind)
             CALL check_plist(particle_list, abort = .TRUE.)
         ELSE
             IF (.NOT. high_mem_sorting) THEN
-                CALL integrate_particles_unsorted(particle_list, sendind)
+                IF (numprocs > 1) CALL integrate_particles_unsorted(particle_list, sendind)
                 CALL check_plist(particle_list, abort = .TRUE.)
 
                 CALL sort_by_grid(particle_list)
                 CALL check_plist(particle_list, abort = .TRUE.)
             ELSE
-                CALL integrate_particles_sorted(particle_list, sendind)
+                IF (numprocs > 1) CALL integrate_particles_sorted(particle_list, sendind)
                 CALL check_plist(particle_list, abort = .TRUE.)
             END IF
         END IF
@@ -407,16 +403,16 @@ CONTAINS
         END IF
 
         ! TODO: make the following error gathering conditional for compilation as a debugging feature
-        IF (TRIM(particle_terminal) == "verbose") THEN
+        IF (TRIM(particle_terminal) == "normal") THEN
             CALL MPI_Allreduce(err_local, err_global, 1, mglet_mpi_int, MPI_MAX, MPI_COMM_WORLD)
             IF (err_global == 0) THEN
                 CALL write_particle_list_txt(ittot)
-                CALL write_buffer(ittot, "Send")
-                CALL write_buffer(ittot, "Recv")
+                IF (numprocs > 1) CALL write_buffer(ittot, "Send")
+                IF (numprocs > 1) CALL write_buffer(ittot, "Recv")
             ELSE
                 CALL write_particle_list_txt(ittot, "err")
-                CALL write_buffer(ittot, "Send", "err")
-                CALL write_buffer(ittot, "Recv", "err")
+                IF (numprocs > 1) CALL write_buffer(ittot, "Send", "err")
+                IF (numprocs > 1) CALL write_buffer(ittot, "Recv", "err")
             END IF
             IF (err_global == 1) THEN
                 CALL errr(__FILE__, __LINE__)

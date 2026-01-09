@@ -59,6 +59,7 @@ endif()
 option(MGLET_OPENMP "Enable OpenMP (experimental)" OFF)
 if(MGLET_OPENMP)
     message(STATUS "Enabling OpenMP")
+    add_compile_definitions(_MGLET_OPENMP_=1)
     find_package(OpenMP REQUIRED)
 endif()
 

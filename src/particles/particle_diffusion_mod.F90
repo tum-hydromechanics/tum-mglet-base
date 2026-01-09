@@ -310,15 +310,18 @@ CONTAINS
         REAL(realk) :: sigx, sigy, sigz, ranx, rany, ranz
 
         sigx = SQRT(2 * D_x * dt)
-        CALL gaussian_dist_target(0.0_realk, sigx, ranx)
+        !CALL gaussian_dist_target(0.0_realk, sigx, ranx)
+        CALL uniform_dist_target(sigx, ranx)
         pdx = ranx ! diffusion length
 
         sigy = SQRT(2 * D_y * dt)
-        CALL gaussian_dist_target(0.0_realk, sigy, rany)
+        !CALL gaussian_dist_target(0.0_realk, sigy, rany)
+        CALL uniform_dist_target(sigy, rany)
         pdy = rany ! diffusion length
 
         sigz = SQRT(2 * D_z * dt)
-        CALL gaussian_dist_target(0.0_realk, sigz, ranz)
+        !CALL gaussian_dist_target(0.0_realk, sigz, ranz)
+        CALL uniform_dist_target(sigz, ranz)
         pdz = ranz ! diffusion length
 
     END SUBROUTINE generate_diffusive_displacement_target
@@ -355,6 +358,19 @@ CONTAINS
         END DO
 
     END SUBROUTINE gaussian_dist_target
+
+    SUBROUTINE uniform_dist_target(sigma, R)
+        
+        !$omp declare target
+        
+        ! subroutine arguments
+        REAL(realk), INTENT(in) :: sigma
+        REAL(realk), INTENT(out) :: R
+
+        CALL RANDOM_NUMBER(R)
+        R = 2 * SQRT(3.0) * sigma * (R - 0.5)
+
+    END SUBROUTINE uniform_dist_target
 
 
     SUBROUTINE finish_particle_diffusion()
