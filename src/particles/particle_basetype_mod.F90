@@ -4,17 +4,20 @@ MODULE particle_basetype_mod
     ! Definition of the baseparticle_t type.
     ! Basic operations on individual particles.
 
+    USE, INTRINSIC :: ISO_FORTRAN_ENV
+
     USE grids_mod
     USE field_mod
     USE fields_mod
 
+    USE particle_rng_mod
     USE particle_ofields_mod
     USE particle_config_mod
     USE particle_ofields_mod
 
     IMPLICIT NONE
 
-    INTEGER(c_intk), PARAMETER :: particle_mpi_elems = 13
+    INTEGER(c_intk), PARAMETER :: particle_mpi_elems = 14
 
     ! TODO: clear some components, use type extensions...
     ! C binding for MPI compatability!
@@ -52,6 +55,10 @@ MODULE particle_basetype_mod
         ! coordinates of point where a particle entered the current slice
         REAL(c_realk) :: xyz_sentry(3) = 0.0
 
+#ifdef _MGLET_OPENMP_
+        INTEGER(c_int) :: seed 
+#endif
+
     END TYPE baseparticle_t
 
     PUBLIC :: set_particle, set_particle_igrid, set_particle_cell, &
@@ -80,6 +87,10 @@ CONTAINS
         particle%xyz_abs(1) = x
         particle%xyz_abs(2) = y
         particle%xyz_abs(3) = z
+        
+#ifdef _MGLET_OPENMP_
+        particle%seed = MOD(particle_base_seed + ipart * 37, 16777216_c_int)
+#endif
 
         IF (PRESENT(iproc)) THEN
             particle%iproc = iproc

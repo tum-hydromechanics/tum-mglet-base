@@ -38,8 +38,9 @@ MODULE particle_io_mod
     TYPE(real_stencils_t), ALLOCATABLE :: y_sentry_lists(:)
     TYPE(real_stencils_t), ALLOCATABLE :: z_sentry_lists(:)
 
-    INTEGER(intk), ALLOCATABLE :: nparticle(:)
+    TYPE(int_stencils_t), ALLOCATABLE :: seed_lists(:)
 
+    INTEGER(intk), ALLOCATABLE :: nparticle(:)
 
     PUBLIC :: write_particles_h5, read_particles_h5
 
@@ -140,6 +141,8 @@ CONTAINS
         ALLOCATE(y_sentry_lists(nmygrids))
         ALLOCATE(z_sentry_lists(nmygrids))
 
+        ALLOCATE(seed_lists(nmygrids))
+
         ! Counting the particles per grid
         CALL defragment(plist)
 
@@ -182,6 +185,8 @@ CONTAINS
             ALLOCATE(x_sentry_lists(ig)%arr(npart))
             ALLOCATE(y_sentry_lists(ig)%arr(npart))
             ALLOCATE(z_sentry_lists(ig)%arr(npart))
+
+            ALLOCATE(seed_lists(ig)%arr(npart))
         END DO
 
         ! Inserting the particle data
@@ -216,6 +221,8 @@ CONTAINS
                     x_sentry_lists(ig)%arr(ic) = plist%particles(ip)%xyz_sentry(1)
                     y_sentry_lists(ig)%arr(ic) = plist%particles(ip)%xyz_sentry(2)
                     z_sentry_lists(ig)%arr(ic) = plist%particles(ip)%xyz_sentry(3)
+
+                    seed_lists(ig)%arr(ic) = plist%particles(ip)%seed
 
                     ! EXIT
                 END IF
@@ -255,6 +262,8 @@ CONTAINS
         CALL stencilio_write(file_id, 'y_sentry', y_sentry_lists)
         CALL stencilio_write(file_id, 'z_sentry', z_sentry_lists)
 
+        CALL stencilio_write(file_id, 'seed', seed_lists)
+
         ! Deallocate all allocated attribute arrays
         DEALLOCATE(nparticle)
 
@@ -278,6 +287,8 @@ CONTAINS
         DEALLOCATE(x_sentry_lists)
         DEALLOCATE(y_sentry_lists)
         DEALLOCATE(z_sentry_lists)
+
+        DEALLOCATE(seed_lists)
 
     END SUBROUTINE write_particles_list
 
@@ -314,6 +325,8 @@ CONTAINS
         ALLOCATE(y_sentry_lists(nmygrids))
         ALLOCATE(z_sentry_lists(nmygrids))
 
+        ALLOCATE(seed_lists(nmygrids))
+
         ! Using stencils infrastructure for parallel I/O
         ! (functions manage all grids of process)
         CALL stencilio_read(file_id, 'state', states_lists)
@@ -336,6 +349,8 @@ CONTAINS
         CALL stencilio_read(file_id, 'x_sentry', x_sentry_lists)
         CALL stencilio_read(file_id, 'y_sentry', y_sentry_lists)
         CALL stencilio_read(file_id, 'z_sentry', z_sentry_lists)
+
+        CALL stencilio_read(file_id, 'seed', seed_lists)
 
         ! Determine the number of particles
         npart = 0
@@ -400,6 +415,8 @@ CONTAINS
                 plist%particles(cpart)%xyz_sentry(1) = x_sentry_lists(ig)%arr(i)
                 plist%particles(cpart)%xyz_sentry(2) = y_sentry_lists(ig)%arr(i)
                 plist%particles(cpart)%xyz_sentry(3) = z_sentry_lists(ig)%arr(i)
+                
+                plist%particles(cpart)%seed = seed_lists(ig)%arr(i)
 
                 CALL set_particle_cell(plist%particles(cpart))
 
@@ -436,6 +453,8 @@ CONTAINS
         DEALLOCATE(x_sentry_lists)
         DEALLOCATE(y_sentry_lists)
         DEALLOCATE(z_sentry_lists)
+
+        DEALLOCATE(seed_lists)
 
     END SUBROUTINE read_particles_list
 

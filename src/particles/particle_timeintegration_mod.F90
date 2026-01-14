@@ -411,7 +411,7 @@ CONTAINS
                      kk, jj, ii, x, y, z, dx, dy, dz, ddx, ddy, ddz, pwu, pwv, pww, dt, pnrk)
                     
                     CALL particle_diffusion_target(my_particle_list%particles(ipart), temp_grid, temp_x, temp_y, temp_z, &
-                     dt, truncation_limit, truncation_factor)
+                     dt, truncation_limit, truncation_factor, my_particle_list%particles(ipart)%seed)
 
                     ! TODO: reintroduce particle runtime statistics
                 END DO
@@ -470,7 +470,7 @@ CONTAINS
 
     END SUBROUTINE particle_advection_target
 
-    SUBROUTINE particle_diffusion_target(particle, temp_grid, temp_x, temp_y, temp_z, dt, trunc_limit, trunc_factor)
+    SUBROUTINE particle_diffusion_target(particle, temp_grid, temp_x, temp_y, temp_z, dt, trunc_limit, trunc_factor, seed)
 
         !$omp declare target
 
@@ -480,12 +480,13 @@ CONTAINS
         REAL(realk), INTENT(inout) :: temp_x, temp_y, temp_z
         REAL(realk), INTENT(in) :: dt
         REAL(realk), INTENT(in) :: trunc_limit, trunc_factor
+        INTEGER(c_int), INTENT(inout) :: seed
 
         ! local variables
         REAL(realk) :: pdx_diff, pdy_diff, pdz_diff
         REAL(realk) :: pdx_eff, pdy_eff, pdz_eff
 
-        CALL generate_diffusive_displacement_target(dt, D(1), D(2), D(3), pdx_diff, pdy_diff, pdz_diff, trunc_limit, trunc_factor)
+        CALL generate_diffusive_displacement_target(dt, D(1), D(2), D(3), pdx_diff, pdy_diff, pdz_diff, trunc_limit, trunc_factor, seed)
         
         CALL move_particle_target(particle, pdx_diff, pdy_diff, pdz_diff, &
              pdx_eff, pdy_eff, pdz_eff, temp_x, temp_y, temp_z, temp_grid)

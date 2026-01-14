@@ -37,7 +37,6 @@ MODULE particle_config_mod
     ! RANDOM NUMBER GENERATION
     LOGICAL :: dput_seed ! indirectly via "particles/particle_seed"
     INTEGER(int32), ALLOCATABLE :: particle_seed(:) ! "particles/particle_seed"
-    !INTEGER(int32) :: particle_base_seed
 
     ! PARTICLE LIST
     INTEGER(intk) :: particle_level ! "particles/particle_level"

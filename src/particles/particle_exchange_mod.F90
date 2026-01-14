@@ -1,6 +1,7 @@
 MODULE particle_exchange_mod
 
     USE, INTRINSIC :: ISO_C_BINDING
+
     USE MPI_f08
     USE comms_mod
 
@@ -653,6 +654,7 @@ CONTAINS
         CALL MPI_Type_contiguous(3, mglet_mpi_int, triple_int_mpi_type)
         CALL MPI_Type_contiguous(3, mglet_mpi_real, triple_real_mpi_type)
 
+
         CALL MPI_Get_address(foo%state, disp(1))
         ! JULIUS: isnt the following disp declaration unnessecary?
         CALL MPI_Get_address(foo%ipart, disp(2))
@@ -667,6 +669,7 @@ CONTAINS
         CALL MPI_Get_address(foo%z, disp(11))
         CALL MPI_Get_address(foo%xyz_abs, disp(12))
         CALL MPI_Get_address(foo%xyz_sentry, disp(13))
+        CALL MPI_Get_address(foo%seed, disp(14))
 
         types(1) = mglet_mpi_int    ! state
         types(2) = mglet_mpi_int    ! ipart
@@ -681,6 +684,7 @@ CONTAINS
         types(11) = mglet_mpi_real    ! z
         types(12) = triple_real_mpi_type ! xyz_abs
         types(13) = triple_real_mpi_type ! xyt_sentry
+        types(14) = MPI_INTEGER ! seed
 
         ! computing the displacements in byte
         base = disp(1)
@@ -696,6 +700,7 @@ CONTAINS
 
         ! cleaning up the auxiliary type
         CALL MPI_Type_free(triple_int_mpi_type)
+        CALL MPI_Type_free(triple_real_mpi_type)
     END SUBROUTINE create_particle_mpitype
 
 
