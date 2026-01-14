@@ -6,6 +6,7 @@ MODULE particle_timeintegration_mod
     USE ib_mod
     USE gc_flowstencils_mod
 
+    USE particle_config_mod
     USE particle_ofields_mod
     USE particle_runtimestat_mod
     USE particle_list_mod
@@ -353,7 +354,7 @@ CONTAINS
         REAL(realk), INTENT(in) :: dt
 
         ! local variables
-        INTEGER(intk) :: igrid, i
+        INTEGER(intk) :: igrid, i, my_particle_grids_test(nmy_particle_grids)
 
         WRITE(*, '("    Timeintegration on proc  ", I3)') myid
 
@@ -365,14 +366,8 @@ CONTAINS
         CALL count_pog_target(my_particle_list)
         !$omp end target
 
-!$omp target update from(plist_displ)
-!$omp target update from(grids_np)
-
-WRITE(*,*) 'PLIST_DISPL: ', plist_displ
-WRITE(*,*) 'GRIDS_NP: ', grids_np
-
         !$omp target
-        !$omp teams distribute private(igrid)
+        !$omp teams distribute private(igrid) 
         DO i = 1, nmy_particle_grids
 
             igrid = my_particle_grids(i)
@@ -415,7 +410,8 @@ WRITE(*,*) 'GRIDS_NP: ', grids_np
                     CALL particle_advection_target(my_particle_list%particles(ipart), temp_grid, temp_x, temp_y, temp_z, &
                      kk, jj, ii, x, y, z, dx, dy, dz, ddx, ddy, ddz, pwu, pwv, pww, dt, pnrk)
                     
-                    !CALL particle_diffusion_target(my_particle_list%particles(ipart), temp_grid, temp_x, temp_y, temp_z, dt)
+                    CALL particle_diffusion_target(my_particle_list%particles(ipart), temp_grid, temp_x, temp_y, temp_z, &
+                     dt, truncation_limit, truncation_factor)
 
                     ! TODO: reintroduce particle runtime statistics
                 END DO
@@ -474,7 +470,7 @@ WRITE(*,*) 'GRIDS_NP: ', grids_np
 
     END SUBROUTINE particle_advection_target
 
-    SUBROUTINE particle_diffusion_target(particle, temp_grid, temp_x, temp_y, temp_z, dt)
+    SUBROUTINE particle_diffusion_target(particle, temp_grid, temp_x, temp_y, temp_z, dt, trunc_limit, trunc_factor)
 
         !$omp declare target
 
@@ -483,12 +479,13 @@ WRITE(*,*) 'GRIDS_NP: ', grids_np
         INTEGER(intk), INTENT(inout) :: temp_grid
         REAL(realk), INTENT(inout) :: temp_x, temp_y, temp_z
         REAL(realk), INTENT(in) :: dt
+        REAL(realk), INTENT(in) :: trunc_limit, trunc_factor
 
         ! local variables
         REAL(realk) :: pdx_diff, pdy_diff, pdz_diff
         REAL(realk) :: pdx_eff, pdy_eff, pdz_eff
 
-        CALL generate_diffusive_displacement_target(dt, D(1), D(2), D(3), pdx_diff, pdy_diff, pdz_diff)
+        CALL generate_diffusive_displacement_target(dt, D(1), D(2), D(3), pdx_diff, pdy_diff, pdz_diff, trunc_limit, trunc_factor)
         
         CALL move_particle_target(particle, pdx_diff, pdy_diff, pdz_diff, &
              pdx_eff, pdy_eff, pdz_eff, temp_x, temp_y, temp_z, temp_grid)

@@ -1,5 +1,7 @@
 MODULE particle_diffusion_mod
 
+    USE omp_lib
+
     USE MPI_f08
     USE precision_mod
     USE charfunc_mod
@@ -28,8 +30,12 @@ MODULE particle_diffusion_mod
 
     ! truncation limit stored in config mod
     REAL(realk) :: truncation_factor
+
+    INTEGER(int32) :: lcg_multiplier, lcg_increment
+
+    INTEGER(int32), ALLOCATABLE :: lcg_parameters(:) 
     
-    !$omp declare target(truncation_factor)
+    !$omp declare target(lcg_parameters)
 
 CONTAINS
 
@@ -62,7 +68,7 @@ CONTAINS
             END IF
         END IF
 
-        !$omp target enter data map(to: truncation_factor)
+        !$omp target enter data map(to: truncation_factor, lcg_parameters)
 
         CALL stop_timer(910)
         CALL stop_timer(900)
@@ -89,7 +95,7 @@ CONTAINS
             CASE ("uniform")
                 CALL uniform_dist(sigx, ranx)
             CASE ("gaussian2")
-                CALL gaussian_dist2(0.0_realk, sigx, ranx)
+                CALL gaussian_dist2(0.0_realk, sigx, truncation_limit, truncation_factor, ranx)
             END SELECT
 
             pdx = ranx ! diffusion length
@@ -106,7 +112,7 @@ CONTAINS
             CASE ("uniform")
                 CALL uniform_dist(sigy, rany)
             CASE ("gaussian2")
-                CALL gaussian_dist2(0.0_realk, sigy, rany)
+                CALL gaussian_dist2(0.0_realk, sigy, truncation_limit, truncation_factor, rany)
             END SELECT
 
             pdy = rany ! diffusion length
@@ -123,7 +129,7 @@ CONTAINS
             CASE ("uniform")
                 CALL uniform_dist(sigz, ranz)
             CASE ("gaussian2")
-                CALL gaussian_dist2(0.0_realk, sigz, ranz)
+                CALL gaussian_dist2(0.0_realk, sigz, truncation_limit, truncation_factor, ranz)
             END SELECT
 
             pdz = ranz ! diffusion length
@@ -162,10 +168,10 @@ CONTAINS
 
     ! from: Simulation of truncated normal variables, Christian Robert, Statistics and Computing (1995) 5, 121-125
     ! TODO: potentially optimize this
-    SUBROUTINE gaussian_dist2(mu, sigma, R)
+    SUBROUTINE gaussian_dist2(mu, sigma, trunc_limit, trunc_factor, R)
 
         ! subroutine arguments
-        REAL(realk), INTENT(in) :: mu, sigma
+        REAL(realk), INTENT(in) :: mu, sigma, trunc_limit, trunc_factor
         REAL(realk), INTENT(out) :: R
 
         ! local variables
@@ -177,7 +183,7 @@ CONTAINS
         DO WHILE (.NOT. found)
 
             CALL RANDOM_NUMBER(rand1)
-            rand1 = truncation_limit / truncation_factor * (rand1 - 0.5) * 2.0
+            rand1 = trunc_limit / trunc_factor * (rand1 - 0.5) * 2.0
 
             P = EXP(-(rand1 ** 2) / 2)
 
@@ -185,7 +191,7 @@ CONTAINS
 
             IF (rand2 <= P) THEN
                 ! linear transformation to match given mean and standard deviation
-                R = mu + sigma * truncation_factor * rand1
+                R = mu + sigma * trunc_factor * rand1
                 found = .TRUE.
             END IF
 
@@ -297,7 +303,7 @@ CONTAINS
 
     END SUBROUTINE get_truncation_factor
 
-    SUBROUTINE generate_diffusive_displacement_target(dt, D_x, D_y, D_z, pdx, pdy, pdz)
+    SUBROUTINE generate_diffusive_displacement_target(dt, D_x, D_y, D_z, pdx, pdy, pdz, trunc_limit, trunc_factor)
 
         !$omp declare target
 
@@ -305,33 +311,34 @@ CONTAINS
         REAL(realk), INTENT(in) :: dt
         REAL(realk), INTENT(in) :: D_x, D_y, D_z
         REAL(realk), INTENT(out) :: pdx, pdy, pdz
+        REAL(realk), INTENT(in) :: trunc_limit, trunc_factor
 
         ! local variables
         REAL(realk) :: sigx, sigy, sigz, ranx, rany, ranz
 
         sigx = SQRT(2 * D_x * dt)
-        !CALL gaussian_dist_target(0.0_realk, sigx, ranx)
+        !CALL gaussian_dist_target(0.0_realk, sigx, trunc_limit, trunc_factor, ranx)
         CALL uniform_dist_target(sigx, ranx)
         pdx = ranx ! diffusion length
 
         sigy = SQRT(2 * D_y * dt)
-        !CALL gaussian_dist_target(0.0_realk, sigy, rany)
+        !CALL gaussian_dist_target(0.0_realk, sigy, trunc_limit, trunc_factor, rany)
         CALL uniform_dist_target(sigy, rany)
         pdy = rany ! diffusion length
 
         sigz = SQRT(2 * D_z * dt)
-        !CALL gaussian_dist_target(0.0_realk, sigz, ranz)
+        !CALL gaussian_dist_target(0.0_realk, sigz, trunc_limit, trunc_factor, ranz)
         CALL uniform_dist_target(sigz, ranz)
         pdz = ranz ! diffusion length
 
     END SUBROUTINE generate_diffusive_displacement_target
 
-    SUBROUTINE gaussian_dist_target(mu, sigma, R)
+    SUBROUTINE gaussian_dist_target(mu, sigma, trunc_limit, trunc_factor, R)
 
         !$omp declare target
 
         ! subroutine arguments
-        REAL(realk), INTENT(in) :: mu, sigma
+        REAL(realk), INTENT(in) :: mu, sigma, trunc_limit, trunc_factor
         REAL(realk), INTENT(out) :: R
 
         ! local variables
@@ -343,7 +350,7 @@ CONTAINS
         DO WHILE (.NOT. found)
 
             CALL RANDOM_NUMBER(rand1)
-            rand1 = truncation_limit / truncation_factor * (rand1 - 0.5) * 2.0
+            rand1 = trunc_limit / trunc_factor * (rand1 - 0.5) * 2.0
 
             P = EXP(-(rand1 ** 2) / 2)
 
@@ -351,7 +358,7 @@ CONTAINS
 
             IF (rand2 <= P) THEN
                 ! linear transformation to match given mean and standard deviation
-                R = mu + sigma * truncation_factor * rand1
+                R = mu + sigma * trunc_factor * rand1
                 found = .TRUE.
             END IF
 
@@ -371,6 +378,13 @@ CONTAINS
         R = 2 * SQRT(3.0) * sigma * (R - 0.5)
 
     END SUBROUTINE uniform_dist_target
+
+
+    SUBROUTINE init_custom_prng()
+
+        
+
+    END SUBROUTINE init_custom_prng
 
 
     SUBROUTINE finish_particle_diffusion()

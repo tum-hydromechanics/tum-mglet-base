@@ -37,6 +37,7 @@ MODULE particle_config_mod
     ! RANDOM NUMBER GENERATION
     LOGICAL :: dput_seed ! indirectly via "particles/particle_seed"
     INTEGER(int32), ALLOCATABLE :: particle_seed(:) ! "particles/particle_seed"
+    !INTEGER(int32) :: particle_base_seed
 
     ! PARTICLE LIST
     INTEGER(intk) :: particle_level ! "particles/particle_level"
@@ -55,7 +56,7 @@ MODULE particle_config_mod
     LOGICAL :: ddiffusion = .TRUE. ! indirectly via "particles/D"
     CHARACTER(len = 16) :: random_walk_mode ! "particles/random_walk_mode"
     REAL(realk) :: truncation_limit ! "particles/truncation_limit"
-    REAL(realk) :: D(3) ! "particles/D"
+    REAL(realk), ALLOCATABLE :: D(:) ! "particles/D"
 
     ! STATISTICS (GRID AND SLICE SAMPLES)
     LOGICAL :: dgridstat = .FALSE. ! "particles/dgridstat"
@@ -72,7 +73,7 @@ MODULE particle_config_mod
     INTEGER(intk), ALLOCATABLE :: nslices(:) ! "particles/nslices"
     REAL(realk), ALLOCATABLE :: slice_levels(:) ! "particles/slice_levels"
 
-    !$omp declare target(D, truncation_limit, dread_obstacles_dict)
+    !$omp declare target (D)
 
 CONTAINS
 
@@ -84,9 +85,10 @@ CONTAINS
         TYPE(config_t) :: pconf
         TYPE(config_t) :: timeconf_temp
         LOGICAL :: dinterp
-        INTEGER(intk) :: i, j, mtstep_temp, seed_n, pseed_n, dummy
+        INTEGER(intk) :: i, j, mtstep_temp, seed_n, pseed_n, dummy, D_dummy(3)
         INTEGER(int32), ALLOCATABLE ::  seed(:)
         INTEGER(intk) :: step_range(2)
+        REAL(realk) :: diffusion_transmittor(3)
 
         != = = = = = = = = = PARTICLE SIM ON/OFF = = = = = = = = = =
 
@@ -273,6 +275,7 @@ CONTAINS
 
         !- - - - - - - - - - - - - - - - - -
 
+        ALLOCATE(D(3))
         D = 0.0_realk
 
         IF (fort7%exists("/particles/D")) THEN
@@ -619,7 +622,7 @@ CONTAINS
             END IF
         END IF
 
-        !$omp target enter data map(to: D, truncation_limit, dread_obstacles_dict)
+        !$omp target enter data map(to: D, truncation_limit)
 
         DEALLOCATE(seed)
 
@@ -629,7 +632,8 @@ CONTAINS
 
     SUBROUTINE finish_particle_config()
 
-        !$omp target exit data map(delete: D, truncation_limit, dread_obstacles_dict)
+        !$omp target exit data map(delete: D, truncation_limit)
+        IF (ALLOCATED(D)) DEALLOCATE(D)
         IF (ALLOCATED(nslices)) DEALLOCATE(nslices)
         IF (ALLOCATED(slice_levels)) DEALLOCATE(slice_levels)
         IF (ALLOCATED(particle_seed)) DEALLOCATE(particle_seed)

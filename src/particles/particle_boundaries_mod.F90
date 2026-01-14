@@ -1214,24 +1214,22 @@ MODULE particle_boundaries_mod
             y_new = miny + y_new * (maxy - miny)
             z_new = minz + z_new * (maxz - minz)
 
-            IF (dread_obstacles_dict) THEN
-                DO i = 1, SIZE(my_obstacle_pointers(igrid)%grid_obstacles)
+            DO i = 1, n_my_obstacles_on_grid(igrid)
 
-                    iobst_local = my_obstacle_pointers(igrid)%grid_obstacles(i)
+                iobst_local = my_obstacle_pointers(igrid)%grid_obstacles(i)
 
-                    dist_to_center = SQRT((my_obstacles(iobst_local)%x - x_new)**2 + &
-                     (my_obstacles(iobst_local)%y - y_new)**2 + &
-                     (my_obstacles(iobst_local)%z - z_new)**2)
+                dist_to_center = SQRT((my_obstacles(iobst_local)%x - x_new)**2 + &
+                 (my_obstacles(iobst_local)%y - y_new)**2 + &
+                 (my_obstacles(iobst_local)%z - z_new)**2)
 
-                    IF (dist_to_center < my_obstacles(iobst_local)%radius + EPSILON(dist_to_center)) THEN
-                        valid_location = .FALSE.
-                        EXIT
-                    ELSE
-                        CONTINUE
-                    END IF
+                IF (dist_to_center < my_obstacles(iobst_local)%radius + EPSILON(dist_to_center)) THEN
+                    valid_location = .FALSE.
+                    EXIT
+                ELSE
+                    CONTINUE
+                END IF
 
-                END DO
-            END IF
+            END DO
 
         END DO
 
