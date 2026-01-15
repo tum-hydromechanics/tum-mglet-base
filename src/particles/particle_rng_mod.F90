@@ -1,6 +1,5 @@
 MODULE particle_rng_mod
     
-    ! see
     ! https://vectrx.substack.com/p/lcg-xs-fast-gpu-rng#footnote-7-159943017
     
     USE, INTRINSIC :: ISO_FORTRAN_ENV
@@ -50,20 +49,20 @@ CONTAINS
         REAL(c_float), INTENT(out) :: rn
 
         ! local variables
-        INTEGER(c_int64_t) :: tmp
-        INTEGER(c_int64_t) :: mask32 = int(Z'FFFFFFFF', c_int64_t)
+        INTEGER(c_int64_t) :: tmp = 0_c_int64_t
+
         REAL(c_float) :: max_int = 16777216.0_c_float
+        
+        ! convert to 64-bit signed (sign extension) and nullification of bits 32(33)-63(64)
+        tmp = iand(int(seed, c_int64_t), Z'FFFFFFFF')
+        ! compute RNG step in 64-bit
+        tmp = tmp * lcg_parameters(1) + lcg_parameters(2)
 
-        ! Compute RNG step in 64-bit and mask to 32-bit unsigned
-        tmp = iand(int(seed, c_int64_t) * lcg_parameters(1) + &
-                    lcg_parameters(2), mask32)
-
-        ! Write back lower 32 bits
+        ! update seed
         seed = int(tmp, c_int)
 
-        ! Logical right shift by 8 bits, mask to 24 bits, scale
-        rn = real( iand(ishft(tmp, -8), int(Z'00FFFFFF', c_int64_t)), c_float ) &
-                / max_int
+        ! logical right shift by 8 bits, mask to 24 bits, scale
+        rn = real(iand(ishft(tmp, -8), int(Z'00FFFFFF', c_int64_t)), c_float) / max_int
 
     END SUBROUTINE lcg
 
