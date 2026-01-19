@@ -680,7 +680,7 @@ CONTAINS    !===================================
                     (my_obstacles(iobst)%y - y)**2 + &
                     (my_obstacles(iobst)%z - z)**2)
 
-                    IF (dist < (my_obstacles(iobst)%radius + aura)) THEN
+                    IF (dist < (my_obstacles(iobst)%radius + aura(1))) THEN
                         valid_location = .FALSE.
                         EXIT
                     END IF
@@ -812,7 +812,7 @@ CONTAINS    !===================================
                         (my_obstacles(iobst)%y - y)**2 + &
                         (my_obstacles(iobst)%z - z)**2)
 
-                        IF (dist < (my_obstacles(iobst)%radius + aura)) THEN
+                        IF (dist < (my_obstacles(iobst)%radius + aura(1))) THEN
                             valid_location = .FALSE.
                             EXIT
                         END IF

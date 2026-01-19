@@ -20,8 +20,8 @@ CONTAINS
         device_nbr = omp_get_device_num()
         IF (myid == 0) THEN
             WRITE(*, '("OPENMP INFORMATION:")')
-            WRITE(*, '("    Host device (ID):             ", I0)') host_device_nbr
-            WRITE(*, '("    Number of Target devices:     ", I0)') num_devices
+            WRITE(*, '("    Host (ID):                      ", I0)') host_device_nbr
+            WRITE(*, '("    Number of Target devices:       ", I0)') num_devices
             WRITE(*, '()')
         END IF
 

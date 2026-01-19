@@ -75,6 +75,8 @@ CONTAINS
             CALL offload_fields()
 #endif
 
+            CALL init_particle_utils()
+
             ! determine particle boundaries and their normal vectors
             CALL init_particle_boundaries()
 
@@ -126,6 +128,8 @@ CONTAINS
             CALL finish_particle_exchange()
 
             CALL finish_particle_boundaries()
+
+            CALL finish_particle_utils()
 
 #ifdef _MGLET_OPENMP_
             CALL finish_offload_fields()

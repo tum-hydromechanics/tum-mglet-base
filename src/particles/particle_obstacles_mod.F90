@@ -58,7 +58,7 @@ MODULE particle_obstacles_mod
     ! ratio of intermediate (filling) obstacles over readius of regular obstacles
     REAL(realk), PARAMETER :: radius_ratio = 0.348
 
-    REAL(realk) :: aura
+    REAL(realk), ALLOCATABLE :: aura(:)
 
     !$omp declare target(my_obstacles, my_obstacle_pointers, n_my_obstacles_on_grid, aura)
 
@@ -97,7 +97,8 @@ CONTAINS    !===================================
         END IF
 
         ! TODO: rethink this value quantitavely
-        aura = SQRT(EPSILON(dist)) ! here, dist is just an arbitrary dummy argument of real(realk) type
+        ALLOCATE(aura(1))
+        aura(1) = SQRT(EPSILON(dist)) ! here, dist is just an arbitrary dummy argument of real(realk) type
 
         ALLOCATE(grid_processed(ngrid))
 

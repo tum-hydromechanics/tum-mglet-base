@@ -5,6 +5,8 @@ MODULE particle_utils_mod
 
     IMPLICIT NONE
 
+    INTEGER(intk), ALLOCATABLE :: facelist_utils(:)
+
     INTERFACE get_exit_face
         MODULE PROCEDURE :: get_exit_face_c
         MODULE PROCEDURE :: get_exit_face_p
@@ -15,7 +17,68 @@ MODULE particle_utils_mod
         MODULE PROCEDURE :: update_coordinates_p
     END INTERFACE update_coordinates
 
+    INTERFACE get_exit_face_target
+        MODULE PROCEDURE :: get_exit_face_c_target2
+        MODULE PROCEDURE :: get_exit_face_p_target
+    END INTERFACE get_exit_face_target
+
+    INTERFACE a_greater_b
+        MODULE PROCEDURE i_greater_i
+        MODULE PROCEDURE r_greater_r
+    END INTERFACE a_greater_b
+
+    INTERFACE a_greaterequal_b
+        MODULE PROCEDURE i_greaterequal_i
+        MODULE PROCEDURE r_greaterequal_r
+    END INTERFACE a_greaterequal_b
+
+    !$omp declare target (facelist_utils)
+
     CONTAINS
+
+    SUBROUTINE init_particle_utils()
+
+        ALLOCATE(facelist_utils(27))
+
+        facelist_utils(1)  = 19   ! low z,   low y,   low x  
+        facelist_utils(2)  = 7    ! mid z,   low y,   low x
+        facelist_utils(3)  = 20   ! high z,  low y,   low x 
+        facelist_utils(4)  = 9    ! low z,   mid y,   low x
+        facelist_utils(5)  = 1    ! mid z,   mid y,   low x
+        facelist_utils(6)  = 10   ! high z,  mid y,   low x 
+        facelist_utils(7)  = 21   ! low z,   high y,  low x 
+        facelist_utils(8)  = 8    ! mid z,   high y,  low x
+        facelist_utils(9)  = 22   ! high z,  high y,  low x 
+        facelist_utils(10) = 15   ! low z,   low y,   mid x 
+        facelist_utils(11) = 3    ! mid z,   low y,   mid x
+        facelist_utils(12) = 16   ! high z,  low y,   mid x 
+        facelist_utils(13) = 5    ! low z,   mid y,   mid x
+        facelist_utils(14) = 0    ! mid z,   mid y,   mid x
+        facelist_utils(15) = 6    ! high z,  mid y,   mid x
+        facelist_utils(16) = 17   ! low z,   high y,  mid x 
+        facelist_utils(17) = 4    ! mid z,   high y,  mid x
+        facelist_utils(18) = 18   ! high z,  high y,  mid x 
+        facelist_utils(19) = 23   ! low z,   low y,   high x 
+        facelist_utils(20) = 11   ! mid z,   low y,   high x 
+        facelist_utils(21) = 24   ! high z,  low y,   high x 
+        facelist_utils(22) = 13   ! low z,   mid y,   high x 
+        facelist_utils(23) = 2    ! mid z,   mid y,   high x
+        facelist_utils(24) = 14   ! high z,  mid y,   high x 
+        facelist_utils(25) = 25   ! low z,   high y,  high x 
+        facelist_utils(26) = 12   ! mid z,   high y,  high x 
+        facelist_utils(27) = 26   ! high z,  high y,  high x 
+
+        !$omp target enter data map(to: facelist_utils)
+
+    END SUBROUTINE init_particle_utils
+
+
+    SUBROUTINE finish_particle_utils()
+
+        !$omp target exit data map(delete: facelist_utils)
+
+    END SUBROUTINE finish_particle_utils
+
 
     ! get the face (iface) that indicates the correct neigbouring grid (of the outdated particle%igrid)
     ! that the particle is actually on after its displacement
@@ -228,11 +291,11 @@ MODULE particle_utils_mod
         REAL(realk), INTENT(out) :: dist
         INTEGER(intk), INTENT(out) :: iface
 
-        CALL get_exit_face_c_target(particle%igrid, particle%x, particle%y, particle%z, dist, iface)
+        CALL get_exit_face_c_target2(particle%igrid, particle%x, particle%y, particle%z, dist, iface)
 
     END SUBROUTINE get_exit_face_p_target
 
-    SUBROUTINE get_exit_face_c_target(igrid, x, y, z, dist, iface)
+SUBROUTINE get_exit_face_c_target(igrid, x, y, z, dist, iface)
 
         !$omp declare target
 
@@ -422,6 +485,41 @@ MODULE particle_utils_mod
         END IF
 
     END SUBROUTINE get_exit_face_c_target
+
+    
+    SUBROUTINE get_exit_face_c_target2(igrid, x, y, z, dist, iface)
+
+        !$omp declare target
+
+        ! subroutine arguments
+        INTEGER(intk), INTENT(in) :: igrid
+        REAL(realk), INTENT(in) :: x, y, z
+        REAL(realk), INTENT(out) :: dist
+        INTEGER(intk), INTENT(out) :: iface
+
+        ! local variables
+        INTEGER(intk) :: i, j, k
+        REAL(realk) :: minx, maxx, miny, maxy, minz, maxz
+
+        CALL get_bbox_target(minx, maxx, miny, maxy, minz, maxz, igrid)
+
+        i = 1 - NINT(a_greaterequal_b(minx, x)) + NINT(a_greaterequal_b(x, maxx))
+        j = 1 - NINT(a_greaterequal_b(miny, y)) + NINT(a_greaterequal_b(y, maxy))
+        k = 1 - NINT(a_greaterequal_b(minz, z)) + NINT(a_greaterequal_b(z, maxz))
+
+        IF (i == 1 .AND. j == 1 .AND. k == 1) THEN
+            iface = 0
+            dist  = 0.0_realk
+            RETURN
+        END IF
+
+        iface = facelist_utils(i*9 + j*3 + k + 1)
+        dist = SQRT(a_greaterequal_b(minx, x) * (x - minx)**2 + a_greaterequal_b(x, maxx) * (x - maxx)**2 + &
+                    a_greaterequal_b(miny, y) * (y - miny)**2 + a_greaterequal_b(y, maxy) * (y - maxy)**2 + &
+                    a_greaterequal_b(minz, z) * (z - minz)**2 + a_greaterequal_b(z, maxz) * (z - maxz)**2 )
+
+    END SUBROUTINE get_exit_face_c_target2
+
 
     ! update particle coordinates such if particle crossed a periodic boundary
     SUBROUTINE update_coordinates_p(particle, destgrid, iface)
@@ -826,13 +924,13 @@ MODULE particle_utils_mod
         REAL(realk), INTENT(in) :: new
         REAL(realk), INTENT(in) :: large_to_old, large_to_new
 
-        old = old * greater_rr(large_to_old, large_to_new) &
-            + new * greater_rr(large_to_new, large_to_old)
+        old = old * r_greater_r(large_to_old, large_to_new) &
+            + new * r_greater_r(large_to_new, large_to_old)
 
     END SUBROUTINE conditional_update_rr
 
 
-    REAL(realk) FUNCTION greater_rr(a, b) result(factor)
+    REAL(realk) FUNCTION r_greater_r(a, b) result(factor)
 
         !$omp declare target 
 
@@ -840,10 +938,10 @@ MODULE particle_utils_mod
 
         factor = MAX(0.0_realk, SIGN(1.0_realk, a - b))
 
-    END FUNCTION greater_rr
+    END FUNCTION r_greater_r
 
 
-    REAL(realk) FUNCTION greaterequal_rr(a, b) result(factor)
+    REAL(realk) FUNCTION r_greaterequal_r(a, b) result(factor)
 
         !$omp declare target 
 
@@ -851,6 +949,30 @@ MODULE particle_utils_mod
 
         factor = MAX(0.0_realk, SIGN(1.0_realk, a - b + EPSILON(a)))
 
-    END FUNCTION greaterequal_rr
+    END FUNCTION r_greaterequal_r
+
+
+    REAL(realk) FUNCTION i_greater_i(a, b) result(factor)
+
+        !$omp declare target 
+
+        INTEGER(intk), INTENT(in) :: a, b
+
+        factor = REAL(MAX(0_intk, SIGN(1_intk, a - b)), realk)
+
+    END FUNCTION i_greater_i
+
+
+    REAL(realk) FUNCTION i_greaterequal_i(a, b) result(factor)
+
+        !$omp declare target 
+
+        INTEGER(intk), INTENT(in) :: a, b
+
+        factor = REAL(MAX(0_intk, SIGN(1_intk, a - b + 1_intk)), realk)
+
+    END FUNCTION i_greaterequal_i
+
+
 
 END MODULE particle_utils_mod

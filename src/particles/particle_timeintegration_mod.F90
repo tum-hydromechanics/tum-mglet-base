@@ -354,9 +354,8 @@ CONTAINS
         REAL(realk), INTENT(in) :: dt
 
         ! local variables
-        INTEGER(intk) :: igrid, i, my_particle_grids_test(nmy_particle_grids)
+        INTEGER(intk) :: igrid, i, my_particle_grids_test(nmy_particle_grids), dev_num
 
-        WRITE(*, '("    Timeintegration on proc  ", I3)') myid
 
         !$omp target update to(u_offload, v_offload, w_offload)
         
@@ -366,9 +365,15 @@ CONTAINS
         CALL count_pog_target(my_particle_list)
         !$omp end target
 
-        !$omp target
+        dev_num = -99
+        
+        !$omp target map(tofrom: dev_num)
         !$omp teams distribute private(igrid) 
         DO i = 1, nmy_particle_grids
+
+            !$omp master
+                dev_num = omp_get_device_num()
+            !$omp end master
 
             igrid = my_particle_grids(i)
 
@@ -423,6 +428,8 @@ CONTAINS
 
         ! TODO: remove 
         !$omp target update from(my_particle_list)
+
+        WRITE(*, '("    Timeintegration on Process:   ", I3, " ; Device Number:   ", I3)') myid, dev_num
     
     END SUBROUTINE timeintegrate_particles_target
 
