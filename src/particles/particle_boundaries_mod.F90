@@ -772,7 +772,7 @@ MODULE particle_boundaries_mod
         ! to avoid branch divergence here, just iterate to the max. number of iterations that would be a stoping criterion anyways
         DO i = 1, 10
 
-            CALL move_to_boundary_target2(temp_grid, x, y, z, &
+            CALL move_to_boundary_target(temp_grid, x, y, z, &
              dx_from_here, dy_from_here, dz_from_here, dx_step, dy_step, dz_step, iface, iobst_local, dreplace)
 
             ! replace current particle coordinates by a random valid position on the particles curren grid
@@ -854,8 +854,8 @@ MODULE particle_boundaries_mod
         INTEGER(intk) :: i, nobst
         REAL(realk) :: dist, dist_to_center
         REAL(realk) :: minx, maxx, miny, maxy, minz, maxz
-        REAL(realk) :: lx, ly, lz, rx, ry, rz
-        REAL(realk) :: s, sa, sb, sc, sd, a, b, c, d, r
+        REAL(realk) :: lx, ly, lz, rx, ry, rz, cx, cy, cz
+        REAL(realk) :: s, sa, sb, sc, sd, a, b, b0, c, c0, d, r
 
         replace = .FALSE.
 
@@ -1138,7 +1138,8 @@ MODULE particle_boundaries_mod
         INTEGER(intk) :: i, nobst, closestbx, closestby, closestbz, sum
         REAL(realk) :: dist
         REAL(realk) :: minx, maxx, miny, maxy, minz, maxz
-        REAL(realk) :: s, sa, sb, a, b, c, d, r
+        REAL(realk) :: lx, ly, lz
+        REAL(realk) :: s, sa, sb, a, b, b0, c, c0, d, r
         REAL(realk) :: newcoord(3)
         REAL(realk) :: cond0, cond1, cond2
 
@@ -1162,6 +1163,8 @@ MODULE particle_boundaries_mod
 
         ! first coefficient
         a = (dx**2 + dy**2 + dz**2)
+        b0 = 2*x*dx + 2*y*dy + 2*z*dz
+        c0 = x**2 + y**2 + z**2
 
         ! iterate over all obstacles of the grid
         nobst = n_my_obstacles_on_grid(temp_grid)
@@ -1172,11 +1175,11 @@ MODULE particle_boundaries_mod
                     + a_greater_b(iobst_local, my_obstacle_pointers(temp_grid)%grid_obstacles(i))
 
             ! sphere dependent coefficients
-            b = 2*x*dx + 2*y*dy + 2*z*dz - &
+            b = b0 - &
                 2*my_obstacles(my_obstacle_pointers(temp_grid)%grid_obstacles(i))%x*dx - &
                 2*my_obstacles(my_obstacle_pointers(temp_grid)%grid_obstacles(i))%y*dy - &
                 2*my_obstacles(my_obstacle_pointers(temp_grid)%grid_obstacles(i))%z*dz
-            c = x**2 + y**2 + z**2 + &
+            c = c0 + &
                 my_obstacles(my_obstacle_pointers(temp_grid)%grid_obstacles(i))%x**2 + &
                 my_obstacles(my_obstacle_pointers(temp_grid)%grid_obstacles(i))%y**2 + &
                 my_obstacles(my_obstacle_pointers(temp_grid)%grid_obstacles(i))%z**2 - &
@@ -1207,9 +1210,9 @@ MODULE particle_boundaries_mod
 
         ! STEP 2 - GRID BOUNDARIES
         ! signed distance of particle to grid boundaries (reusing a, b and c)
-        a = 0.0_realk + (minx - x) * a_greater_b(0.0_realk, dx) + (maxx - x) * a_greater_b(dx, 0.0_realk) ! = lx
-        b = 0.0_realk + (miny - y) * a_greater_b(0.0_realk, dy) + (maxy - y) * a_greater_b(dy, 0.0_realk) ! = ly
-        c = 0.0_realk + (minz - z) * a_greater_b(0.0_realk, dz) + (maxz - z) * a_greater_b(dz, 0.0_realk) ! = lz
+        lx = 0.0_realk + (minx - x) * a_greater_b(0.0_realk, dx) + (maxx - x) * a_greater_b(dx, 0.0_realk) ! = lx
+        ly = 0.0_realk + (miny - y) * a_greater_b(0.0_realk, dy) + (maxy - y) * a_greater_b(dy, 0.0_realk) ! = ly
+        lz = 0.0_realk + (minz - z) * a_greater_b(0.0_realk, dz) + (maxz - z) * a_greater_b(dz, 0.0_realk) ! = lz
         
         closestbx = 0
         closestby = 0
@@ -1217,21 +1220,21 @@ MODULE particle_boundaries_mod
 
         ! check which face is hit first
         IF (ABS(dx) > 0.0_realk) THEN
-            closestbx = MAX(0_intk, CEILING(s - MAX(0.0_realk, lx/dx)) * INT(SIGN(1.0_realk, a/dx)))
-            s = MIN(s, MAX(0.0_realk, a/dx))
+            closestbx = MAX(0_intk, CEILING(s - MAX(0.0_realk, lx/dx)) * INT(SIGN(1.0_realk, lx/dx)))
+            s = MIN(s, MAX(0.0_realk, lx/dx))
         END IF
 
         IF (ABS(dy) > 0.0_realk) THEN
-            closestby = MAX(0_intk, CEILING(s - MAX(0.0_realk, b/dy)) * INT(SIGN(1.0_realk, b/dy)))
+            closestby = MAX(0_intk, CEILING(s - MAX(0.0_realk, b/dy)) * INT(SIGN(1.0_realk, ly/dy)))
             closestbx = MAX(0_intk, closestbx - closestby)
-            s = MIN(s, MAX(0.0_realk, b/dy))
+            s = MIN(s, MAX(0.0_realk, ly/dy))
         END IF
 
         IF (ABS(dz) > 0.0_realk) THEN
-            closestbz = MAX(0_intk, CEILING(s - MAX(0.0_realk, c/dz)) * INT(SIGN(1.0_realk, c/dz)))
+            closestbz = MAX(0_intk, CEILING(s - MAX(0.0_realk, c/dz)) * INT(SIGN(1.0_realk, lz/dz)))
             closestby = MAX(0_intk, closestby - closestbz)
             closestbx = MAX(0_intk, closestbx - closestbz)
-            s = MIN(s, MAX(0.0_realk, c/dz))
+            s = MIN(s, MAX(0.0_realk, lz/dz))
         END IF
 
         dx_to_b = 0.0_realk + dx * s
@@ -1245,17 +1248,17 @@ MODULE particle_boundaries_mod
         newcoord(1) = minx
         newcoord(2)  = x + dx_to_b
         newcoord(3)  = maxx
-        x = newx(2 + closestbx * INT(SIGN(1.0_realk, dx)))
+        x = newcoord(2 + closestbx * INT(SIGN(1.0_realk, dx)))
         
         newcoord(1) = miny
         newcoord(2)  = y + dy_to_b
         newcoord(3)  = maxy
-        y = newy(2 + closestby * INT(SIGN(1.0_realk, dy)))
+        y = newcoord(2 + closestby * INT(SIGN(1.0_realk, dy)))
         
         newcoord(1) = minz
         newcoord(2) = z + dz_to_b
         newcoord(3) = maxz
-        z = newz(2 + closestbz * INT(SIGN(1.0_realk, dz)))
+        z = newcoord(2 + closestbz * INT(SIGN(1.0_realk, dz)))
 
         sum = closestbx + closestby + closestbz
         IF (sum > 0) THEN
