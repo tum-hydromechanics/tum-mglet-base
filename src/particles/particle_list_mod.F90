@@ -231,7 +231,7 @@ CONTAINS    !===================================
         END IF
         
 
-        !$omp target enter data map(alloc: my_particle_list)
+        !$omp target enter data map(to: my_particle_list)
         !$omp target enter data map(to: my_particle_grids, grids_np, plist_displ, particle_grid_ptr, nmy_particle_grids)
 
         CALL stop_timer(910)

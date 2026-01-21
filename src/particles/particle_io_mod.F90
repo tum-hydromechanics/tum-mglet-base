@@ -38,7 +38,9 @@ MODULE particle_io_mod
     TYPE(real_stencils_t), ALLOCATABLE :: y_sentry_lists(:)
     TYPE(real_stencils_t), ALLOCATABLE :: z_sentry_lists(:)
 
+#ifdef _MGLET_OPENMP_
     TYPE(int_stencils_t), ALLOCATABLE :: seed_lists(:)
+#endif
 
     INTEGER(intk), ALLOCATABLE :: nparticle(:)
 
@@ -141,8 +143,10 @@ CONTAINS
         ALLOCATE(y_sentry_lists(nmygrids))
         ALLOCATE(z_sentry_lists(nmygrids))
 
+#ifdef _MGLET_OPENMP_
         ALLOCATE(seed_lists(nmygrids))
-
+#endif
+        
         ! Counting the particles per grid
         CALL defragment(plist)
 
@@ -186,7 +190,10 @@ CONTAINS
             ALLOCATE(y_sentry_lists(ig)%arr(npart))
             ALLOCATE(z_sentry_lists(ig)%arr(npart))
 
+#ifdef _MGLET_OPENMP_
             ALLOCATE(seed_lists(ig)%arr(npart))
+#endif
+            
         END DO
 
         ! Inserting the particle data
@@ -222,7 +229,9 @@ CONTAINS
                     y_sentry_lists(ig)%arr(ic) = plist%particles(ip)%xyz_sentry(2)
                     z_sentry_lists(ig)%arr(ic) = plist%particles(ip)%xyz_sentry(3)
 
-                    seed_lists(ig)%arr(ic) = plist%particles(ip)%seed
+#ifdef _MGLET_OPENMP_
+                seed_lists(ig)%arr(ic) = plist%particles(ip)%seed
+#endif
 
                     ! EXIT
                 END IF
@@ -262,8 +271,10 @@ CONTAINS
         CALL stencilio_write(file_id, 'y_sentry', y_sentry_lists)
         CALL stencilio_write(file_id, 'z_sentry', z_sentry_lists)
 
+#ifdef _MGLET_OPENMP_
         CALL stencilio_write(file_id, 'seed', seed_lists)
-
+#endif
+        
         ! Deallocate all allocated attribute arrays
         DEALLOCATE(nparticle)
 
@@ -288,8 +299,10 @@ CONTAINS
         DEALLOCATE(y_sentry_lists)
         DEALLOCATE(z_sentry_lists)
 
+#ifdef _MGLET_OPENMP_
         DEALLOCATE(seed_lists)
-
+#endif
+        
     END SUBROUTINE write_particles_list
 
 
@@ -325,7 +338,9 @@ CONTAINS
         ALLOCATE(y_sentry_lists(nmygrids))
         ALLOCATE(z_sentry_lists(nmygrids))
 
+#ifdef _MGLET_OPENMP_
         ALLOCATE(seed_lists(nmygrids))
+#endif
 
         ! Using stencils infrastructure for parallel I/O
         ! (functions manage all grids of process)
@@ -350,7 +365,9 @@ CONTAINS
         CALL stencilio_read(file_id, 'y_sentry', y_sentry_lists)
         CALL stencilio_read(file_id, 'z_sentry', z_sentry_lists)
 
+#ifdef _MGLET_OPENMP_
         CALL stencilio_read(file_id, 'seed', seed_lists)
+#endif
 
         ! Determine the number of particles
         npart = 0
@@ -415,9 +432,11 @@ CONTAINS
                 plist%particles(cpart)%xyz_sentry(1) = x_sentry_lists(ig)%arr(i)
                 plist%particles(cpart)%xyz_sentry(2) = y_sentry_lists(ig)%arr(i)
                 plist%particles(cpart)%xyz_sentry(3) = z_sentry_lists(ig)%arr(i)
-                
-                plist%particles(cpart)%seed = seed_lists(ig)%arr(i)
 
+#ifdef _MGLET_OPENMP_
+                plist%particles(cpart)%seed = seed_lists(ig)%arr(i)
+#endif
+                
                 CALL set_particle_cell(plist%particles(cpart))
 
             END DO
@@ -454,7 +473,9 @@ CONTAINS
         DEALLOCATE(y_sentry_lists)
         DEALLOCATE(z_sentry_lists)
 
+#ifdef _MGLET_OPENMP_
         DEALLOCATE(seed_lists)
+#endif
 
     END SUBROUTINE read_particles_list
 

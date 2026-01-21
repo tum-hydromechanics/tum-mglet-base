@@ -17,7 +17,7 @@ MODULE particle_basetype_mod
 
     IMPLICIT NONE
 
-    INTEGER(c_intk), PARAMETER :: particle_mpi_elems = 14
+    INTEGER(c_intk) :: particle_mpi_elems = 13
 
     ! TODO: clear some components, use type extensions...
     ! C binding for MPI compatability!

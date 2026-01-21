@@ -1,6 +1,7 @@
 MODULE particle_exchange_mod
 
     USE, INTRINSIC :: ISO_C_BINDING
+    USE, INTRINSIC :: ISO_FORTRAN_ENV
 
     USE MPI_f08
     USE comms_mod
@@ -444,6 +445,10 @@ CONTAINS
         CALL start_timer(900)
         CALL start_timer(910)
 
+#ifdef _MGLET_OPENMP_
+        particle_mpi_elems = particle_mpi_elems + 1
+#endif
+
         ! Maximum number of connections for "simple" cases is number
         ! of grids*26. However, due to the possible prescence of
         ! precursors etc, we add a few more.
@@ -669,7 +674,9 @@ CONTAINS
         CALL MPI_Get_address(foo%z, disp(11))
         CALL MPI_Get_address(foo%xyz_abs, disp(12))
         CALL MPI_Get_address(foo%xyz_sentry, disp(13))
+#ifdef _MGLET_OPENMP_
         CALL MPI_Get_address(foo%seed, disp(14))
+#endif
 
         types(1) = mglet_mpi_int    ! state
         types(2) = mglet_mpi_int    ! ipart
@@ -684,7 +691,9 @@ CONTAINS
         types(11) = mglet_mpi_real    ! z
         types(12) = triple_real_mpi_type ! xyz_abs
         types(13) = triple_real_mpi_type ! xyt_sentry
+#ifdef _MGLET_OPENMP_
         types(14) = MPI_INTEGER ! seed
+#endif
 
         ! computing the displacements in byte
         base = disp(1)

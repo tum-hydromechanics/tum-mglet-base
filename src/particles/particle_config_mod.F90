@@ -47,6 +47,7 @@ MODULE particle_config_mod
     LOGICAL :: dparticle_sorting = .TRUE.
 
     ! ADVECTION
+    LOGICAL :: dadvection = .TRUE. !
     LOGICAL :: duse_avg_flow = .FALSE. ! "particles/duse_avg_flow"
     LOGICAL :: dinterp_padvection = .TRUE. ! "particles/dinterp"
     CHARACTER(len=16) :: prkmethod ! "particles/rk_method"
@@ -252,12 +253,17 @@ CONTAINS
 
         CALL pconf%get_value("/duse_avg_flow", duse_avg_flow, .FALSE.)
 
+
         CALL pconf%get_value("/rk_method", prkmethod, "euler")
 
         IF (solve_flow .AND. TRIM(prkmethod) == "williamson") THEN
             WRITE(*, *) "Particle Runge Kutta Scheme must be of Type >euler< if flow is solved parallel to Particles."
             WRITE(*, *) "The >williamson< RK-Scheme should only be applied in combination with an averaged flow field."
             CALL errr(__FILE__, __LINE__)
+        END IF
+
+        IF (.NOT. solve_flow .AND. .NOT. duse_avg_flow) THEN
+            dadvection = .FALSE.
         END IF
 
         != = = = = = = = = = DIFFUSION = = = = = = = = = =
@@ -567,8 +573,11 @@ CONTAINS
                     END IF
                     ! ADVECTION
                     WRITE(*, '("    Advection:")')
+                    WRITE(*, '("        Simulating Advection:             ", L12)') dadvection
+                    IF (dadvection) THEN
                     WRITE(*, '("        Interpolating Advection:          ", L12)') dinterp_padvection
                     WRITE(*, '("        Runge Kutta Method:               ", A12)') TRIM(prkmethod)
+                    END IF
                     ! DIFFUSION
                     WRITE(*, '("    Diffusion:")')
                     WRITE(*, '("        Simulating Diffusion:             ", L12)') ddiffusion
