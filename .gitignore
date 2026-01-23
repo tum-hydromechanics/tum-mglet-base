@@ -56,5 +56,5 @@ mglet
 # Build folder(s)
 build*
 
-**/tests/**
+#**/tests/**
 **/tmp.F90

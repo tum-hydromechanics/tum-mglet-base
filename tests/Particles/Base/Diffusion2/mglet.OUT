@@ -1,0 +1,100 @@
+
+M G L E T - Multi Grid Large Eddy Turbulence
+
+MPI INFORMATION:
+    Processes:     1
+    Serial IO:     F
+    MPI version:   Open MPI v5.0.8, package: Debian OpenMPI, ident: 5.0.8, repo rev: v5.0.8, May 30, 2025 
+
+OPENMP INFORMATION:
+    Host (ID):                      1
+    Number of Target devices:       1
+
+IEEE aritmetic flags:
+    Underflow:     gradual
+    FPE traps:     none
+
+BUILD INFORMATION:
+    Date:          Jan 23 2026
+    Time:          10:32:07
+    Compiler:      GCC version 15.2.0
+    Options:       -cpp -I /usr/lib/x86_64-linux-gnu/fortran/gfortran-mod-16/openmpi -I /usr/lib/x86_64-linux-gnu/openmpi/include -I /usr/include/hdf5/openmpi -I /usr/include -imultiarch x86_64-linux-gnu -D_REENTRANT -D _MGLET_IFK64_=1 -D _MGLET_OPENMP_=1 -mtune=generic -march=x86-64 -fPIC -ffree-line-length-none -fopenmp -J ../../modules -fpre-include=/usr/include/finclude/x86_64-linux-gnu/math-vector-fortran.h
+    OpenMP:        201511
+
+COMPILED PRECISION:
+    REAL:          4 bytes
+    INTEGER:       4 bytes
+    INTEGER(ifk):  8 bytes
+
+JOB INFORMATION:
+    Date:          2026-01-23
+    Time:          15:39:32
+
+HDF5 collective IO: T
+
+GRIDS PER LEVEL AND PROCESS:
+============================
+ Level:           1    Sum
+----------------------------
+ Rank     0:      8      8
+----------------------------
+ Sum:             8      8
+============================
+
+ARRAY DIMENSIONS:
+    idim3d:        21952
+    idim2d:        1568
+    idim1d:        112
+
+Read gridspacing arrays in  0.002 seconds
+
+CONNECT STATISTICS:
+    Faces:              48    with geometry:      48
+    Lines:              96    with geometry:      96
+    Corners:            64    with geometry:      64
+
+Using 'noib' immersed boundary method
+
+NO SCALAR
+
+PARTICLE CONFIGURATION:
+        Particle Simulation:                         T
+    Input:
+        Reading Particles H5:                        F
+        Reading ParticlesDict:                       T
+        Reading ObstaclesDict:                       F
+    Output:
+        Writing Particles H5:                        F
+        Writing Particle Snapshots:                  T
+        Terminal Output:                        normal
+        Snapshot Step:                               1
+        Snapshot - Number of Particles:            100
+    Particle Administration:
+        Particle Level:                              1
+        Limiting initial List Length:                T
+        Max Particle List Length:                10000
+    Advection:
+        Simulating Advection:                        F
+    Diffusion:
+        Simulating Diffusion:                        T
+        Random Walk Mode:                      uniform
+        Symmetric Truncation Limit:              2.000
+        Global Diffusion Const. Dx:          0.500E-01
+        Global Diffusion Const. Dy:          0.000E+00
+        Global Diffusion Const. Dz:          0.000E+00
+    Statistics:
+        Collecting Grid Statistics:                  F
+        Start Timesstep for Statistics:              0
+        Max Number of Res. Timessteps:              10
+        Slice Direction:                             N
+
+    Random Number Generation:
+        Particle Seed on Process 0:
+  -415968282  1879584985  1726207842 -1778714897   469801399   616210701   891427919 -2069481686
+
+PARTICLE SIMULATION STARTED.
+
+
+libgomp: nvptx_alloc error: out of memory
+
+libgomp: device memory allocation fail
