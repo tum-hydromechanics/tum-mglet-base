@@ -791,20 +791,18 @@ MODULE particle_boundaries_mod
 
             IF (0 < iobst_local) THEN
 
-                CALL reflect_at_obstacle_target(iobst_local, x, y, z, dx_from_here, dy_from_here, dz_from_here)
+                CALL reflect_at_obstacle(iobst_local, x, y, z, dx_from_here, dy_from_here, dz_from_here)
 
             ELSEIF (0 < iface) THEN
 
                 destgrid = particle_boundaries(temp_grid)%face_neighbours(iface)
 
-                CALL reflect_at_boundary_target(dx_from_here, dy_from_here, dz_from_here, &
+                CALL reflect_at_boundary(dx_from_here, dy_from_here, dz_from_here, &
                  particle_boundaries(temp_grid)%face_normals(1, iface), &
                  particle_boundaries(temp_grid)%face_normals(2, iface), &
                  particle_boundaries(temp_grid)%face_normals(3, iface), reflect)
 
-                ! TODO (LONGTERM): restructure boundaries and particle motion such that particle coordinates
-                ! do not have to be updated during substeps! (performance)
-                CALL update_coordinates_c_target(temp_grid, destgrid, iface, x, y, z, reflect)
+                CALL update_coordinates_target(temp_grid, destgrid, iface, x, y, z, reflect)
 
                 temp_grid = destgrid
 
@@ -842,7 +840,7 @@ MODULE particle_boundaries_mod
         !$omp declare target
 
         ! subroutine arguments
-        INTEGER(intk), INTENT(inout) :: temp_grid
+        INTEGER(intk), INTENT(in) :: temp_grid
         REAL(realk), INTENT(inout) :: x, y, z
         REAL(realk), INTENT(inout) :: dx, dy, dz
         REAL(realk), INTENT(out) :: dx_to_b, dy_to_b, dz_to_b
@@ -966,7 +964,7 @@ MODULE particle_boundaries_mod
                 iobst_local = 0
                 ! if a particle is already on a face (esp. edge or corner), its future coordinates have to be
                 ! "projected" to assign the right ecit face (otherwise, particles might get stuck on edges or corners)
-                CALL get_exit_face_c_target(temp_grid, x + dx, y + dy, z + dz, dist, iface)
+                CALL get_exit_face_target(temp_grid, x + dx, y + dy, z + dz, dist, iface)
                 RETURN
             END IF
             rx = dx * s / lx
@@ -974,7 +972,7 @@ MODULE particle_boundaries_mod
             lx = (maxx - x)
             IF (lx <= 0.0_realk) THEN
                 iobst_local = 0
-                CALL get_exit_face_c_target(temp_grid, x + dx, y + dy, z + dz, dist, iface)
+                CALL get_exit_face_target(temp_grid, x + dx, y + dy, z + dz, dist, iface)
                 RETURN
             END IF
             rx = dx * s / lx
@@ -986,7 +984,7 @@ MODULE particle_boundaries_mod
             ly = (miny - y)
             IF (ly >= 0.0_realk) THEN
                 iobst_local = 0
-                CALL get_exit_face_c_target(temp_grid, x + dx, y + dy, z + dz, dist, iface)
+                CALL get_exit_face_target(temp_grid, x + dx, y + dy, z + dz, dist, iface)
                 RETURN
             END IF
             ry = dy * s / ly
@@ -994,7 +992,7 @@ MODULE particle_boundaries_mod
             ly = (maxy - y)
             IF (ly <= 0.0_realk) THEN
                 iobst_local = 0
-                CALL get_exit_face_c_target(temp_grid, x + dx, y + dy, z + dz, dist, iface)
+                CALL get_exit_face_target(temp_grid, x + dx, y + dy, z + dz, dist, iface)
                 RETURN
             END IF
             ry = dy * s / ly
@@ -1006,7 +1004,7 @@ MODULE particle_boundaries_mod
             lz = (minz - z)
             IF(lz >= 0.0_realk) THEN
                 iobst_local = 0
-                CALL get_exit_face_c_target(temp_grid, x + dx, y + dy, z + dz, dist, iface)
+                CALL get_exit_face_target(temp_grid, x + dx, y + dy, z + dz, dist, iface)
                 RETURN
             END IF
             rz = dz * s / lz
@@ -1014,7 +1012,7 @@ MODULE particle_boundaries_mod
             lz = (maxz - z)
             IF(lz <= 0.0_realk) THEN
                 iobst_local = 0
-                CALL get_exit_face_c_target(temp_grid, x + dx, y + dy, z + dz, dist, iface)
+                CALL get_exit_face_target(temp_grid, x + dx, y + dy, z + dz, dist, iface)
                 RETURN
             END IF
             rz = dz * s / lz
@@ -1116,7 +1114,7 @@ MODULE particle_boundaries_mod
         END IF
 
         ! get face after x/y/z have (potentially) been altered
-        CALL get_exit_face_c_target(temp_grid, x, y, z, dist, iface)
+        CALL get_exit_face_target(temp_grid, x, y, z, dist, iface)
 
     END SUBROUTINE move_to_boundary_target
 
@@ -1416,69 +1414,11 @@ MODULE particle_boundaries_mod
 
     END SUBROUTINE apply_periodic_boundary
 
-    SUBROUTINE reflect_at_boundary_target(dx, dy, dz, n1, n2, n3, reflect)
-
-        ! Presumption: Particle is already exactly on the boundary!
-
-        ! subroutine arguments
-        REAL(realk), INTENT(inout) :: dx, dy, dz
-        REAL(realk), INTENT(in) :: n1, n2, n3 ! normal vector components of the surface the particle is reflected from
-        INTEGER(intk), INTENT(out), OPTIONAL :: reflect(3)
-
-        ! local variables
-        REAL(realk) :: dot_product
-
-        IF (PRESENT(reflect)) THEN
-            reflect = 0
-            IF (0 < ABS(n1)) reflect(1) = 1
-            IF (0 < ABS(n2)) reflect(2) = 1
-            IF (0 < ABS(n3)) reflect(3) = 1
-        END IF
-
-        dot_product = n1 * dx + n2 * dy + n3 * dz
-
-        IF (dot_product < 0) THEN
-            dx = dx - 2 * dot_product * n1
-            dy = dy - 2 * dot_product * n2
-            dz = dz - 2 * dot_product * n3
-        ELSE
-            dx = dx
-            dy = dy
-            dz = dz
-        END IF
-
-    END SUBROUTINE reflect_at_boundary_target
-
-    ! TODO: make this (partly) an obstacle method
-    SUBROUTINE reflect_at_obstacle_target(iobst_local, x, y, z, dx, dy, dz)
-
-        ! Presumption 1: Particle is already exactly on the boundary!
-        ! Presumption 2: Obstacle is a sphere!
-
-        ! subroutine arguments
-        INTEGER(intk), INTENT(in) :: iobst_local
-        REAL(realk), INTENT(in) :: x, y, z
-        REAL(realk), INTENT(inout) :: dx, dy, dz
-
-        ! local variables
-        REAL(realk) :: n1, n2 , n3, magnitude
-
-        n1 = x - my_obstacles(iobst_local)%x
-        n2 = y - my_obstacles(iobst_local)%y
-        n3 = z - my_obstacles(iobst_local)%z
-
-        magnitude = SQRT(n1**2 + n2**2 + n3**2)
-
-        n1 = n1 / magnitude
-        n2 = n2 / magnitude
-        n3 = n3 / magnitude
-
-        CALL reflect_at_boundary(dx, dy, dz, n1, n2, n3)
-
-    END SUBROUTINE reflect_at_obstacle_target
 
     SUBROUTINE reflect_at_boundary(dx, dy, dz, n1, n2, n3, reflect)
-
+        
+        !$omp declare target
+        
         ! Presumption: Particle is already exactly on the boundary!
 
         ! subroutine arguments
@@ -1510,8 +1450,11 @@ MODULE particle_boundaries_mod
 
     END SUBROUTINE reflect_at_boundary
 
+
     ! TODO: make this (partly) an obstacle method
     SUBROUTINE reflect_at_obstacle(iobst_local, x, y, z, dx, dy, dz)
+
+        !$omp declare target
 
         ! Presumption 1: Particle is already exactly on the boundary!
         ! Presumption 2: Obstacle is a sphere!
@@ -1537,6 +1480,7 @@ MODULE particle_boundaries_mod
         CALL reflect_at_boundary(dx, dy, dz, n1, n2, n3)
 
     END SUBROUTINE reflect_at_obstacle
+
 
     SUBROUTINE get_particle_bc(igrid, iface, coupling_mode, ctyp)
 

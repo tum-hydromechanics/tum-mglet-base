@@ -14,6 +14,8 @@ CONTAINS    !===================================
     SUBROUTINE get_nearest_value(particle, kk, jj, ii, x, y, z, &
          v1, v2, v3, p_v1, p_v2, p_v3)
 
+        !$omp declare target
+
         !subroutine_arguments
         TYPE(baseparticle_t), INTENT(in) :: particle
         INTEGER(intk), INTENT(in) :: kk, jj, ii

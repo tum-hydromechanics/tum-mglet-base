@@ -37,8 +37,8 @@ MODULE particle_ofields_mod
     REAL(realk), POINTER, CONTIGUOUS, DIMENSION(:) :: u_offload, v_offload, w_offload
     
     ! ----- Newly encoded or global arrays -----
+    REAL(realk), ALLOCATABLE :: bbox_offload(:)
     INTEGER(intk), POINTER, CONTIGUOUS, DIMENSION(:) :: mgdims_offload, mgbasb_offload
-    INTEGER(intk), POINTER, CONTIGUOUS, DIMENSION(:) :: bbox_offload
     INTEGER(intk), POINTER, CONTIGUOUS, DIMENSION(:) :: encoded_ctyp_offload
     INTEGER(intk), POINTER, CONTIGUOUS, DIMENSION(:, :) :: bc_indexing
 
@@ -61,7 +61,7 @@ MODULE particle_ofields_mod
     ! Public variables for device
     PUBLIC :: x_offload, y_offload, z_offload, &
         dx_offload, dy_offload, dz_offload, ddx_offload, ddy_offload, ddz_offload, &
-        u_offload, v_offload, w_offload, nboconds_offload
+        u_offload, v_offload, w_offload, nboconds_offload, bbox_offload
 
 CONTAINS
     !> @brief Sets up field pointers for target device
@@ -193,20 +193,22 @@ CONTAINS
         ! Local variables
         TYPE(field_t), POINTER :: u_f, v_f, w_f, sca_f, g_f
 
-        IF (duse_avg_flow) THEN
-            ! use the point values deduced from the average flow field
-            CALL get_field(u_f, "PWU_AVG")
-            CALL get_field(v_f, "PWV_AVG")
-            CALL get_field(w_f, "PWW_AVG")
-        ELSE
-            IF (ib%type == "GHOSTCELL") THEN
-                CALL get_field(u_f, "PWU")
-                CALL get_field(v_f, "PWV")
-                CALL get_field(w_f, "PWW")
+        IF (dadvection) THEN
+            IF (duse_avg_flow) THEN
+                ! use the point values deduced from the average flow field
+                CALL get_field(u_f, "PWU_AVG")
+                CALL get_field(v_f, "PWV_AVG")
+                CALL get_field(w_f, "PWW_AVG")
             ELSE
-                CALL get_field(u_f, "U")
-                CALL get_field(v_f, "V")
-                CALL get_field(w_f, "W")
+                IF (ib%type == "GHOSTCELL") THEN
+                    CALL get_field(u_f, "PWU")
+                    CALL get_field(v_f, "PWV")
+                    CALL get_field(w_f, "PWW")
+                ELSE
+                    CALL get_field(u_f, "U")
+                    CALL get_field(v_f, "V")
+                    CALL get_field(w_f, "W")
+                END IF
             END IF
         END IF
 

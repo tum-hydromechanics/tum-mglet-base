@@ -18,9 +18,14 @@ MODULE particle_utils_mod
     END INTERFACE update_coordinates
 
     INTERFACE get_exit_face_target
-        MODULE PROCEDURE :: get_exit_face_c_target2
+        MODULE PROCEDURE :: get_exit_face_c_target
         MODULE PROCEDURE :: get_exit_face_p_target
     END INTERFACE get_exit_face_target
+
+    INTERFACE update_coordinates_target
+        MODULE PROCEDURE :: update_coordinates_c_target
+        MODULE PROCEDURE :: update_coordinates_p_target
+    END INTERFACE update_coordinates_target
 
     INTERFACE a_greater_b
         MODULE PROCEDURE i_greater_i
@@ -291,7 +296,7 @@ MODULE particle_utils_mod
         REAL(realk), INTENT(out) :: dist
         INTEGER(intk), INTENT(out) :: iface
 
-        CALL get_exit_face_c_target2(particle%igrid, particle%x, particle%y, particle%z, dist, iface)
+        CALL get_exit_face_c_target(particle%igrid, particle%x, particle%y, particle%z, dist, iface)
 
     END SUBROUTINE get_exit_face_p_target
 

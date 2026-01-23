@@ -356,12 +356,16 @@ CONTAINS
         ! local variables
         INTEGER(intk) :: igrid, i, dev_num, num_teams, num_threads
 
+        CALL start_timer(900)
+
         IF (dadvection) THEN
             !$omp target update to(u_offload, v_offload, w_offload)
         END IF
         
         !$omp target update to(my_particle_list)
-        
+
+        CALL start_timer(910)
+
         !$omp target
         CALL count_pog_target(my_particle_list)
         !$omp end target
@@ -388,9 +392,9 @@ CONTAINS
                 REAL(realk), POINTER, CONTIGUOUS, DIMENSION(:) :: x, y, z
                 REAL(realk), POINTER, CONTIGUOUS, DIMENSION(:) :: dx, dy, dz, ddx, ddy, ddz
                 REAL(realk), POINTER, CONTIGUOUS, DIMENSION(:, :, :) :: pwu, pwv, pww
-
+                
                 CALL get_mgdims_target(kk, jj, ii, igrid)
-
+                
                 CALL ptr_to_grid_x(x_offload, igrid, x)
                 CALL ptr_to_grid_y(y_offload, igrid, y)
                 CALL ptr_to_grid_z(z_offload, igrid, z)
@@ -410,14 +414,14 @@ CONTAINS
                 DO j = 1, grids_np(i)
                     
                     num_threads = omp_get_num_threads()
-
+                    
                     ipart = plist_displ(i) + j
 
                     temp_grid = my_particle_list%particles(ipart)%igrid
                     temp_x = my_particle_list%particles(ipart)%x
                     temp_y = my_particle_list%particles(ipart)%y
                     temp_z = my_particle_list%particles(ipart)%z
-
+                    
                     CALL particle_advection_target(my_particle_list%particles(ipart), temp_grid, temp_x, temp_y, temp_z, &
                      kk, jj, ii, x, y, z, dx, dy, dz, ddx, ddy, ddz, pwu, pwv, pww, dt, pnrk)
 
@@ -433,9 +437,13 @@ CONTAINS
         END DO
         !$omp end teams distribute
         !$omp end target
+
+        CALL stop_timer(910)
         
         !$omp target update from(my_particle_list)
         
+        CALL stop_timer(900)
+
         WRITE(*, '("    Timeintegration on Process:                     ", I9)') myid
         WRITE(*, '("        Device Number:                              ", I9)') dev_num
         WRITE(*, '("        Number of Teams:                            ", I9)') num_teams
