@@ -422,11 +422,12 @@ CONTAINS
                     temp_y = my_particle_list%particles(ipart)%y
                     temp_z = my_particle_list%particles(ipart)%z
                     
-                    CALL particle_advection_target(my_particle_list%particles(ipart), temp_grid, temp_x, temp_y, temp_z, &
+                    
+                    IF (dadvection) CALL particle_advection_target(my_particle_list%particles(ipart), temp_grid, temp_x, temp_y, temp_z, &
                      kk, jj, ii, x, y, z, dx, dy, dz, ddx, ddy, ddz, pwu, pwv, pww, dt, pnrk)
 
 #ifdef _MGLET_OPENMP_
-                    CALL particle_diffusion_target(my_particle_list%particles(ipart), temp_grid, temp_x, temp_y, temp_z, &
+                    IF (ddiffusion) CALL particle_diffusion_target(my_particle_list%particles(ipart), temp_grid, temp_x, temp_y, temp_z, &
                      dt, truncation_limit, truncation_factor, my_particle_list%particles(ipart)%seed)
 #endif
 

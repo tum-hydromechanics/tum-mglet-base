@@ -34,6 +34,7 @@ MODULE particle_ofields_mod
     REAL(realk), POINTER, CONTIGUOUS, DIMENSION(:) :: dx_offload, dy_offload, dz_offload
     REAL(realk), POINTER, CONTIGUOUS, DIMENSION(:) :: ddx_offload, ddy_offload, ddz_offload
     ! Flow/Scalar fields
+    REAL(realk), ALLOCATABLE, TARGET :: unull(:), vnull(:), wnull(:)
     REAL(realk), POINTER, CONTIGUOUS, DIMENSION(:) :: u_offload, v_offload, w_offload
     
     ! ----- Newly encoded or global arrays -----
@@ -61,7 +62,7 @@ MODULE particle_ofields_mod
     ! Public variables for device
     PUBLIC :: x_offload, y_offload, z_offload, &
         dx_offload, dy_offload, dz_offload, ddx_offload, ddy_offload, ddz_offload, &
-        u_offload, v_offload, w_offload, nboconds_offload, bbox_offload
+        u_offload, v_offload, w_offload, nboconds_offload, bbox_offload, unull, vnull, wnull
 
 CONTAINS
     !> @brief Sets up field pointers for target device
@@ -210,13 +211,21 @@ CONTAINS
                     CALL get_field(w_f, "W")
                 END IF
             END IF
+            u_offload => u_f%arr
+            v_offload => v_f%arr
+            w_offload => w_f%arr
+        ELSE 
+            ! TODO: remove this dirty workaround
+            ALLOCATE(unull(1))
+            ALLOCATE(vnull(1))
+            ALLOCATE(wnull(1))
+            u_offload => unull
+            v_offload => vnull
+            w_offload => wnull
         END IF
-
-        u_offload => u_f%arr
-        v_offload => v_f%arr
-        w_offload => w_f%arr
-
+        
         !$omp target enter data map(to: u_offload, v_offload, w_offload)
+
     END SUBROUTINE
 
     !> @brief Sets up boundary condition encoding for target device
@@ -337,8 +346,10 @@ CONTAINS
         !$omp target exit data map(delete: nboconds_offload, mgbasb_offload, bbox_offload)
         !$omp target exit data map(delete: x_offload, y_offload, z_offload)
         !$omp target exit data map(delete: dx_offload, dy_offload, dz_offload, ddx_offload, ddy_offload, ddz_offload)
-        !$omp target exit data map(delete: u_offload, v_offload, w_offload)
         !$omp target exit data map(delete: bc_indexing, encoded_ctyp_offload)
+
+        !$omp target exit data map(delete: u_offload, v_offload, w_offload)
+
 
         DEALLOCATE(mgdims_offload)
         DEALLOCATE(mgbasb_offload)
