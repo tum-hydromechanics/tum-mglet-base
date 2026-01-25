@@ -1,8 +1,8 @@
 {
     "time": {
-        "mtstep": 400,
+        "mtstep": 1000, 
         "dt": 0.01,
-        "tend": 4.0,
+        "tend": 10.0,
         "itinfo": 1,
         "itcheck": 10
     },
@@ -50,11 +50,12 @@
     "particles": {
         "dread_part_dict": true,
         "terminal": "normal",
-        "snapshot_step": 5,
-        "list_length": 1000,
+        "snapshot_step": 10,
+	"snapshot_npart": 1000,
+        "list_length": 10000, 
         "dinterp": true,
-        "random_walk_mode": "gaussian2",
+        "random_walk_mode": "uniform",
         "truncation_limit": 2.0,
-        "D":[0.05, 0.00, 0.00]
+        "D":[0.050, 0.0500, 0.0500]
     }
 }

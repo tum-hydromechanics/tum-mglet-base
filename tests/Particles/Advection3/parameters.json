@@ -54,11 +54,6 @@
         "init_npart": 10,
         "list_length": 100,
         "dinterp": true,
-        "rk_method": "williamson",
-        "dgridstat": true,
-        "slice_direction": "X",
-        "nslice_levels": 1,
-        "nslices": [10],
-        "slice_levels": [1.0]
+        "rk_method": "williamson"
     }
 }

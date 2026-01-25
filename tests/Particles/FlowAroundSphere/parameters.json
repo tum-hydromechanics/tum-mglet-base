@@ -1,12 +1,12 @@
 {
     "time": {
-        "mtstep": 800,
+        "mtstep": 500,
         "dt": 0.05,
         "itinfo": 10,
         "tstat": 5.0,
         "read": false,
         "write": true,
-        "continue": true
+        "continue": false
     },
     "io": {
         "grids": "particle_grids.h5",
@@ -119,12 +119,12 @@
         "dwrite_npc": false,
         "terminal": "normal",
         "snapshot_step": 1,
-        "list_length": 2000,
+        "list_length": 5000,
         "dinterp": true,
         "rk_method": "euler",
         "random_walk_mode": "gaussian2",
         "truncation_limit": 2.0,
-        "D":[0.0, 0.0, 0.0]
+        "D":[0.0002, 0.0002, 0.0002]
     }
 
 }
