@@ -370,13 +370,18 @@ CONTAINS
         CALL count_pog_target(my_particle_list)
         !$omp end target
 
-        !dev_num = -99
-        !num_teams = -99
-        !num_threads = -99
+        dev_num = -99
+        num_teams = -99
+        num_threads = -99
 
         !$omp target map(tofrom: dev_num, num_teams, num_threads)
-        !$omp teams loop bind(teams) private(igrid) reduction(max: num_threads)
+        !$omp teams distribute private(igrid) reduction(max: num_threads)
         DO i = 1, nmy_particle_grids
+
+            !$omp master
+                dev_num = omp_get_device_num()
+                num_teams = omp_get_num_teams()
+            !$omp end master
 
             igrid = my_particle_grids(i)
 
@@ -405,8 +410,10 @@ CONTAINS
                 CALL ptr_to_grid3(v_offload, igrid, pwv)
                 CALL ptr_to_grid3(w_offload, igrid, pww)
 
-                !$omp loop bind(thread) private(ipart, temp_grid, temp_x, temp_y, temp_z)
+                !$omp parallel do private(ipart, temp_grid, temp_x, temp_y, temp_z)
                 DO j = 1, grids_np(i)
+                    
+                    num_threads = omp_get_num_threads()
                     
                     ipart = plist_displ(i) + j
 
@@ -426,10 +433,10 @@ CONTAINS
 
                     ! TODO: reintroduce particle runtime statistics
                 END DO
-                !$omp end loop
+                !$omp end parallel do
             END BLOCK
         END DO
-        !$omp end teams loop
+        !$omp end teams distribute
         !$omp end target
 
         CALL stop_timer(910)
@@ -438,10 +445,10 @@ CONTAINS
         
         CALL stop_timer(900)
 
-        !WRITE(*, '("    Timeintegration on Process:                     ", I9)') myid
-        !WRITE(*, '("        Device Number:                              ", I9)') dev_num
-        !WRITE(*, '("        Number of Teams:                            ", I9)') num_teams
-        !WRITE(*, '("        Max. Number of Threds (per Team):           ", I9)') num_threads
+        WRITE(*, '("    Timeintegration on Process:                     ", I9)') myid
+        WRITE(*, '("        Device Number:                              ", I9)') dev_num
+        WRITE(*, '("        Number of Teams:                            ", I9)') num_teams
+        WRITE(*, '("        Max. Number of Threds (per Team):           ", I9)') num_threads
     
     END SUBROUTINE timeintegrate_particles_target
 
