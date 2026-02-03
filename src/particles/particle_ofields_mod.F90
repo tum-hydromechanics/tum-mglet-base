@@ -1,7 +1,7 @@
 MODULE particle_ofields_mod
     USE precision_mod, ONLY: intk, realk
     USE pointers_mod, ONLY: ip3d, ip1d
-    USE grids_mod, ONLY: nmygrids, get_mgdims, get_mgbasb, get_bbox, nboconds, get_bc_ctyp
+    USE grids_mod, ONLY: nmygrids, get_mgdims, get_mgbasb, get_bbox, get_bc_ctyp
     USE err_mod, ONLY: errr
     USE fields_mod
     USE realfield_mod
@@ -26,26 +26,23 @@ MODULE particle_ofields_mod
     ! |     - Prevent any unwanted intereference with the core flow implementation |
     ! |     - Allows to directly map field data without omp directives in fields   |
     ! └────────────────────────────────────────────────────────────────────────────┘
+    
     ! ----- Pointers to fields -----
     ! Grid parameters
     INTEGER(intk), POINTER, CONTIGUOUS, DIMENSION(:) :: ip3d_offload, ip1d_offload
-    INTEGER(intk), POINTER, CONTIGUOUS, DIMENSION(:, :) :: nboconds_offload
     REAL(realk), POINTER, CONTIGUOUS, DIMENSION(:) :: x_offload, y_offload, z_offload
     REAL(realk), POINTER, CONTIGUOUS, DIMENSION(:) :: dx_offload, dy_offload, dz_offload
     REAL(realk), POINTER, CONTIGUOUS, DIMENSION(:) :: ddx_offload, ddy_offload, ddz_offload
+    
     ! Flow/Scalar fields
     REAL(realk), ALLOCATABLE, TARGET :: unull(:), vnull(:), wnull(:)
     REAL(realk), POINTER, CONTIGUOUS, DIMENSION(:) :: u_offload, v_offload, w_offload
     
     ! ----- Newly encoded or global arrays -----
     REAL(realk), ALLOCATABLE :: bbox_offload(:)
-    INTEGER(intk), POINTER, CONTIGUOUS, DIMENSION(:) :: mgdims_offload, mgbasb_offload
-    INTEGER(intk), POINTER, CONTIGUOUS, DIMENSION(:) :: encoded_ctyp_offload
-    INTEGER(intk), POINTER, CONTIGUOUS, DIMENSION(:, :) :: bc_indexing
+    INTEGER(intk), POINTER, CONTIGUOUS, DIMENSION(:) :: mgdims_offload
 
-    ! DONT USE DECLARE TARGET FOR VARIABLES AS THIS SEEMS TO INDUCE IMPLICIT MAPPING 
-    !$omp declare target(ip3d_offload, ip1d_offload, mgdims_offload, mgbasb_offload, bbox_offload)
-    !$omp declare target(encoded_ctyp_offload, nboconds_offload, bc_indexing)
+    !$omp declare target(ip3d_offload, ip1d_offload, mgdims_offload, bbox_offload)
     !$omp declare target(x_offload, y_offload, z_offload)
     !$omp declare target(dx_offload, dy_offload, dz_offload, ddx_offload, ddy_offload, ddz_offload)
     !$omp declare target(u_offload, v_offload, w_offload)
@@ -56,15 +53,15 @@ MODULE particle_ofields_mod
     ! Public variables for host
 
     ! Public subroutines for device
-    PUBLIC :: ptr_to_grid_x, ptr_to_grid_y, ptr_to_grid_z, ptr_to_grid3, get_bbox_target, get_mgdims_target, get_mgbasb_target, &
-        get_encoded_ctyp_offload
+    PUBLIC :: ptr_to_grid_x, ptr_to_grid_y, ptr_to_grid_z, ptr_to_grid3, get_bbox_target, get_mgdims_target
 
     ! Public variables for device
     PUBLIC :: x_offload, y_offload, z_offload, &
         dx_offload, dy_offload, dz_offload, ddx_offload, ddy_offload, ddz_offload, &
-        u_offload, v_offload, w_offload, nboconds_offload, bbox_offload, unull, vnull, wnull
+        u_offload, v_offload, w_offload, bbox_offload, unull, vnull, wnull
 
 CONTAINS
+
     !> @brief Sets up field pointers for target device
     !!
     !! All field pointers required by the scalar computation are made available for use on the target device.
@@ -75,12 +72,10 @@ CONTAINS
         
         ! particle boundary conditions are handled by thee particle_boundaries_mod
         ! (for particles, flow/sclalar boundary information is only needed at initialization)
-        ! hence the following mapping is obsolete for particles
-        CALL map_bc_data()
-        CALL map_bc_encoding()
-        
+
         CALL map_flow()
     END SUBROUTINE offload_fields
+
 
     !> @brief Sets up grid data for target device
     !!
@@ -125,33 +120,6 @@ CONTAINS
         !$omp target enter data map(to: ip3d_offload, ip1d_offload, mgdims_offload, bbox_offload)
     END SUBROUTINE
 
-    !> @brief Sets up boundary condition representation for target device
-    !!
-    !! Sets up a custom data representation for mgbasb suitable for mapping to the target device.
-    !! Sets up pointers to nboconds.
-    !! Maps fields to the target device.
-    SUBROUTINE map_bc_data()
-        ! Local variables
-        INTEGER(intk) :: igrid, i, nfro, nbac, nrgt, nlft, nbot, ntop
-
-        ! Fill new structure to map mgbasb
-        ALLOCATE(mgbasb_offload(N_BASB * nmygrids))
-        DO igrid = 1, nmygrids
-            i = (igrid - 1) * N_BASB + 1
-            CALL get_mgbasb(nfro, nbac, nrgt, nlft, nbot, ntop, igrid)
-            mgbasb_offload(i) = nfro
-            mgbasb_offload(i+1) = nbac
-            mgbasb_offload(i+2) = nrgt
-            mgbasb_offload(i+3) = nlft
-            mgbasb_offload(i+4) = nbot
-            mgbasb_offload(i+5) = ntop
-        END DO
-
-        ! Create pointers to nboconds just to have all omp directives to map data in this file
-        nboconds_offload => nboconds
-
-        !$omp target enter data map(to: nboconds_offload, mgbasb_offload)
-    END SUBROUTINE
 
     !> @brief Sets up constant grid fields for target device
     !!
@@ -185,6 +153,7 @@ CONTAINS
         !$omp target enter data map(to: x_offload, y_offload, z_offload)
         !$omp target enter data map(to: dx_offload, dy_offload, dz_offload, ddx_offload, ddy_offload, ddz_offload)
     END SUBROUTINE
+
 
     !> @brief Sets up flow fields for target device
     !!
@@ -225,163 +194,23 @@ CONTAINS
         END IF
         
         !$omp target enter data map(to: u_offload, v_offload, w_offload)
-
     END SUBROUTINE
 
-    !> @brief Sets up boundary condition encoding for target device
-    !!
-    !! Sets up a custom data structure to map bc_ctyp to the target device.
-    !! This also requires a second bc_indexing field to index the encoded bc_ctyp field.
-    !! Maps fields to the target device.
-    SUBROUTINE map_bc_encoding()
-        ! Local variables
-        INTEGER(intk) :: igrid, iface, ibocd, n_bo_conds, num_bcs, bc_counter, bctypid
-        CHARACTER(len=8) :: ctyp
-
-        ! Allocate fields based on the number of boundary conditions
-        CALL count_num_bc(num_bcs)
-        ALLOCATE(bc_indexing(N_FACES, nmygrids))
-        ALLOCATE(encoded_ctyp_offload(num_bcs))
-
-        ! Encode boundary conditions based on grid, face and type
-        ! Each face may have multiple boundary conditions
-        bc_indexing = 0
-        bc_counter = 1
-        DO igrid = 1, nmygrids
-            DO iface = 1, N_FACES
-                n_bo_conds = nboconds(iface, igrid)
-                bc_indexing(iface, igrid) = bc_counter
-
-                DO ibocd = 1, n_bo_conds
-                    CALL get_bc_ctyp(ctyp, ibocd, iface, igrid)
-                    CALL encode_bc_ctyp(bctypid, ctyp)
-
-                    encoded_ctyp_offload(bc_counter) = bctypid
-                    bc_counter = bc_counter + 1
-                END DO
-            END DO
-        END DO
-
-        !$omp target enter data map(to: encoded_ctyp_offload, bc_indexing)
-    END SUBROUTINE
-
-    !> @brief Gets an encoded bc_ctyp on the target device
-    !!
-    !! @param[out] ctyp_encoded Integer encoding the bc_ctyp
-    !! @param[in]  ibocd        Boundary condition index
-    !! @param[in]  iface        Face index
-    !! @param[in]  igrid        Grid index
-    SUBROUTINE get_encoded_ctyp_offload(ctyp_encoded, ibocd, iface, igrid)
-        !$omp declare target
-        INTEGER(intk), INTENT(out) :: ctyp_encoded
-        INTEGER(intk), INTENT(in) :: ibocd
-        INTEGER(intk), INTENT(in) :: iface
-        INTEGER(intk), INTENT(in) :: igrid
-
-        INTEGER(intk) :: istart
-
-        istart = bc_indexing(iface, igrid)
-
-        ctyp_encoded = encoded_ctyp_offload(istart + ibocd - 1)
-    END SUBROUTINE
-
-    !> @brief Encodes a bc_ctyp
-    !!
-    !! @param[out] bctypid Integer encoding the bc_ctyp
-    !! @param[in]  ctyp    Character list describing boundary condition
-    SUBROUTINE encode_bc_ctyp(bctypid, ctyp)
-        INTEGER(intk), INTENT(OUT) :: bctypid
-        CHARACTER(len=8), INTENT(IN) :: ctyp
-
-        ! Encodes a ctyp boundary condition type to an integer
-        SELECT CASE(ctyp)
-        CASE ("FIX")
-            bctypid = 2
-        CASE ("SIO")
-            bctypid = 0
-        CASE ("CON")
-            bctypid = 7
-        CASE ("SLI")
-            bctypid = 6
-        CASE ("SWA")
-            bctypid = 0
-        CASE ("NOS")
-            bctypid = 5
-        CASE ("OP1")
-            bctypid = 3
-        CASE ("PAR")
-            bctypid = 8
-        CASE('NRE')
-            bctypid = 18
-        CASE DEFAULT
-            CALL errr(__FILE__, __LINE__)
-        END SELECT
-    END SUBROUTINE encode_bc_ctyp
-
-    !> @brief Counts boundary conditions of all grids and faces
-    !!
-    !! @param[out] num_bc Number of total boundary conditions
-    SUBROUTINE count_num_bc(num_bc)
-        ! Subroutine arguments
-        INTEGER(intk), INTENT(OUT) :: num_bc
-
-        ! Local variables
-        INTEGER(intk) :: igrid, iface, n_bo_conds
-
-        num_bc = 0
-        DO igrid = 1, nmygrids
-            DO iface = 1, N_FACES
-                n_bo_conds = nboconds(iface, igrid)
-                num_bc = num_bc + n_bo_conds
-            END DO
-        END DO
-    END SUBROUTINE count_num_bc
 
     !> @brief Finish offloaded fields
     !!
     !! All newly allocated field pointers required by the scalar computation are deallocated.
     !! Exits all fields on the target device
     SUBROUTINE finish_offload_fields()
-        !$omp target exit data map(delete: mgdims_offload, ip3d_offload, ip1d_offload)
-        !$omp target exit data map(delete: nboconds_offload, mgbasb_offload, bbox_offload)
+        !$omp target exit data map(delete: bbox_offload, mgdims_offload, ip3d_offload, ip1d_offload)
         !$omp target exit data map(delete: x_offload, y_offload, z_offload)
         !$omp target exit data map(delete: dx_offload, dy_offload, dz_offload, ddx_offload, ddy_offload, ddz_offload)
-        !$omp target exit data map(delete: bc_indexing, encoded_ctyp_offload)
-
         !$omp target exit data map(delete: u_offload, v_offload, w_offload)
 
-
         DEALLOCATE(mgdims_offload)
-        DEALLOCATE(mgbasb_offload)
         DEALLOCATE(bbox_offload)
-        DEALLOCATE(encoded_ctyp_offload)
     END SUBROUTINE finish_offload_fields
 
-    !> @brief Get mgbasb
-    !!
-    !! Mirrors core get_mgbasb method but uses fields available on the target device
-    !! @param[out] nfro  Num front
-    !! @param[out] nrgt  Num right
-    !! @param[out] nlft  Num left
-    !! @param[out] nbot  Num bottom
-    !! @param[out] ntop  Num top
-    !! @param[in]  igrid Grid index
-    SUBROUTINE get_mgbasb_target(nfro, nbac, nrgt, nlft, nbot, ntop, igrid)
-        !$omp declare target
-        INTEGER(intk), INTENT(OUT) :: nfro, nbac, nrgt, nlft, nbot, ntop
-        INTEGER(intk), INTENT(IN) :: igrid
-
-        ! Local variablees
-        INTEGER(intk) :: i
-        i = (igrid - 1) * N_BASB + 1
-
-        nfro = mgbasb_offload(i)
-        nbac = mgbasb_offload(i+1)
-        nrgt = mgbasb_offload(i+2)
-        nlft = mgbasb_offload(i+3)
-        nbot = mgbasb_offload(i+4)
-        ntop = mgbasb_offload(i+5)
-    END SUBROUTINE get_mgbasb_target
 
     !> @brief Get mgdims - grid dimensions
     !!
@@ -391,7 +220,9 @@ CONTAINS
     !! @param[out] ii    X-direction dimensions
     !! @param[in]  igrid Grid index
     SUBROUTINE get_mgdims_target(kk, jj, ii, igrid)
+        
         !$omp declare target
+        
         INTEGER(intk), INTENT(OUT) :: kk, jj, ii
         INTEGER(intk), INTENT(IN) :: igrid
 
@@ -403,6 +234,7 @@ CONTAINS
         jj = mgdims_offload(i+1)
         kk = mgdims_offload(i+2)
     END SUBROUTINE get_mgdims_target
+
 
     SUBROUTINE get_bbox_target(minx, maxx, miny, maxy, minz, maxz, igrid)
 
@@ -423,6 +255,7 @@ CONTAINS
         maxz = bbox_offload(i+5)
     END SUBROUTINE get_bbox_target
 
+
     !> @brief Get field length 1d in x-direction
     !!
     !! Mirrors core get_len method but uses fields available on the target device.
@@ -439,6 +272,7 @@ CONTAINS
 
         len = mgdims_offload(i)
     END SUBROUTINE get_len_ii_target
+
 
     !> @brief Get field length 1d in y-direction
     !!
@@ -457,6 +291,7 @@ CONTAINS
         len = mgdims_offload(i+1)
     END SUBROUTINE get_len_jj_target
 
+
     !> @brief Get field length 1d in z-direction
     !!
     !! Mirrors core get_len method but uses fields available on the target device.
@@ -474,6 +309,7 @@ CONTAINS
         len = mgdims_offload(i+2)
     END SUBROUTINE get_len_kk_target
 
+
     !> @brief Get ip1 (1 dimensional fields)
     !!
     !! Mirrors core get_ip1 method but uses fields available on the target device.
@@ -487,6 +323,7 @@ CONTAINS
         ip1 = ip1d_offload(igrid)
     END SUBROUTINE get_ip1_target
 
+
     !> @brief Get ip3 (3 dimensional fields)
     !!
     !! Mirrors core get_ip3 method but uses fields available on the target device.
@@ -499,6 +336,7 @@ CONTAINS
 
         ip3 = ip3d_offload(igrid)
     END SUBROUTINE get_ip3_target
+
 
     !> @brief Get pointer to 1d grid-specific field (only x direction)
     !!
@@ -521,7 +359,8 @@ CONTAINS
         CALL get_len_ii_target(len, n_grid)
         grid_ptr(1:len) => arr_ptr(ip:ip+len-1)
     END SUBROUTINE ptr_to_grid_x
-    
+
+
     !> @brief Get pointer to 1d grid-specific field (only y direction)
     !!
     !! Mirrors core get_grid1 method but uses fields available on the target device.
@@ -543,6 +382,7 @@ CONTAINS
         CALL get_len_jj_target(len, n_grid)
         grid_ptr(1:len) => arr_ptr(ip:ip+len-1)
     END SUBROUTINE ptr_to_grid_y
+
 
     !> @brief Get pointer to 1d grid-specific field (only z direction)
     !!
@@ -566,6 +406,7 @@ CONTAINS
         grid_ptr(1:len) => arr_ptr(ip:ip+len-1)
     END SUBROUTINE ptr_to_grid_z
 
+
     !> @brief Get pointer to 3d grid-specific field (only x direction)
     !!
     !! Mirrors core get_grid3 method but uses fields available on the target device.
@@ -586,4 +427,5 @@ CONTAINS
         CALL get_ip3_target(ip, n_grid)
         grid_ptr(1:kk, 1:jj, 1:ii) => arr_ptr(ip:ip+kk*jj*ii-1)
     END SUBROUTINE ptr_to_grid3
+
 END MODULE particle_ofields_mod
