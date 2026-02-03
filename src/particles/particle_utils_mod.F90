@@ -288,199 +288,197 @@ MODULE particle_utils_mod
 
     ! get the face (iface) that indicates the correct neigbouring grid (of the outdated particle%igrid)
     ! that the particle is actually on after its displacement
-    SUBROUTINE get_exit_face_p_target(particle, dist, iface)
+    SUBROUTINE get_exit_face_p_target(bbox, particle, dist, iface)
 
         !$omp declare target
-
+        
+        REAL(realk), INTENT(in) :: bbox(6)
         TYPE(baseparticle_t), INTENT(in) :: particle
         REAL(realk), INTENT(out) :: dist
         INTEGER(intk), INTENT(out) :: iface
 
-        CALL get_exit_face_c_target(particle%igrid, particle%x, particle%y, particle%z, dist, iface)
+        CALL get_exit_face_c_target(bbox, particle%x, particle%y, particle%z, dist, iface)
 
     END SUBROUTINE get_exit_face_p_target
 
-SUBROUTINE get_exit_face_c_target(igrid, x, y, z, dist, iface)
+SUBROUTINE get_exit_face_c_target(bbox, x, y, z, dist, iface)
 
         !$omp declare target
 
         ! subroutine arguments
-        INTEGER(intk), INTENT(in) :: igrid
+        REAL(realk), INTENT(in) :: bbox(6)
         REAL(realk), INTENT(in) :: x, y, z
         REAL(realk), INTENT(out) :: dist
         INTEGER(intk), INTENT(out) :: iface
 
         ! local variables
-        REAL(realk) :: minx, maxx, miny, maxy, minz, maxz
         REAL(realk) :: dist_x, dist_y, dist_z
 
-        CALL get_bbox_target(minx, maxx, miny, maxy, minz, maxz, igrid)
-
-        IF (minx < x .AND. x < maxx .AND. &
-            miny < y .AND. y < maxy .AND. &
-            minz < z .AND. z < maxz) THEN
+        IF (bbox(1) < x .AND. x < bbox(2) .AND. &
+            bbox(3) < y .AND. y < bbox(4) .AND. &
+            bbox(5) < z .AND. z < bbox(6)) THEN
                 iface = 0
                 dist = 0.0
                 RETURN
         ELSE
             ! checking the geometrical relation
-            IF (x <= minx) THEN !-------------------------------------------------------- low x
-                IF (y <= miny) THEN !--------------------------------------------- low y, low x
-                    IF (z <= minz) THEN !---------------------------------- low z, low y, low x
+            IF (x <= bbox(1)) THEN !-------------------------------------------------------- low x
+                IF (y <= bbox(3)) THEN !--------------------------------------------- low y, low x
+                    IF (z <= bbox(5)) THEN !---------------------------------- low z, low y, low x
                         iface = 19
-                        dist_x = ABS(x - minx)
-                        dist_y = ABS(y - miny)
-                        dist_z = ABS(z - minz)
-                    ELSEIF (minz < z .AND. z < maxz) THEN !---------------- mid z, low y, low x
+                        dist_x = ABS(x - bbox(1))
+                        dist_y = ABS(y - bbox(3))
+                        dist_z = ABS(z - bbox(5))
+                    ELSEIF (bbox(5) < z .AND. z < bbox(6)) THEN !---------------- mid z, low y, low x
                         iface = 7
-                        dist_x = ABS(x - minx)
-                        dist_y = ABS(y - miny)
+                        dist_x = ABS(x - bbox(1))
+                        dist_y = ABS(y - bbox(3))
                         dist_z = 0.0
-                    ELSEIF (maxz <= z) THEN !----------------------------- high z, low y, low x
+                    ELSEIF (bbox(6) <= z) THEN !----------------------------- high z, low y, low x
                         iface = 20
-                        dist_x = ABS(x - minx)
-                        dist_y = ABS(y - miny)
-                        dist_z = ABS(z - maxz)
+                        dist_x = ABS(x - bbox(1))
+                        dist_y = ABS(y - bbox(3))
+                        dist_z = ABS(z - bbox(6))
                     END IF
-                ELSEIF (miny < y .AND. y < maxy) THEN !--------------------------- mid y, low x
-                    IF (z <= minz) THEN !---------------------------------- low z, mid y, low x
+                ELSEIF (bbox(3) < y .AND. y < bbox(4)) THEN !--------------------------- mid y, low x
+                    IF (z <= bbox(5)) THEN !---------------------------------- low z, mid y, low x
                         iface = 9
-                        dist_x = ABS(x - minx)
+                        dist_x = ABS(x - bbox(1))
                         dist_y = 0.0
-                        dist_z = ABS(z - minz)
-                    ELSEIF (minz < z .AND. z < maxz) THEN !---------------- mid z, mid y, low x
+                        dist_z = ABS(z - bbox(5))
+                    ELSEIF (bbox(5) < z .AND. z < bbox(6)) THEN !---------------- mid z, mid y, low x
                         iface = 1
-                        dist_x = ABS(x - minx)
+                        dist_x = ABS(x - bbox(1))
                         dist_y = 0.0
                         dist_z = 0.0
-                    ELSEIF (maxz <= z) THEN !----------------------------- high z, mid y, low x
+                    ELSEIF (bbox(6) <= z) THEN !----------------------------- high z, mid y, low x
                         iface = 10
-                        dist_x = ABS(x - minx)
+                        dist_x = ABS(x - bbox(1))
                         dist_y = 0.0
-                        dist_z = ABS(z - maxz)
+                        dist_z = ABS(z - bbox(6))
                     END IF
-                ELSEIF (maxy <= y) THEN !---------------------------------------- high y, low x
-                    IF (z <= minz) THEN !--------------------------------- low z, high y, low x
+                ELSEIF (bbox(4) <= y) THEN !---------------------------------------- high y, low x
+                    IF (z <= bbox(5)) THEN !--------------------------------- low z, high y, low x
                         iface = 21
-                        dist_x = ABS(x - minx)
-                        dist_y = ABS(y - maxy)
-                        dist_z = ABS(z - minz)
-                    ELSEIF (minz < z .AND. z < maxz) THEN !--------------- mid z, high y, low x
+                        dist_x = ABS(x - bbox(1))
+                        dist_y = ABS(y - bbox(4))
+                        dist_z = ABS(z - bbox(5))
+                    ELSEIF (bbox(5) < z .AND. z < bbox(6)) THEN !--------------- mid z, high y, low x
                         iface = 8
-                        dist_x = ABS(x - minx)
-                        dist_y = ABS(y - maxy)
+                        dist_x = ABS(x - bbox(1))
+                        dist_y = ABS(y - bbox(4))
                         dist_z = 0.0
-                    ELSEIF (maxz <= z) THEN !---------------------------- high z, high y, low x
+                    ELSEIF (bbox(6) <= z) THEN !---------------------------- high z, high y, low x
                         iface = 22
-                        dist_x = ABS(x - minx)
-                        dist_y = ABS(y - maxy)
-                        dist_z = ABS(z - maxz)
+                        dist_x = ABS(x - bbox(1))
+                        dist_y = ABS(y - bbox(4))
+                        dist_z = ABS(z - bbox(6))
                     END IF
                 END IF
-            ELSEIF (minx < x .AND. x < maxx) THEN !-------------------------------------- mid x
-                IF (y <= miny) THEN !--------------------------------------------- low y, mid x
-                    IF (z <= minz) THEN !---------------------------------- low z, low y, mid x
+            ELSEIF (bbox(1) < x .AND. x < bbox(2)) THEN !-------------------------------------- mid x
+                IF (y <= bbox(3)) THEN !--------------------------------------------- low y, mid x
+                    IF (z <= bbox(5)) THEN !---------------------------------- low z, low y, mid x
                         iface = 15
                         dist_x = 0.0
-                        dist_y = ABS(y - miny)
-                        dist_z = ABS(z - minz)
-                    ELSEIF (minz < z .AND. z < maxz) THEN !---------------- mid z, low y, mid x
+                        dist_y = ABS(y - bbox(3))
+                        dist_z = ABS(z - bbox(5))
+                    ELSEIF (bbox(5) < z .AND. z < bbox(6)) THEN !---------------- mid z, low y, mid x
                         iface = 3
                         dist_x = 0.0
-                        dist_y = ABS(y - miny)
+                        dist_y = ABS(y - bbox(3))
                         dist_z = 0.0
-                    ELSEIF (maxz <= z) THEN !----------------------------- high z, low y, mid x
+                    ELSEIF (bbox(6) <= z) THEN !----------------------------- high z, low y, mid x
                         iface = 16
                         dist_x = 0.0
-                        dist_y = ABS(y - miny)
-                        dist_z = ABS(z - maxz)
+                        dist_y = ABS(y - bbox(3))
+                        dist_z = ABS(z - bbox(6))
                     END IF
-                ELSEIF (miny < y .AND. y < maxy) THEN !--------------------------- mid y, mid x
-                    IF (z <= minz) THEN !---------------------------------- low z, mid y, mid x
+                ELSEIF (bbox(3) < y .AND. y < bbox(4)) THEN !--------------------------- mid y, mid x
+                    IF (z <= bbox(5)) THEN !---------------------------------- low z, mid y, mid x
                         iface = 5
                         dist_x = 0.0
                         dist_y = 0.0
-                        dist_z = ABS(z - minz)
-                    ELSEIF (minz < z .AND. z < maxz) THEN !---------------- mid z, mid y, mid x
+                        dist_z = ABS(z - bbox(5))
+                    ELSEIF (bbox(5) < z .AND. z < bbox(6)) THEN !---------------- mid z, mid y, mid x
                         iface = 0
                         dist_x = 0.0
                         dist_y = 0.0
                         dist_z = 0.0
-                    ELSEIF (maxz <= z) THEN !----------------------------- high z, mid y, mid x
+                    ELSEIF (bbox(6) <= z) THEN !----------------------------- high z, mid y, mid x
                         iface = 6
                         dist_x = 0.0
                         dist_y = 0.0
-                        dist_z = ABS(z - maxz)
+                        dist_z = ABS(z - bbox(6))
                     END IF
-                ELSEIF (maxy <= y) THEN !---------------------------------------- high y, mid x
-                    IF (z <= minz) THEN !--------------------------------- low z, high y, mid x
+                ELSEIF (bbox(4) <= y) THEN !---------------------------------------- high y, mid x
+                    IF (z <= bbox(5)) THEN !--------------------------------- low z, high y, mid x
                         iface = 17
                         dist_x = 0.0
-                        dist_y = ABS(y - maxy)
-                        dist_z = ABS(z - minz)
-                    ELSEIF (minz < z .AND. z < maxz) THEN !--------------- mid z, high y, mid x
+                        dist_y = ABS(y - bbox(4))
+                        dist_z = ABS(z - bbox(5))
+                    ELSEIF (bbox(5) < z .AND. z < bbox(6)) THEN !--------------- mid z, high y, mid x
                         iface = 4
                         dist_x = 0.0
-                        dist_y = ABS(y - maxy)
+                        dist_y = ABS(y - bbox(4))
                         dist_z = 0.0
-                    ELSEIF (maxz <= z) THEN !---------------------------- high z, high y, mid x
+                    ELSEIF (bbox(6) <= z) THEN !---------------------------- high z, high y, mid x
                         iface = 18
                         dist_x = 0.0
-                        dist_y = ABS(y - maxy)
-                        dist_z = ABS(z - maxz)
+                        dist_y = ABS(y - bbox(4))
+                        dist_z = ABS(z - bbox(6))
                     END IF
                 END IF
-            ELSEIF (maxx <= x) THEN !--------------------------------------------------- high x
-                IF (y <= miny) THEN !-------------------------------------------- low y, high x
-                    IF (z <= minz) THEN !--------------------------------- low z, low y, high x
+            ELSEIF (bbox(2) <= x) THEN !--------------------------------------------------- high x
+                IF (y <= bbox(3)) THEN !-------------------------------------------- low y, high x
+                    IF (z <= bbox(5)) THEN !--------------------------------- low z, low y, high x
                         iface = 23
-                        dist_x = ABS(x - maxx)
-                        dist_y = ABS(y - miny)
-                        dist_z = ABS(z - minz)
-                    ELSEIF (minz < z .AND. z < maxz) THEN !--------------- mid z, low y, high x
+                        dist_x = ABS(x - bbox(2))
+                        dist_y = ABS(y - bbox(3))
+                        dist_z = ABS(z - bbox(5))
+                    ELSEIF (bbox(5) < z .AND. z < bbox(6)) THEN !--------------- mid z, low y, high x
                         iface = 11
-                        dist_x = ABS(x - maxx)
-                        dist_y = ABS(y - miny)
+                        dist_x = ABS(x - bbox(2))
+                        dist_y = ABS(y - bbox(3))
                         dist_z = 0.0
-                    ELSEIF (maxz <= z) THEN !---------------------------- high z, low y, high x
+                    ELSEIF (bbox(6) <= z) THEN !---------------------------- high z, low y, high x
                         iface = 24
-                        dist_x = ABS(x - maxx)
-                        dist_y = ABS(y - miny)
-                        dist_z = ABS(z - maxz)
+                        dist_x = ABS(x - bbox(2))
+                        dist_y = ABS(y - bbox(3))
+                        dist_z = ABS(z - bbox(6))
                     END IF
-                ELSEIF (miny < y .AND. y < maxy) THEN !-------------------------- mid y, high x
-                    IF (z <= minz) THEN !--------------------------------- low z, mid y, high x
+                ELSEIF (bbox(3) < y .AND. y < bbox(4)) THEN !-------------------------- mid y, high x
+                    IF (z <= bbox(5)) THEN !--------------------------------- low z, mid y, high x
                         iface = 13
-                        dist_x = ABS(x - maxx)
+                        dist_x = ABS(x - bbox(2))
                         dist_y = 0.0
-                        dist_z = ABS(z - minz)
-                    ELSEIF (minz < z .AND. z < maxz) THEN !--------------- mid z, mid y, high x
+                        dist_z = ABS(z - bbox(5))
+                    ELSEIF (bbox(5) < z .AND. z < bbox(6)) THEN !--------------- mid z, mid y, high x
                         iface = 2
-                        dist_x = ABS(x - maxx)
+                        dist_x = ABS(x - bbox(2))
                         dist_y = 0.0
                         dist_z = 0.0
-                    ELSEIF (maxz <= z) THEN !---------------------------- high z, mid y, high x
+                    ELSEIF (bbox(6) <= z) THEN !---------------------------- high z, mid y, high x
                         iface = 14
-                        dist_x = ABS(x - maxx)
+                        dist_x = ABS(x - bbox(2))
                         dist_y = 0.0
-                        dist_z = ABS(z - maxz)
+                        dist_z = ABS(z - bbox(6))
                     END IF
-                ELSEIF (maxy <= y) THEN !--------------------------------------- high y, high x
-                    IF (z <= minz) THEN !-------------------------------- low z, high y, high x
+                ELSEIF (bbox(4) <= y) THEN !--------------------------------------- high y, high x
+                    IF (z <= bbox(5)) THEN !-------------------------------- low z, high y, high x
                         iface = 25
-                        dist_x = ABS(x - maxx)
-                        dist_y = ABS(y - maxy)
-                        dist_z = ABS(z - minz)
-                    ELSEIF (minz < z .AND. z < maxz) THEN !-------------- mid z, high y, high x
+                        dist_x = ABS(x - bbox(2))
+                        dist_y = ABS(y - bbox(4))
+                        dist_z = ABS(z - bbox(5))
+                    ELSEIF (bbox(5) < z .AND. z < bbox(6)) THEN !-------------- mid z, high y, high x
                         iface = 12
-                        dist_x = ABS(x - maxx)
-                        dist_y = ABS(y - maxy)
+                        dist_x = ABS(x - bbox(2))
+                        dist_y = ABS(y - bbox(4))
                         dist_z = 0.0
-                    ELSEIF (maxz <= z) THEN !--------------------------- high z, high y, high x
+                    ELSEIF (bbox(6) <= z) THEN !--------------------------- high z, high y, high x
                         iface = 26
-                        dist_x = ABS(x - maxx)
-                        dist_y = ABS(y - maxy)
-                        dist_z = ABS(z - maxz)
+                        dist_x = ABS(x - bbox(2))
+                        dist_y = ABS(y - bbox(4))
+                        dist_z = ABS(z - bbox(6))
                     END IF
                 END IF
             END IF !-------------------------------------------------------------
@@ -492,25 +490,22 @@ SUBROUTINE get_exit_face_c_target(igrid, x, y, z, dist, iface)
     END SUBROUTINE get_exit_face_c_target
 
     
-    SUBROUTINE get_exit_face_c_target2(igrid, x, y, z, dist, iface)
+    SUBROUTINE get_exit_face_c_target2(bbox, x, y, z, dist, iface)
 
         !$omp declare target
 
         ! subroutine arguments
-        INTEGER(intk), INTENT(in) :: igrid
+        REAL(realk), INTENT(in) :: bbox(6)
         REAL(realk), INTENT(in) :: x, y, z
         REAL(realk), INTENT(out) :: dist
         INTEGER(intk), INTENT(out) :: iface
 
         ! local variables
         INTEGER(intk) :: i, j, k
-        REAL(realk) :: minx, maxx, miny, maxy, minz, maxz
 
-        CALL get_bbox_target(minx, maxx, miny, maxy, minz, maxz, igrid)
-
-        i = 1 - NINT(a_greaterequal_b(minx, x)) + NINT(a_greaterequal_b(x, maxx))
-        j = 1 - NINT(a_greaterequal_b(miny, y)) + NINT(a_greaterequal_b(y, maxy))
-        k = 1 - NINT(a_greaterequal_b(minz, z)) + NINT(a_greaterequal_b(z, maxz))
+        i = 1 - NINT(a_greaterequal_b(bbox(1), x)) + NINT(a_greaterequal_b(x, bbox(2)))
+        j = 1 - NINT(a_greaterequal_b(bbox(3), y)) + NINT(a_greaterequal_b(y, bbox(4)))
+        k = 1 - NINT(a_greaterequal_b(bbox(5), z)) + NINT(a_greaterequal_b(z, bbox(6)))
 
         IF (i == 1 .AND. j == 1 .AND. k == 1) THEN
             iface = 0
@@ -519,9 +514,10 @@ SUBROUTINE get_exit_face_c_target(igrid, x, y, z, dist, iface)
         END IF
 
         iface = facelist_utils(i*9 + j*3 + k + 1)
-        dist = SQRT(a_greaterequal_b(minx, x) * (x - minx)**2 + a_greaterequal_b(x, maxx) * (x - maxx)**2 + &
-                    a_greaterequal_b(miny, y) * (y - miny)**2 + a_greaterequal_b(y, maxy) * (y - maxy)**2 + &
-                    a_greaterequal_b(minz, z) * (z - minz)**2 + a_greaterequal_b(z, maxz) * (z - maxz)**2 )
+        dist = SQRT(a_greaterequal_b(bbox(1), x) * (x - bbox(1))**2 + a_greaterequal_b(x, bbox(2)) * (x - bbox(2))**2 + &
+                    a_greaterequal_b(bbox(3), y) * (y - bbox(3))**2 + a_greaterequal_b(y, bbox(4)) * (y - bbox(4))**2 + &
+                    a_greaterequal_b(bbox(5), z) * (z - bbox(5))**2 + a_greaterequal_b(z, bbox(6)) * (z - bbox(6))**2 )
+
 
     END SUBROUTINE get_exit_face_c_target2
 
@@ -652,30 +648,32 @@ SUBROUTINE get_exit_face_c_target(igrid, x, y, z, dist, iface)
 
 
     ! update particle coordinates such if particle crossed a periodic boundary
-    SUBROUTINE update_coordinates_p_target(particle, destgrid, iface)
+    SUBROUTINE update_coordinates_p_target(particle, destgrid, iface, old_bbox)
 
         !$omp declare target
 
         TYPE(baseparticle_t), INTENT(inout) :: particle
         INTEGER(intk), INTENT(in) :: destgrid, iface
+        REAL(realk), INTENT(in) :: old_bbox(6)
 
-        CALL update_coordinates_c_target(particle%igrid, destgrid, iface, particle%x, particle%y, particle%z)
+        CALL update_coordinates_c_target(particle%igrid, destgrid, iface, particle%x, particle%y, particle%z, old_bbox)
 
     END SUBROUTINE update_coordinates_p_target
 
 
-    SUBROUTINE update_coordinates_c_target(igrid, destgrid, iface, x, y, z, reflect)
+    SUBROUTINE update_coordinates_c_target(igrid, destgrid, iface, x, y, z, old_bbox, reflect)
 
         !$omp declare target
 
         ! subroutine arguments
         INTEGER(intk), INTENT(in) :: igrid, destgrid, iface
         REAL(realk), INTENT(inout) :: x, y, z
+        REAL(realk), INTENT(in) :: old_bbox(6)
         INTEGER(intk), INTENT(in), OPTIONAL :: reflect(3)
 
         ! local variables
-        REAL(realk) :: old_minx, old_maxx, old_miny, old_maxy, old_minz, old_maxz, &
-         new_minx, new_maxx, new_miny, new_maxy, new_minz, new_maxz
+        REAL(realk) :: new_minx, new_maxx, new_miny, new_maxy, new_minz, new_maxz
+         
         LOGICAL :: passed_pb
 
         passed_pb = .FALSE.
@@ -684,7 +682,6 @@ SUBROUTINE get_exit_face_c_target(igrid, x, y, z, dist, iface)
             RETURN
         END IF
 
-        CALL get_bbox_target(old_minx, old_maxx, old_miny, old_maxy, old_minz, old_maxz, igrid)
         CALL get_bbox_target(new_minx, new_maxx, new_miny, new_maxy, new_minz, new_maxz, destgrid)
 
         IF (PRESENT(reflect)) THEN ! this case is for the particle boundaries module
@@ -693,30 +690,30 @@ SUBROUTINE get_exit_face_c_target(igrid, x, y, z, dist, iface)
 
                 IF (reflect(1) == 0) THEN
                     IF (x <= new_minx) THEN
-                        x = new_maxx - ABS(x - old_minx)
+                        x = new_maxx - ABS(x - old_bbox(1))
                         passed_pb = .TRUE.
                     ELSEIF (new_maxx <= x) THEN
-                        x = new_minx + ABS(x - old_maxx)
+                        x = new_minx + ABS(x - old_bbox(2))
                         passed_pb = .TRUE.
                     END IF
                 END IF
 
                 IF (reflect(2) == 0) THEN
                     IF (y <= new_miny) THEN
-                        y = new_maxy - ABS(y - old_miny)
+                        y = new_maxy - ABS(y - old_bbox(3))
                         passed_pb = .TRUE.
                     ELSEIF (new_maxy <= y) THEN
-                        y = new_miny + ABS(y - old_maxy)
+                        y = new_miny + ABS(y - old_bbox(4))
                         passed_pb = .TRUE.
                     END IF
                 END IF
 
                 IF (reflect(3) == 0) THEN
                     IF (z <= new_minz) THEN
-                        z = new_maxz - ABS(z - old_minz)
+                        z = new_maxz - ABS(z - old_bbox(5))
                         passed_pb = .TRUE.
                     ELSEIF (new_maxz <= z) THEN
-                        z = new_minz + ABS(z - old_maxz)
+                        z = new_minz + ABS(z - old_bbox(6))
                         passed_pb = .TRUE.
                     END IF
                 END IF
@@ -724,26 +721,26 @@ SUBROUTINE get_exit_face_c_target(igrid, x, y, z, dist, iface)
             ELSE
 
                 IF (x < new_minx) THEN
-                    x = new_maxx - ABS(x - old_minx)
+                    x = new_maxx - ABS(x - old_bbox(1))
                     passed_pb = .TRUE.
                 ELSEIF (new_maxx < x) THEN
-                    x = new_minx + ABS(x - old_maxx)
+                    x = new_minx + ABS(x - old_bbox(2))
                     passed_pb = .TRUE.
                 END IF
 
                 IF (y < new_miny) THEN
-                    y = new_maxy - ABS(y - old_miny)
+                    y = new_maxy - ABS(y - old_bbox(3))
                     passed_pb = .TRUE.
                 ELSEIF (new_maxy < y) THEN
-                    y = new_miny + ABS(y - old_maxy)
+                    y = new_miny + ABS(y - old_bbox(4))
                     passed_pb = .TRUE.
                 END IF
 
                 IF (z < new_minz) THEN
-                    z = new_maxz - ABS(z - old_minz)
+                    z = new_maxz - ABS(z - old_bbox(5))
                     passed_pb = .TRUE.
                 ELSEIF (new_maxz < z) THEN
-                    z = new_minz + ABS(z - old_maxz)
+                    z = new_minz + ABS(z - old_bbox(6))
                     passed_pb = .TRUE.
                 END IF
 
@@ -752,26 +749,26 @@ SUBROUTINE get_exit_face_c_target(igrid, x, y, z, dist, iface)
         ELSE ! this case is for the particle exchange module
 
             IF (x < new_minx) THEN
-                x = new_maxx - ABS(x - old_minx)
+                x = new_maxx - ABS(x - old_bbox(1))
                 passed_pb = .TRUE.
             ELSEIF (new_maxx < x) THEN
-                x = new_minx + ABS(x - old_maxx)
+                x = new_minx + ABS(x - old_bbox(2))
                 passed_pb = .TRUE.
             END IF
 
             IF (y < new_miny) THEN
-                y = new_maxy - ABS(y - old_miny)
+                y = new_maxy - ABS(y - old_bbox(3))
                 passed_pb = .TRUE.
             ELSEIF (new_maxy < y) THEN
-                y = new_miny + ABS(y - old_maxy)
+                y = new_miny + ABS(y - old_bbox(4))
                 passed_pb = .TRUE.
             END IF
 
             IF (z < new_minz) THEN
-                z = new_maxz - ABS(z - old_minz)
+                z = new_maxz - ABS(z - old_bbox(5))
                 passed_pb = .TRUE.
             ELSEIF (new_maxz < z) THEN
-                z = new_minz + ABS(z - old_maxz)
+                z = new_minz + ABS(z - old_bbox(6))
                 passed_pb = .TRUE.
             END IF
 

@@ -752,6 +752,7 @@ MODULE particle_boundaries_mod
         REAL(realk) :: x, y, z
         REAL(realk) :: dx_step, dy_step, dz_step
         REAL(realk) :: dx_from_here, dy_from_here, dz_from_here
+        REAL(realk) :: bbox(6)
         LOGICAL :: dreplace
 
         dreplace = .FALSE.
@@ -775,8 +776,10 @@ MODULE particle_boundaries_mod
         ! to avoid branch divergence here, just iterate to the max. number of iterations that would be a stoping criterion anyways
         DO i = 1, 10
 
+            CALL get_bbox_target(bbox(1), bbox(2), bbox(3), bbox(4), bbox(5), bbox(6), temp_grid)
+
             CALL move_to_boundary_target(particle%igrid, temp_grid, x, y, z, &
-             dx_from_here, dy_from_here, dz_from_here, dx_step, dy_step, dz_step, iface, iobst_local, dreplace, obstacles)
+             dx_from_here, dy_from_here, dz_from_here, dx_step, dy_step, dz_step, iface, iobst_local, dreplace, obstacles, bbox)
 
             ! replace current particle coordinates by a random valid position on the particles curren grid
             IF (dreplace) THEN
@@ -805,7 +808,7 @@ MODULE particle_boundaries_mod
                  particle_boundaries(temp_grid)%face_normals(2, iface), &
                  particle_boundaries(temp_grid)%face_normals(3, iface), reflect)
 
-                CALL update_coordinates_target(temp_grid, destgrid, iface, x, y, z, reflect)
+                CALL update_coordinates_target(temp_grid, destgrid, iface, x, y, z, bbox, reflect)
 
                 temp_grid = destgrid
 
@@ -838,7 +841,7 @@ MODULE particle_boundaries_mod
    ! This subroutine only considers grids on the same level
     ! CAUTION: Here, temp_grid refers to the grid the particle coordinates are currently on and of which the boundaries are relevant.
     ! This might NOT be particle%igrid, which is used to deduce the velocity
-    SUBROUTINE move_to_boundary_target(old_grid, temp_grid, x, y, z, dx, dy, dz, dx_to_b, dy_to_b, dz_to_b, iface, iobst_local, replace, obstacles)
+    SUBROUTINE move_to_boundary_target(old_grid, temp_grid, x, y, z, dx, dy, dz, dx_to_b, dy_to_b, dz_to_b, iface, iobst_local, replace, obstacles, bbox)
 
         !$omp declare target
 
@@ -852,6 +855,7 @@ MODULE particle_boundaries_mod
         INTEGER(intk), INTENT(inout) :: iobst_local
         LOGICAL, INTENT(out) :: replace
         TYPE(obstacle_t), POINTER, CONTIGUOUS, DIMENSION(:), INTENT(in) :: obstacles
+        REAL(realk), INTENT(in) :: bbox(6)
 
         !local variables
         REAL(realk) :: s, dist
@@ -870,12 +874,12 @@ MODULE particle_boundaries_mod
             RETURN
         END IF
 
-        CALL to_grid_boundary(temp_grid, x, y, z, dx, dy, dz, dx_to_b, dy_to_b, dz_to_b, s, dget_exit_face)
+        CALL to_grid_boundary(temp_grid, x, y, z, dx, dy, dz, dx_to_b, dy_to_b, dz_to_b, s, dget_exit_face, bbox)
 
         IF (dget_exit_face) THEN
             ! get face after x/y/z have (potentially) been altered
             iobst_local = 0
-            CALL get_exit_face_target(temp_grid, x, y, z, dist, iface)
+            CALL get_exit_face_target(bbox, x, y, z, dist, iface)
         ELSE
             iface = 0
         END IF
@@ -985,7 +989,7 @@ MODULE particle_boundaries_mod
     END SUBROUTINE s_to_obstacle
 
 
-    SUBROUTINE to_grid_boundary(temp_grid, x, y, z, dx, dy, dz, dx_to_b, dy_to_b, dz_to_b, s, dget_exit_face)
+    SUBROUTINE to_grid_boundary(temp_grid, x, y, z, dx, dy, dz, dx_to_b, dy_to_b, dz_to_b, s, dget_exit_face, bbox)
 
         !$omp declare target
 
@@ -996,17 +1000,15 @@ MODULE particle_boundaries_mod
         REAL(realk), INTENT(out) :: dx_to_b, dy_to_b, dz_to_b
         REAL(realk), INTENT(inout) :: s
         LOGICAL, INTENT(out) :: dget_exit_face
+        REAL(realk), INTENT(in) :: bbox(6)
 
         !local variables
-        REAL(realk) :: minx, maxx, miny, maxy, minz, maxz
-        REAL(realk) :: lx, ly, lz, rx, ry, rz, cx, cy, cz
-
-        CALL get_bbox_target(minx, maxx, miny, maxy, minz, maxz, temp_grid)
+        REAL(realk) :: lx, ly, lz, rx, ry, rz
 
         ! STEP 2 - GRID BOUNDARIES
         ! now check if any grid boundary is reached before any obstacle is reached
         IF (dx < 0) THEN
-            lx = (minx - x)
+            lx = (bbox(1) - x)
             ! if particle is at boundary in X dir (lx = 0) or particle is outside temp_grid (lx > 0.0),
             ! get exit face and return; so if a particle is incorrectly outside a reflect boundary its
             ! motion vector is reflected towards temp_grid
@@ -1018,7 +1020,7 @@ MODULE particle_boundaries_mod
             END IF
             rx = dx * s / lx
         ELSEIF (0 < dx) THEN
-            lx = (maxx - x)
+            lx = (bbox(2) - x)
             IF (lx <= 0.0_realk) THEN
                 dget_exit_face = .TRUE.
                 RETURN
@@ -1029,14 +1031,14 @@ MODULE particle_boundaries_mod
         END IF
 
         IF (dy < 0) THEN
-            ly = (miny - y)
+            ly = (bbox(3) - y)
             IF (ly >= 0.0_realk) THEN
                 dget_exit_face = .TRUE.
                 RETURN
             END IF
             ry = dy * s / ly
         ELSEIF (0 < dy) THEN
-            ly = (maxy - y)
+            ly = (bbox(4) - y)
             IF (ly <= 0.0_realk) THEN
                 dget_exit_face = .TRUE.
                 RETURN
@@ -1047,14 +1049,14 @@ MODULE particle_boundaries_mod
         END IF
 
         IF (dz < 0) THEN
-            lz = (minz - z)
+            lz = (bbox(5) - z)
             IF(lz >= 0.0_realk) THEN
                 dget_exit_face = .TRUE.
                 RETURN
             END IF
             rz = dz * s / lz
         ELSEIF (0 < dz) THEN
-            lz = (maxz - z)
+            lz = (bbox(6) - z)
             IF(lz <= 0.0_realk) THEN
                 dget_exit_face = .TRUE.
                 RETURN
@@ -1087,7 +1089,7 @@ MODULE particle_boundaries_mod
             dx_to_b = lx
             dy_to_b = (lx * dy/dx)
             dz_to_b = (lx * dz/dx)
-            x = minx ! keep this expression so no floating point errors occur and the particle is EXACTLY at the boundary
+            x = bbox(1) ! keep this expression so no floating point errors occur and the particle is EXACTLY at the boundary
             y = y + dy_to_b
             z = z + dz_to_b
             dx = dx - dx_to_b
@@ -1099,7 +1101,7 @@ MODULE particle_boundaries_mod
             dx_to_b = lx
             dy_to_b = (lx * dy/dx)
             dz_to_b = (lx * dz/dx)
-            x = maxx ! keep this expression so no floating point errors occur and the particle is EXACTLY at the boundary
+            x = bbox(2) ! keep this expression so no floating point errors occur and the particle is EXACTLY at the boundary
             y = y + dy_to_b
             z = z + dz_to_b
             dx = dx - dx_to_b
@@ -1112,7 +1114,7 @@ MODULE particle_boundaries_mod
             dy_to_b = ly
             dz_to_b = (ly * dz/dy)
             x = x + dx_to_b
-            y = miny ! keep this expression so no floating point errors occur and the particle is EXACTLY at the boundary
+            y = bbox(3) ! keep this expression so no floating point errors occur and the particle is EXACTLY at the boundary
             z = z + dz_to_b
             dx = dx - dx_to_b
             dy = dy - dy_to_b
@@ -1124,7 +1126,7 @@ MODULE particle_boundaries_mod
             dy_to_b = ly
             dz_to_b = (ly * dz/dy)
             x = x + dx_to_b
-            y = maxy ! keep this expression so no floating point errors occur and the particle is EXACTLY at the boundary
+            y = bbox(4) ! keep this expression so no floating point errors occur and the particle is EXACTLY at the boundary
             z = z + dz_to_b
             dx = dx - dx_to_b
             dy = dy - dy_to_b
@@ -1137,7 +1139,7 @@ MODULE particle_boundaries_mod
             dz_to_b = lz
             x = x + dx_to_b
             y = y + dy_to_b
-            z = minz ! keep this expression so no floating point errors occur and the particle is EXACTLY at the boundary
+            z = bbox(5) ! keep this expression so no floating point errors occur and the particle is EXACTLY at the boundary
             dx = dx - dx_to_b
             dy = dy - dy_to_b
             dz = dz - dz_to_b
@@ -1149,7 +1151,7 @@ MODULE particle_boundaries_mod
             dz_to_b = lz
             x = x + dx_to_b
             y = y + dy_to_b
-            z = maxz ! keep this expression so no floating point errors occur and the particle is EXACTLY at the boundary
+            z = bbox(6) ! keep this expression so no floating point errors occur and the particle is EXACTLY at the boundary
             dx = dx - dx_to_b
             dy = dy - dy_to_b
             dz = dz - dz_to_b
@@ -1159,7 +1161,7 @@ MODULE particle_boundaries_mod
     END SUBROUTINE to_grid_boundary
 
 
-    SUBROUTINE move_to_boundary_target2(temp_grid, x, y, z, dx, dy, dz, dx_to_b, dy_to_b, dz_to_b, iface, iobst_local, replace, obstacles)
+    SUBROUTINE move_to_boundary_target2(temp_grid, x, y, z, dx, dy, dz, dx_to_b, dy_to_b, dz_to_b, iface, iobst_local, replace, obstacles, bbox)
 
         !$omp declare target
 
@@ -1172,7 +1174,7 @@ MODULE particle_boundaries_mod
         INTEGER(intk), INTENT(inout) :: iobst_local
         LOGICAL, INTENT(out) :: replace
         TYPE(obstacle_t), POINTER, CONTIGUOUS, DIMENSION(:), INTENT(in) :: obstacles
-        !REAL(realk), INTENT(in) :: bbox(6)
+        REAL(realk), INTENT(in) :: bbox(6)
 
         !local variables
         INTEGER(intk) :: closestbx, closestby, closestbz, sum
@@ -1189,9 +1191,9 @@ MODULE particle_boundaries_mod
 
         CALL s_to_obstacle2(temp_grid, x, y, z, dx, dy, dz, iobst_local, s, obstacles)
 
-        CALL to_grid_boundary2(temp_grid, x, y, z, dx, dy, dz, dx_to_b, dy_to_b, dz_to_b, s, iobst_local)
+        CALL to_grid_boundary2(temp_grid, x, y, z, dx, dy, dz, dx_to_b, dy_to_b, dz_to_b, s, iobst_local, bbox)
 
-        CALL get_exit_face_target(temp_grid, x, y, z, dist, iface)
+        CALL get_exit_face_target(bbox, x, y, z, dist, iface)
 
     END SUBROUTINE move_to_boundary_target2
 
@@ -1271,7 +1273,7 @@ MODULE particle_boundaries_mod
     END SUBROUTINE s_to_obstacle2
 
 
-    SUBROUTINE to_grid_boundary2(temp_grid, x, y, z, dx, dy, dz, dx_to_b, dy_to_b, dz_to_b, s, iobst_local)
+    SUBROUTINE to_grid_boundary2(temp_grid, x, y, z, dx, dy, dz, dx_to_b, dy_to_b, dz_to_b, s, iobst_local, bbox)
 
         !$omp declare target
 
@@ -1282,20 +1284,18 @@ MODULE particle_boundaries_mod
         REAL(realk), INTENT(out) :: dx_to_b, dy_to_b, dz_to_b
         REAL(realk), INTENT(inout) :: s
         INTEGER(intk), INTENT(inout) :: iobst_local
+        REAL(realk), INTENT(in) :: bbox(6)
 
         !local variables
         INTEGER(intk) :: closestbx, closestby, closestbz, sum
-        REAL(realk) :: dist, minx, maxx, miny, maxy, minz, maxz
-        REAL(realk) :: lx, ly, lz
+        REAL(realk) :: lx, ly, lz, dist
         REAL(realk) :: newcoord(3)
-
-        CALL get_bbox_target(minx, maxx, miny, maxy, minz, maxz, temp_grid)
 
         ! STEP 2 - GRID BOUNDARIES
         ! signed distance of particle to grid boundaries
-        lx = 0.0_realk + (minx - x) * a_greater_b(0.0_realk, dx) + (maxx - x) * a_greater_b(dx, 0.0_realk) ! = lx
-        ly = 0.0_realk + (miny - y) * a_greater_b(0.0_realk, dy) + (maxy - y) * a_greater_b(dy, 0.0_realk) ! = ly
-        lz = 0.0_realk + (minz - z) * a_greater_b(0.0_realk, dz) + (maxz - z) * a_greater_b(dz, 0.0_realk) ! = lz
+        lx = 0.0_realk + (bbox(1) - x) * a_greater_b(0.0_realk, dx) + (bbox(2) - x) * a_greater_b(dx, 0.0_realk) ! = lx
+        ly = 0.0_realk + (bbox(3) - y) * a_greater_b(0.0_realk, dy) + (bbox(4) - y) * a_greater_b(dy, 0.0_realk) ! = ly
+        lz = 0.0_realk + (bbox(5) - z) * a_greater_b(0.0_realk, dz) + (bbox(6) - z) * a_greater_b(dz, 0.0_realk) ! = lz
         
         closestbx = 0
         closestby = 0
@@ -1328,19 +1328,19 @@ MODULE particle_boundaries_mod
         dy = dy - dy_to_b
         dz = dz - dz_to_b
 
-        newcoord(1) = minx
+        newcoord(1) = bbox(1)
         newcoord(2)  = x + dx_to_b
-        newcoord(3)  = maxx
+        newcoord(3)  = bbox(2)
         x = newcoord(2 + closestbx * INT(SIGN(1.0_realk, dx)))
         
-        newcoord(1) = miny
+        newcoord(1) = bbox(3)
         newcoord(2)  = y + dy_to_b
-        newcoord(3)  = maxy
+        newcoord(3)  = bbox(4)
         y = newcoord(2 + closestby * INT(SIGN(1.0_realk, dy)))
         
-        newcoord(1) = minz
+        newcoord(1) = bbox(5)
         newcoord(2) = z + dz_to_b
-        newcoord(3) = maxz
+        newcoord(3) = bbox(6)
         z = newcoord(2 + closestbz * INT(SIGN(1.0_realk, dz)))
 
         sum = closestbx + closestby + closestbz

@@ -633,7 +633,6 @@ CONTAINS
         REAL(realk), POINTER, CONTIGUOUS, DIMENSION(:) :: dx, dy, dz
 
         REAL(realk) :: diff_old, diff_new
-        REAL(realk) :: minx, maxx, miny, maxy, minz, maxz
         INTEGER(intk) :: k, j, i, kk, jj, ii, istep, jstep, kstep
 
         CALL ptr_to_grid_x(x_offload, particle%igrid, x)
@@ -645,11 +644,6 @@ CONTAINS
         CALL ptr_to_grid_z(dz_offload, particle%igrid, dz)
 
         CALL get_mgdims_target(kk, jj, ii, particle%igrid)
-        CALL get_bbox_target(minx, maxx, miny, maxy, minz, maxz, particle%igrid)
-
-        !IF (particle%ijkcell(1) < 1 .OR. particle%ijkcell(1) > ii) CALL errr(__FILE__, __LINE__)
-        !IF (particle%ijkcell(2) < 1 .OR. particle%ijkcell(2) > jj) CALL errr(__FILE__, __LINE__)
-        !IF (particle%ijkcell(3) < 1 .OR. particle%ijkcell(3) > kk) CALL errr(__FILE__, __LINE__)
 
         ! the following assumes that the grid coordinates X/Y/Z are each sorted such that for any i < j and any direction x, x(i) < x(j) !
         ! the following procedure is capable of handling stretched grids!
@@ -704,6 +698,7 @@ CONTAINS
         END DO
 
         particle%ijkcell(3) = MIN(MAX(k - kstep, 1_intk), kk) ! MIN/MAX should be obsolete here
+
     END SUBROUTINE update_particle_cell_target
 
 END MODULE particle_basetype_mod
