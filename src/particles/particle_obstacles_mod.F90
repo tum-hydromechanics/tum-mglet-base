@@ -44,11 +44,15 @@ MODULE particle_obstacles_mod
     ! list of all obstacles that are on any grid or neighbouring grid of this process
     TYPE(obstacle_t), ALLOCATABLE :: my_obstacles(:)
 
+    TYPE(obstacle_t), ALLOCATABLE, TARGET :: my_obstacles_offload(:)
+
     ! list that holds one obstacle_pointer_t per grid (all grids, not limited to those on this process)
     TYPE(obstacle_pointer_t), ALLOCATABLE :: my_obstacle_pointers(:)
 
     ! list that holds the number of obstacles relevant for this pro per grid
     INTEGER(intk), ALLOCATABLE :: n_my_obstacles_on_grid(:) 
+
+    INTEGER(intk), ALLOCATABLE :: obstacle_displ(:)
 
     ! TODO: change this value?
     ! factor to compute the minimum distance between obstacles for which no intermediate obstacle is generated
@@ -60,7 +64,7 @@ MODULE particle_obstacles_mod
 
     REAL(realk), ALLOCATABLE :: aura(:)
 
-    !$omp declare target(my_obstacles, my_obstacle_pointers, n_my_obstacles_on_grid, aura)
+    !$omp declare target(my_obstacles_offload, obstacle_displ, n_my_obstacles_on_grid, aura)
 
 CONTAINS    !===================================
 
@@ -84,6 +88,11 @@ CONTAINS    !===================================
 
         IF (.NOT. dread_obstacles_dict) THEN
             ALLOCATE(my_obstacles(0))
+            ALLOCATE(my_obstacle_pointers(0))
+            ! allocate to size 1 to avoid omp trouble ...
+            ALLOCATE(my_obstacles_offload(1))
+            ALLOCATE(obstacle_displ(1))
+            obstacle_displ = 0
             ALLOCATE(n_my_obstacles_on_grid(ngrid))
             n_my_obstacles_on_grid = 0
             RETURN
@@ -135,9 +144,6 @@ CONTAINS    !===================================
         counter_array = 0
 
         ALLOCATE(my_obstacle_pointers(ngrid))
-
-        ALLOCATE(n_my_obstacles_on_grid(ngrid))
-        n_my_obstacles_on_grid = 0
 
         OPEN(newunit = unit, file = 'ObstaclesDict.txt', status = 'OLD', action = 'READ')
 
@@ -393,11 +399,28 @@ CONTAINS    !===================================
             END IF
         END IF
 
+        ALLOCATE(n_my_obstacles_on_grid(ngrid))
+        n_my_obstacles_on_grid = 0
+
+        ALLOCATE(obstacle_displ(ngrid))
+        obstacle_displ = 0
+
         DO igrid = 1, ngrid
             n_my_obstacles_on_grid(igrid) = SIZE(my_obstacle_pointers(igrid)%grid_obstacles)
         END DO
 
-        ! obsolete ?
+        DO igrid = 2, ngrid
+            obstacle_displ(igrid) = obstacle_displ(igrid - 1) + n_my_obstacles_on_grid(igrid - 1)
+        END DO
+
+        ALLOCATE(my_obstacles_offload(SUM(n_my_obstacles_on_grid)))
+        
+        DO igrid = 1, ngrid
+            DO i = 1, n_my_obstacles_on_grid(igrid)
+                my_obstacles_offload(obstacle_displ(igrid) + i) = my_obstacles(my_obstacle_pointers(igrid)%grid_obstacles(i))
+            END DO
+        END DO
+
         CALL MPI_Barrier(MPI_COMM_WORLD)
 
         ! the following vtk output is optional and can be removed
@@ -437,6 +460,9 @@ CONTAINS    !===================================
             END DO
             DEALLOCATE(my_obstacle_pointers)
         END IF
+        IF (ALLOCATED(my_obstacles_offload)) DEALLOCATE(my_obstacles_offload)
+        IF (ALLOCATED(obstacle_displ)) DEALLOCATE(obstacle_displ)
+
 
     END SUBROUTINE finish_obstacles
 
@@ -656,6 +682,8 @@ CONTAINS    !===================================
         res = .FALSE.
 
         CALL get_bbox(minx, maxx, miny, maxy, minz, maxz, igrid)
+        
+        ol = MAX(maxx - minx, maxy - miny, minz - maxz)
 
         IF(maxx + ol + this%radius + EPSILON(maxx) < this%x) THEN
             RETURN

@@ -73,15 +73,34 @@ CONTAINS
 
 #ifdef _MGLET_OPENMP_
             CALL offload_fields()
+            IF (myid == 0) THEN
+                WRITE(*, '("Particle offloading fields initialized successfully.")')
+                WRITE(*, '()')
+            END IF
+
 #endif
 
             CALL init_particle_utils()
+            IF (myid == 0) THEN
+                WRITE(*, '("Particle utils initialized successfully.")')
+                WRITE(*, '()')
+            END IF
 
             ! determine particle boundaries and their normal vectors
             CALL init_particle_boundaries()
+            IF (myid == 0) THEN
+                WRITE(*, '("Particle boundaries initialized successfully.")')
+                WRITE(*, '()')
+            END IF
 
             ! read or generate particles and init particle list
             CALL init_particle_list()
+
+            IF (myid == 0) THEN
+                WRITE(*, '("Particle list initialized successfully.")')
+                WRITE(*, '()')
+            END IF
+
 
             IF (dread_particles_h5) THEN
                 CALL read_particles_h5("particles.h5")
@@ -101,6 +120,10 @@ CONTAINS
 
             ! determine particle exchange connections and init particle exchange
             CALL init_particle_exchange()
+            IF (myid == 0) THEN
+                WRITE(*, '("Particle exchange initialized successfully.")')
+                WRITE(*, '()')
+            END IF
 
             ! DIFFUSION, TIMEINTEGRATION, STATISTICS AND SNAPSHOT INITIALIZATION IN TIMELOOP
 

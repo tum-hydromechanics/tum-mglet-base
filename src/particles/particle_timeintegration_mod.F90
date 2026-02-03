@@ -374,7 +374,7 @@ CONTAINS
         num_teams = -99
         num_threads = -99
 
-        !$omp target map(tofrom: dev_num, num_teams, num_threads)
+        !$omp target map(tofrom: dev_num, num_teams, num_threads) map(to: nmy_particle_grids)
         !$omp teams distribute private(igrid) reduction(max: num_threads)
         DO i = 1, nmy_particle_grids
 
@@ -392,7 +392,8 @@ CONTAINS
                 REAL(realk), POINTER, CONTIGUOUS, DIMENSION(:) :: x, y, z
                 REAL(realk), POINTER, CONTIGUOUS, DIMENSION(:) :: dx, dy, dz, ddx, ddy, ddz
                 REAL(realk), POINTER, CONTIGUOUS, DIMENSION(:, :, :) :: pwu, pwv, pww
-                
+                TYPE(obstacle_t), POINTER, CONTIGUOUS, DIMENSION(:) :: obstacles
+
                 CALL get_mgdims_target(kk, jj, ii, igrid)
                 
                 CALL ptr_to_grid_x(x_offload, igrid, x)
@@ -410,7 +411,9 @@ CONTAINS
                 CALL ptr_to_grid3(v_offload, igrid, pwv)
                 CALL ptr_to_grid3(w_offload, igrid, pww)
 
-                !$omp parallel do private(ipart, temp_grid, temp_x, temp_y, temp_z)
+                obstacles => my_obstacles_offload(obstacle_displ(igrid) + 1: obstacle_displ(igrid) + MAX(1_intk, n_my_obstacles_on_grid(igrid)))
+                
+                !$omp parallel do private(ipart, temp_grid, temp_x, temp_y, temp_z) shared(obstacles)
                 DO j = 1, grids_np(i)
                     
                     num_threads = omp_get_num_threads()
@@ -421,14 +424,14 @@ CONTAINS
                     temp_x = my_particle_list%particles(ipart)%x
                     temp_y = my_particle_list%particles(ipart)%y
                     temp_z = my_particle_list%particles(ipart)%z
-                    
+
                     
                     IF (dadvection) CALL particle_advection_target(my_particle_list%particles(ipart), temp_grid, temp_x, temp_y, temp_z, &
-                     kk, jj, ii, x, y, z, dx, dy, dz, ddx, ddy, ddz, pwu, pwv, pww, dt, pnrk)
+                     kk, jj, ii, x, y, z, dx, dy, dz, ddx, ddy, ddz, pwu, pwv, pww, dt, pnrk, obstacles)
 
 #ifdef _MGLET_OPENMP_
                     IF (ddiffusion) CALL particle_diffusion_target(my_particle_list%particles(ipart), temp_grid, temp_x, temp_y, temp_z, &
-                     dt, truncation_limit, truncation_factor, my_particle_list%particles(ipart)%seed)
+                     dt, truncation_limit, truncation_factor, my_particle_list%particles(ipart)%seed, obstacles)
 #endif
 
                     ! TODO: reintroduce particle runtime statistics
@@ -452,7 +455,8 @@ CONTAINS
     
     END SUBROUTINE timeintegrate_particles_target
 
-    SUBROUTINE particle_advection_target(particle, temp_grid, temp_x, temp_y, temp_z, kk, jj, ii, x, y, z, dx, dy, dz, ddx, ddy, ddz, pwu, pwv, pww, dt, pnrk)
+    SUBROUTINE particle_advection_target(particle, temp_grid, temp_x, temp_y, temp_z, kk, jj, ii, x, y, z, dx, dy, dz, ddx, ddy, ddz, &
+                                         pwu, pwv, pww, dt, pnrk, obstacles)
 
         !$omp declare target
 
@@ -466,6 +470,7 @@ CONTAINS
         REAL(realk), POINTER, CONTIGUOUS, DIMENSION(:, :, :), INTENT(in) :: pwu, pwv, pww
         REAL(realk), INTENT(in) :: dt
         INTEGER(intk), INTENT(in) :: pnrk
+        TYPE(obstacle_t), POINTER, CONTIGUOUS, DIMENSION(:), INTENT(in) :: obstacles
         
         ! local variables
         INTEGER(intk) :: irk
@@ -485,7 +490,7 @@ CONTAINS
 
             ! Particle Boundary Interaction
             CALL move_particle_target(particle, pdx_adv, pdy_adv, pdz_adv, &
-             pdx_eff, pdy_eff, pdz_eff, temp_x, temp_y, temp_z, temp_grid)
+             pdx_eff, pdy_eff, pdz_eff, temp_x, temp_y, temp_z, temp_grid, obstacles)
              
             pdx_pot = pdx_eff / B_offload(irk)
             pdy_pot = pdy_eff / B_offload(irk)
@@ -496,7 +501,7 @@ CONTAINS
 
     END SUBROUTINE particle_advection_target
 
-    SUBROUTINE particle_diffusion_target(particle, temp_grid, temp_x, temp_y, temp_z, dt, trunc_limit, trunc_factor, seed)
+    SUBROUTINE particle_diffusion_target(particle, temp_grid, temp_x, temp_y, temp_z, dt, trunc_limit, trunc_factor, seed, obstacles)
 
         !$omp declare target
 
@@ -507,6 +512,7 @@ CONTAINS
         REAL(realk), INTENT(in) :: dt
         REAL(realk), INTENT(in) :: trunc_limit, trunc_factor
         INTEGER(c_int), INTENT(inout) :: seed
+        TYPE(obstacle_t), POINTER, CONTIGUOUS, DIMENSION(:), INTENT(in) :: obstacles
 
         ! local variables
         REAL(realk) :: pdx_diff, pdy_diff, pdz_diff
@@ -515,7 +521,7 @@ CONTAINS
         CALL generate_diffusive_displacement_target(dt, D(1), D(2), D(3), pdx_diff, pdy_diff, pdz_diff, trunc_limit, trunc_factor, seed)
         
         CALL move_particle_target(particle, pdx_diff, pdy_diff, pdz_diff, &
-             pdx_eff, pdy_eff, pdz_eff, temp_x, temp_y, temp_z, temp_grid)
+             pdx_eff, pdy_eff, pdz_eff, temp_x, temp_y, temp_z, temp_grid, obstacles)
 
         ! TODO: reintroduce particle runtime statistics
 
