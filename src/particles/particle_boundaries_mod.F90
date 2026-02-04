@@ -11,6 +11,22 @@ MODULE particle_boundaries_mod
 
     IMPLICIT NONE
 
+    TYPE :: reduction_pair_t
+
+        REAL(realk) :: value
+        INTEGER(intk) :: tag
+
+    END TYPE reduction_pair_t
+
+    !$omp declare reduction(minpair : reduction_pair_t : &
+    !$omp   omp_out = merge(omp_in, omp_out, omp_in%value < omp_out%value)) &
+    !$omp   initializer( omp_priv = reduction_pair_t( huge(0.0_realk), 0_intk))
+
+    !$omp declare reduction(maxpair : reduction_pair_t : &
+    !$omp   omp_out = merge(omp_in, omp_out, omp_in%value > omp_out%value)) &
+    !$omp   initializer( omp_priv = reduction_pair_t(-huge(0.0_realk), 0_intk))
+    
+
     INTEGER(intk), PARAMETER :: facelist_b(4,26) = RESHAPE((/ &
         1, 1, 0, 0, &
         1, 2, 0, 0, &
@@ -903,6 +919,7 @@ MODULE particle_boundaries_mod
         !local variables
         INTEGER(intk) :: i, nobst
         REAL(realk) :: sa, sb, sc, sd, a, b, b0, c, c0, d, r
+        TYPE(reduction_pair_t) :: si_pair
 
         ! STEP 1 - OBSTACLES
         ! find intersection points of the line the particle moves on (straight) and the sphere surface
@@ -912,6 +929,7 @@ MODULE particle_boundaries_mod
             ! => s1/s2 = sa/sb = (-b +/- sqrt(b² - 4ac)) / 2a (corefficients see code)
 
         s = 1.0
+        si_pair = reduction_pair_t(HUGE(0.0_realk), 0)
 
         ! first coefficient
         a = (dx**2 + dy**2 + dz**2)
@@ -922,6 +940,7 @@ MODULE particle_boundaries_mod
         ! iterate over all obstacles of the grid
         nobst = n_my_obstacles_on_grid(old_grid) * a_greater_b(a, 0.0_realk)
 
+        !$omp parallel do private(b, c, d, sa, sb) reduction(minpair: si_pair)
         DO i = 1, nobst
 
             ! check if a particle interacts with the obstacle it has been deflected from in the previous timestep
@@ -953,9 +972,9 @@ MODULE particle_boundaries_mod
             ! if a particle moves towards an obstacle, limit its motion to the closest intersection yet
             IF (sa >= 0.0 .AND. sb >= 0.0) THEN
                 sc = MIN(sa, sb)
-                IF (sc < s) THEN
-                    s = sc
-                    iobst_local = i
+                IF (sc < si_pair%value) THEN
+                    si_pair%value = sc
+                    si_pair%tag = i
                 END IF
             ! elseif a particle moves away from the current obstacle, cycle
             ELSEIF (sa <= 0.0 .AND. sb <= 0.0) THEN
@@ -963,28 +982,22 @@ MODULE particle_boundaries_mod
             ! else (if sa < 0 and sb > 0 or vice versa) the particle is inside the current obstacle
             ! => replace current particle coordinates by a random valid position on the particles curren grid
             ELSE
-                !dist_to_center = SQRT((x - cx)**2 + (y - cy)**2 + (z - cz)**2)
-
-                !IF ((r - dist_to_center) > aura(1)) THEN
-                !    replace = .TRUE.
-                !    iface = 0
-                !    iobst_local = 0
-                !    RETURN
-                !END IF
-
                 sc = MIN(sa, sb)
                 sd = MAX(sa, sb)
 
                 IF (ABS(sc) < ABS(sd)) THEN
-                    s = 0.0
-                    iobst_local = i
-                    EXIT
+                    si_pair%value = 0.0_realk 
+                    si_pair%tag = i
                 ELSEIF (ABS(sc) >= ABS(sd)) THEN
                     CYCLE
                 END IF
 
             END IF
         END DO
+        !$omp end parallel do
+
+        s = MIN(si_pair%value, s) 
+        iobst_local = si_pair%tag
 
     END SUBROUTINE s_to_obstacle
 
