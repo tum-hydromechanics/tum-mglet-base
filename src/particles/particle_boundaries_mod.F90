@@ -734,12 +734,14 @@ MODULE particle_boundaries_mod
     END SUBROUTINE move_to_boundary
 
 
-    SUBROUTINE move_particle_target(particle, dx, dy, dz, dx_eff, dy_eff, dz_eff, temp_x, temp_y, temp_z, temp_grid_prev, obstacles)
+    SUBROUTINE move_particle_target(px, py, pz, icell, jcell, kcell, igrid, &
+     dx, dy, dz, dx_eff, dy_eff, dz_eff, temp_x, temp_y, temp_z, temp_grid_prev, obstacles)
 
         !$omp declare target
 
         ! subroutine arguments
-        TYPE(baseparticle_t), INTENT(inout) :: particle
+        REAL(realk), INTENT(inout) :: px, py, pz
+        INTEGER(intk), INTENT(inout) :: icell, jcell, kcell, igrid
         REAL(realk), INTENT(in) :: dx, dy, dz
         REAL(realk), INTENT(out) :: dx_eff, dy_eff, dz_eff
         REAL(realk), INTENT(inout) :: temp_x, temp_y, temp_z
@@ -778,18 +780,18 @@ MODULE particle_boundaries_mod
 
             CALL get_bbox_target(bbox(1), bbox(2), bbox(3), bbox(4), bbox(5), bbox(6), temp_grid)
 
-            CALL move_to_boundary_target(particle%igrid, temp_grid, x, y, z, &
+            CALL move_to_boundary_target(igrid, temp_grid, x, y, z, &
              dx_from_here, dy_from_here, dz_from_here, dx_step, dy_step, dz_step, iface, iobst_local, dreplace, obstacles, bbox)
 
             ! replace current particle coordinates by a random valid position on the particles curren grid
-            IF (dreplace) THEN
-                CALL replace_particle_target(particle, obstacles)
-                temp_grid = particle%igrid
-                x = particle%x
-                y = particle%y
-                z = particle%z
-                dreplace = .FALSE.
-            END IF
+            !IF (dreplace) THEN
+            !    CALL replace_particle_target(particle, obstacles)
+            !    temp_grid = igrid
+            !    x = px
+            !    y = py
+            !    z = pz
+            !    dreplace = .FALSE.
+            !END IF
 
             dx_eff = dx_eff + dx_step
             dy_eff = dy_eff + dy_step
@@ -824,15 +826,15 @@ MODULE particle_boundaries_mod
 
         ! do not update the particle grid here
         ! and do not apply periodic boundaries here
-        particle%x = particle%x + dx_eff
-        particle%y = particle%y + dy_eff
-        particle%z = particle%z + dz_eff
+        px = px + dx_eff
+        py = py + dy_eff
+        pz = pz + dz_eff
 
-        particle%xyz_abs(1) = particle%xyz_abs(1) + dx_eff
-        particle%xyz_abs(2) = particle%xyz_abs(2) + dy_eff
-        particle%xyz_abs(3) = particle%xyz_abs(3) + dz_eff
+        !particle%xyz_abs(1) = particle%xyz_abs(1) + dx_eff
+        !particle%xyz_abs(2) = particle%xyz_abs(2) + dy_eff
+        !particle%xyz_abs(3) = particle%xyz_abs(3) + dz_eff
 
-        CALL update_particle_cell_target(particle)
+        CALL update_particle_cell_target2(px, py, pz, icell, jcell, kcell, igrid)
 
     END SUBROUTINE move_particle_target
 

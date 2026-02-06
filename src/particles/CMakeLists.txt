@@ -1,5 +1,6 @@
 add_library(particles STATIC
     particle_ofields_mod.F90
+    particle_opart_mod.F90
     particle_config_mod.F90
     particle_rng_mod.F90
     particle_runtimestat_mod.F90

@@ -701,4 +701,88 @@ CONTAINS
 
     END SUBROUTINE update_particle_cell_target
 
+
+    ! determine the pressurce cell that a particle is on from its coordinates, grid and previous presuure cell
+    SUBROUTINE update_particle_cell_target2(px, py, pz, icell, jcell, kcell, igrid)
+
+        !$omp declare target
+
+        ! subroutine arguments
+        REAL(realk), INTENT(in) :: px, py, pz
+        INTEGER(intk), INTENT(inout) :: icell, jcell, kcell
+        INTEGER(intk), INTENT(in) :: igrid
+
+        ! local variables
+        REAL(realk), POINTER, CONTIGUOUS, DIMENSION(:) :: x, y, z
+        REAL(realk), POINTER, CONTIGUOUS, DIMENSION(:) :: dx, dy, dz
+
+        REAL(realk) :: diff_old, diff_new
+        INTEGER(intk) :: k, j, i, kk, jj, ii, istep, jstep, kstep
+
+        CALL ptr_to_grid_x(x_offload, igrid, x)
+        CALL ptr_to_grid_y(y_offload, igrid, y)
+        CALL ptr_to_grid_z(z_offload, igrid, z)
+
+        CALL ptr_to_grid_x(dx_offload, igrid, dx)
+        CALL ptr_to_grid_y(dy_offload, igrid, dy)
+        CALL ptr_to_grid_z(dz_offload, igrid, dz)
+
+        CALL get_mgdims_target(kk, jj, ii, igrid)
+
+        ! the following assumes that the grid coordinates X/Y/Z are each sorted such that for any i < j and any direction x, x(i) < x(j) !
+        ! the following procedure is capable of handling stretched grids!
+
+        ! find nearest x:
+        istep = INT(SIGN(1.0_realk, px - x(icell)), intk)
+
+        i = MIN(MAX(icell + istep, 1_intk), ii)
+
+        diff_old = ABS(x(icell) - px)
+        diff_new = ABS(x(i) - px)
+
+        DO WHILE (diff_new < diff_old)
+            i = i + istep
+            IF (i < 1_intk .OR. i > ii) EXIT
+            diff_old = diff_new
+            diff_new = ABS(x(i) - px)
+        END DO
+
+        icell = MIN(MAX(i - istep, 1_intk), ii) ! MIN/MAX should be obsolete here
+
+        ! find nearest y:
+        jstep = INT(SIGN(1.0_realk, py - y(jcell)), intk)
+
+        j = MIN(MAX(jcell + jstep, 1_intk), jj)
+
+        diff_old = ABS(y(jcell) - py)
+        diff_new = ABS(y(j) - py)
+
+        DO WHILE (diff_new < diff_old)
+            j = j + jstep
+            IF (j < 1_intk .OR. j > jj) EXIT
+            diff_old = diff_new
+            diff_new = ABS(y(j) - py)
+        END DO
+
+        jcell = MIN(MAX(j - jstep, 1_intk), jj) ! MIN/MAX should be obsolete here
+
+        ! find nearest z:
+        kstep = INT(SIGN(1.0_realk, pz - z(kcell)), intk)
+
+        k = MIN(MAX(kcell + kstep, 1_intk), kk)
+
+        diff_old = ABS(z(kcell) - pz)
+        diff_new = ABS(z(k) - pz)
+
+        DO WHILE (diff_new < diff_old)
+            k = k + kstep
+            IF (k < 1_intk .OR. k > kk) EXIT
+            diff_old = diff_new
+            diff_new = ABS(z(k) - pz)
+        END DO
+
+        kcell = MIN(MAX(k - kstep, 1_intk), kk) ! MIN/MAX should be obsolete here
+
+    END SUBROUTINE update_particle_cell_target2
+
 END MODULE particle_basetype_mod

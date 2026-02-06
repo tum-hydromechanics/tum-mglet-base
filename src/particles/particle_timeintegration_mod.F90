@@ -8,6 +8,7 @@ MODULE particle_timeintegration_mod
 
     USE particle_config_mod
     USE particle_ofields_mod
+    USE particle_opart_mod
     USE particle_runtimestat_mod
     USE particle_list_mod
     USE particle_interpolation_mod
@@ -362,7 +363,7 @@ CONTAINS
             !$omp target update to(u_offload, v_offload, w_offload)
         END IF
         
-        !$omp target update to(my_particle_list)
+        CALL copy_particle_data_to()
 
         CALL start_timer(910)
 
@@ -420,18 +421,20 @@ CONTAINS
                     
                     ipart = plist_displ(i) + j
 
-                    temp_grid = my_particle_list%particles(ipart)%igrid
-                    temp_x = my_particle_list%particles(ipart)%x
-                    temp_y = my_particle_list%particles(ipart)%y
-                    temp_z = my_particle_list%particles(ipart)%z
+                    temp_grid = particle_igrid_arr(ipart)
+                    temp_x = particle_x_arr(ipart)
+                    temp_y = particle_y_arr(ipart)
+                    temp_z = particle_z_arr(ipart)
 
                     
-                    IF (dadvection) CALL particle_advection_target(my_particle_list%particles(ipart), temp_grid, temp_x, temp_y, temp_z, &
-                     kk, jj, ii, x, y, z, dx, dy, dz, ddx, ddy, ddz, pwu, pwv, pww, dt, pnrk, obstacles)
+                    IF (dadvection) CALL particle_advection_target(particle_x_arr(ipart), particle_y_arr(ipart), particle_z_arr(ipart), &
+                     particle_icell_arr(ipart), particle_jcell_arr(ipart), particle_kcell_arr(ipart), particle_igrid_arr(ipart), &
+                     temp_grid, temp_x, temp_y, temp_z, kk, jj, ii, x, y, z, dx, dy, dz, ddx, ddy, ddz, pwu, pwv, pww, dt, pnrk, obstacles)
 
 #ifdef _MGLET_OPENMP_
-                    IF (ddiffusion) CALL particle_diffusion_target(my_particle_list%particles(ipart), temp_grid, temp_x, temp_y, temp_z, &
-                     dt, truncation_limit, truncation_factor, my_particle_list%particles(ipart)%seed, obstacles)
+                    IF (ddiffusion) CALL particle_diffusion_target(particle_x_arr(ipart), particle_y_arr(ipart), particle_z_arr(ipart), &
+                     particle_icell_arr(ipart), particle_jcell_arr(ipart), particle_kcell_arr(ipart), particle_igrid_arr(ipart), & 
+                     temp_grid, temp_x, temp_y, temp_z, dt, truncation_limit, truncation_factor, particle_seed_arr(ipart), obstacles)
 #endif
 
                     ! TODO: reintroduce particle runtime statistics
@@ -444,7 +447,7 @@ CONTAINS
 
         CALL stop_timer(910)
         
-        !$omp target update from(my_particle_list)
+        CALL copy_particle_data_from()
         
         CALL stop_timer(900)
 
@@ -455,13 +458,14 @@ CONTAINS
     
     END SUBROUTINE timeintegrate_particles_target
 
-    SUBROUTINE particle_advection_target(particle, temp_grid, temp_x, temp_y, temp_z, kk, jj, ii, x, y, z, dx, dy, dz, ddx, ddy, ddz, &
+    SUBROUTINE particle_advection_target(px, py, pz, icell, jcell, kcell, igrid, temp_grid, temp_x, temp_y, temp_z, kk, jj, ii, x, y, z, dx, dy, dz, ddx, ddy, ddz, &
                                          pwu, pwv, pww, dt, pnrk, obstacles)
 
         !$omp declare target
 
         ! subroutine arguments
-        TYPE(baseparticle_t), INTENT(inout) :: particle
+        REAL(realk), INTENT(inout) :: px, py, pz
+        INTEGER(intk), INTENT(inout) :: icell, jcell, kcell, igrid
         INTEGER(intk), INTENT(inout) :: temp_grid
         REAL(realk), INTENT(inout) :: temp_x, temp_y, temp_z
         INTEGER(intk), INTENT(in) :: kk, jj, ii
@@ -482,14 +486,14 @@ CONTAINS
         DO irk = 1, pnrk
 
             ! get particle velocity
-            CALL interpolate_lincon(particle, kk, jj, ii, x, y, z, dx, dy, dz, ddx, ddy, ddz, &
+            CALL interpolate_lincon_target(px, py, pz, icell, jcell, kcell, igrid, kk, jj, ii, x, y, z, dx, dy, dz, ddx, ddy, ddz, &
              pwu, pwv, pww, pu_adv, pv_adv, pw_adv)
 
             CALL prkstep(pdx_pot, pdy_pot, pdz_pot, pu_adv, pv_adv, pw_adv, dt, &
              A_offload(irk), B_offload(irk), pdx_adv, pdy_adv, pdz_adv)
 
             ! Particle Boundary Interaction
-            CALL move_particle_target(particle, pdx_adv, pdy_adv, pdz_adv, &
+            CALL move_particle_target(px, py, pz, icell, jcell, kcell, igrid, pdx_adv, pdy_adv, pdz_adv, &
              pdx_eff, pdy_eff, pdz_eff, temp_x, temp_y, temp_z, temp_grid, obstacles)
              
             pdx_pot = pdx_eff / B_offload(irk)
@@ -501,12 +505,13 @@ CONTAINS
 
     END SUBROUTINE particle_advection_target
 
-    SUBROUTINE particle_diffusion_target(particle, temp_grid, temp_x, temp_y, temp_z, dt, trunc_limit, trunc_factor, seed, obstacles)
+    SUBROUTINE particle_diffusion_target(px, py, pz, icell, jcell, kcell, igrid, temp_grid, temp_x, temp_y, temp_z, dt, trunc_limit, trunc_factor, seed, obstacles)
 
         !$omp declare target
 
         ! subroutine arguments
-        TYPE(baseparticle_t), INTENT(inout) :: particle
+        REAL(realk), INTENT(inout) :: px, py, pz
+        INTEGER(intk), INTENT(inout) :: icell, jcell, kcell, igrid
         INTEGER(intk), INTENT(inout) :: temp_grid
         REAL(realk), INTENT(inout) :: temp_x, temp_y, temp_z
         REAL(realk), INTENT(in) :: dt
@@ -520,7 +525,7 @@ CONTAINS
 
         CALL generate_diffusive_displacement_target(dt, D(1), D(2), D(3), pdx_diff, pdy_diff, pdz_diff, trunc_limit, trunc_factor, seed)
         
-        CALL move_particle_target(particle, pdx_diff, pdy_diff, pdz_diff, &
+        CALL move_particle_target(px, py, pz, icell, jcell, kcell, igrid, pdx_diff, pdy_diff, pdz_diff, &
              pdx_eff, pdy_eff, pdz_eff, temp_x, temp_y, temp_z, temp_grid, obstacles)
 
         ! TODO: reintroduce particle runtime statistics

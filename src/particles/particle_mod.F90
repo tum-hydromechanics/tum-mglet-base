@@ -7,6 +7,8 @@ MODULE particle_mod
     USE fields_mod
 
     USE particle_list_mod
+    USE particle_ofields_mod
+    USE particle_opart_mod
     USE particle_runtimestat_mod
     USE particle_timeintegration_mod
     USE particle_statistics_mod
@@ -101,7 +103,6 @@ CONTAINS
                 WRITE(*, '()')
             END IF
 
-
             IF (dread_particles_h5) THEN
                 CALL read_particles_h5("particles.h5")
 
@@ -115,7 +116,16 @@ CONTAINS
                 END IF
 
             END IF
-            
+
+#ifdef _MGLET_OPENMP_
+            CALL init_particle_arrays()
+            IF (myid == 0) THEN
+                WRITE(*, '("Particle offloading arrays initialized successfully.")')
+                WRITE(*, '()')
+            END IF
+
+#endif
+
             CALL init_particle_loadbalance()
 
             ! determine particle exchange connections and init particle exchange
