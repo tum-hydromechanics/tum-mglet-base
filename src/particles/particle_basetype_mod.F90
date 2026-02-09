@@ -17,7 +17,7 @@ MODULE particle_basetype_mod
 
     IMPLICIT NONE
 
-    INTEGER(c_intk) :: particle_mpi_elems = 13
+    INTEGER(c_intk) :: particle_mpi_elems = 8
 
     ! TODO: clear some components, use type extensions...
     ! C binding for MPI compatability!
@@ -32,12 +32,12 @@ MODULE particle_basetype_mod
         INTEGER(c_intk) :: ipart = -1
         INTEGER(c_intk) :: iproc = -1
         INTEGER(c_intk) :: igrid = -1
-        INTEGER(c_intk) :: islice = -1
+        !INTEGER(c_intk) :: islice = -1
 
         !gitstep is the timestep at which a particle entered its current grid (for residence time tracking) !!! corresponding to ittot !!!
-        INTEGER(c_intk) :: gitstep = -1
+        !INTEGER(c_intk) :: gitstep = -1
         !sitstep is the timestep at which a particle entered its current slice (for residence time tracking) !!! corresponding to ittot !!!
-        INTEGER(c_intk) :: sitstep = -1
+        !INTEGER(c_intk) :: sitstep = -1
 
         ! TODO: rename into ijk(3) ?
         INTEGER(c_intk) :: ijkcell(3) = 0
@@ -50,10 +50,10 @@ MODULE particle_basetype_mod
         REAL(c_realk) :: z = 0.0
 
         ! absolute coordinates
-        REAL(c_realk) :: xyz_abs(3) = 0.0
+        !REAL(c_realk) :: xyz_abs(3) = 0.0
 
         ! coordinates of point where a particle entered the current slice
-        REAL(c_realk) :: xyz_sentry(3) = 0.0
+        !REAL(c_realk) :: xyz_sentry(3) = 0.0
 
 #ifdef _MGLET_OPENMP_
         INTEGER(c_int) :: seed 
@@ -84,9 +84,9 @@ CONTAINS
         particle%x = x
         particle%y = y
         particle%z = z
-        particle%xyz_abs(1) = x
-        particle%xyz_abs(2) = y
-        particle%xyz_abs(3) = z
+        !particle%xyz_abs(1) = x
+        !particle%xyz_abs(2) = y
+        !particle%xyz_abs(3) = z
         
 #ifdef _MGLET_OPENMP_
         particle%seed = MOD(particle_base_seed + ipart * 37, 16777216_c_int)
@@ -104,11 +104,11 @@ CONTAINS
             CALL set_particle_igrid(particle)
         END IF
 
-        IF (PRESENT(islice)) THEN
-            particle%islice = islice
-        ELSE
-            particle%islice = -1
-        END IF
+        !IF (PRESENT(islice)) THEN
+        !    particle%islice = islice
+        !ELSE
+        !    particle%islice = -1
+        !END IF
 
         IF (PRESENT(ijkcell)) THEN
             particle%ijkcell = ijkcell
@@ -116,17 +116,17 @@ CONTAINS
             CALL set_particle_cell(particle)
         END IF
 
-        IF (PRESENT(gitstep)) THEN
-            particle%gitstep = gitstep
-        ELSE
-            particle%gitstep = -1
-        END IF
+        !IF (PRESENT(gitstep)) THEN
+        !    particle%gitstep = gitstep
+        !ELSE
+        !    particle%gitstep = -1
+        !END IF
 
-        IF (PRESENT(sitstep)) THEN
-            particle%sitstep = sitstep
-        ELSE
-            particle%sitstep = -1
-        END IF
+        !IF (PRESENT(sitstep)) THEN
+        !    particle%sitstep = sitstep
+        !ELSE
+        !    particle%sitstep = -1
+        !END IF
 
     END SUBROUTINE set_particle
 
@@ -465,9 +465,9 @@ CONTAINS
                 WRITE(*, '("Particle ", I0, " - Status:")') particle%ipart
                 WRITE(*, '("iproc       = ", I20)') particle%iproc
                 WRITE(*, '("igrid       = ", I20)') particle%igrid
-                WRITE(*, '("islice      = ", I20)') particle%islice
-                WRITE(*, '("gitstep     = ", I20)') particle%gitstep
-                WRITE(*, '("sitstep     = ", I20)') particle%sitstep
+                !WRITE(*, '("islice      = ", I20)') particle%islice
+                !WRITE(*, '("gitstep     = ", I20)') particle%gitstep
+                !WRITE(*, '("sitstep     = ", I20)') particle%sitstep
                 WRITE(*, '("x           = ", F20.17)') particle%x
                 WRITE(*, '("y           = ", F20.17)') particle%y
                 WRITE(*, '("z           = ", F20.17)') particle%z

@@ -191,7 +191,7 @@ CONTAINS
         IF (dsim_particles) THEN ! <------------------------------------particles
             CALL init_particle_diffusion()
             CALL init_particle_timeintegration()
-            CALL init_particle_statistics(mtstep)
+            !CALL init_particle_statistics(mtstep)
         END IF
 
         ! Initialize particle snapshots
@@ -220,7 +220,7 @@ CONTAINS
         END IF
 
         IF (dsim_particles) THEN ! <------------------------------------particles
-            CALL write_particle_statistics(mtstep, dt)
+            !CALL write_particle_statistics(mtstep, dt)
         END IF
 
         CALL finish_statistics()
@@ -255,7 +255,7 @@ CONTAINS
             ! TODO: put this into particle timeintegration
             IF (dsim_particles) THEN ! <------------------------------------particles
                 ! particle counter for particle grid statistics
-                CALL advance_np_counter(itstep)
+                !CALL advance_np_counter(itstep)
             END IF
 
             ! Global RK loop for tightly coupled quantities like flow and

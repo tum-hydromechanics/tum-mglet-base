@@ -9,7 +9,7 @@ MODULE particle_mod
     USE particle_list_mod
     USE particle_runtimestat_mod
     USE particle_timeintegration_mod
-    USE particle_statistics_mod
+    !USE particle_statistics_mod
     USE particle_snapshot_mod
     USE particle_io_mod
     USE particle_loadbalance_mod
@@ -144,7 +144,7 @@ CONTAINS
 
             CALL finish_particle_snapshots()
 
-            CALL finish_particle_statistics()
+            !CALL finish_particle_statistics()
 
             CALL finish_particle_timeintegration()
 

@@ -212,22 +212,22 @@ CONTAINS
 
                     ipart_lists(ig)%arr(ic) = plist%particles(ip)%ipart
                     igrid_lists(ig)%arr(ic) = plist%particles(ip)%igrid
-                    islice_lists(ig)%arr(ic) = plist%particles(ip)%islice
+                    !islice_lists(ig)%arr(ic) = plist%particles(ip)%islice
 
-                    gitstep_lists(ig)%arr(ic) = plist%particles(ip)%gitstep
-                    sitstep_lists(ig)%arr(ic) = plist%particles(ip)%sitstep
+                    !gitstep_lists(ig)%arr(ic) = plist%particles(ip)%gitstep
+                    !sitstep_lists(ig)%arr(ic) = plist%particles(ip)%sitstep
 
                     x_lists(ig)%arr(ic) = plist%particles(ip)%x
                     y_lists(ig)%arr(ic) = plist%particles(ip)%y
                     z_lists(ig)%arr(ic) = plist%particles(ip)%z
 
-                    x_abs_lists(ig)%arr(ic) = plist%particles(ip)%xyz_abs(1)
-                    y_abs_lists(ig)%arr(ic) = plist%particles(ip)%xyz_abs(2)
-                    z_abs_lists(ig)%arr(ic) = plist%particles(ip)%xyz_abs(3)
+                    !x_abs_lists(ig)%arr(ic) = plist%particles(ip)%xyz_abs(1)
+                    !y_abs_lists(ig)%arr(ic) = plist%particles(ip)%xyz_abs(2)
+                    !z_abs_lists(ig)%arr(ic) = plist%particles(ip)%xyz_abs(3)
 
-                    x_sentry_lists(ig)%arr(ic) = plist%particles(ip)%xyz_sentry(1)
-                    y_sentry_lists(ig)%arr(ic) = plist%particles(ip)%xyz_sentry(2)
-                    z_sentry_lists(ig)%arr(ic) = plist%particles(ip)%xyz_sentry(3)
+                    !x_sentry_lists(ig)%arr(ic) = plist%particles(ip)%xyz_sentry(1)
+                    !y_sentry_lists(ig)%arr(ic) = plist%particles(ip)%xyz_sentry(2)
+                    !z_sentry_lists(ig)%arr(ic) = plist%particles(ip)%xyz_sentry(3)
 
 #ifdef _MGLET_OPENMP_
                 seed_lists(ig)%arr(ic) = plist%particles(ip)%seed
@@ -416,22 +416,22 @@ CONTAINS
                 plist%particles(cpart)%ipart = ipart_lists(ig)%arr(i)
                 plist%particles(cpart)%iproc = myid
                 plist%particles(cpart)%igrid = igrid_lists(ig)%arr(i)
-                plist%particles(cpart)%islice = islice_lists(ig)%arr(i)
+                !plist%particles(cpart)%islice = islice_lists(ig)%arr(i)
 
-                plist%particles(cpart)%gitstep = gitstep_lists(ig)%arr(i)
-                plist%particles(cpart)%sitstep = sitstep_lists(ig)%arr(i)
+                !plist%particles(cpart)%gitstep = gitstep_lists(ig)%arr(i)
+                !plist%particles(cpart)%sitstep = sitstep_lists(ig)%arr(i)
 
                 plist%particles(cpart)%x = x_lists(ig)%arr(i)
                 plist%particles(cpart)%y = y_lists(ig)%arr(i)
                 plist%particles(cpart)%z = z_lists(ig)%arr(i)
 
-                plist%particles(cpart)%xyz_abs(1) = x_abs_lists(ig)%arr(i)
-                plist%particles(cpart)%xyz_abs(2) = y_abs_lists(ig)%arr(i)
-                plist%particles(cpart)%xyz_abs(3) = z_abs_lists(ig)%arr(i)
+                !plist%particles(cpart)%xyz_abs(1) = x_abs_lists(ig)%arr(i)
+                !plist%particles(cpart)%xyz_abs(2) = y_abs_lists(ig)%arr(i)
+                !plist%particles(cpart)%xyz_abs(3) = z_abs_lists(ig)%arr(i)
 
-                plist%particles(cpart)%xyz_sentry(1) = x_sentry_lists(ig)%arr(i)
-                plist%particles(cpart)%xyz_sentry(2) = y_sentry_lists(ig)%arr(i)
-                plist%particles(cpart)%xyz_sentry(3) = z_sentry_lists(ig)%arr(i)
+                !plist%particles(cpart)%xyz_sentry(1) = x_sentry_lists(ig)%arr(i)
+                !plist%particles(cpart)%xyz_sentry(2) = y_sentry_lists(ig)%arr(i)
+                !plist%particles(cpart)%xyz_sentry(3) = z_sentry_lists(ig)%arr(i)
 
 #ifdef _MGLET_OPENMP_
                 plist%particles(cpart)%seed = seed_lists(ig)%arr(i)

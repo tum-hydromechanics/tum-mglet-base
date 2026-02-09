@@ -6,7 +6,7 @@ MODULE particle_loadbalance_mod
 
     USE particle_runtimestat_mod, ONLY: psim_n_sent
     USE particle_list_mod
-    USE particle_statistics_mod
+    !USE particle_statistics_mod
     USE particle_utils_mod
 
         PRIVATE

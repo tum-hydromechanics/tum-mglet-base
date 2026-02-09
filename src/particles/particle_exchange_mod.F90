@@ -8,7 +8,7 @@ MODULE particle_exchange_mod
 
     USE particle_runtimestat_mod, ONLY: psim_n_sent
     USE particle_list_mod
-    USE particle_statistics_mod
+    !USE particle_statistics_mod
     USE particle_utils_mod
     USE particle_loadbalance_mod
 
@@ -119,7 +119,7 @@ CONTAINS
 
             ! for particle slice statistics: must be called after update_coordinates !!!
             CALL stop_timer(940)
-            CALL associate_new_slice(particle_list%particles(i), ittot, itstep)
+            !CALL associate_new_slice(particle_list%particles(i), ittot, itstep)
             CALL start_timer(940)
 
             ! triage of particles
@@ -132,7 +132,7 @@ CONTAINS
 
                 ! for particle statistics
                 CALL stop_timer(940)
-                CALL deregister_particle(particle_list%particles(i), ittot, itstep)
+                !CALL deregister_particle(particle_list%particles(i), ittot, itstep)
                 CALL start_timer(940)
 
                 ! particle changes the grid
@@ -144,7 +144,7 @@ CONTAINS
 
                     ! for particle statistics
                     CALL stop_timer(940)
-                    CALL register_particle(particle_list%particles(i), itstep)
+                    !CALL register_particle(particle_list%particles(i), itstep)
                     CALL start_timer(940)
 
                 ELSE
@@ -343,7 +343,7 @@ CONTAINS
 
                     ! for gridstat
                     CALL stop_timer(940)
-                    CALL register_particle(recvBufParticle(i), itstep)
+                    !CALL register_particle(recvBufParticle(i), itstep)
                     CALL start_timer(940)
 
                 END DO
@@ -665,34 +665,34 @@ CONTAINS
         CALL MPI_Get_address(foo%ipart, disp(2))
         CALL MPI_Get_address(foo%iproc, disp(3))
         CALL MPI_Get_address(foo%igrid, disp(4))
-        CALL MPI_Get_address(foo%islice, disp(5))
-        CALL MPI_Get_address(foo%gitstep, disp(6))
-        CALL MPI_Get_address(foo%sitstep, disp(7))
-        CALL MPI_Get_address(foo%ijkcell, disp(8))
-        CALL MPI_Get_address(foo%x, disp(9))
-        CALL MPI_Get_address(foo%y, disp(10))
-        CALL MPI_Get_address(foo%z, disp(11))
-        CALL MPI_Get_address(foo%xyz_abs, disp(12))
-        CALL MPI_Get_address(foo%xyz_sentry, disp(13))
+        !CALL MPI_Get_address(foo%islice, disp(5))
+        !CALL MPI_Get_address(foo%gitstep, disp(6))
+        !CALL MPI_Get_address(foo%sitstep, disp(7))
+        CALL MPI_Get_address(foo%ijkcell, disp(5))
+        CALL MPI_Get_address(foo%x, disp(6))
+        CALL MPI_Get_address(foo%y, disp(7))
+        CALL MPI_Get_address(foo%z, disp(8))
+        !CALL MPI_Get_address(foo%xyz_abs, disp(12))
+        !CALL MPI_Get_address(foo%xyz_sentry, disp(13))
 #ifdef _MGLET_OPENMP_
-        CALL MPI_Get_address(foo%seed, disp(14))
+        CALL MPI_Get_address(foo%seed, disp(9))
 #endif
 
         types(1) = mglet_mpi_int    ! state
         types(2) = mglet_mpi_int    ! ipart
         types(3) = mglet_mpi_int    ! iproc
         types(4) = mglet_mpi_int    ! igrid
-        types(5) = mglet_mpi_int    ! islice
-        types(6) = mglet_mpi_int    ! gitstep
-        types(7) = mglet_mpi_int    ! sitstep
-        types(8) = triple_int_mpi_type  ! ijkcell(3)
-        types(9) = mglet_mpi_real     ! x
-        types(10) = mglet_mpi_real    ! y
-        types(11) = mglet_mpi_real    ! z
-        types(12) = triple_real_mpi_type ! xyz_abs
-        types(13) = triple_real_mpi_type ! xyt_sentry
+        !types(5) = mglet_mpi_int    ! islice
+        !types(6) = mglet_mpi_int    ! gitstep
+        !types(7) = mglet_mpi_int    ! sitstep
+        types(5) = triple_int_mpi_type  ! ijkcell(3)
+        types(6) = mglet_mpi_real     ! x
+        types(7) = mglet_mpi_real    ! y
+        types(8) = mglet_mpi_real    ! z
+        !types(12) = triple_real_mpi_type ! xyz_abs
+        !types(13) = triple_real_mpi_type ! xyt_sentry
 #ifdef _MGLET_OPENMP_
-        types(14) = MPI_INTEGER ! seed
+        types(9) = MPI_INTEGER ! seed
 #endif
 
         ! computing the displacements in byte
