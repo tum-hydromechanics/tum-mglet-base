@@ -734,26 +734,24 @@ MODULE particle_boundaries_mod
     END SUBROUTINE move_to_boundary
 
 
-    SUBROUTINE move_particle_target(particle, dx, dy, dz, dx_eff, dy_eff, dz_eff, temp_x, temp_y, temp_z, temp_grid, obstacles)
+    SUBROUTINE move_particle_target(pgrid, dx, dy, dz, dx_eff, dy_eff, dz_eff, temp_x, temp_y, temp_z, temp_grid, obstacles, dreplace)
 
         !$omp declare target
 
         ! subroutine arguments
-        TYPE(baseparticle_t), INTENT(inout) :: particle
+        INTEGER(intk), INTENT(in) :: pgrid 
         REAL(realk), INTENT(inout) :: dx, dy, dz
-        REAL(realk), INTENT(out) :: dx_eff, dy_eff, dz_eff
+        REAL(realk), INTENT(inout) :: dx_eff, dy_eff, dz_eff
         REAL(realk), INTENT(inout) :: temp_x, temp_y, temp_z
         INTEGER(intk), INTENT(inout) :: temp_grid
         TYPE(obstacle_t), POINTER, CONTIGUOUS, DIMENSION(:), INTENT(in) :: obstacles
-        
+        LOGICAL, INTENT(out) :: dreplace
+
         ! local variables
         INTEGER(intk) :: iface, iobst_local, destgrid, i
         INTEGER(intk) :: reflect(3)
         REAL(realk) :: dx_step, dy_step, dz_step
         REAL(realk) :: bbox(6)
-        LOGICAL :: dreplace
-
-        dreplace = .FALSE.
 
         dx_eff = 0.0
         dy_eff = 0.0
@@ -766,18 +764,11 @@ MODULE particle_boundaries_mod
             ! TODO: potentially get bbox outside iteration (which works with some assumtptions on grid boundaries)
             CALL get_bbox_target(bbox(1), bbox(2), bbox(3), bbox(4), bbox(5), bbox(6), temp_grid)
 
-            CALL move_to_boundary_target(particle%igrid, temp_grid, temp_x, temp_y, temp_z, &
-             dx, dy, dz, dx_step, dy_step, dz_step, iface, iobst_local, dreplace, obstacles, bbox)
+            CALL move_to_boundary_target(pgrid, temp_grid, temp_x, temp_y, temp_z, &
+             dx, dy, dz, dx_step, dy_step, dz_step, iface, iobst_local, dreplace, obstacles, bbox, dreplace)
 
             ! replace current particle coordinates by a random valid position on the particles curren grid
-            IF (dreplace) THEN
-                CALL replace_particle_target(particle, obstacles)
-                temp_grid = particle%igrid
-                temp_x = particle%x
-                temp_y = particle%y
-                temp_z = particle%z
-                dreplace = .FALSE.
-            END IF
+            IF (dreplace) EXIT
 
             dx_eff = dx_eff + dx_step
             dy_eff = dy_eff + dy_step
@@ -804,18 +795,6 @@ MODULE particle_boundaries_mod
 
         END DO
 
-        ! do not update the particle grid here
-        ! and do not apply periodic boundaries here
-        particle%x = particle%x + dx_eff
-        particle%y = particle%y + dy_eff
-        particle%z = particle%z + dz_eff
-
-        !particle%xyz_abs(1) = particle%xyz_abs(1) + dx_eff
-        !particle%xyz_abs(2) = particle%xyz_abs(2) + dy_eff
-        !particle%xyz_abs(3) = particle%xyz_abs(3) + dz_eff
-
-        CALL update_particle_cell_target(particle)
-
     END SUBROUTINE move_particle_target
 
     !-----------------------------------
@@ -823,7 +802,7 @@ MODULE particle_boundaries_mod
    ! This subroutine only considers grids on the same level
     ! CAUTION: Here, temp_grid refers to the grid the particle coordinates are currently on and of which the boundaries are relevant.
     ! This might NOT be particle%igrid, which is used to deduce the velocity
-    SUBROUTINE move_to_boundary_target(old_grid, temp_grid, x, y, z, dx, dy, dz, dx_to_b, dy_to_b, dz_to_b, iface, iobst_local, replace, obstacles, bbox)
+    SUBROUTINE move_to_boundary_target(old_grid, temp_grid, x, y, z, dx, dy, dz, dx_to_b, dy_to_b, dz_to_b, iface, iobst_local, replace, obstacles, bbox, dreplace)
 
         !$omp declare target
 
@@ -838,16 +817,15 @@ MODULE particle_boundaries_mod
         LOGICAL, INTENT(out) :: replace
         TYPE(obstacle_t), POINTER, CONTIGUOUS, DIMENSION(:), INTENT(in) :: obstacles
         REAL(realk), INTENT(in) :: bbox(6)
+        LOGICAL, INTENT(inout) :: dreplace
 
         !local variables
         REAL(realk) :: s, dist
         LOGICAL :: dget_exit_face
 
-        replace = .FALSE.
+        CALL s_to_obstacle(old_grid, temp_grid, x, y, z, dx, dy, dz, iobst_local, s, obstacles, dreplace)
 
-        CALL s_to_obstacle(old_grid, temp_grid, x, y, z, dx, dy, dz, iobst_local, s, obstacles)
-
-        IF (s <= 0.0_realk) THEN
+        IF (s <= 0.0_realk .OR. dreplace) THEN
             iface = 0
             RETURN
         END IF
@@ -865,7 +843,7 @@ MODULE particle_boundaries_mod
     END SUBROUTINE move_to_boundary_target
 
 
-    SUBROUTINE s_to_obstacle(old_grid, temp_grid, x, y, z, dx, dy, dz, iobst_local, s, obstacles)
+    SUBROUTINE s_to_obstacle(old_grid, temp_grid, x, y, z, dx, dy, dz, iobst_local, s, obstacles, dreplace)
 
         !$omp declare target
 
@@ -877,6 +855,7 @@ MODULE particle_boundaries_mod
         INTEGER(intk), INTENT(inout) :: iobst_local
         REAl(realk), INTENT(inout) :: s
         TYPE(obstacle_t), POINTER, CONTIGUOUS, DIMENSION(:), INTENT(in) :: obstacles
+        LOGICAL, INTENT(inout) :: dreplace
 
         !local variables
         INTEGER(intk) :: i, nobst
@@ -941,14 +920,13 @@ MODULE particle_boundaries_mod
             ! else (if sa < 0 and sb > 0 or vice versa) the particle is inside the current obstacle
             ! => replace current particle coordinates by a random valid position on the particles curren grid
             ELSE
-                !dist_to_center = SQRT((x - cx)**2 + (y - cy)**2 + (z - cz)**2)
+                d = SQRT((x - obstacles(i)%x)**2 + (y - obstacles(i)%y)**2 + (z - obstacles(i)%z)**2)
 
-                !IF ((r - dist_to_center) > aura(1)) THEN
-                !    replace = .TRUE.
-                !    iface = 0
-                !    iobst_local = 0
-                !    RETURN
-                !END IF
+                IF ((r - d) > aura(1)) THEN
+                    dreplace = .TRUE.
+                    iobst_local = 0
+                    RETURN
+                END IF
 
                 sc = MIN(sa, sb)
                 sd = MAX(sa, sb)
@@ -956,7 +934,7 @@ MODULE particle_boundaries_mod
                 IF (ABS(sc) < ABS(sd)) THEN
                     s = 0.0
                     iobst_local = i
-                    EXIT
+                    RETURN
                 ELSEIF (ABS(sc) >= ABS(sd)) THEN
                     CYCLE
                 END IF

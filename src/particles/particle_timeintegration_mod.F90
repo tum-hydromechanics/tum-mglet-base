@@ -393,6 +393,7 @@ CONTAINS
                 REAL(realk), POINTER, CONTIGUOUS, DIMENSION(:) :: dx, dy, dz, ddx, ddy, ddz
                 REAL(realk), POINTER, CONTIGUOUS, DIMENSION(:, :, :) :: pwu, pwv, pww
                 TYPE(obstacle_t), POINTER, CONTIGUOUS, DIMENSION(:) :: obstacles
+                LOGICAL :: dreplace
 
                 CALL get_mgdims_target(kk, jj, ii, igrid)
                 
@@ -413,7 +414,7 @@ CONTAINS
 
                 obstacles => my_obstacles_offload(obstacle_displ(igrid) + 1: obstacle_displ(igrid) + MAX(1_intk, n_my_obstacles_on_grid(igrid)))
                 
-                !$omp parallel do private(ipart, temp_grid, temp_x, temp_y, temp_z) shared(obstacles)
+                !$omp parallel do private(ipart, temp_grid, temp_x, temp_y, temp_z, dreplace) shared(obstacles)
                 DO j = 1, grids_np(i)
                     
                     num_threads = omp_get_num_threads()
@@ -425,13 +426,18 @@ CONTAINS
                     temp_y = my_particle_list%particles(ipart)%y
                     temp_z = my_particle_list%particles(ipart)%z
 
+                    dreplace = .FALSE.
                     
                     IF (dadvection) CALL particle_advection_target(my_particle_list%particles(ipart), temp_grid, temp_x, temp_y, temp_z, &
-                     kk, jj, ii, x, y, z, dx, dy, dz, ddx, ddy, ddz, pwu, pwv, pww, dt, pnrk, obstacles)
+                     kk, jj, ii, x, y, z, dx, dy, dz, ddx, ddy, ddz, pwu, pwv, pww, dt, pnrk, obstacles, dreplace)
 
 #ifdef _MGLET_OPENMP_
-                    IF (ddiffusion) CALL particle_diffusion_target(my_particle_list%particles(ipart), temp_grid, temp_x, temp_y, temp_z, &
-                     dt, truncation_limit, truncation_factor, my_particle_list%particles(ipart)%seed, obstacles)
+                    IF (.NOT. dreplace) THEN
+                        IF (ddiffusion) CALL particle_diffusion_target(my_particle_list%particles(ipart), temp_grid, temp_x, temp_y, temp_z, &
+                        dt, truncation_limit, truncation_factor, my_particle_list%particles(ipart)%seed, obstacles, dreplace)
+                    ELSE
+                        CALL replace_particle_target(my_particle_list%particles(ipart), obstacles)
+                    END IF
 #endif
 
                     ! TODO: reintroduce particle runtime statistics
@@ -456,7 +462,7 @@ CONTAINS
     END SUBROUTINE timeintegrate_particles_target
 
     SUBROUTINE particle_advection_target(particle, temp_grid, temp_x, temp_y, temp_z, kk, jj, ii, x, y, z, dx, dy, dz, ddx, ddy, ddz, &
-                                         pwu, pwv, pww, dt, pnrk, obstacles)
+                                         pwu, pwv, pww, dt, pnrk, obstacles, dreplace)
 
         !$omp declare target
 
@@ -471,7 +477,8 @@ CONTAINS
         REAL(realk), INTENT(in) :: dt
         INTEGER(intk), INTENT(in) :: pnrk
         TYPE(obstacle_t), POINTER, CONTIGUOUS, DIMENSION(:), INTENT(in) :: obstacles
-        
+        LOGICAL, INTENT(inout) :: dreplace
+
         ! local variables
         INTEGER(intk) :: irk
         REAL(realk) :: pu_adv, pv_adv, pw_adv
@@ -489,19 +496,33 @@ CONTAINS
              A_offload(irk), B_offload(irk), pdx_adv, pdy_adv, pdz_adv)
 
             ! Particle Boundary Interaction
-            CALL move_particle_target(particle, pdx_adv, pdy_adv, pdz_adv, &
-             pdx_eff, pdy_eff, pdz_eff, temp_x, temp_y, temp_z, temp_grid, obstacles)
+            CALL move_particle_target(particle%igrid, pdx_adv, pdy_adv, pdz_adv, &
+             pdx_eff, pdy_eff, pdz_eff, temp_x, temp_y, temp_z, temp_grid, obstacles, dreplace)
+
+            IF (dreplace) RETURN
              
             pdx_pot = pdx_eff / B_offload(irk)
             pdy_pot = pdy_eff / B_offload(irk)
             pdz_pot = pdz_eff / B_offload(irk)
+
+            ! do not update the particle grid here
+            ! and do not apply periodic boundaries here
+            particle%x = particle%x + pdx_eff
+            particle%y = particle%y + pdy_eff
+            particle%z = particle%z + pdz_eff
+
+            !particle%xyz_abs(1) = particle%xyz_abs(1) + pdx_eff
+            !particle%xyz_abs(2) = particle%xyz_abs(2) + pdy_eff
+            !particle%xyz_abs(3) = particle%xyz_abs(3) + pdz_eff
+
+            CALL update_particle_cell_target(particle)
             
             ! TODO: reintroduce particle runtime statistics
         END DO
 
     END SUBROUTINE particle_advection_target
 
-    SUBROUTINE particle_diffusion_target(particle, temp_grid, temp_x, temp_y, temp_z, dt, trunc_limit, trunc_factor, seed, obstacles)
+    SUBROUTINE particle_diffusion_target(particle, temp_grid, temp_x, temp_y, temp_z, dt, trunc_limit, trunc_factor, seed, obstacles, dreplace)
 
         !$omp declare target
 
@@ -513,6 +534,7 @@ CONTAINS
         REAL(realk), INTENT(in) :: trunc_limit, trunc_factor
         INTEGER(c_int), INTENT(inout) :: seed
         TYPE(obstacle_t), POINTER, CONTIGUOUS, DIMENSION(:), INTENT(in) :: obstacles
+        LOGICAL, INTENT(inout) :: dreplace
 
         ! local variables
         REAL(realk) :: pdx_diff, pdy_diff, pdz_diff
@@ -520,8 +542,22 @@ CONTAINS
 
         CALL generate_diffusive_displacement_target(dt, D(1), D(2), D(3), pdx_diff, pdy_diff, pdz_diff, trunc_limit, trunc_factor, seed)
         
-        CALL move_particle_target(particle, pdx_diff, pdy_diff, pdz_diff, &
-             pdx_eff, pdy_eff, pdz_eff, temp_x, temp_y, temp_z, temp_grid, obstacles)
+        CALL move_particle_target(particle%igrid, pdx_diff, pdy_diff, pdz_diff, &
+             pdx_eff, pdy_eff, pdz_eff, temp_x, temp_y, temp_z, temp_grid, obstacles, dreplace)
+
+        IF (dreplace) RETURN
+
+        ! do not update the particle grid here
+        ! and do not apply periodic boundaries here
+        particle%x = particle%x + pdx_eff
+        particle%y = particle%y + pdy_eff
+        particle%z = particle%z + pdz_eff
+
+        !particle%xyz_abs(1) = particle%xyz_abs(1) + dx_eff
+        !particle%xyz_abs(2) = particle%xyz_abs(2) + dy_eff
+        !particle%xyz_abs(3) = particle%xyz_abs(3) + dz_eff
+
+        CALL update_particle_cell_target(particle)
 
         ! TODO: reintroduce particle runtime statistics
 
