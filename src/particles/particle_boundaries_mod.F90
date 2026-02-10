@@ -751,7 +751,9 @@ MODULE particle_boundaries_mod
         INTEGER(intk) :: reflect(3)
         REAL(realk) :: dx_step, dy_step, dz_step
         REAL(realk) :: bbox(6)
+        LOGICAL :: dreplace
 
+        dreplace = .FALSE.
 
         dx_eff = 0.0
         dy_eff = 0.0
@@ -765,7 +767,17 @@ MODULE particle_boundaries_mod
             CALL get_bbox_target(bbox(1), bbox(2), bbox(3), bbox(4), bbox(5), bbox(6), temp_grid)
 
             CALL move_to_boundary_target(particle%igrid, temp_grid, temp_x, temp_y, temp_z, &
-             dx, dy, dz, dx_step, dy_step, dz_step, iface, iobst_local, obstacles, bbox)
+             dx, dy, dz, dx_step, dy_step, dz_step, iface, iobst_local, dreplace, obstacles, bbox)
+
+            ! replace current particle coordinates by a random valid position on the particles curren grid
+            IF (dreplace) THEN
+                CALL replace_particle_target(particle, obstacles)
+                temp_grid = particle%igrid
+                temp_x = particle%x
+                temp_y = particle%y
+                temp_z = particle%z
+                dreplace = .FALSE.
+            END IF
 
             dx_eff = dx_eff + dx_step
             dy_eff = dy_eff + dy_step
@@ -811,7 +823,7 @@ MODULE particle_boundaries_mod
    ! This subroutine only considers grids on the same level
     ! CAUTION: Here, temp_grid refers to the grid the particle coordinates are currently on and of which the boundaries are relevant.
     ! This might NOT be particle%igrid, which is used to deduce the velocity
-    SUBROUTINE move_to_boundary_target(old_grid, temp_grid, x, y, z, dx, dy, dz, dx_to_b, dy_to_b, dz_to_b, iface, iobst_local, obstacles, bbox)
+    SUBROUTINE move_to_boundary_target(old_grid, temp_grid, x, y, z, dx, dy, dz, dx_to_b, dy_to_b, dz_to_b, iface, iobst_local, replace, obstacles, bbox)
 
         !$omp declare target
 
@@ -823,12 +835,15 @@ MODULE particle_boundaries_mod
         REAL(realk), INTENT(out) :: dx_to_b, dy_to_b, dz_to_b
         INTEGER(intk), INTENT(out) :: iface
         INTEGER(intk), INTENT(inout) :: iobst_local
+        LOGICAL, INTENT(out) :: replace
         TYPE(obstacle_t), POINTER, CONTIGUOUS, DIMENSION(:), INTENT(in) :: obstacles
         REAL(realk), INTENT(in) :: bbox(6)
 
         !local variables
         REAL(realk) :: s, dist
         LOGICAL :: dget_exit_face
+
+        replace = .FALSE.
 
         CALL s_to_obstacle(old_grid, temp_grid, x, y, z, dx, dy, dz, iobst_local, s, obstacles)
 
@@ -926,6 +941,15 @@ MODULE particle_boundaries_mod
             ! else (if sa < 0 and sb > 0 or vice versa) the particle is inside the current obstacle
             ! => replace current particle coordinates by a random valid position on the particles curren grid
             ELSE
+                !dist_to_center = SQRT((x - cx)**2 + (y - cy)**2 + (z - cz)**2)
+
+                !IF ((r - dist_to_center) > aura(1)) THEN
+                !    replace = .TRUE.
+                !    iface = 0
+                !    iobst_local = 0
+                !    RETURN
+                !END IF
+
                 sc = MIN(sa, sb)
                 sd = MAX(sa, sb)
 
