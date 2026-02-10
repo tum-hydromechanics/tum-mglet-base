@@ -747,62 +747,77 @@ MODULE particle_boundaries_mod
         TYPE(obstacle_t), POINTER, CONTIGUOUS, DIMENSION(:), INTENT(in) :: obstacles
         
         ! local variables
-        INTEGER(intk) :: iface, iobst_local, destgrid, i
-        INTEGER(intk) :: reflect(3)
-        REAL(realk) :: dx_step, dy_step, dz_step
-        REAL(realk) :: bbox(6)
         LOGICAL :: dreplace
-
         dreplace = .FALSE.
 
         dx_eff = 0.0
         dy_eff = 0.0
         dz_eff = 0.0
 
-        iobst_local = 0
+        BLOCK
 
-        DO i = 1, 10
+            INTEGER(intk) :: i, iface, iobst_local
+            REAL(realk) :: bbox(6)
 
-            ! TODO: potentially get bbox outside iteration (which works with some assumtptions on grid boundaries)
-            CALL get_bbox_target(bbox(1), bbox(2), bbox(3), bbox(4), bbox(5), bbox(6), temp_grid)
+            iobst_local = 0
 
-            CALL move_to_boundary_target(particle%igrid, temp_grid, temp_x, temp_y, temp_z, &
-             dx, dy, dz, dx_step, dy_step, dz_step, iface, iobst_local, dreplace, obstacles, bbox)
+            DO i = 1, 10
 
-            ! replace current particle coordinates by a random valid position on the particles curren grid
-            IF (dreplace) THEN
-                CALL replace_particle_target(particle, obstacles)
-                temp_grid = particle%igrid
-                temp_x = particle%x
-                temp_y = particle%y
-                temp_z = particle%z
-                dreplace = .FALSE.
-            END IF
+                BLOCK
 
-            dx_eff = dx_eff + dx_step
-            dy_eff = dy_eff + dy_step
-            dz_eff = dz_eff + dz_step
+                    REAL(realk) :: dx_step, dy_step, dz_step
 
-            IF (0 < iobst_local) THEN
+                    ! TODO: potentially get bbox outside iteration (which works with some assumtptions on grid boundaries)
+                    CALL get_bbox_target(bbox(1), bbox(2), bbox(3), bbox(4), bbox(5), bbox(6), temp_grid)
 
-                CALL reflect_at_obstacle(temp_x, temp_y, temp_z, dx, dy, dz, obstacles(iobst_local))
+                    CALL move_to_boundary_target(particle%igrid, temp_grid, temp_x, temp_y, temp_z, &
+                    dx, dy, dz, dx_step, dy_step, dz_step, iface, iobst_local, dreplace, obstacles, bbox)
 
-            ELSEIF (0 < iface) THEN
+                    ! replace current particle coordinates by a random valid position on the particles curren grid
+                    IF (dreplace) THEN
+                        CALL replace_particle_target(particle, obstacles)
+                        temp_grid = particle%igrid
+                        temp_x = particle%x
+                        temp_y = particle%y
+                        temp_z = particle%z
+                        dreplace = .FALSE.
+                    END IF
 
-                destgrid = particle_boundaries(temp_grid)%face_neighbours(iface)
+                    dx_eff = dx_eff + dx_step
+                    dy_eff = dy_eff + dy_step
+                    dz_eff = dz_eff + dz_step
 
-                CALL reflect_at_boundary(dx, dy, dz, &
-                 particle_boundaries(temp_grid)%face_normals(1, iface), &
-                 particle_boundaries(temp_grid)%face_normals(2, iface), &
-                 particle_boundaries(temp_grid)%face_normals(3, iface), reflect)
+                END BLOCK
 
-                CALL update_coordinates_target(temp_grid, destgrid, iface, temp_x, temp_y, temp_z, bbox, reflect)
+                BLOCK
 
-                temp_grid = destgrid
+                    INTEGER(intk) :: destgrid
+                    INTEGER(intk) :: reflect(3)
 
-            END IF
+                    IF (0 < iobst_local) THEN
 
-        END DO
+                        CALL reflect_at_obstacle(temp_x, temp_y, temp_z, dx, dy, dz, obstacles(iobst_local))
+
+                    ELSEIF (0 < iface) THEN
+
+                        destgrid = particle_boundaries(temp_grid)%face_neighbours(iface)
+
+                        CALL reflect_at_boundary(dx, dy, dz, &
+                        particle_boundaries(temp_grid)%face_normals(1, iface), &
+                        particle_boundaries(temp_grid)%face_normals(2, iface), &
+                        particle_boundaries(temp_grid)%face_normals(3, iface), reflect)
+
+                        CALL update_coordinates_target(temp_grid, destgrid, iface, temp_x, temp_y, temp_z, bbox, reflect)
+
+                        temp_grid = destgrid
+
+                    END IF
+
+                END BLOCK
+
+            END DO
+
+        END BLOCK
 
         ! do not update the particle grid here
         ! and do not apply periodic boundaries here
