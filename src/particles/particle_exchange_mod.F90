@@ -118,9 +118,9 @@ CONTAINS
             CALL update_coordinates(particle_list%particles(i), destgrid, iface)
 
             ! for particle slice statistics: must be called after update_coordinates !!!
-            CALL stop_timer(940)
+            !CALL stop_timer(940)
             !CALL associate_new_slice(particle_list%particles(i), ittot, itstep)
-            CALL start_timer(940)
+            !CALL start_timer(940)
 
             ! triage of particles
             IF (particle_list%particles(i)%igrid == destgrid) THEN
@@ -131,9 +131,9 @@ CONTAINS
             ELSE
 
                 ! for particle statistics
-                CALL stop_timer(940)
+                !CALL stop_timer(940)
                 !CALL deregister_particle(particle_list%particles(i), ittot, itstep)
-                CALL start_timer(940)
+                !CALL start_timer(940)
 
                 ! particle changes the grid
                 IF (destproc == myid) THEN
@@ -143,9 +143,9 @@ CONTAINS
                     CALL set_particle_cell(particle_list%particles(i))
 
                     ! for particle statistics
-                    CALL stop_timer(940)
+                    !CALL stop_timer(940)
                     !CALL register_particle(particle_list%particles(i), itstep)
-                    CALL start_timer(940)
+                    !CALL start_timer(940)
 
                 ELSE
 

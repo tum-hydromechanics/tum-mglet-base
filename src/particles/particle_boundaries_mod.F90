@@ -829,7 +829,7 @@ MODULE particle_boundaries_mod
         !particle%xyz_abs(2) = particle%xyz_abs(2) + dy_eff
         !particle%xyz_abs(3) = particle%xyz_abs(3) + dz_eff
 
-        CALL update_particle_cell_target(particle)
+        !CALL update_particle_cell_target(particle)
 
     END SUBROUTINE move_particle_target
 

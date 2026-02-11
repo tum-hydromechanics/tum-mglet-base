@@ -431,7 +431,8 @@ CONTAINS
 #ifdef _MGLET_OPENMP_
                     IF (ddiffusion) CALL particle_diffusion_target(my_particle_list%particles(ipart), temp_grid, temp_x, temp_y, temp_z, &
                      dt, truncation_limit, truncation_factor, my_particle_list%particles(ipart)%seed, obstacles)
-#endif
+#endif              
+
                     ! TODO: reintroduce particle runtime statistics
                 END DO
                 !$omp end parallel do
@@ -478,6 +479,7 @@ CONTAINS
         REAL(realk) :: pdx_eff, pdy_eff, pdz_eff
 
         DO irk = 1, pnrk
+            IF (irk > 1) CALL update_particle_cell_target(particle, ii, jj, kk, x, y, z, dx, dy, dz)
 
             ! get particle velocity
             CALL interpolate_lincon(particle, kk, jj, ii, x, y, z, dx, dy, dz, ddx, ddy, ddz, &
