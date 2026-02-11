@@ -425,42 +425,13 @@ CONTAINS
                     temp_y = my_particle_list%particles(ipart)%y
                     temp_z = my_particle_list%particles(ipart)%z
 
-                    BLOCK
-                        ! local variables
-                        INTEGER(intk) :: irk
-                        REAL(realk) :: pu_adv, pv_adv, pw_adv
-                        REAL(realk) :: pdx, pdy, pdz
-                        REAL(realk) :: pdx_pot, pdy_pot, pdz_pot
-                        REAL(realk) :: pdx_eff, pdy_eff, pdz_eff
+                    IF (dadvection) CALL particle_advection_target(my_particle_list%particles(ipart), temp_grid, temp_x, temp_y, temp_z, &
+                     kk, jj, ii, x, y, z, dx, dy, dz, ddx, ddy, ddz, pwu, pwv, pww, dt, pnrk, obstacles)
 
-                        DO irk = 1, pnrk
-
-                            ! get particle velocity
-                            CALL interpolate_lincon(my_particle_list%particles(ipart), kk, jj, ii, x, y, z, dx, dy, dz, ddx, ddy, ddz, &
-                            pwu, pwv, pww, pu_adv, pv_adv, pw_adv)
-
-                            CALL prkstep(pdx_pot, pdy_pot, pdz_pot, pu_adv, pv_adv, pw_adv, dt, &
-                            A_offload(irk), B_offload(irk), pdx, pdy, pdz)
-
-                            ! Particle Boundary Interaction
-                            CALL move_particle_target(my_particle_list%particles(ipart), pdx, pdy, pdz, &
-                            pdx_eff, pdy_eff, pdz_eff, temp_x, temp_y, temp_z, temp_grid, obstacles)
-                            
-                            pdx_pot = pdx_eff / B_offload(irk)
-                            pdy_pot = pdy_eff / B_offload(irk)
-                            pdz_pot = pdz_eff / B_offload(irk)
-                            
-                            ! TODO: reintroduce particle runtime statistics
-                        END DO
 #ifdef _MGLET_OPENMP_
-                        CALL generate_diffusive_displacement_target(dt, D(1), D(2), D(3), pdx, pdy, pdz, &
-                            truncation_limit, truncation_factor, my_particle_list%particles(ipart)%seed)
-                        
-                        CALL move_particle_target(my_particle_list%particles(ipart), pdx, pdy, pdz, &
-                            pdx_eff, pdy_eff, pdz_eff, temp_x, temp_y, temp_z, temp_grid, obstacles)
+                    IF (ddiffusion) CALL particle_diffusion_target(my_particle_list%particles(ipart), temp_grid, temp_x, temp_y, temp_z, &
+                     dt, truncation_limit, truncation_factor, my_particle_list%particles(ipart)%seed, obstacles)
 #endif
-                    END BLOCK
-
                     ! TODO: reintroduce particle runtime statistics
                 END DO
                 !$omp end parallel do
