@@ -405,20 +405,21 @@ CONTAINS
         END IF
 
         ! TODO: make the following error gathering conditional for compilation as a debugging feature
-        IF (TRIM(particle_terminal) == "normal") THEN
-            CALL MPI_Allreduce(err_local, err_global, 1, mglet_mpi_int, MPI_MAX, MPI_COMM_WORLD)
-            IF (err_global == 0) THEN
-                CALL write_particle_list_txt(ittot)
-                IF (numprocs > 1) CALL write_buffer(ittot, "Send")
-                IF (numprocs > 1) CALL write_buffer(ittot, "Recv")
-            ELSE
-                CALL write_particle_list_txt(ittot, "err")
-                IF (numprocs > 1) CALL write_buffer(ittot, "Send", "err")
-                IF (numprocs > 1) CALL write_buffer(ittot, "Recv", "err")
-            END IF
-            IF (err_global == 1) THEN
-                CALL errr(__FILE__, __LINE__)
-            END IF
+        !IF (TRIM(particle_terminal) == "verbose") THEN
+        !    IF (err_global == 0) THEN
+        !        CALL write_particle_list_txt(ittot)
+        !        IF (numprocs > 1) CALL write_buffer(ittot, "Send")
+        !        IF (numprocs > 1) CALL write_buffer(ittot, "Recv")
+        !    ELSE
+        !        CALL write_particle_list_txt(ittot, "err")
+        !        IF (numprocs > 1) CALL write_buffer(ittot, "Send", "err")
+        !        IF (numprocs > 1) CALL write_buffer(ittot, "Recv", "err")
+        !    END IF
+        !END IF
+        
+        CALL MPI_Allreduce(err_local, err_global, 1, mglet_mpi_int, MPI_MAX, MPI_COMM_WORLD)
+        IF (err_global == 1) THEN
+            CALL errr(__FILE__, __LINE__)
         END IF
 
         IF (ALLOCATED(sendBufParticle)) DEALLOCATE(sendBufParticle)
