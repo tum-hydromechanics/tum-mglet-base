@@ -256,11 +256,11 @@ CONTAINS
 
         CALL pconf%get_value("/rk_method", prkmethod, "euler")
 
-        IF (solve_flow .AND. TRIM(prkmethod) == "williamson") THEN
-            WRITE(*, *) "Particle Runge Kutta Scheme must be of Type >euler< if flow is solved parallel to Particles."
-            WRITE(*, *) "The >williamson< RK-Scheme should only be applied in combination with an averaged flow field."
-            CALL errr(__FILE__, __LINE__)
-        END IF
+        !IF (solve_flow .AND. TRIM(prkmethod) == "williamson") THEN
+        !    WRITE(*, *) "Particle Runge Kutta Scheme must be of Type >euler< if flow is solved parallel to Particles."
+        !    WRITE(*, *) "The >williamson< RK-Scheme should only be applied in combination with an averaged flow field."
+        !    CALL errr(__FILE__, __LINE__)
+        !END IF
 
         IF (.NOT. solve_flow .AND. .NOT. duse_avg_flow) THEN
             dadvection = .FALSE.
