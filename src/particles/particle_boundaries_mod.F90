@@ -860,7 +860,12 @@ MODULE particle_boundaries_mod
         LOGICAL :: dget_exit_face
 
         replace = .FALSE.
-            
+
+        ! nullify here so early returns dont lead to trouble!
+        dx_to_b = 0.0
+        dy_to_b = 0.0
+        dz_to_b = 0.0
+
         ! STEP 1 - OBSTACLES
         ! find intersection points of the line the particle moves on (straight) and the sphere surface
             ! particle path: X(s) = X + dX * s with s: [0, 1] (X is the vector (x/y/z))
@@ -882,7 +887,7 @@ MODULE particle_boundaries_mod
         DO i = 1, nobst
 
             ! check if a particle interacts with the obstacle it has been deflected from in the previous timestep
-            IF (i == iobst_local .OR. obstacles(i)%iobst < 0) THEN
+            IF (i == iobst_local .OR. obstacles(i)%iobst < 0 .OR. obstacles(i)%radius < EPSILON(1.0_realk)) THEN
                 CYCLE
             END IF
 
