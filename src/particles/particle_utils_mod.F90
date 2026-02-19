@@ -37,9 +37,7 @@ MODULE particle_utils_mod
         MODULE PROCEDURE r_greaterequal_r
     END INTERFACE a_greaterequal_b
 
-#ifdef __GFORTRAN__
     !$omp declare target (facelist_utils)
-#endif
 
     CONTAINS
 

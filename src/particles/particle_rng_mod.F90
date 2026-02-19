@@ -14,10 +14,8 @@ MODULE particle_rng_mod
     INTEGER(c_int) :: particle_base_seed = 9891477
 
     INTEGER(c_int64_t), ALLOCATABLE :: lcg_parameters(:) 
-
-#ifdef __GFORTRAN__
+    
     !$omp declare target(lcg_parameters)
-#endif
 
 CONTAINS
 

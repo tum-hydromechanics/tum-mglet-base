@@ -53,9 +53,7 @@ MODULE particle_boundaries_mod
 
     CHARACTER(len = 4) :: bc_coupling_mode = "FLOW" ! must be "FLOW", "SCAL" or "PART"
 
-#ifdef __GFORTRAN__
     !$omp declare target(particle_boundaries)
-#endif 
 
     CONTAINS
 

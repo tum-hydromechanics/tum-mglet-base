@@ -50,10 +50,8 @@ MODULE particle_list_mod
 
     INTEGER(intk) :: global_np, node_np, local_np
 
-#ifdef __GFORTRAN__
     !$omp declare target(my_particle_grids, particle_grid_ptr, grids_np, plist_displ)
-#endif
-
+    
     PUBLIC :: global_np, local_np, my_particle_list ! , guest_particle_list
     PUBLIC :: count_pog_target
 
