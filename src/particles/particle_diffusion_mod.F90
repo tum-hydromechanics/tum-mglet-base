@@ -320,30 +320,31 @@ CONTAINS
         REAL(realk) :: sigx, sigy, sigz, ranx, rany, ranz
 
         sigx = SQRT(2 * D_x * dt)
-        !CALL gaussian_dist_target(0.0_realk, sigx, trunc_limit, trunc_factor, ranx)
+        !CALL gaussian_dist_target(0.0_realk, sigx, trunc_limit, trunc_factor, seed, ranx)
         CALL uniform_dist_target(sigx, ranx, seed)
         pdx = ranx ! diffusion length
 
         sigy = SQRT(2 * D_y * dt)
-        !CALL gaussian_dist_target(0.0_realk, sigy, trunc_limit, trunc_factor, rany)
+        !CALL gaussian_dist_target(0.0_realk, sigy, trunc_limit, trunc_factor, seed, rany)
         CALL uniform_dist_target(sigy, rany, seed)
         pdy = rany ! diffusion length
 
         sigz = SQRT(2 * D_z * dt)
-        !CALL gaussian_dist_target(0.0_realk, sigz, trunc_limit, trunc_factor, ranz)
+        !CALL gaussian_dist_target(0.0_realk, sigz, trunc_limit, trunc_factor, seed, ranz)
         CALL uniform_dist_target(sigz, ranz, seed)
         pdz = ranz ! diffusion length
 
     END SUBROUTINE generate_diffusive_displacement_target
 
-    SUBROUTINE gaussian_dist_target(mu, sigma, trunc_limit, trunc_factor, R)
+    SUBROUTINE gaussian_dist_target(mu, sigma, trunc_limit, trunc_factor, seed, R)
 
         !$omp declare target
 
         ! subroutine arguments
         REAL(realk), INTENT(in) :: mu, sigma, trunc_limit, trunc_factor
+        INTEGER(c_int), INTENT(inout) :: seed
         REAL(realk), INTENT(out) :: R
-
+        
         ! local variables
         REAL(realk) :: rand1, rand2, P
         LOGICAL :: found
