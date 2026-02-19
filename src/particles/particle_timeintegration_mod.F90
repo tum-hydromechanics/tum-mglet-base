@@ -358,6 +358,14 @@ CONTAINS
         ! local variables
         INTEGER(intk) :: igrid, i, dev_num, num_teams, num_threads
 
+        INTEGER(intk) :: j, ipart, temp_grid
+        INTEGER(intk) :: ii, jj, kk
+        REAL(realk) :: temp_x, temp_y, temp_z
+        REAL(realk), POINTER, CONTIGUOUS, DIMENSION(:) :: x, y, z
+        REAL(realk), POINTER, CONTIGUOUS, DIMENSION(:) :: dx, dy, dz, ddx, ddy, ddz
+        REAL(realk), POINTER, CONTIGUOUS, DIMENSION(:, :, :) :: pwu, pwv, pww
+        TYPE(obstacle_t), POINTER, CONTIGUOUS, DIMENSION(:) :: obstacles
+
         CALL start_timer(900)
 
         IF (dadvection) THEN
@@ -377,24 +385,22 @@ CONTAINS
         num_threads = -99
 
         !$omp target map(tofrom: dev_num, num_teams, num_threads) map(to: nmy_particle_grids)
-        !$omp teams distribute private(igrid) reduction(max: num_threads)
+        !$omp teams distribute private(j, igrid, ipart, temp_grid, ii, jj, kk, temp_x, temp_y, temp_z, &
+        !$omp x, y, z, dx, dy, dz, ddx, ddy, ddz, pwu, pwv, pww, obstacles) reduction(max: num_threads)
         DO i = 1, nmy_particle_grids
 
+#ifdef __GFORTRAN__
             !$omp master
                 dev_num = omp_get_device_num()
                 num_teams = omp_get_num_teams()
             !$omp end master
+#endif
+#ifdef __INTEL_COMPILER
+                dev_num = omp_get_device_num()
+                num_teams = omp_get_num_teams()
+#endif
 
             igrid = my_particle_grids(i)
-
-            BLOCK
-                INTEGER(intk) :: j, ipart, temp_grid
-                INTEGER(intk) :: ii, jj, kk
-                REAL(realk) :: temp_x, temp_y, temp_z
-                REAL(realk), POINTER, CONTIGUOUS, DIMENSION(:) :: x, y, z
-                REAL(realk), POINTER, CONTIGUOUS, DIMENSION(:) :: dx, dy, dz, ddx, ddy, ddz
-                REAL(realk), POINTER, CONTIGUOUS, DIMENSION(:, :, :) :: pwu, pwv, pww
-                TYPE(obstacle_t), POINTER, CONTIGUOUS, DIMENSION(:) :: obstacles
 
                 CALL get_mgdims_target(kk, jj, ii, igrid)
                 
@@ -439,7 +445,6 @@ CONTAINS
                     ! TODO: reintroduce particle runtime statistics
                 END DO
                 !$omp end parallel do
-            END BLOCK
         END DO
         !$omp end teams distribute
         !$omp end target
