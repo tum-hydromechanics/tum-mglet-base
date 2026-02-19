@@ -42,10 +42,12 @@ MODULE particle_ofields_mod
     REAL(realk), ALLOCATABLE :: bbox_offload(:)
     INTEGER(intk), POINTER, CONTIGUOUS, DIMENSION(:) :: mgdims_offload
 
+#ifdef __GFORTRAN__
     !$omp declare target(ip3d_offload, ip1d_offload, mgdims_offload, bbox_offload)
     !$omp declare target(x_offload, y_offload, z_offload)
     !$omp declare target(dx_offload, dy_offload, dz_offload, ddx_offload, ddy_offload, ddz_offload)
     !$omp declare target(u_offload, v_offload, w_offload)
+#endif
 
     ! Public subroutines for host
     PUBLIC :: offload_fields, finish_offload_fields

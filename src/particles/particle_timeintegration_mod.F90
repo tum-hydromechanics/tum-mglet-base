@@ -23,7 +23,9 @@ MODULE particle_timeintegration_mod
     REAL(realk), ALLOCATABLE :: A_offload(:)
     REAL(realk), ALLOCATABLE :: B_offload(:) 
 
+#ifdef __GFORTRAN__
     !$omp declare target(A_offload, B_offload)
+#endif
 
 CONTAINS
 

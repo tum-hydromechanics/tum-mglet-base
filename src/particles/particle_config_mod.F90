@@ -73,7 +73,9 @@ MODULE particle_config_mod
     INTEGER(intk), ALLOCATABLE :: nslices(:) ! "particles/nslices"
     REAL(realk), ALLOCATABLE :: slice_levels(:) ! "particles/slice_levels"
 
+#ifdef __GFORTRAN__
     !$omp declare target (D)
+#endif
 
 CONTAINS
 

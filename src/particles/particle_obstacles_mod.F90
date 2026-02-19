@@ -64,7 +64,9 @@ MODULE particle_obstacles_mod
 
     REAL(realk), ALLOCATABLE :: aura(:)
 
+#ifdef __GFORTRAN__
     !$omp declare target(my_obstacles_offload, obstacle_displ, n_my_obstacles_on_grid, aura)
+#endif
 
 CONTAINS    !===================================
 
