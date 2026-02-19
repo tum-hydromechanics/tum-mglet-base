@@ -320,18 +320,18 @@ CONTAINS
         REAL(realk) :: sigx, sigy, sigz, ranx, rany, ranz
 
         sigx = SQRT(2 * D_x * dt)
-        CALL gaussian_dist_target(0.0_realk, sigx, trunc_limit, trunc_factor, ranx)
-        !CALL uniform_dist_target(sigx, ranx, seed)
+        !CALL gaussian_dist_target(0.0_realk, sigx, trunc_limit, trunc_factor, ranx)
+        CALL uniform_dist_target(sigx, ranx, seed)
         pdx = ranx ! diffusion length
 
         sigy = SQRT(2 * D_y * dt)
-        CALL gaussian_dist_target(0.0_realk, sigy, trunc_limit, trunc_factor, rany)
-        !CALL uniform_dist_target(sigy, rany, seed)
+        !CALL gaussian_dist_target(0.0_realk, sigy, trunc_limit, trunc_factor, rany)
+        CALL uniform_dist_target(sigy, rany, seed)
         pdy = rany ! diffusion length
 
         sigz = SQRT(2 * D_z * dt)
-        CALL gaussian_dist_target(0.0_realk, sigz, trunc_limit, trunc_factor, ranz)
-        !CALL uniform_dist_target(sigz, ranz, seed)
+        !CALL gaussian_dist_target(0.0_realk, sigz, trunc_limit, trunc_factor, ranz)
+        CALL uniform_dist_target(sigz, ranz, seed)
         pdz = ranz ! diffusion length
 
     END SUBROUTINE generate_diffusive_displacement_target
@@ -352,12 +352,21 @@ CONTAINS
 
         DO WHILE (.NOT. found)
 
+#if defined __GFORTRAN__
             CALL RANDOM_NUMBER(rand1)
+#else
+            CALL lcg(seed, rand1)
+#endif
+
             rand1 = trunc_limit / trunc_factor * (rand1 - 0.5) * 2.0
 
             P = EXP(-(rand1 ** 2) / 2)
 
+#if defined __GFORTRAN__
             CALL RANDOM_NUMBER(rand2)
+#else
+            CALL lcg(seed, rand2)
+#endif
 
             IF (rand2 <= P) THEN
                 ! linear transformation to match given mean and standard deviation
@@ -379,8 +388,12 @@ CONTAINS
         REAL(realk), INTENT(out) :: R
         INTEGER(c_int), INTENT(inout) :: seed
 
-        !CALL lcg(seed, R)
+#if defined __GFORTRAN__
         CALL RANDOM_NUMBER(R)
+#else
+        CALL lcg(seed, R)
+#endif
+        
         R = 2 * SQRT(3.0) * sigma * (R - 0.5)
 
     END SUBROUTINE uniform_dist_target
