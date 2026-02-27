@@ -61,6 +61,9 @@ MODULE particle_basetype_mod
 
     END TYPE baseparticle_t
 
+    !$omp declare mapper(baseparticle_t :: particle) map(particle%state, particle%ipart, particle%iproc, particle%igrid, &
+    !$omp particle%ijkcell, particle%x, particle%y, particle%z, particle%seed)
+
     PUBLIC :: set_particle, set_particle_igrid, set_particle_cell, &
               update_particle_cell, print_particle_status
 
@@ -481,11 +484,14 @@ CONTAINS
 
 
     ! determine the pressurce cell that a particle is on from its coordinates and grid
-    SUBROUTINE set_particle_cell_target(particle)
+    SUBROUTINE set_particle_cell_target(ip1_arr, mgdims_arr, bbox_arr, particle)
 
         !$omp declare target
 
         ! subroutine arguments
+        INTEGER(intk), INTENT(in) :: ip1_arr(ngrid) 
+        INTEGER(intk), INTENT(in) :: mgdims_arr(3 * ngrid)
+        REAL(realk), INTENT(in) :: bbox_arr(6 * ngrid)
         TYPE(baseparticle_t), INTENT(inout) :: particle
 
         ! local variables
@@ -496,13 +502,13 @@ CONTAINS
         REAL(realk) :: minx, maxx, miny, maxy, minz, maxz
 
 
-        CALL get_bbox_target(minx, maxx, miny, maxy, minz, maxz, particle%igrid)
+        CALL get_bbox_target(bbox_arr, minx, maxx, miny, maxy, minz, maxz, particle%igrid)
 
-        CALL ptr_to_grid_x(x_offload, particle%igrid, x)
-        CALL ptr_to_grid_y(y_offload, particle%igrid, y)
-        CALL ptr_to_grid_z(z_offload, particle%igrid, z)
+        CALL ptr_to_grid_1(ip1_arr, mgdims_arr, x_offload, particle%igrid, x, 1_intk)
+        CALL ptr_to_grid_1(ip1_arr, mgdims_arr, y_offload, particle%igrid, y, 2_intk)
+        CALL ptr_to_grid_1(ip1_arr, mgdims_arr, z_offload, particle%igrid, z, 3_intk)
 
-        CALL get_mgdims_target(kk, jj, ii, particle%igrid)
+        CALL get_mgdims_target(mgdims_arr, kk, jj, ii, particle%igrid)
 
         ! the following assumes that the grid coordinates X/Y/Z are each sorted such that for any i < j and any direction x_k, x_k(i) < x_k(j) !
         ! the following procedure is capable of handling stretched grids!
@@ -616,16 +622,18 @@ CONTAINS
         END IF
 
         ! TODO: rethink this safety operation
-        CALL update_particle_cell_target(particle)
+        CALL update_particle_cell_target(ip1_arr, mgdims_arr, particle)
 
     END SUBROUTINE set_particle_cell_target
 
     ! determine the pressurce cell that a particle is on from its coordinates, grid and previous presuure cell
-    SUBROUTINE update_particle_cell_target(particle)
+    SUBROUTINE update_particle_cell_target(ip1_arr, mgdims_arr, particle)
 
         !$omp declare target
 
         ! subroutine arguments
+        INTEGER(intk), INTENT(in) :: ip1_arr(ngrid) 
+        INTEGER(intk), INTENT(in) :: mgdims_arr(3 * ngrid)
         TYPE(baseparticle_t), INTENT(inout) :: particle
 
         ! local variables
@@ -635,15 +643,15 @@ CONTAINS
         REAL(realk) :: diff_old, diff_new
         INTEGER(intk) :: k, j, i, kk, jj, ii, istep, jstep, kstep
 
-        CALL ptr_to_grid_x(x_offload, particle%igrid, x)
-        CALL ptr_to_grid_y(y_offload, particle%igrid, y)
-        CALL ptr_to_grid_z(z_offload, particle%igrid, z)
+        CALL ptr_to_grid_1(ip1_arr, mgdims_arr, x_offload, particle%igrid, x, 1_intk)
+        CALL ptr_to_grid_1(ip1_arr, mgdims_arr, y_offload, particle%igrid, y, 2_intk)
+        CALL ptr_to_grid_1(ip1_arr, mgdims_arr, z_offload, particle%igrid, z, 3_intk)
 
-        CALL ptr_to_grid_x(dx_offload, particle%igrid, dx)
-        CALL ptr_to_grid_y(dy_offload, particle%igrid, dy)
-        CALL ptr_to_grid_z(dz_offload, particle%igrid, dz)
+        CALL ptr_to_grid_1(ip1_arr, mgdims_arr, dx_offload, particle%igrid, dx, 1_intk)
+        CALL ptr_to_grid_1(ip1_arr, mgdims_arr, dy_offload, particle%igrid, dy, 2_intk)
+        CALL ptr_to_grid_1(ip1_arr, mgdims_arr, dz_offload, particle%igrid, dz, 3_intk)
 
-        CALL get_mgdims_target(kk, jj, ii, particle%igrid)
+        CALL get_mgdims_target(mgdims_arr, kk, jj, ii, particle%igrid)
 
         ! the following assumes that the grid coordinates X/Y/Z are each sorted such that for any i < j and any direction x, x(i) < x(j) !
         ! the following procedure is capable of handling stretched grids!

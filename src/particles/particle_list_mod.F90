@@ -32,6 +32,9 @@ MODULE particle_list_mod
 
     END TYPE particle_list_t
 
+    !$omp declare mapper(particle_list_t :: plist) map(plist%iproc, plist%max_np, plist%active_np, &
+    !$omp plist%ifinal, plist%particles)
+
     TYPE(particle_list_t) :: my_particle_list
 
     LOGICAL :: plist_is_init = .FALSE.
@@ -50,7 +53,9 @@ MODULE particle_list_mod
 
     INTEGER(intk) :: global_np, node_np, local_np
 
-    !$omp declare target(my_particle_grids, particle_grid_ptr, grids_np, plist_displ)
+    !$omp declare target link(nmy_particle_grids)
+
+    !DO NOT declare target(my_particle_grids, particle_grid_ptr, grids_np, plist_displ)
     
     PUBLIC :: global_np, local_np, my_particle_list ! , guest_particle_list
     PUBLIC :: count_pog_target
@@ -232,7 +237,8 @@ CONTAINS    !===================================
         
 
         !$omp target enter data map(to: my_particle_list)
-        !$omp target enter data map(to: my_particle_grids, grids_np, plist_displ, particle_grid_ptr, nmy_particle_grids)
+        !$omp target enter data map(to: nmy_particle_grids, my_particle_grids, grids_np, &
+        !$omp plist_displ, particle_grid_ptr)
 
         CALL stop_timer(910)
         CALL stop_timer(900)
@@ -680,7 +686,7 @@ CONTAINS    !===================================
                     (my_obstacles(iobst)%y - y)**2 + &
                     (my_obstacles(iobst)%z - z)**2)
 
-                    IF (dist < (my_obstacles(iobst)%radius + aura(1))) THEN
+                    IF (dist < (my_obstacles(iobst)%radius + aura)) THEN
                         valid_location = .FALSE.
                         EXIT
                     END IF
@@ -812,7 +818,7 @@ CONTAINS    !===================================
                         (my_obstacles(iobst)%y - y)**2 + &
                         (my_obstacles(iobst)%z - z)**2)
 
-                        IF (dist < (my_obstacles(iobst)%radius + aura(1))) THEN
+                        IF (dist < (my_obstacles(iobst)%radius + aura)) THEN
                             valid_location = .FALSE.
                             EXIT
                         END IF

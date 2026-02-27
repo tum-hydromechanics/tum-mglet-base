@@ -53,6 +53,8 @@ MODULE grids_mod
         nmygrids, mygrids, nmygridslvl, mygridslvl, nboconds, itypboconds, &
         idprocofgrd
 
+    !$omp declare target link(ngrid)
+
 CONTAINS
 
     SUBROUTINE init_grids()

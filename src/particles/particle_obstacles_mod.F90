@@ -27,9 +27,6 @@ MODULE particle_obstacles_mod
 
         REAL(realk) :: radius = 0.0
 
-        CONTAINS
-            PROCEDURE :: in_grid_zone
-
     END TYPE obstacle_t
 
     ! TODO: rename
@@ -62,9 +59,13 @@ MODULE particle_obstacles_mod
     ! ratio of intermediate (filling) obstacles over readius of regular obstacles
     REAL(realk), PARAMETER :: radius_ratio = 0.348
 
-    REAL(realk), ALLOCATABLE :: aura(:)
+    REAL(realk) :: aura
 
-    !$omp declare target(my_obstacles_offload, obstacle_displ, n_my_obstacles_on_grid, aura)
+    !$omp declare mapper(obstacle_t :: obst) map(obst%iobst, obst%x, obst%y, obst%z, obst%radius)
+    
+    !$omp declare target link(aura)
+
+    !DO NOT declare target(my_obstacles_offload, obstacle_displ, n_my_obstacles_on_grid)
 
 CONTAINS    !===================================
 
@@ -106,8 +107,7 @@ CONTAINS    !===================================
         END IF
 
         ! TODO: rethink this value quantitavely
-        ALLOCATE(aura(1))
-        aura(1) = SQRT(EPSILON(dist)) ! here, dist is just an arbitrary dummy argument of real(realk) type
+        aura = SQRT(EPSILON(dist)) ! here, dist is just an arbitrary dummy argument of real(realk) type
 
         ALLOCATE(grid_processed(ngrid))
 
@@ -240,7 +240,7 @@ CONTAINS    !===================================
 
                 DO i = 1, nmygridslvl(particle_level)
                     igrid = mygridslvl(i, particle_level)
-                    IF (obstacles_src(h)%in_grid_zone(igrid)) THEN
+                    IF (in_grid_zone(obstacles_src(h), igrid)) THEN
                         counter_array(igrid) = counter_array(igrid) + 1
                         is_relevant_src(h) = .TRUE.
                     END IF
@@ -248,7 +248,7 @@ CONTAINS    !===================================
 
                 DO i = 1, SIZE(proc_neigbhours)
                     igrid = proc_neigbhours(i)
-                    IF (obstacles_src(h)%in_grid_zone(igrid)) THEN
+                    IF (in_grid_zone(obstacles_src(h), igrid)) THEN
                         counter_array(igrid) = counter_array(igrid) + 1
                         is_relevant_src(h) = .TRUE.
                     END IF
@@ -265,7 +265,7 @@ CONTAINS    !===================================
 
             DO i = 1, nmygridslvl(particle_level)
                 igrid = mygridslvl(i, particle_level)
-                IF (obstacles_itm(h)%in_grid_zone(igrid)) THEN
+                IF (in_grid_zone(obstacles_itm(h), igrid)) THEN
                     counter_array(igrid) = counter_array(igrid) + 1
                     is_relevant_itm(h) = .TRUE.
                 END IF
@@ -273,7 +273,7 @@ CONTAINS    !===================================
 
             DO i = 1, SIZE(proc_neigbhours)
                 igrid = proc_neigbhours(i)
-                IF (obstacles_itm(h)%in_grid_zone(igrid)) THEN
+                IF (in_grid_zone(obstacles_itm(h), igrid)) THEN
                     counter_array(igrid) = counter_array(igrid) + 1
                     is_relevant_itm(h) = .TRUE.
                 END IF
@@ -303,7 +303,7 @@ CONTAINS    !===================================
 
                 DO i = 1, nmygridslvl(particle_level)
                     igrid = mygridslvl(i, particle_level)
-                    IF (obstacles_src(h)%in_grid_zone(igrid)) THEN
+                    IF (in_grid_zone(obstacles_src(h), igrid)) THEN
                         IF (counter_array(igrid) > SIZE(my_obstacle_pointers(igrid)%grid_obstacles)) THEN
                             CALL errr(__FILE__, __LINE__)
                         END IF
@@ -314,7 +314,7 @@ CONTAINS    !===================================
 
                 DO i = 1, SIZE(proc_neigbhours)
                     igrid = proc_neigbhours(i)
-                    IF (obstacles_src(h)%in_grid_zone(igrid)) THEN
+                    IF (in_grid_zone(obstacles_src(h), igrid)) THEN
                         IF (counter_array(igrid) > SIZE(my_obstacle_pointers(igrid)%grid_obstacles)) THEN
                             CALL errr(__FILE__, __LINE__)
                         END IF
@@ -338,7 +338,7 @@ CONTAINS    !===================================
 
                 DO i = 1, nmygridslvl(particle_level)
                     igrid = mygridslvl(i, particle_level)
-                    IF (obstacles_itm(h)%in_grid_zone(igrid)) THEN
+                    IF (in_grid_zone(obstacles_itm(h), igrid)) THEN
                         IF (counter_array(igrid) > SIZE(my_obstacle_pointers(igrid)%grid_obstacles)) THEN
                             CALL errr(__FILE__, __LINE__)
                         END IF
@@ -349,7 +349,7 @@ CONTAINS    !===================================
 
                 DO i = 1, SIZE(proc_neigbhours)
                     igrid = proc_neigbhours(i)
-                    IF (obstacles_itm(h)%in_grid_zone(igrid)) THEN
+                    IF (in_grid_zone(obstacles_itm(h), igrid)) THEN
                         IF (counter_array(igrid) > SIZE(my_obstacle_pointers(igrid)%grid_obstacles)) THEN
                             CALL errr(__FILE__, __LINE__)
                         END IF
@@ -664,10 +664,10 @@ CONTAINS    !===================================
 
     END SUBROUTINE write_grids
 
-    LOGICAL FUNCTION in_grid_zone(this, igrid, overlap) result(res)
+    LOGICAL FUNCTION in_grid_zone(obstacle, igrid, overlap) result(res)
 
         ! subroutine arguments
-        CLASS(obstacle_t), INTENT(in) :: this
+        CLASS(obstacle_t), INTENT(in) :: obstacle
         INTEGER(intk), INTENT(in) :: igrid
         REAL(realk), OPTIONAL, INTENT(in) :: overlap
 
@@ -685,27 +685,27 @@ CONTAINS    !===================================
         
         ol = MAX(maxx - minx, maxy - miny, minz - maxz)
 
-        IF(maxx + ol + this%radius + EPSILON(maxx) < this%x) THEN
+        IF(maxx + ol + obstacle%radius + EPSILON(maxx) < obstacle%x) THEN
             RETURN
         END IF
 
-        IF(minx - ol - this%radius - EPSILON(minx) > this%x) THEN
+        IF(minx - ol - obstacle%radius - EPSILON(minx) > obstacle%x) THEN
             RETURN
         END IF
 
-        IF(maxy + ol + this%radius + EPSILON(maxy) < this%y) THEN
+        IF(maxy + ol + obstacle%radius + EPSILON(maxy) < obstacle%y) THEN
             RETURN
         END IF
 
-        IF(miny - ol - this%radius - EPSILON(miny) > this%y) THEN
+        IF(miny - ol - obstacle%radius - EPSILON(miny) > obstacle%y) THEN
             RETURN
         END IF
 
-        IF(maxz + ol + this%radius + EPSILON(maxz) < this%z) THEN
+        IF(maxz + ol + obstacle%radius + EPSILON(maxz) < obstacle%z) THEN
             RETURN
         END IF
 
-        IF(minz - ol - this%radius - EPSILON(minz) > this%z) THEN
+        IF(minz - ol - obstacle%radius - EPSILON(minz) > obstacle%z) THEN
             RETURN
         END IF
 

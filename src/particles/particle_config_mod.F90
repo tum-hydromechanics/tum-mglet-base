@@ -56,7 +56,7 @@ MODULE particle_config_mod
     LOGICAL :: ddiffusion = .TRUE. ! indirectly via "particles/D"
     CHARACTER(len = 16) :: random_walk_mode ! "particles/random_walk_mode"
     REAL(realk) :: truncation_limit ! "particles/truncation_limit"
-    REAL(realk), ALLOCATABLE :: D(:) ! "particles/D"
+    REAL(realk) :: D(3) ! "particles/D"
 
     ! STATISTICS (GRID AND SLICE SAMPLES)
     LOGICAL :: dgridstat = .FALSE. ! "particles/dgridstat"
@@ -73,7 +73,7 @@ MODULE particle_config_mod
     INTEGER(intk), ALLOCATABLE :: nslices(:) ! "particles/nslices"
     REAL(realk), ALLOCATABLE :: slice_levels(:) ! "particles/slice_levels"
 
-    !$omp declare target (D)
+    !$omp declare target link(D, truncation_limit)
 
 CONTAINS
 
@@ -280,7 +280,6 @@ CONTAINS
 
         !- - - - - - - - - - - - - - - - - -
 
-        ALLOCATE(D(3))
         D = 0.0_realk
 
         IF (fort7%exists("/particles/D")) THEN
@@ -641,7 +640,6 @@ CONTAINS
     SUBROUTINE finish_particle_config()
 
         !$omp target exit data map(delete: D, truncation_limit)
-        IF (ALLOCATED(D)) DEALLOCATE(D)
         IF (ALLOCATED(nslices)) DEALLOCATE(nslices)
         IF (ALLOCATED(slice_levels)) DEALLOCATE(slice_levels)
         IF (ALLOCATED(particle_seed)) DEALLOCATE(particle_seed)

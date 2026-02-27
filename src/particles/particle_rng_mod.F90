@@ -13,15 +13,13 @@ MODULE particle_rng_mod
 
     INTEGER(c_int) :: particle_base_seed = 9891477
 
-    INTEGER(c_int64_t), ALLOCATABLE :: lcg_parameters(:) 
+    INTEGER(c_int64_t) :: lcg_parameters(2) 
     
-    !$omp declare target(lcg_parameters)
+    !$omp declare target link(lcg_parameters)
 
 CONTAINS
 
     SUBROUTINE init_parallel_lcg()
-
-        ALLOCATE(lcg_parameters(2))
 
         !lcg_multiplier
         lcg_parameters(1) = 747796405_c_int64_t

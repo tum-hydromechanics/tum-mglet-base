@@ -23,8 +23,6 @@ MODULE particle_timeintegration_mod
     REAL(realk), ALLOCATABLE :: A_offload(:)
     REAL(realk), ALLOCATABLE :: B_offload(:) 
 
-    !$omp declare target(A_offload, B_offload)
-
 CONTAINS
 
     SUBROUTINE init_particle_timeintegration()
@@ -47,7 +45,7 @@ CONTAINS
             CALL prkscheme%get_coeffs(A_offload(irk), B_offload(irk), irk)
         END DO
 
-        !$omp target enter data map(to: A_offload, B_offload)
+        !$omp target enter data map(to: A_offload(1:pnrk), B_offload(1:pnrk))
 
         IF (duse_avg_flow) THEN
 
@@ -354,9 +352,8 @@ CONTAINS
         REAL(realk), INTENT(in) :: dt
 
         ! local variables
-        INTEGER(intk) :: igrid, i, dev_num, num_teams, num_threads
-
-        INTEGER(intk) :: j, ipart, temp_grid
+        INTEGER(intk) :: dev_num, num_teams, num_threads
+        INTEGER(intk) :: igrid, i, j, ipart, temp_grid
         INTEGER(intk) :: ii, jj, kk
         REAL(realk) :: temp_x, temp_y, temp_z
         REAL(realk), POINTER, CONTIGUOUS, DIMENSION(:) :: x, y, z
@@ -370,21 +367,30 @@ CONTAINS
             !$omp target update to(u_offload, v_offload, w_offload)
         END IF
         
-        !$omp target update to(my_particle_list)
+        CALL write_particle_list_txt(itstep, 'pre')
 
+        !$omp target update to(my_particle_list)
+        
         CALL start_timer(910)
 
-        !$omp target
-        CALL count_pog_target(my_particle_list)
-        !$omp end target
+        CALL count_pog(my_particle_list, grids_np, plist_displ)
+
+        !$omp target update to(plist_displ(1:nmy_particle_grids))
+        !$omp target update to(grids_np(1:nmy_particle_grids))
 
         dev_num = -99
         num_teams = -99
         num_threads = -99
 
-        !$omp target map(tofrom: dev_num, num_teams, num_threads) map(to: nmy_particle_grids)
-        !$omp teams distribute private(j, igrid, ipart, temp_grid, ii, jj, kk, temp_x, temp_y, temp_z, &
-        !$omp x, y, z, dx, dy, dz, ddx, ddy, ddz, pwu, pwv, pww, obstacles) reduction(max: num_threads)
+        !$omp target defaultmap(none) map(tofrom: dev_num, num_teams, num_threads) &
+            !$omp map(to: dt, ddiffusion, dadvection) map(alloc: igrid, ipart, temp_grid, temp_x, temp_y, temp_z, &
+            !$omp ii, jj, kk, x, y, z, dx, dy, dz, ddx, ddy, ddz, pwu, pwv, pww) map(mapper(obstacle_t), alloc: obstacles) &
+            !$omp has_device_addr(nmy_particle_grids, my_particle_grids, grids_np, plist_displ, particle_boundaries, &
+            !$omp n_my_obstacles_on_grid, obstacle_displ, my_obstacles_offload, my_particle_list) &
+            !$omp has_device_addr(ip1d_offload, ip3d_offload, mgdims_offload, bbox_offload, &
+            !$omp u_offload, v_offload, w_offload, x_offload, y_offload, z_offload, &
+            !$omp dx_offload, dy_offload, dz_offload, ddx_offload, ddy_offload, ddz_offload)
+        !$omp teams distribute reduction(max: num_threads)
         DO i = 1, nmy_particle_grids
 
 #ifdef __GFORTRAN__
@@ -394,55 +400,55 @@ CONTAINS
             !$omp end master
 #endif
 #ifdef __INTEL_COMPILER
-                dev_num = omp_get_device_num()
-                num_teams = omp_get_num_teams()
+            dev_num = omp_get_device_num()
+            num_teams = omp_get_num_teams()
 #endif
 
             igrid = my_particle_grids(i)
 
-                CALL get_mgdims_target(kk, jj, ii, igrid)
+            CALL get_mgdims_target(mgdims_offload, kk, jj, ii, igrid)
+            
+            CALL ptr_to_grid_1(ip1d_offload, mgdims_offload, x_offload, igrid, x, 1_intk)
+            CALL ptr_to_grid_1(ip1d_offload, mgdims_offload, y_offload, igrid, y, 2_intk)
+            CALL ptr_to_grid_1(ip1d_offload, mgdims_offload, z_offload, igrid, z, 3_intk)
+
+            CALL ptr_to_grid_1(ip1d_offload, mgdims_offload, dx_offload, igrid, dx, 1_intk)
+            CALL ptr_to_grid_1(ip1d_offload, mgdims_offload, dy_offload, igrid, dy, 2_intk)
+            CALL ptr_to_grid_1(ip1d_offload, mgdims_offload, dz_offload, igrid, dz, 3_intk)
+            
+            CALL ptr_to_grid_1(ip1d_offload, mgdims_offload, ddx_offload, igrid, ddx, 1_intk)
+            CALL ptr_to_grid_1(ip1d_offload, mgdims_offload, ddy_offload, igrid, ddy, 2_intk)
+            CALL ptr_to_grid_1(ip1d_offload, mgdims_offload, ddz_offload, igrid, ddz, 3_intk)
+
+            CALL ptr_to_grid_3(ip3d_offload, mgdims_offload, u_offload, igrid, pwu)
+            CALL ptr_to_grid_3(ip3d_offload, mgdims_offload, v_offload, igrid, pwv)
+            CALL ptr_to_grid_3(ip3d_offload, mgdims_offload, w_offload, igrid, pww)
+
+            obstacles => my_obstacles_offload(obstacle_displ(igrid) + 1: obstacle_displ(igrid) + MAX(1_intk, n_my_obstacles_on_grid(igrid)))
+            
+            !$omp parallel do firstprivate(i) private(ipart, temp_grid, temp_x, temp_y, temp_z)
+            DO j = 1, grids_np(i)
                 
-                CALL ptr_to_grid_x(x_offload, igrid, x)
-                CALL ptr_to_grid_y(y_offload, igrid, y)
-                CALL ptr_to_grid_z(z_offload, igrid, z)
-
-                CALL ptr_to_grid_x(dx_offload, igrid, dx)
-                CALL ptr_to_grid_y(dy_offload, igrid, dy)
-                CALL ptr_to_grid_z(dz_offload, igrid, dz)
-                CALL ptr_to_grid_x(ddx_offload, igrid, ddx)
-                CALL ptr_to_grid_y(ddy_offload, igrid, ddy)
-                CALL ptr_to_grid_z(ddz_offload, igrid, ddz)
-
-                CALL ptr_to_grid3(u_offload, igrid, pwu)
-                CALL ptr_to_grid3(v_offload, igrid, pwv)
-                CALL ptr_to_grid3(w_offload, igrid, pww)
-
-                obstacles => my_obstacles_offload(obstacle_displ(igrid) + 1: obstacle_displ(igrid) + MAX(1_intk, n_my_obstacles_on_grid(igrid)))
+                num_threads = omp_get_num_threads()
                 
-                !$omp parallel do private(ipart, temp_grid, temp_x, temp_y, temp_z) shared(obstacles)
-                DO j = 1, grids_np(i)
-                    
-                    num_threads = omp_get_num_threads()
-                    
-                    ipart = plist_displ(i) + j
+                ipart = plist_displ(i) + j
 
-                    temp_grid = my_particle_list%particles(ipart)%igrid
-                    temp_x = my_particle_list%particles(ipart)%x
-                    temp_y = my_particle_list%particles(ipart)%y
-                    temp_z = my_particle_list%particles(ipart)%z
+                temp_grid = my_particle_list%particles(ipart)%igrid
+                temp_x = my_particle_list%particles(ipart)%x
+                temp_y = my_particle_list%particles(ipart)%y
+                temp_z = my_particle_list%particles(ipart)%z
 
-                    
-                    IF (dadvection) CALL particle_advection_target(my_particle_list%particles(ipart), temp_grid, temp_x, temp_y, temp_z, &
-                     kk, jj, ii, x, y, z, dx, dy, dz, ddx, ddy, ddz, pwu, pwv, pww, dt, pnrk, obstacles)
+                !IF (dadvection) CALL particle_advection_target(ip1d_offload, mgdims_offload, bbox_offload, my_particle_list%particles(ipart), temp_grid, temp_x, temp_y, temp_z, &
+                ! kk, jj, ii, x, y, z, dx, dy, dz, ddx, ddy, ddz, pwu, pwv, pww, dt, pnrk, A_offload, B_offload, particle_boundaries, obstacles)
 
 #ifdef _MGLET_OPENMP_
-                    IF (ddiffusion) CALL particle_diffusion_target(my_particle_list%particles(ipart), temp_grid, temp_x, temp_y, temp_z, &
-                     dt, truncation_limit, truncation_factor, my_particle_list%particles(ipart)%seed, obstacles)
+                IF (ddiffusion) CALL particle_diffusion_target(ip1d_offload, mgdims_offload, bbox_offload, my_particle_list%particles(ipart), temp_grid, temp_x, temp_y, temp_z, &
+                 dt, my_particle_list%particles(ipart)%seed, particle_boundaries, obstacles)
 #endif
 
-                    ! TODO: reintroduce particle runtime statistics
-                END DO
-                !$omp end parallel do
+                ! TODO: reintroduce particle runtime statistics
+            END DO
+            !$omp end parallel do 
         END DO
         !$omp end teams distribute
         !$omp end target
@@ -450,7 +456,9 @@ CONTAINS
         CALL stop_timer(910)
         
         !$omp target update from(my_particle_list)
-        
+
+        CALL write_particle_list_txt(itstep, 'pos')
+
         CALL stop_timer(900)
 
         WRITE(*, '("    Timeintegration on Process:                     ", I9)') myid
@@ -460,12 +468,15 @@ CONTAINS
     
     END SUBROUTINE timeintegrate_particles_target
 
-    SUBROUTINE particle_advection_target(particle, temp_grid, temp_x, temp_y, temp_z, kk, jj, ii, x, y, z, dx, dy, dz, ddx, ddy, ddz, &
-                                         pwu, pwv, pww, dt, pnrk, obstacles)
+    SUBROUTINE particle_advection_target(ip1_arr, mgdims_arr, bbox_arr, particle, temp_grid, temp_x, temp_y, temp_z, kk, jj, ii, x, y, z, dx, dy, dz, ddx, ddy, ddz, &
+                                         pwu, pwv, pww, dt, pnrk, A, B, boundaries, obstacles)
 
         !$omp declare target
 
         ! subroutine arguments
+        INTEGER(intk), INTENT(in) :: ip1_arr(ngrid)
+        INTEGER(intk), INTENT(in) :: mgdims_arr(3 * ngrid)
+        REAL(realk), INTENT(in) :: bbox_arr(6 * ngrid)
         TYPE(baseparticle_t), INTENT(inout) :: particle
         INTEGER(intk), INTENT(inout) :: temp_grid
         REAL(realk), INTENT(inout) :: temp_x, temp_y, temp_z
@@ -475,7 +486,10 @@ CONTAINS
         REAL(realk), POINTER, CONTIGUOUS, DIMENSION(:, :, :), INTENT(in) :: pwu, pwv, pww
         REAL(realk), INTENT(in) :: dt
         INTEGER(intk), INTENT(in) :: pnrk
+        REAL(realk), INTENT(in) :: A(pnrk), B(pnrk)
+        TYPE(particle_boundaries_t), INTENT(in) :: boundaries(ngrid)
         TYPE(obstacle_t), POINTER, CONTIGUOUS, DIMENSION(:), INTENT(in) :: obstacles
+        
         
         ! local variables
         INTEGER(intk) :: irk
@@ -491,42 +505,50 @@ CONTAINS
              pwu, pwv, pww, pu_adv, pv_adv, pw_adv)
 
             CALL prkstep(pdx_pot, pdy_pot, pdz_pot, pu_adv, pv_adv, pw_adv, dt, &
-             A_offload(irk), B_offload(irk), pdx_adv, pdy_adv, pdz_adv)
+             A(irk), B(irk), pdx_adv, pdy_adv, pdz_adv)
 
             ! Particle Boundary Interaction
-            CALL move_particle_target(particle, pdx_adv, pdy_adv, pdz_adv, &
-             pdx_eff, pdy_eff, pdz_eff, temp_x, temp_y, temp_z, temp_grid, obstacles)
+            CALL move_particle_target(ip1_arr, mgdims_arr, bbox_arr, particle, pdx_adv, pdy_adv, pdz_adv, &
+             pdx_eff, pdy_eff, pdz_eff, temp_x, temp_y, temp_z, temp_grid, boundaries, obstacles)
              
-            pdx_pot = pdx_eff / B_offload(irk)
-            pdy_pot = pdy_eff / B_offload(irk)
-            pdz_pot = pdz_eff / B_offload(irk)
+            pdx_pot = pdx_eff / B(irk)
+            pdy_pot = pdy_eff / B(irk)
+            pdz_pot = pdz_eff / B(irk)
             
             ! TODO: reintroduce particle runtime statistics
         END DO
 
     END SUBROUTINE particle_advection_target
 
-    SUBROUTINE particle_diffusion_target(particle, temp_grid, temp_x, temp_y, temp_z, dt, trunc_limit, trunc_factor, seed, obstacles)
+    SUBROUTINE particle_diffusion_target(ip1_arr, mgdims_arr, bbox_arr, particle, temp_grid, temp_x, temp_y, temp_z, dt, seed, boundaries, obstacles)
 
         !$omp declare target
 
         ! subroutine arguments
+        INTEGER(intk), INTENT(in) :: ip1_arr(ngrid)
+        INTEGER(intk), INTENT(in) :: mgdims_arr(3 * ngrid)
+        REAL(realk), INTENT(in) :: bbox_arr(6 * ngrid)
         TYPE(baseparticle_t), INTENT(inout) :: particle
         INTEGER(intk), INTENT(inout) :: temp_grid
         REAL(realk), INTENT(inout) :: temp_x, temp_y, temp_z
         REAL(realk), INTENT(in) :: dt
-        REAL(realk), INTENT(in) :: trunc_limit, trunc_factor
         INTEGER(c_int), INTENT(inout) :: seed
+        TYPE(particle_boundaries_t), INTENT(in) :: boundaries(ngrid)
         TYPE(obstacle_t), POINTER, CONTIGUOUS, DIMENSION(:), INTENT(in) :: obstacles
 
         ! local variables
         REAL(realk) :: pdx_diff, pdy_diff, pdz_diff
         REAL(realk) :: pdx_eff, pdy_eff, pdz_eff
 
-        CALL generate_diffusive_displacement_target(dt, D(1), D(2), D(3), pdx_diff, pdy_diff, pdz_diff, trunc_limit, trunc_factor, seed)
-        
-        CALL move_particle_target(particle, pdx_diff, pdy_diff, pdz_diff, &
-             pdx_eff, pdy_eff, pdz_eff, temp_x, temp_y, temp_z, temp_grid, obstacles)
+        !CALL generate_diffusive_displacement_target(dt, D(1), D(2), D(3), pdx_diff, pdy_diff, pdz_diff, seed)
+
+        particle%x = particle%x + D(1)
+        particle%y = particle%y + D(2)
+        particle%z = particle%z + D(3)
+
+
+        !CALL move_particle_target(ip1_arr, mgdims_arr, bbox_arr, particle, pdx_diff, pdy_diff, pdz_diff, &
+        !     pdx_eff, pdy_eff, pdz_eff, temp_x, temp_y, temp_z, temp_grid, boundaries, obstacles)
 
         ! TODO: reintroduce particle runtime statistics
 

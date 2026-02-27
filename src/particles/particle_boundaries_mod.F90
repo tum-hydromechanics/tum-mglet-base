@@ -53,7 +53,9 @@ MODULE particle_boundaries_mod
 
     CHARACTER(len = 4) :: bc_coupling_mode = "FLOW" ! must be "FLOW", "SCAL" or "PART"
 
-    !$omp declare target(particle_boundaries)
+    !$omp declare mapper(particle_boundaries_t :: bnd) map(bnd%face_neighbours, bnd%face_normals)
+
+    !DO NOT declare target(particle_boundaries)
 
     CONTAINS
 
@@ -220,7 +222,7 @@ MODULE particle_boundaries_mod
 
         CALL MPI_Barrier(MPI_COMM_WORLD)
 
-        !$omp target enter data map(to: particle_boundaries)
+        !$omp target enter data map(to: ngrid, particle_boundaries(1:ngrid))
 
         CALL read_obstacles()
 
@@ -533,7 +535,7 @@ MODULE particle_boundaries_mod
                         psim_n_bcerr = psim_n_bcerr + 1
                     END IF
 
-                    IF ((r - dist_to_center) > aura(1)) THEN
+                    IF ((r - dist_to_center) > aura) THEN
                         IF (TRIM(particle_terminal) == "normal" .OR. TRIM(particle_terminal) == "verbose") THEN
                             WRITE(*, '("WARNING: In move_to_boundary:")')
                             WRITE(*, *) "Particle", ipart," inside Obstacle by ", (r - dist_to_center)
@@ -734,16 +736,20 @@ MODULE particle_boundaries_mod
     END SUBROUTINE move_to_boundary
 
 
-    SUBROUTINE move_particle_target(particle, dx, dy, dz, dx_eff, dy_eff, dz_eff, temp_x, temp_y, temp_z, temp_grid_prev, obstacles)
+    SUBROUTINE move_particle_target(ip1_arr, mgdims_arr, bbox_arr, particle, dx, dy, dz, dx_eff, dy_eff, dz_eff, temp_x, temp_y, temp_z, temp_grid_prev, boundaries, obstacles)
 
         !$omp declare target
 
         ! subroutine arguments
+        INTEGER(intk), INTENT(in) :: ip1_arr(ngrid)
+        INTEGER(intk), INTENT(in) :: mgdims_arr(3 * ngrid)
+        REAL(realk), INTENT(in) :: bbox_arr(6 * ngrid)
         TYPE(baseparticle_t), INTENT(inout) :: particle
         REAL(realk), INTENT(in) :: dx, dy, dz
         REAL(realk), INTENT(out) :: dx_eff, dy_eff, dz_eff
         REAL(realk), INTENT(inout) :: temp_x, temp_y, temp_z
         INTEGER(intk), INTENT(inout) :: temp_grid_prev
+        TYPE(particle_boundaries_t), INTENT(in) :: boundaries(ngrid)
         TYPE(obstacle_t), POINTER, CONTIGUOUS, DIMENSION(:), INTENT(in) :: obstacles
         
         ! local variables
@@ -776,14 +782,14 @@ MODULE particle_boundaries_mod
         ! to avoid branch divergence here, just iterate to the max. number of iterations that would be a stoping criterion anyways
         DO i = 1, 10
 
-            CALL get_bbox_target(bbox(1), bbox(2), bbox(3), bbox(4), bbox(5), bbox(6), temp_grid)
+            CALL get_bbox_target(bbox_arr, bbox(1), bbox(2), bbox(3), bbox(4), bbox(5), bbox(6), temp_grid)
 
             CALL move_to_boundary_target(particle%igrid, temp_grid, x, y, z, &
              dx_from_here, dy_from_here, dz_from_here, dx_step, dy_step, dz_step, iface, iobst_local, dreplace, obstacles, bbox)
 
             ! replace current particle coordinates by a random valid position on the particles curren grid
             IF (dreplace) THEN
-                CALL replace_particle_target(particle, obstacles)
+                CALL replace_particle_target(ip1_arr, mgdims_arr, bbox_arr, particle, obstacles)
                 temp_grid = particle%igrid
                 x = particle%x
                 y = particle%y
@@ -801,14 +807,14 @@ MODULE particle_boundaries_mod
 
             ELSEIF (0 < iface) THEN
 
-                destgrid = particle_boundaries(temp_grid)%face_neighbours(iface)
+                destgrid = boundaries(temp_grid)%face_neighbours(iface)
 
                 CALL reflect_at_boundary(dx_from_here, dy_from_here, dz_from_here, &
-                 particle_boundaries(temp_grid)%face_normals(1, iface), &
-                 particle_boundaries(temp_grid)%face_normals(2, iface), &
-                 particle_boundaries(temp_grid)%face_normals(3, iface), reflect)
+                 boundaries(temp_grid)%face_normals(1, iface), &
+                 boundaries(temp_grid)%face_normals(2, iface), &
+                 boundaries(temp_grid)%face_normals(3, iface), reflect)
 
-                CALL update_coordinates_target(temp_grid, destgrid, iface, x, y, z, bbox, reflect)
+                CALL update_coordinates_target(bbox_arr, temp_grid, destgrid, iface, x, y, z, bbox, reflect)
 
                 temp_grid = destgrid
 
@@ -832,7 +838,7 @@ MODULE particle_boundaries_mod
         !particle%xyz_abs(2) = particle%xyz_abs(2) + dy_eff
         !particle%xyz_abs(3) = particle%xyz_abs(3) + dz_eff
 
-        CALL update_particle_cell_target(particle)
+        CALL update_particle_cell_target(ip1_arr, mgdims_arr, particle)
 
     END SUBROUTINE move_particle_target
 
@@ -965,7 +971,7 @@ MODULE particle_boundaries_mod
             ELSE
                 !dist_to_center = SQRT((x - cx)**2 + (y - cy)**2 + (z - cz)**2)
 
-                !IF ((r - dist_to_center) > aura(1)) THEN
+                !IF ((r - dist_to_center) > aura) THEN
                 !    replace = .TRUE.
                 !    iface = 0
                 !    iobst_local = 0
@@ -1408,11 +1414,14 @@ MODULE particle_boundaries_mod
 
     END SUBROUTINE replace_particle
 
-    SUBROUTINE replace_particle_target(particle, obstacles)
+    SUBROUTINE replace_particle_target(ip1_arr, mgdims_arr, bbox_arr, particle, obstacles)
 
         !$omp declare target
 
         ! subroutine arguments
+        INTEGER(intk), INTENT(in) :: ip1_arr(ngrid) 
+        INTEGER(intk), INTENT(in) :: mgdims_arr(3 * ngrid)
+        REAL(realk), INTENT(in) :: bbox_arr(6 * ngrid)
         TYPE(baseparticle_t), INTENT(inout) :: particle
         TYPE(obstacle_t), POINTER, CONTIGUOUS, DIMENSION(:), INTENT(in) :: obstacles
 
@@ -1424,7 +1433,7 @@ MODULE particle_boundaries_mod
         ! for readability
         igrid = particle%igrid
 
-        CALL get_bbox_target(minx, maxx, miny, maxy, minz, maxz, igrid)
+        CALL get_bbox_target(bbox_arr, minx, maxx, miny, maxy, minz, maxz, igrid)
 
         valid_location = .FALSE.
         DO WHILE (.NOT. valid_location)
@@ -1466,7 +1475,7 @@ MODULE particle_boundaries_mod
         particle%y = y_new
         particle%z = z_new
 
-        CALL set_particle_cell_target(particle)
+        CALL set_particle_cell_target(ip1_arr, mgdims_arr, bbox_arr, particle)
 
     END SUBROUTINE replace_particle_target
 

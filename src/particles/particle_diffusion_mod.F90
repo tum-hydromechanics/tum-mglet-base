@@ -35,6 +35,8 @@ MODULE particle_diffusion_mod
     ! truncation limit stored in config mod
     REAL(realk) :: truncation_factor
 
+    !$omp declare target link(truncation_factor)
+
 CONTAINS
 
     SUBROUTINE init_particle_diffusion()
@@ -305,7 +307,7 @@ CONTAINS
 
     END SUBROUTINE get_truncation_factor
 
-    SUBROUTINE generate_diffusive_displacement_target(dt, D_x, D_y, D_z, pdx, pdy, pdz, trunc_limit, trunc_factor, seed)
+    SUBROUTINE generate_diffusive_displacement_target(dt, D_x, D_y, D_z, pdx, pdy, pdz, seed)
 
         !$omp declare target
 
@@ -313,24 +315,23 @@ CONTAINS
         REAL(realk), INTENT(in) :: dt
         REAL(realk), INTENT(in) :: D_x, D_y, D_z
         REAL(realk), INTENT(out) :: pdx, pdy, pdz
-        REAL(realk), INTENT(in) :: trunc_limit, trunc_factor
         INTEGER(c_int), INTENT(inout) :: seed
 
         ! local variables
         REAL(realk) :: sigx, sigy, sigz, ranx, rany, ranz
 
         sigx = SQRT(2 * D_x * dt)
-        !CALL gaussian_dist_target(0.0_realk, sigx, trunc_limit, trunc_factor, seed, ranx)
+        !CALL gaussian_dist_target(0.0_realk, sigx, truncation_limit, truncation_factor, seed, ranx)
         CALL uniform_dist_target(sigx, ranx, seed)
         pdx = ranx ! diffusion length
 
         sigy = SQRT(2 * D_y * dt)
-        !CALL gaussian_dist_target(0.0_realk, sigy, trunc_limit, trunc_factor, seed, rany)
+        !CALL gaussian_dist_target(0.0_realk, sigy, truncation_limit, truncation_factor, seed, rany)
         CALL uniform_dist_target(sigy, rany, seed)
         pdy = rany ! diffusion length
 
         sigz = SQRT(2 * D_z * dt)
-        !CALL gaussian_dist_target(0.0_realk, sigz, trunc_limit, trunc_factor, seed, ranz)
+        !CALL gaussian_dist_target(0.0_realk, sigz, truncation_limit, truncation_factor, seed, ranz)
         CALL uniform_dist_target(sigz, ranz, seed)
         pdz = ranz ! diffusion length
 
