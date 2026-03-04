@@ -61,7 +61,7 @@ MODULE particle_obstacles_mod
 
     REAL(realk) :: aura
 
-    !$omp declare mapper(obstacle_t :: obst) map(obst%iobst, obst%x, obst%y, obst%z, obst%radius)
+    !$omp declare mapper(obstacle_t :: obst) map(obst, obst%iobst, obst%x, obst%y, obst%z, obst%radius)
     
     !$omp declare target link(aura)
 

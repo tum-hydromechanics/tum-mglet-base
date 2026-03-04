@@ -32,10 +32,10 @@ MODULE particle_list_mod
 
     END TYPE particle_list_t
 
-    !$omp declare mapper(particle_list_t :: plist) map(plist%iproc, plist%max_np, plist%active_np, &
-    !$omp plist%ifinal, plist%particles)
-
     TYPE(particle_list_t) :: my_particle_list
+    
+    !$omp declare mapper(particle_list_t :: plist) map(to: plist, plist%iproc, plist%max_np, plist%active_np, &
+    !$omp plist%ifinal) map(mapper(baseparticle_t), alloc: plist%particles)
 
     LOGICAL :: plist_is_init = .FALSE.
 
@@ -234,10 +234,14 @@ CONTAINS    !===================================
                 WRITE(*, '()')
             END IF
         END IF
-        
 
-        !$omp target enter data map(to: my_particle_list)
-        !$omp target enter data map(to: nmy_particle_grids, my_particle_grids, grids_np, &
+        !$omp target enter data map(mapper(particle_list_t), to: my_particle_list)        
+        !$omp target enter data map(to: my_particle_list%iproc, &
+        !$omp my_particle_list%max_np, my_particle_list%active_np, my_particle_list%ifinal)
+        !$omp target enter data map(mapper(baseparticle_t), alloc: my_particle_list%particles)
+
+        !$omp target update to(nmy_particle_grids)
+        !$omp target enter data map(to: my_particle_grids, grids_np, &
         !$omp plist_displ, particle_grid_ptr)
 
         CALL stop_timer(910)

@@ -53,7 +53,7 @@ MODULE particle_boundaries_mod
 
     CHARACTER(len = 4) :: bc_coupling_mode = "FLOW" ! must be "FLOW", "SCAL" or "PART"
 
-    !$omp declare mapper(particle_boundaries_t :: bnd) map(bnd%face_neighbours, bnd%face_normals)
+    !$omp declare mapper(particle_boundaries_t :: bnd) map(bnd, bnd%face_neighbours, bnd%face_normals)
 
     !DO NOT declare target(particle_boundaries)
 

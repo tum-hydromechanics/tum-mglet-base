@@ -369,7 +369,7 @@ CONTAINS
         
         CALL write_particle_list_txt(itstep, 'pre')
 
-        !$omp target update to(my_particle_list)
+        !$omp target update to(my_particle_list%particles)
         
         CALL start_timer(910)
 
@@ -382,17 +382,10 @@ CONTAINS
         num_teams = -99
         num_threads = -99
 
-        !$omp target defaultmap(none) map(tofrom: dev_num, num_teams, num_threads) &
-            !$omp map(to: dt, ddiffusion, dadvection) map(alloc: igrid, ipart, temp_grid, temp_x, temp_y, temp_z, &
-            !$omp ii, jj, kk, x, y, z, dx, dy, dz, ddx, ddy, ddz, pwu, pwv, pww) map(mapper(obstacle_t), alloc: obstacles) &
-            !$omp has_device_addr(nmy_particle_grids, my_particle_grids, grids_np, plist_displ, particle_boundaries, &
-            !$omp n_my_obstacles_on_grid, obstacle_displ, my_obstacles_offload, my_particle_list) &
-            !$omp has_device_addr(ip1d_offload, ip3d_offload, mgdims_offload, bbox_offload, &
-            !$omp u_offload, v_offload, w_offload, x_offload, y_offload, z_offload, &
-            !$omp dx_offload, dy_offload, dz_offload, ddx_offload, ddy_offload, ddz_offload)
-        !$omp teams distribute reduction(max: num_threads)
+        !$omp target map(tofrom: dev_num, num_teams, num_threads) map(mapper(obstacle_t), alloc: obstacles)
+        !$omp teams distribute private(igrid, ipart, temp_grid, ii, jj, kk, temp_x, temp_y, temp_z, &
+        !$omp x, y, z, dx, dy, dz, ddx, ddy, ddz, pwu, pwv, pww, obstacles) reduction(max: num_threads)
         DO i = 1, nmy_particle_grids
-
 #ifdef __GFORTRAN__
             !$omp master
                 dev_num = omp_get_device_num()
@@ -426,12 +419,15 @@ CONTAINS
 
             obstacles => my_obstacles_offload(obstacle_displ(igrid) + 1: obstacle_displ(igrid) + MAX(1_intk, n_my_obstacles_on_grid(igrid)))
             
-            !$omp parallel do firstprivate(i) private(ipart, temp_grid, temp_x, temp_y, temp_z)
+            !$omp parallel do
             DO j = 1, grids_np(i)
                 
                 num_threads = omp_get_num_threads()
                 
                 ipart = plist_displ(i) + j
+
+print *, "SIZE plist:", SIZE(my_particle_list%particles)
+print *, "ipart:", ipart
 
                 temp_grid = my_particle_list%particles(ipart)%igrid
                 temp_x = my_particle_list%particles(ipart)%x
@@ -455,7 +451,7 @@ CONTAINS
 
         CALL stop_timer(910)
         
-        !$omp target update from(my_particle_list)
+        !$omp target update from(my_particle_list%particles)
 
         CALL write_particle_list_txt(itstep, 'pos')
 
@@ -546,6 +542,8 @@ CONTAINS
         particle%y = particle%y + D(2)
         particle%z = particle%z + D(3)
 
+print *, "D =", D
+print *, "particle_ipart:", particle%ipart
 
         !CALL move_particle_target(ip1_arr, mgdims_arr, bbox_arr, particle, pdx_diff, pdy_diff, pdz_diff, &
         !     pdx_eff, pdy_eff, pdz_eff, temp_x, temp_y, temp_z, temp_grid, boundaries, obstacles)
