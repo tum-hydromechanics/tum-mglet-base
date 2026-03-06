@@ -353,7 +353,7 @@ CONTAINS
 
         ! local variables
         INTEGER(intk) :: dev_num, num_teams, num_threads
-        INTEGER(intk) :: igrid, i, j, ipart, temp_grid
+        INTEGER(intk) :: igrid, i, j, k, ipart, temp_grid
         INTEGER(intk) :: ii, jj, kk
         REAL(realk) :: temp_x, temp_y, temp_z
         REAL(realk), POINTER, CONTIGUOUS, DIMENSION(:) :: x, y, z
@@ -419,23 +419,28 @@ CONTAINS
 
             obstacles => my_obstacles_offload(obstacle_displ(igrid) + 1: obstacle_displ(igrid) + MAX(1_intk, n_my_obstacles_on_grid(igrid)))
             
-            !$omp parallel do
+            !$omp parallel do private(ipart, temp_grid, temp_x, temp_y, temp_z) firstprivate(igrid, ii, jj, kk) &
+            !$omp shared(x, y, z, dx, dy, dz, ddx, ddy, ddz, pwu, pwv, pww, obstacles)
             DO j = 1, grids_np(i)
                 
+!DO k = 1, 10
+!print *, "FACE NEIGBHOURS", particle_boundaries(k)%face_neighbours
+!print *, "FACE NORMALS", particle_boundaries(k)%face_normals
+!END DO 
+!print *, "GRIDS_NP", grids_np
+!print *, "PLIST_DISPL", plist_displ
+
                 num_threads = omp_get_num_threads()
                 
                 ipart = plist_displ(i) + j
-
-print *, "SIZE plist:", SIZE(my_particle_list%particles)
-print *, "ipart:", ipart
 
                 temp_grid = my_particle_list%particles(ipart)%igrid
                 temp_x = my_particle_list%particles(ipart)%x
                 temp_y = my_particle_list%particles(ipart)%y
                 temp_z = my_particle_list%particles(ipart)%z
 
-                !IF (dadvection) CALL particle_advection_target(ip1d_offload, mgdims_offload, bbox_offload, my_particle_list%particles(ipart), temp_grid, temp_x, temp_y, temp_z, &
-                ! kk, jj, ii, x, y, z, dx, dy, dz, ddx, ddy, ddz, pwu, pwv, pww, dt, pnrk, A_offload, B_offload, particle_boundaries, obstacles)
+                IF (dadvection) CALL particle_advection_target(ip1d_offload, mgdims_offload, bbox_offload, my_particle_list%particles(ipart), temp_grid, temp_x, temp_y, temp_z, &
+                 kk, jj, ii, x, y, z, dx, dy, dz, ddx, ddy, ddz, pwu, pwv, pww, dt, pnrk, A_offload, B_offload, particle_boundaries, obstacles)
 
 #ifdef _MGLET_OPENMP_
                 IF (ddiffusion) CALL particle_diffusion_target(ip1d_offload, mgdims_offload, bbox_offload, my_particle_list%particles(ipart), temp_grid, temp_x, temp_y, temp_z, &
@@ -494,6 +499,12 @@ print *, "ipart:", ipart
         REAL(realk) :: pdx_pot, pdy_pot, pdz_pot
         REAL(realk) :: pdx_eff, pdy_eff, pdz_eff
 
+!print *, "pnrk:", pnrk
+!print *, "X:", X 
+!print *, "DX:", dx
+!print *, "DDX:", ddx
+!print *, "U:", pwu 
+
         DO irk = 1, pnrk
 
             ! get particle velocity
@@ -503,6 +514,8 @@ print *, "ipart:", ipart
             CALL prkstep(pdx_pot, pdy_pot, pdz_pot, pu_adv, pv_adv, pw_adv, dt, &
              A(irk), B(irk), pdx_adv, pdy_adv, pdz_adv)
 
+!print *, "pdx_adv:", pdx_adv
+
             ! Particle Boundary Interaction
             CALL move_particle_target(ip1_arr, mgdims_arr, bbox_arr, particle, pdx_adv, pdy_adv, pdz_adv, &
              pdx_eff, pdy_eff, pdz_eff, temp_x, temp_y, temp_z, temp_grid, boundaries, obstacles)
@@ -510,9 +523,10 @@ print *, "ipart:", ipart
             pdx_pot = pdx_eff / B(irk)
             pdy_pot = pdy_eff / B(irk)
             pdz_pot = pdz_eff / B(irk)
-            
-            ! TODO: reintroduce particle runtime statistics
+
+        ! TODO: reintroduce particle runtime statistics
         END DO
+!print *, "Advection of Particle: ", particle%ipart   
 
     END SUBROUTINE particle_advection_target
 
@@ -536,17 +550,17 @@ print *, "ipart:", ipart
         REAL(realk) :: pdx_diff, pdy_diff, pdz_diff
         REAL(realk) :: pdx_eff, pdy_eff, pdz_eff
 
-        !CALL generate_diffusive_displacement_target(dt, D(1), D(2), D(3), pdx_diff, pdy_diff, pdz_diff, seed)
+        CALL generate_diffusive_displacement_target(dt, D(1), D(2), D(3), pdx_diff, pdy_diff, pdz_diff, seed)
 
-        particle%x = particle%x + D(1)
-        particle%y = particle%y + D(2)
-        particle%z = particle%z + D(3)
+!particle%x = particle%x + D(1)
+!particle%y = particle%y + D(2)
+!particle%z = particle%z + D(3)
 
-print *, "D =", D
-print *, "particle_ipart:", particle%ipart
+!print *, "D =", D
+!print *, "particle_ipart:", particle%ipart
 
-        !CALL move_particle_target(ip1_arr, mgdims_arr, bbox_arr, particle, pdx_diff, pdy_diff, pdz_diff, &
-        !     pdx_eff, pdy_eff, pdz_eff, temp_x, temp_y, temp_z, temp_grid, boundaries, obstacles)
+        CALL move_particle_target(ip1_arr, mgdims_arr, bbox_arr, particle, pdx_diff, pdy_diff, pdz_diff, &
+             pdx_eff, pdy_eff, pdz_eff, temp_x, temp_y, temp_z, temp_grid, boundaries, obstacles)
 
         ! TODO: reintroduce particle runtime statistics
 

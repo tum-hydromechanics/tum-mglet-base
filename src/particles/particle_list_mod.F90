@@ -54,8 +54,8 @@ MODULE particle_list_mod
     INTEGER(intk) :: global_np, node_np, local_np
 
     !$omp declare target link(nmy_particle_grids)
-
-    !DO NOT declare target(my_particle_grids, particle_grid_ptr, grids_np, plist_displ)
+    
+    !DO NOT declare target link(my_particle_grids, particle_grid_ptr, grids_np, plist_displ)
     
     PUBLIC :: global_np, local_np, my_particle_list ! , guest_particle_list
     PUBLIC :: count_pog_target
@@ -235,14 +235,20 @@ CONTAINS    !===================================
             END IF
         END IF
 
-        !$omp target enter data map(mapper(particle_list_t), to: my_particle_list)        
+        !$omp target enter data map(mapper(particle_list_t), to: my_particle_list) 
+
+        ! TODO: find out why this second enter data map is neccesary ???       
         !$omp target enter data map(to: my_particle_list%iproc, &
         !$omp my_particle_list%max_np, my_particle_list%active_np, my_particle_list%ifinal)
         !$omp target enter data map(mapper(baseparticle_t), alloc: my_particle_list%particles)
-
+        
         !$omp target update to(nmy_particle_grids)
-        !$omp target enter data map(to: my_particle_grids, grids_np, &
+
+        !$omp target enter data map(alloc: my_particle_grids, grids_np, &
         !$omp plist_displ, particle_grid_ptr)
+
+        !$omp target update to(my_particle_grids(1:nmy_particle_grids))
+        !$omp target update to(particle_grid_ptr(1:ngrid))
 
         CALL stop_timer(910)
         CALL stop_timer(900)
