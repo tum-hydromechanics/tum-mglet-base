@@ -53,7 +53,11 @@ MODULE grids_mod
         nmygrids, mygrids, nmygridslvl, mygridslvl, nboconds, itypboconds, &
         idprocofgrd
 
+#if defined __INTEL_COMPILER
     !$omp declare target link(ngrid)
+#else
+    !$omp declare target(ngrid)
+#endif
 
 CONTAINS
 

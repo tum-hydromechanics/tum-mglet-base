@@ -14,8 +14,12 @@ MODULE particle_rng_mod
     INTEGER(c_int) :: particle_base_seed = 9891477
 
     INTEGER(c_int64_t) :: lcg_parameters(2) 
-    
+
+#if defined __INTEL_COMPILER
     !$omp declare target link(lcg_parameters)
+#else
+    !$omp declare target(lcg_parameters)
+#endif
 
 CONTAINS
 
@@ -26,7 +30,7 @@ CONTAINS
         !lcg_increment
         lcg_parameters(2) = 2891336453_c_int64_t
 
-        !$omp target enter data map(to: lcg_parameters)
+        !$omp target enter data map(always, to: lcg_parameters)
 
     END SUBROUTINE init_parallel_lcg
 

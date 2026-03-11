@@ -192,6 +192,14 @@ CONTAINS
             CALL init_particle_diffusion()
             CALL init_particle_timeintegration()
             !CALL init_particle_statistics(mtstep)
+#ifdef _MGLET_OPENMP_
+            CALL offload_fields()
+            IF (myid == 0) THEN
+                WRITE(*, '("Particle offloading fields initialized successfully.")')
+                WRITE(*, '()')
+            END IF
+
+#endif
         END IF
 
         ! Initialize particle snapshots

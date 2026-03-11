@@ -73,7 +73,11 @@ MODULE particle_config_mod
     INTEGER(intk), ALLOCATABLE :: nslices(:) ! "particles/nslices"
     REAL(realk), ALLOCATABLE :: slice_levels(:) ! "particles/slice_levels"
 
+#if defined __INTEL_COMPILER
     !$omp declare target link(D, truncation_limit)
+#else
+    !$omp declare target(D, truncation_limit)
+#endif
 
 CONTAINS
 
@@ -629,7 +633,7 @@ CONTAINS
             END IF
         END IF
 
-        !$omp target enter data map(to: D, truncation_limit)
+        !$omp target enter data map(always, to: D, truncation_limit)
 
         DEALLOCATE(seed)
 

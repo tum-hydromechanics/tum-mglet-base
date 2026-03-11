@@ -35,7 +35,11 @@ MODULE particle_diffusion_mod
     ! truncation limit stored in config mod
     REAL(realk) :: truncation_factor
 
+#if defined __INTEL_COMPILER
     !$omp declare target link(truncation_factor)
+#else
+    !$omp declare target(truncation_factor)
+#endif
 
 CONTAINS
 
@@ -72,7 +76,7 @@ CONTAINS
         CALL init_parallel_lcg()
 #endif
 
-        !$omp target enter data map(to: truncation_factor)
+        !$omp target enter data map(always, to: truncation_factor)
 
         CALL stop_timer(910)
         CALL stop_timer(900)

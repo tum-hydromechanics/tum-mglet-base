@@ -53,7 +53,9 @@ MODULE particle_boundaries_mod
 
     CHARACTER(len = 4) :: bc_coupling_mode = "FLOW" ! must be "FLOW", "SCAL" or "PART"
 
+#if defined __INTEL_COMPILER
     !$omp declare mapper(particle_boundaries_t :: bnd) map(to: bnd, bnd%face_neighbours, bnd%face_normals)
+#endif
 
     !DO NOT declare target(particle_boundaries)
 
@@ -223,13 +225,19 @@ MODULE particle_boundaries_mod
         CALL MPI_Barrier(MPI_COMM_WORLD)
 
         !$omp target enter data map(to: ngrid)
+
+#if defined __INTEL_COMPILER
         !$omp target enter data map(mapper(particle_boundaries_t), to: particle_boundaries(1:ngrid))
         !$omp target enter data map(particle_boundaries(1:ngrid)%face_neighbours, &
         !$omp particle_boundaries(1:ngrid)%face_normals)
-
+#else
+        !$omp target enter data map(to: particle_boundaries)
+#endif
+        
         CALL read_obstacles()
 
-        !$omp target enter data map(to: my_obstacles_offload, obstacle_displ, n_my_obstacles_on_grid, aura)
+        !$omp target enter data map(to: my_obstacles_offload, obstacle_displ, n_my_obstacles_on_grid)
+        !$omp target enter data map(always, to: aura)
 
         CALL stop_timer(910)
         CALL stop_timer(900)

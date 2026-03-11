@@ -369,8 +369,12 @@ CONTAINS
         
         CALL write_particle_list_txt(itstep, 'pre')
 
+#if defined __INTEL_COMPILER
         !$omp target update to(my_particle_list%particles)
-        
+#else
+        !$omp target update to(my_particle_list)
+#endif
+
         CALL start_timer(910)
 
         CALL count_pog(my_particle_list, grids_np, plist_displ)
@@ -382,10 +386,15 @@ CONTAINS
         num_teams = -99
         num_threads = -99
 
+#if defined __INTEL_COMPILER
         !$omp target map(tofrom: dev_num, num_teams, num_threads) map(mapper(obstacle_t), alloc: obstacles)
+#else 
+        !$omp target map(tofrom: dev_num, num_teams, num_threads) map(alloc: obstacles)
+#endif
         !$omp teams distribute private(igrid, ipart, temp_grid, ii, jj, kk, temp_x, temp_y, temp_z, &
         !$omp x, y, z, dx, dy, dz, ddx, ddy, ddz, pwu, pwv, pww, obstacles) reduction(max: num_threads)
         DO i = 1, nmy_particle_grids
+
 #ifdef __GFORTRAN__
             !$omp master
                 dev_num = omp_get_device_num()
@@ -422,7 +431,9 @@ CONTAINS
             !$omp parallel do private(ipart, temp_grid, temp_x, temp_y, temp_z) firstprivate(igrid, ii, jj, kk) &
             !$omp shared(x, y, z, dx, dy, dz, ddx, ddy, ddz, pwu, pwv, pww, obstacles)
             DO j = 1, grids_np(i)
-                
+
+print *, "ngrid", ngrid
+print *, "nmy particle grids", nmy_particle_grids                  
 !DO k = 1, 10
 !print *, "FACE NEIGBHOURS", particle_boundaries(k)%face_neighbours
 !print *, "FACE NORMALS", particle_boundaries(k)%face_normals
@@ -456,7 +467,11 @@ CONTAINS
 
         CALL stop_timer(910)
         
+#if defined __INTEL_COMPILER
         !$omp target update from(my_particle_list%particles)
+#else
+        !$omp target update from(my_particle_list)
+#endif
 
         CALL write_particle_list_txt(itstep, 'pos')
 
@@ -499,11 +514,11 @@ CONTAINS
         REAL(realk) :: pdx_pot, pdy_pot, pdz_pot
         REAL(realk) :: pdx_eff, pdy_eff, pdz_eff
 
-!print *, "pnrk:", pnrk
-!print *, "X:", X 
-!print *, "DX:", dx
-!print *, "DDX:", ddx
-!print *, "U:", pwu 
+print *, "pnrk:", pnrk
+print *, "X:", X 
+print *, "DX:", dx
+print *, "DDX:", ddx
+print *, "U:", pwu 
 
         DO irk = 1, pnrk
 

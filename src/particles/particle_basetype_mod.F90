@@ -13,7 +13,6 @@ MODULE particle_basetype_mod
     USE particle_rng_mod
     USE particle_ofields_mod
     USE particle_config_mod
-    USE particle_ofields_mod
 
     IMPLICIT NONE
 
@@ -61,8 +60,10 @@ MODULE particle_basetype_mod
 
     END TYPE baseparticle_t
 
+#if defined __INTEL_COMPILER
     !$omp declare mapper(baseparticle_t :: particle) map(particle, particle%state, particle%ipart, particle%iproc, particle%igrid, &
     !$omp particle%ijkcell, particle%x, particle%y, particle%z, particle%seed)
+#endif
 
     PUBLIC :: set_particle, set_particle_igrid, set_particle_cell, &
               update_particle_cell, print_particle_status

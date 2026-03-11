@@ -33,9 +33,11 @@ MODULE particle_list_mod
     END TYPE particle_list_t
 
     TYPE(particle_list_t) :: my_particle_list
-    
+
+#if defined __INTEL_COMPILER
     !$omp declare mapper(particle_list_t :: plist) map(to: plist, plist%iproc, plist%max_np, plist%active_np, &
     !$omp plist%ifinal) map(mapper(baseparticle_t), alloc: plist%particles)
+#endif
 
     LOGICAL :: plist_is_init = .FALSE.
 
@@ -53,8 +55,12 @@ MODULE particle_list_mod
 
     INTEGER(intk) :: global_np, node_np, local_np
 
+#if defined __INTEL_COMPILER
     !$omp declare target link(nmy_particle_grids)
-    
+#else
+    !$omp declare target(nmy_particle_grids)
+#endif
+
     !DO NOT declare target link(my_particle_grids, particle_grid_ptr, grids_np, plist_displ)
     
     PUBLIC :: global_np, local_np, my_particle_list ! , guest_particle_list
@@ -235,14 +241,18 @@ CONTAINS    !===================================
             END IF
         END IF
 
+#if defined __INTEL_COMPILER
         !$omp target enter data map(mapper(particle_list_t), to: my_particle_list) 
 
         ! TODO: find out why this second enter data map is neccesary ???       
         !$omp target enter data map(to: my_particle_list%iproc, &
         !$omp my_particle_list%max_np, my_particle_list%active_np, my_particle_list%ifinal)
         !$omp target enter data map(mapper(baseparticle_t), alloc: my_particle_list%particles)
-        
-        !$omp target update to(nmy_particle_grids)
+#else
+        !$omp target enter data map(alloc: my_particle_list)
+#endif
+
+        !$omp target enter data map(always, to: nmy_particle_grids)
 
         !$omp target enter data map(alloc: my_particle_grids, grids_np, &
         !$omp plist_displ, particle_grid_ptr)
@@ -368,7 +378,7 @@ CONTAINS    !===================================
     ! counts the number of particles on each grid in my_particle_grids (adapted to run on gpu)
     SUBROUTINE count_pog_target(particle_list)
         
-        !$omp declare target
+        ! declare target
         TYPE(particle_list_t), INTENT(in) :: particle_list
         INTEGER(intk) :: i, pgrid
 
@@ -937,7 +947,7 @@ CONTAINS    !===================================
 
     SUBROUTINE finish_particle_list()
 
-        !$omp target exit data map(delete: grids_np, plist_displ)
+        !$omp target exit data map(delete: nmy_particle_grids, my_particle_grids, particle_grid_ptr, grids_np, plist_displ)
         !$omp target exit data map(delete: my_particle_list)
 
         IF (ALLOCATED(my_particle_list%particles)) DEALLOCATE(my_particle_list%particles)

@@ -71,15 +71,6 @@ CONTAINS
             ! finish_particle_config()
             CALL set_timer(990, 'PSIM_CORE_FINISH')
 
-#ifdef _MGLET_OPENMP_
-            CALL offload_fields()
-            IF (myid == 0) THEN
-                WRITE(*, '("Particle offloading fields initialized successfully.")')
-                WRITE(*, '()')
-            END IF
-
-#endif
-
             CALL init_particle_utils()
             IF (myid == 0) THEN
                 WRITE(*, '("Particle utils initialized successfully.")')
