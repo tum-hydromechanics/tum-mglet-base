@@ -399,7 +399,7 @@ CONTAINS
         !$omp target update to(my_particle_list)
 #endif
 
-        CALL start_timer(910)
+        CALL start_timer(920)
 
         CALL count_pog(my_particle_list, grids_np, plist_displ)
 
@@ -492,7 +492,7 @@ CONTAINS
         !$omp end teams distribute
         !$omp end target
 
-        CALL stop_timer(910)
+        CALL stop_timer(920)
         
 #if defined __INTEL_COMPILER
         !$omp target update from(my_particle_list%particles)
