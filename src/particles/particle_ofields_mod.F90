@@ -61,7 +61,12 @@ MODULE particle_ofields_mod
     ! Public subroutines for host
     PUBLIC :: offload_fields, finish_offload_fields
 
-    ! Public variables for host
+#ifdef __GFORTRAN__
+    !$omp declare target(ip3d_offload, ip1d_offload, mgdims_offload, bbox_offload)
+    !$omp declare target(x_offload, y_offload, z_offload, dx_offload, dy_offload, dz_offload, &
+    !$omp ddx_offload, ddy_offload, ddz_offload)
+    !$omp declare target(u_offload, v_offload, w_offload)
+#endif
 
     ! Public subroutines for device
     PUBLIC :: ptr_to_grid_1, ptr_to_grid_3, get_bbox_target, get_mgdims_target
@@ -121,7 +126,7 @@ CONTAINS
         ip3d_offload = ip3d
         ip1d_offload = ip1d
         
-        !$omp target enter data map(to: ip3d_offload, ip1d_offload, mgdims_offload, bbox_offload)
+        !$omp target enter data map(always, to: ip3d_offload, ip1d_offload, mgdims_offload, bbox_offload)
     END SUBROUTINE
 
 
@@ -150,8 +155,8 @@ CONTAINS
         ddy_offload => ddy_f%arr
         ddz_offload => ddz_f%arr
 
-        !$omp target enter data map(to: x_offload, y_offload, z_offload)
-        !$omp target enter data map(to: dx_offload, dy_offload, dz_offload, ddx_offload, ddy_offload, ddz_offload)
+        !$omp target enter data map(always, to: x_offload, y_offload, z_offload)
+        !$omp target enter data map(always, to: dx_offload, dy_offload, dz_offload, ddx_offload, ddy_offload, ddz_offload)
     END SUBROUTINE
 
 
@@ -189,7 +194,7 @@ CONTAINS
             w_offload => wnull
         END IF
         
-        !$omp target enter data map(to: u_offload, v_offload, w_offload)
+        !$omp target enter data map(always, to: u_offload, v_offload, w_offload)
     END SUBROUTINE
 
 

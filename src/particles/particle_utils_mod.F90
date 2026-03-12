@@ -37,7 +37,11 @@ MODULE particle_utils_mod
         MODULE PROCEDURE r_greaterequal_r
     END INTERFACE a_greaterequal_b
 
-    !$omp declare target (facelist_utils)
+#if defined __INTEL_COMPILER
+    !$omp declare target link(facelist_utils)
+#else
+    !$omp declare target(facelist_utils)
+#endif
 
     CONTAINS
 

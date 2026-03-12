@@ -236,7 +236,9 @@ MODULE particle_boundaries_mod
         
         CALL read_obstacles()
 
-        !$omp target enter data map(to: my_obstacles_offload, obstacle_displ, n_my_obstacles_on_grid)
+        !$omp target enter data map(always, to: my_obstacles_offload)
+        !$omp target enter data map(always, to: n_my_obstacles_on_grid)
+        !$omp target enter data map(always, to: obstacle_displ)
         !$omp target enter data map(always, to: aura)
 
         CALL stop_timer(910)
