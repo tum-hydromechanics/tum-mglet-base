@@ -652,25 +652,23 @@ SUBROUTINE get_exit_face_c_target(bbox, x, y, z, dist, iface)
 
 
     ! update particle coordinates such if particle crossed a periodic boundary
-    SUBROUTINE update_coordinates_p_target(bbox_arr, particle, destgrid, iface, old_bbox)
+    SUBROUTINE update_coordinates_p_target(particle, destgrid, iface, old_bbox)
 
         !$omp declare target
-        REAL(realk), INTENT(in) :: bbox_arr(6 * ngrid)
         TYPE(baseparticle_t), INTENT(inout) :: particle
         INTEGER(intk), INTENT(in) :: destgrid, iface
         REAL(realk), INTENT(in) :: old_bbox(6)
 
-        CALL update_coordinates_c_target(bbox_arr, particle%igrid, destgrid, iface, particle%x, particle%y, particle%z, old_bbox)
+        CALL update_coordinates_c_target(particle%igrid, destgrid, iface, particle%x, particle%y, particle%z, old_bbox)
 
     END SUBROUTINE update_coordinates_p_target
 
 
-    SUBROUTINE update_coordinates_c_target(bbox_arr, igrid, destgrid, iface, x, y, z, old_bbox, reflect)
+    SUBROUTINE update_coordinates_c_target(igrid, destgrid, iface, x, y, z, old_bbox, reflect)
 
         !$omp declare target
 
         ! subroutine arguments
-        REAL(realk), INTENT(in) :: bbox_arr(6 * ngrid)
         INTEGER(intk), INTENT(in) :: igrid, destgrid, iface
         REAL(realk), INTENT(inout) :: x, y, z
         REAL(realk), INTENT(in) :: old_bbox(6)
@@ -687,7 +685,7 @@ SUBROUTINE get_exit_face_c_target(bbox, x, y, z, dist, iface)
             RETURN
         END IF
 
-        CALL get_bbox_target(bbox_arr, new_minx, new_maxx, new_miny, new_maxy, new_minz, new_maxz, destgrid)
+        CALL get_bbox_target(new_minx, new_maxx, new_miny, new_maxy, new_minz, new_maxz, destgrid)
 
         IF (PRESENT(reflect)) THEN ! this case is for the particle boundaries module
 

@@ -485,14 +485,11 @@ CONTAINS
 
 
     ! determine the pressurce cell that a particle is on from its coordinates and grid
-    SUBROUTINE set_particle_cell_target(ip1_arr, mgdims_arr, bbox_arr, particle)
+    SUBROUTINE set_particle_cell_target(particle)
 
         !$omp declare target
 
         ! subroutine arguments
-        INTEGER(intk), INTENT(in) :: ip1_arr(ngrid) 
-        INTEGER(intk), INTENT(in) :: mgdims_arr(3 * ngrid)
-        REAL(realk), INTENT(in) :: bbox_arr(6 * ngrid)
         TYPE(baseparticle_t), INTENT(inout) :: particle
 
         ! local variables
@@ -503,13 +500,13 @@ CONTAINS
         REAL(realk) :: minx, maxx, miny, maxy, minz, maxz
 
 
-        CALL get_bbox_target(bbox_arr, minx, maxx, miny, maxy, minz, maxz, particle%igrid)
+        CALL get_bbox_target(minx, maxx, miny, maxy, minz, maxz, particle%igrid)
 
-        CALL ptr_to_grid_1(ip1_arr, mgdims_arr, x_offload, particle%igrid, x, 1_intk)
-        CALL ptr_to_grid_1(ip1_arr, mgdims_arr, y_offload, particle%igrid, y, 2_intk)
-        CALL ptr_to_grid_1(ip1_arr, mgdims_arr, z_offload, particle%igrid, z, 3_intk)
+        CALL ptr_to_grid_1(x_offload, particle%igrid, x, 1_intk)
+        CALL ptr_to_grid_1(y_offload, particle%igrid, y, 2_intk)
+        CALL ptr_to_grid_1(z_offload, particle%igrid, z, 3_intk)
 
-        CALL get_mgdims_target(mgdims_arr, kk, jj, ii, particle%igrid)
+        CALL get_mgdims_target(kk, jj, ii, particle%igrid)
 
         ! the following assumes that the grid coordinates X/Y/Z are each sorted such that for any i < j and any direction x_k, x_k(i) < x_k(j) !
         ! the following procedure is capable of handling stretched grids!
@@ -623,18 +620,16 @@ CONTAINS
         END IF
 
         ! TODO: rethink this safety operation
-        CALL update_particle_cell_target(ip1_arr, mgdims_arr, particle)
+        CALL update_particle_cell_target(particle)
 
     END SUBROUTINE set_particle_cell_target
 
     ! determine the pressurce cell that a particle is on from its coordinates, grid and previous presuure cell
-    SUBROUTINE update_particle_cell_target(ip1_arr, mgdims_arr, particle)
+    SUBROUTINE update_particle_cell_target(particle)
 
         !$omp declare target
 
         ! subroutine arguments
-        INTEGER(intk), INTENT(in) :: ip1_arr(ngrid) 
-        INTEGER(intk), INTENT(in) :: mgdims_arr(3 * ngrid)
         TYPE(baseparticle_t), INTENT(inout) :: particle
 
         ! local variables
@@ -644,15 +639,15 @@ CONTAINS
         REAL(realk) :: diff_old, diff_new
         INTEGER(intk) :: k, j, i, kk, jj, ii, istep, jstep, kstep
 
-        CALL ptr_to_grid_1(ip1_arr, mgdims_arr, x_offload, particle%igrid, x, 1_intk)
-        CALL ptr_to_grid_1(ip1_arr, mgdims_arr, y_offload, particle%igrid, y, 2_intk)
-        CALL ptr_to_grid_1(ip1_arr, mgdims_arr, z_offload, particle%igrid, z, 3_intk)
+        CALL ptr_to_grid_1(x_offload, particle%igrid, x, 1_intk)
+        CALL ptr_to_grid_1(y_offload, particle%igrid, y, 2_intk)
+        CALL ptr_to_grid_1(z_offload, particle%igrid, z, 3_intk)
 
-        CALL ptr_to_grid_1(ip1_arr, mgdims_arr, dx_offload, particle%igrid, dx, 1_intk)
-        CALL ptr_to_grid_1(ip1_arr, mgdims_arr, dy_offload, particle%igrid, dy, 2_intk)
-        CALL ptr_to_grid_1(ip1_arr, mgdims_arr, dz_offload, particle%igrid, dz, 3_intk)
+        CALL ptr_to_grid_1(dx_offload, particle%igrid, dx, 1_intk)
+        CALL ptr_to_grid_1(dy_offload, particle%igrid, dy, 2_intk)
+        CALL ptr_to_grid_1(dz_offload, particle%igrid, dz, 3_intk)
 
-        CALL get_mgdims_target(mgdims_arr, kk, jj, ii, particle%igrid)
+        CALL get_mgdims_target(kk, jj, ii, particle%igrid)
 
         ! the following assumes that the grid coordinates X/Y/Z are each sorted such that for any i < j and any direction x, x(i) < x(j) !
         ! the following procedure is capable of handling stretched grids!

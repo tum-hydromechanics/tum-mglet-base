@@ -61,12 +61,23 @@ MODULE particle_ofields_mod
     ! Public subroutines for host
     PUBLIC :: offload_fields, finish_offload_fields
 
-#ifdef __GFORTRAN__
-    !$omp declare target(ip3d_offload, ip1d_offload, mgdims_offload, bbox_offload)
-    !$omp declare target(x_offload, y_offload, z_offload, dx_offload, dy_offload, dz_offload, &
-    !$omp ddx_offload, ddy_offload, ddz_offload)
-    !$omp declare target(u_offload, v_offload, w_offload)
-#endif
+
+    !$omp declare target(mgdims_offload)
+    !$omp declare target(ip3d_offload)
+    !$omp declare target(ip1d_offload)
+    !$omp declare target(bbox_offload)
+    !$omp declare target(x_offload)
+    !$omp declare target(y_offload)
+    !$omp declare target(z_offload)
+    !$omp declare target(dx_offload)
+    !$omp declare target(dy_offload)
+    !$omp declare target(dz_offload)
+    !$omp declare target(ddx_offload)
+    !$omp declare target(ddy_offload)
+    !$omp declare target(ddz_offload)
+    !$omp declare target(u_offload)
+    !$omp declare target(v_offload)
+    !$omp declare target(w_offload)
 
     ! Public subroutines for device
     PUBLIC :: ptr_to_grid_1, ptr_to_grid_3, get_bbox_target, get_mgdims_target
@@ -126,7 +137,10 @@ CONTAINS
         ip3d_offload = ip3d
         ip1d_offload = ip1d
         
-        !$omp target enter data map(always, to: ip3d_offload, ip1d_offload, mgdims_offload, bbox_offload)
+        !$omp target enter data map(always, to: ip3d_offload)
+        !$omp target enter data map(always, to: ip1d_offload)
+        !$omp target enter data map(always, to: mgdims_offload)
+        !$omp target enter data map(always, to: bbox_offload)
     END SUBROUTINE
 
 
@@ -155,8 +169,15 @@ CONTAINS
         ddy_offload => ddy_f%arr
         ddz_offload => ddz_f%arr
 
-        !$omp target enter data map(always, to: x_offload, y_offload, z_offload)
-        !$omp target enter data map(always, to: dx_offload, dy_offload, dz_offload, ddx_offload, ddy_offload, ddz_offload)
+        !$omp target enter data map(always, to: x_offload)
+        !$omp target enter data map(always, to: y_offload)
+        !$omp target enter data map(always, to: z_offload)
+        !$omp target enter data map(always, to: dx_offload)
+        !$omp target enter data map(always, to: dy_offload)
+        !$omp target enter data map(always, to: dz_offload)
+        !$omp target enter data map(always, to: ddx_offload)
+        !$omp target enter data map(always, to: ddy_offload)
+        !$omp target enter data map(always, to: ddz_offload)
     END SUBROUTINE
 
 
@@ -194,7 +215,9 @@ CONTAINS
             w_offload => wnull
         END IF
         
-        !$omp target enter data map(always, to: u_offload, v_offload, w_offload)
+        !$omp target enter data map(always, to: u_offload)
+        !$omp target enter data map(always, to: v_offload)
+        !$omp target enter data map(always, to: w_offload)
     END SUBROUTINE
 
 
@@ -209,10 +232,10 @@ CONTAINS
     END SUBROUTINE finish_offload_fields
 
 
-    SUBROUTINE get_mgdims_target(mgdims_arr, kk, jj, ii, igrid)
+    SUBROUTINE get_mgdims_target(kk, jj, ii, igrid)
         
         !$omp declare target
-        INTEGER(intk), INTENT(in) :: mgdims_arr(3 * ngrid)
+
         INTEGER(intk), INTENT(OUT) :: kk, jj, ii
         INTEGER(intk), INTENT(IN) :: igrid
 
@@ -220,16 +243,16 @@ CONTAINS
         INTEGER(intk) :: i
         i = (igrid - 1) * 3 + 1
 
-        ii = mgdims_arr(i)
-        jj = mgdims_arr(i+1)
-        kk = mgdims_arr(i+2)
+        ii = mgdims_offload(i)
+        jj = mgdims_offload(i+1)
+        kk = mgdims_offload(i+2)
     END SUBROUTINE get_mgdims_target
 
 
-    SUBROUTINE get_bbox_target(bbox_arr, minx, maxx, miny, maxy, minz, maxz, igrid)
+    SUBROUTINE get_bbox_target(minx, maxx, miny, maxy, minz, maxz, igrid)
 
         !$omp declare target
-        REAL(realk), INTENT(in) :: bbox_arr(6 * ngrid)
+
         REAL(realk), INTENT(OUT) :: minx, maxx, miny, maxy, minz, maxz
         INTEGER(intk), INTENT(IN) :: igrid
 
@@ -237,51 +260,51 @@ CONTAINS
         INTEGER(intk) :: i
 
         i = (igrid - 1) * 6 + 1
-        minx = bbox_arr(i)
-        maxx = bbox_arr(i+1)
-        miny = bbox_arr(i+2)
-        maxy = bbox_arr(i+3)
-        minz = bbox_arr(i+4)
-        maxz = bbox_arr(i+5)
+        minx = bbox_offload(i)
+        maxx = bbox_offload(i+1)
+        miny = bbox_offload(i+2)
+        maxy = bbox_offload(i+3)
+        minz = bbox_offload(i+4)
+        maxz = bbox_offload(i+5)
     END SUBROUTINE get_bbox_target
 
 
-    SUBROUTINE ptr_to_grid_1(ip1_arr, mgdims_arr, arr_ptr, igrid, grid_ptr, dir)
+    SUBROUTINE ptr_to_grid_1(arr_ptr, igrid, grid_ptr, dir)
+        
         !$omp declare target
+
         ! Function arguments
-        INTEGER(intk), INTENT(in) :: ip1_arr(ngrid) 
-        INTEGER(intk), INTENT(in) :: mgdims_arr(3 * ngrid)
         REAL(realk), POINTER, CONTIGUOUS, INTENT(in) :: arr_ptr(:)
         REAL(realk), POINTER, CONTIGUOUS, INTENT(inout) :: grid_ptr(:)
         INTEGER(intk), INTENT(in) :: igrid
-
         INTEGER(intk), INTENT(in) :: dir ! x:1; y:2; z:3 
 
         ! Local variables
         INTEGER(intk) :: ip, len
         
-        ip = ip1_arr(igrid)
-        len = mgdims_arr((igrid - 1) * 3 + dir)
+        ip = ip1d_offload(igrid)
+        len = mgdims_offload((igrid - 1) * 3 + dir)
         grid_ptr(1:len) => arr_ptr(ip:ip+len-1)
 
     END SUBROUTINE ptr_to_grid_1
 
 
-    SUBROUTINE ptr_to_grid_3(ip3_arr, mgdims_arr, arr_ptr, igrid, grid_ptr)
+    SUBROUTINE ptr_to_grid_3(arr_ptr, igrid, grid_ptr)
+        
         !$omp declare target
+        
         ! Function arguments
-        INTEGER(intk), INTENT(in) :: ip3_arr(3 * ngrid) 
-        INTEGER(intk), INTENT(in) :: mgdims_arr(3 * ngrid)
         REAL(realk), POINTER, CONTIGUOUS, INTENT(in) :: arr_ptr(:)
         REAL(realk), POINTER, CONTIGUOUS, INTENT(inout) :: grid_ptr(:, :, :)
         INTEGER(intk), INTENT(in) :: igrid
-        ! Result variables
+
         ! Local variables
         INTEGER(intk) :: ip, ii, jj, kk
         
-        CALL get_mgdims_target(mgdims_arr, kk, jj, ii, igrid)
-        ip = ip3_arr(igrid)
+        CALL get_mgdims_target(kk, jj, ii, igrid)
+        ip = ip3d_offload(igrid)
         grid_ptr(1:kk, 1:jj, 1:ii) => arr_ptr(ip:ip+kk*jj*ii-1)
+
     END SUBROUTINE ptr_to_grid_3
 
 END MODULE particle_ofields_mod
