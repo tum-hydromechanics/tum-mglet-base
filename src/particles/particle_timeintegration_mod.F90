@@ -482,7 +482,7 @@ CONTAINS
 
 #ifdef _MGLET_OPENMP_
                 IF (ddiffusion) CALL particle_diffusion_target(my_particle_list%particles(ipart), temp_grid, temp_x, temp_y, temp_z, &
-                 dt, my_particle_list%particles(ipart)%seed, particle_boundaries, obstacles)
+                 kk, jj, ii, x, y, z, dx, dy, dz, dt, my_particle_list%particles(ipart)%seed, particle_boundaries, obstacles)
 #endif
 
                 ! TODO: reintroduce particle runtime statistics
@@ -537,6 +537,7 @@ CONTAINS
         REAL(realk) :: pdx_adv, pdy_adv, pdz_adv
         REAL(realk) :: pdx_pot, pdy_pot, pdz_pot
         REAL(realk) :: pdx_eff, pdy_eff, pdz_eff
+        LOGICAL :: dreplace
 
 !print *, "pnrk:", pnrk
 !print *, "X:", X 
@@ -558,8 +559,14 @@ CONTAINS
 
             ! Particle Boundary Interaction
             CALL move_particle_target(particle, pdx_adv, pdy_adv, pdz_adv, &
-             pdx_eff, pdy_eff, pdz_eff, temp_x, temp_y, temp_z, temp_grid, boundaries, obstacles)
-             
+             pdx_eff, pdy_eff, pdz_eff, temp_x, temp_y, temp_z, temp_grid, boundaries, obstacles, dreplace)
+            
+            IF (dreplace) THEN
+                CALL replace_particle_target(particle, obstacles, kk, jj, ii, x, y, z, dx, dy, dz)
+            ELSE 
+                CALL update_particle_cell_target(particle, kk, jj, ii, x, y, z, dx, dy, dz)
+            END IF
+
             pdx_pot = pdx_eff / B(irk)
             pdy_pot = pdy_eff / B(irk)
             pdz_pot = pdz_eff / B(irk)
@@ -570,7 +577,7 @@ CONTAINS
 
     END SUBROUTINE particle_advection_target
 
-    SUBROUTINE particle_diffusion_target(particle, temp_grid, temp_x, temp_y, temp_z, dt, seed, boundaries, obstacles)
+    SUBROUTINE particle_diffusion_target(particle, temp_grid, temp_x, temp_y, temp_z, kk, jj, ii, x, y, z, dx, dy, dz, dt, seed, boundaries, obstacles)
 
         !$omp declare target
 
@@ -578,6 +585,9 @@ CONTAINS
         TYPE(baseparticle_t), INTENT(inout) :: particle
         INTEGER(intk), INTENT(inout) :: temp_grid
         REAL(realk), INTENT(inout) :: temp_x, temp_y, temp_z
+        INTEGER(intk), INTENT(in) :: kk, jj, ii
+        REAL(realk), POINTER, CONTIGUOUS, DIMENSION(:), INTENT(in) :: x, y, z
+        REAL(realk), POINTER, CONTIGUOUS, DIMENSION(:), INTENT(in) :: dx, dy, dz
         REAL(realk), INTENT(in) :: dt
         INTEGER(c_int), INTENT(inout) :: seed
         TYPE(particle_boundaries_t), INTENT(in) :: boundaries(ngrid)
@@ -586,6 +596,7 @@ CONTAINS
         ! local variables
         REAL(realk) :: pdx_diff, pdy_diff, pdz_diff
         REAL(realk) :: pdx_eff, pdy_eff, pdz_eff
+        LOGICAL :: dreplace
 
         CALL generate_diffusive_displacement_target(dt, D(1), D(2), D(3), pdx_diff, pdy_diff, pdz_diff, seed)
 
@@ -597,7 +608,13 @@ CONTAINS
 !print *, "particle_ipart:", particle%ipart
 
         CALL move_particle_target(particle, pdx_diff, pdy_diff, pdz_diff, &
-             pdx_eff, pdy_eff, pdz_eff, temp_x, temp_y, temp_z, temp_grid, boundaries, obstacles)
+             pdx_eff, pdy_eff, pdz_eff, temp_x, temp_y, temp_z, temp_grid, boundaries, obstacles, dreplace)
+
+        IF (dreplace) THEN
+            CALL replace_particle_target(particle, obstacles, kk, jj, ii, x, y, z, dx, dy, dz)
+        ELSE 
+            CALL update_particle_cell_target(particle, kk, jj, ii, x, y, z, dx, dy, dz)
+        END IF
 
         ! TODO: reintroduce particle runtime statistics
 

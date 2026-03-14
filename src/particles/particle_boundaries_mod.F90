@@ -749,7 +749,7 @@ MODULE particle_boundaries_mod
     END SUBROUTINE move_to_boundary
 
 
-    SUBROUTINE move_particle_target(particle, dx, dy, dz, dx_eff, dy_eff, dz_eff, temp_x, temp_y, temp_z, temp_grid_prev, boundaries, obstacles)
+    SUBROUTINE move_particle_target(particle, dx, dy, dz, dx_eff, dy_eff, dz_eff, temp_x, temp_y, temp_z, temp_grid_prev, boundaries, obstacles, dreplace)
 
         !$omp declare target
 
@@ -761,6 +761,7 @@ MODULE particle_boundaries_mod
         INTEGER(intk), INTENT(inout) :: temp_grid_prev
         TYPE(particle_boundaries_t), INTENT(in) :: boundaries(ngrid)
         TYPE(obstacle_t), POINTER, CONTIGUOUS, DIMENSION(:), INTENT(in) :: obstacles
+        LOGICAL, INTENT(inout) :: dreplace 
         
         ! local variables
         INTEGER(intk) :: temp_grid, iface, iobst_local, destgrid, i
@@ -769,7 +770,6 @@ MODULE particle_boundaries_mod
         REAL(realk) :: dx_step, dy_step, dz_step
         REAL(realk) :: dx_from_here, dy_from_here, dz_from_here
         REAL(realk) :: bbox(6)
-        LOGICAL :: dreplace
 
         dreplace = .FALSE.
 
@@ -799,12 +799,7 @@ MODULE particle_boundaries_mod
 
             ! replace current particle coordinates by a random valid position on the particles curren grid
             IF (dreplace) THEN
-                CALL replace_particle_target(particle, obstacles)
-                temp_grid = particle%igrid
-                x = particle%x
-                y = particle%y
-                z = particle%z
-                dreplace = .FALSE.
+                RETURN
             END IF
 
             dx_eff = dx_eff + dx_step
@@ -848,8 +843,6 @@ MODULE particle_boundaries_mod
         !particle%xyz_abs(2) = particle%xyz_abs(2) + dy_eff
         !particle%xyz_abs(3) = particle%xyz_abs(3) + dz_eff
 
-        CALL update_particle_cell_target(particle)
-
     END SUBROUTINE move_particle_target
 
     !-----------------------------------
@@ -882,7 +875,7 @@ MODULE particle_boundaries_mod
         dx_to_b = 0.0
         dy_to_b = 0.0
         dz_to_b = 0.0
-
+        
         CALL s_to_obstacle(old_grid, temp_grid, x, y, z, dx, dy, dz, iobst_local, s, obstacles)
 
         IF (s <= 0.0_realk) THEN
@@ -1424,13 +1417,15 @@ MODULE particle_boundaries_mod
 
     END SUBROUTINE replace_particle
 
-    SUBROUTINE replace_particle_target(particle, obstacles)
+    SUBROUTINE replace_particle_target(particle, obstacles, kk, jj, ii, x, y, z, dx, dy, dz)
 
         !$omp declare target
 
         ! subroutine arguments
         TYPE(baseparticle_t), INTENT(inout) :: particle
         TYPE(obstacle_t), POINTER, CONTIGUOUS, DIMENSION(:), INTENT(in) :: obstacles
+        INTEGER(intk), INTENT(in) :: kk, jj, ii
+        REAL(realk), INTENT(in) :: x(ii), y(jj), z(kk), dx(ii), dy(jj), dz(kk)
 
         ! local variables
         LOGICAL :: valid_location
@@ -1482,7 +1477,7 @@ MODULE particle_boundaries_mod
         particle%y = y_new
         particle%z = z_new
 
-        CALL set_particle_cell_target(particle)
+        CALL set_particle_cell_target(particle, kk, jj, ii, x, y, z, dx, dy, dz)
 
     END SUBROUTINE replace_particle_target
 
