@@ -385,6 +385,13 @@ CONTAINS
         REAL(realk), POINTER, CONTIGUOUS, DIMENSION(:, :, :) :: pwu, pwv, pww
         TYPE(obstacle_t), POINTER, CONTIGUOUS, DIMENSION(:) :: obstacles
 
+        INTEGER(intk) :: irk
+        REAL(realk) :: pu_adv, pv_adv, pw_adv
+        REAL(realk) :: pdx, pdy, pdz
+        REAL(realk) :: pdx_pot, pdy_pot, pdz_pot
+        REAL(realk) :: pdx_eff, pdy_eff, pdz_eff
+        LOGICAL :: dreplace
+
         CALL start_timer(900)
 
         IF (dadvection) THEN
@@ -416,6 +423,7 @@ CONTAINS
         !$omp target map(tofrom: dev_num, num_teams, num_threads)
 #endif
         !$omp teams distribute private(igrid, ipart, temp_grid, ii, jj, kk, temp_x, temp_y, temp_z, &
+        !$omp irk, pu_adv, pv_adv, pw_adv, pdx, pdy, pdz, pdx_pot, pdy_pot, pdz_pot, pdx_eff, pdy_eff, pdz_eff, &
         !$omp x, y, z, dx, dy, dz, ddx, ddy, ddz, pwu, pwv, pww, obstacles) reduction(max: num_threads)
         DO i = 1, nmy_particle_grids
 
@@ -452,21 +460,10 @@ CONTAINS
 
             obstacles => my_obstacles_offload(obstacle_displ(igrid) + 1: obstacle_displ(igrid) + MAX(1_intk, n_my_obstacles_on_grid(igrid)))
             
-            !$omp parallel do private(ipart, temp_grid, temp_x, temp_y, temp_z) firstprivate(igrid, ii, jj, kk) &
+            !$omp parallel do private(ipart, temp_grid, temp_x, temp_y, temp_z) firstprivate(igrid, ii, jj, kk, &
+            !$omp irk, pu_adv, pv_adv, pw_adv, pdx, pdy, pdz, pdx_pot, pdy_pot, pdz_pot, pdx_eff, pdy_eff, pdz_eff) &
             !$omp shared(x, y, z, dx, dy, dz, ddx, ddy, ddz, pwu, pwv, pww, obstacles)
             DO j = 1, grids_np(i)
-
-!print *, "ngrid", ngrid
-!print *, "nmy particle grids", nmy_particle_grids  
-!print *, "obstacle_displ:", obstacle_displ 
-!print *, "n_my_obstacles_on_grid:", n_my_obstacles_on_grid                
-!DO k = 1, n_my_obstacles_on_grid(i)         
-!print *, "my_obstacles_offload ", k," :", my_obstacles_offload(k)%iobst
-!print *, "FACE NEIGBHOURS", particle_boundaries(k)%face_neighbours
-!print *, "FACE NORMALS", particle_boundaries(k)%face_normals
-!END DO 
-!print *, "GRIDS_NP", grids_np
-!print *, "PLIST_DISPL", plist_displ
 
                 num_threads = omp_get_num_threads()
                 
@@ -477,12 +474,49 @@ CONTAINS
                 temp_y = my_particle_list%particles(ipart)%y
                 temp_z = my_particle_list%particles(ipart)%z
 
-                IF (dadvection) CALL particle_advection_target(my_particle_list%particles(ipart), temp_grid, temp_x, temp_y, temp_z, &
-                 kk, jj, ii, x, y, z, dx, dy, dz, ddx, ddy, ddz, pwu, pwv, pww, dt, pnrk, A_offload, B_offload, particle_boundaries, obstacles)
+                IF (dadvection) THEN
+
+                    DO irk = 1, pnrk
+
+                        ! get particle velocity
+                        CALL interpolate_lincon(my_particle_list%particles(ipart), kk, jj, ii, x, y, z, dx, dy, dz, ddx, ddy, ddz, &
+                        pwu, pwv, pww, pu_adv, pv_adv, pw_adv)
+
+                        CALL prkstep(pdx_pot, pdy_pot, pdz_pot, pu_adv, pv_adv, pw_adv, dt, &
+                        A_offload(irk), B_offload(irk), pdx, pdy, pdz)
+
+                        ! Particle Boundary Interaction
+                        CALL move_particle_target(my_particle_list%particles(ipart), pdx, pdy, pdz, &
+                        pdx_eff, pdy_eff, pdz_eff, temp_x, temp_y, temp_z, temp_grid, particle_boundaries, obstacles, dreplace)
+                        
+                        IF (dreplace) THEN
+                            CALL replace_particle_target(my_particle_list%particles(ipart), obstacles, kk, jj, ii, x, y, z, dx, dy, dz)
+                        ELSE 
+                            CALL update_particle_cell_target(my_particle_list%particles(ipart), kk, jj, ii, x, y, z, dx, dy, dz)
+                        END IF
+
+                        pdx_pot = pdx_eff / B_offload(irk)
+                        pdy_pot = pdy_eff / B_offload(irk)
+                        pdz_pot = pdz_eff / B_offload(irk)
+
+                    ! TODO: reintroduce particle runtime statistics
+                    END DO
+
+                END IF
 
 #ifdef _MGLET_OPENMP_
-                IF (ddiffusion) CALL particle_diffusion_target(my_particle_list%particles(ipart), temp_grid, temp_x, temp_y, temp_z, &
-                 kk, jj, ii, x, y, z, dx, dy, dz, dt, my_particle_list%particles(ipart)%seed, particle_boundaries, obstacles)
+                IF (ddiffusion) THEN
+                    CALL generate_diffusive_displacement_target(dt, D(1), D(2), D(3), pdx, pdy, pdz, my_particle_list%particles(ipart)%seed)
+
+                    CALL move_particle_target(my_particle_list%particles(ipart), pdx, pdy, pdz, &
+                        pdx_eff, pdy_eff, pdz_eff, temp_x, temp_y, temp_z, temp_grid, particle_boundaries, obstacles, dreplace)
+
+                    IF (dreplace) THEN
+                        CALL replace_particle_target(my_particle_list%particles(ipart), obstacles, kk, jj, ii, x, y, z, dx, dy, dz)
+                    ELSE 
+                        CALL update_particle_cell_target(my_particle_list%particles(ipart), kk, jj, ii, x, y, z, dx, dy, dz)
+                    END IF
+                END IF
 #endif
 
                 ! TODO: reintroduce particle runtime statistics
@@ -539,13 +573,6 @@ CONTAINS
         REAL(realk) :: pdx_eff, pdy_eff, pdz_eff
         LOGICAL :: dreplace
 
-!print *, "pnrk:", pnrk
-!print *, "X:", X 
-!print *, "DX:", dx
-!print *, "DDX:", ddx
-!print *, "U:", pwu 
-
-
         DO irk = 1, pnrk
 
             ! get particle velocity
@@ -554,8 +581,6 @@ CONTAINS
 
             CALL prkstep(pdx_pot, pdy_pot, pdz_pot, pu_adv, pv_adv, pw_adv, dt, &
              A(irk), B(irk), pdx_adv, pdy_adv, pdz_adv)
-
-!print *, "pdx_adv:", pdx_adv
 
             ! Particle Boundary Interaction
             CALL move_particle_target(particle, pdx_adv, pdy_adv, pdz_adv, &
@@ -573,7 +598,6 @@ CONTAINS
 
         ! TODO: reintroduce particle runtime statistics
         END DO
-!print *, "Advection of Particle: ", particle%ipart   
 
     END SUBROUTINE particle_advection_target
 
@@ -599,13 +623,6 @@ CONTAINS
         LOGICAL :: dreplace
 
         CALL generate_diffusive_displacement_target(dt, D(1), D(2), D(3), pdx_diff, pdy_diff, pdz_diff, seed)
-
-!particle%x = particle%x + D(1)
-!particle%y = particle%y + D(2)
-!particle%z = particle%z + D(3)
-
-!print *, "D =", D
-!print *, "particle_ipart:", particle%ipart
 
         CALL move_particle_target(particle, pdx_diff, pdy_diff, pdz_diff, &
              pdx_eff, pdy_eff, pdz_eff, temp_x, temp_y, temp_z, temp_grid, boundaries, obstacles, dreplace)
