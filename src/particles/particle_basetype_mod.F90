@@ -66,7 +66,7 @@ MODULE particle_basetype_mod
 #endif
 
     PUBLIC :: set_particle, set_particle_igrid, set_particle_cell, &
-              update_particle_cell, print_particle_status
+              update_particle_cell, print_particle_status, get_particle_gcorner_target
 
 CONTAINS
 
@@ -686,5 +686,22 @@ CONTAINS
         particle%ijkcell(3) = MIN(MAX(k - kstep, 1_intk), kk) ! MIN/MAX should be obsolete here
 
     END SUBROUTINE update_particle_cell_target
+
+
+    SUBROUTINE get_particle_gcorner_target(particle, bbox, icorn)
+
+        !$omp declare target
+        
+        ! subroutine arguments
+        TYPE(baseparticle_t), INTENT(inout) :: particle
+        REAL(realk), INTENT(in) :: bbox(6)
+        INTEGER(intk), INTENT(out) :: icorn
+
+        icorn = NINT((particle%x - bbox(1)) / (bbox(2) - bbox(1))) * 4_intk + &
+                NINT((particle%y - bbox(3)) / (bbox(4) - bbox(3))) * 2_intk + &
+                NINT((particle%z - bbox(5)) / (bbox(6) - bbox(5))) * 1_intk + 1_intk
+
+    END SUBROUTINE get_particle_gcorner_target
+
 
 END MODULE particle_basetype_mod
