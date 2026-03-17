@@ -53,14 +53,17 @@ MODULE particle_boundaries_mod
 
     TYPE(particle_boundaries_t), ALLOCATABLE :: particle_boundaries(:)
 
+    INTEGER(intk), PARAMETER :: ncorn = 8_intk
 
     TYPE :: particle_gcorner_boundaries_t
+
+        INTEGER(intk) :: location(3)
 
         REAL(realk) :: face_coord(3)
 
         INTEGER(intk) :: face_neighbours(8)
 
-        REAL(realk) :: face_normals(3, 12) = 0.0
+        REAL(realk) :: face_normals(12) = 0.0
 
     END TYPE particle_gcorner_boundaries_t
 
@@ -75,7 +78,7 @@ MODULE particle_boundaries_mod
     SUBROUTINE init_particle_boundaries()
 
         ! local variables
-        INTEGER(intk) :: igrid, iface, jface, i, j
+        INTEGER(intk) :: igrid, icorn, iface, jface, i, j
         INTEGER(intk) :: neighbours(26)
         ! to store which boundary surfaces (faces 1-6) that define a lower order face (7-26) are of connect (or periodic) type:
         INTEGER(intk) :: connect_faces(4)
@@ -234,6 +237,14 @@ MODULE particle_boundaries_mod
         END IF
 
         CALL MPI_Barrier(MPI_COMM_WORLD)
+
+        ALLOCATE(particle_gcorner_boundaries(ngrid * 8_intk))
+
+        DO igrid = 1, ngrid
+            DO icorn = 1, ncorn
+                CALL set_gcorner_boundary(igrid, icorn)
+            END DO
+        END DO
 
         !$omp target enter data map(to: ngrid)
 
@@ -806,8 +817,9 @@ MODULE particle_boundaries_mod
             CALL get_bbox_target(bbox(1), bbox(2), bbox(3), bbox(4), bbox(5), bbox(6), temp_grid)
 
             CALL move_to_boundary_target(particle%igrid, temp_grid, x, y, z, &
-             dx_from_here, dy_from_here, dz_from_here, dx_step, dy_step, dz_step, iface, iobst_local, dreplace, obstacles, bbox)
+             dx_from_here, dy_from_here, dz_from_here, dx_step, dy_step, dz_step, iface, iobst_local, obstacles, bbox)
 
+            ! TODO: reactivate particle replacement (?)
             ! replace current particle coordinates by a random valid position on the particles curren grid
             IF (dreplace) THEN
                 RETURN
@@ -861,7 +873,7 @@ MODULE particle_boundaries_mod
    ! This subroutine only considers grids on the same level
     ! CAUTION: Here, temp_grid refers to the grid the particle coordinates are currently on and of which the boundaries are relevant.
     ! This might NOT be particle%igrid, which is used to deduce the velocity
-    SUBROUTINE move_to_boundary_target(old_grid, temp_grid, x, y, z, dx, dy, dz, dx_to_b, dy_to_b, dz_to_b, iface, iobst_local, replace, obstacles, bbox)
+    SUBROUTINE move_to_boundary_target(old_grid, temp_grid, x, y, z, dx, dy, dz, dx_to_b, dy_to_b, dz_to_b, iface, iobst_local, obstacles, bbox)
 
         !$omp declare target
 
@@ -873,7 +885,6 @@ MODULE particle_boundaries_mod
         REAL(realk), INTENT(out) :: dx_to_b, dy_to_b, dz_to_b
         INTEGER(intk), INTENT(out) :: iface
         INTEGER(intk), INTENT(inout) :: iobst_local
-        LOGICAL, INTENT(out) :: replace
         TYPE(obstacle_t), POINTER, CONTIGUOUS, DIMENSION(:), INTENT(in) :: obstacles
         REAL(realk), INTENT(in) :: bbox(6)
 
@@ -881,13 +892,11 @@ MODULE particle_boundaries_mod
         REAL(realk) :: s, dist
         LOGICAL :: dget_exit_face
 
-        replace = .FALSE.
-
         dx_to_b = 0.0
         dy_to_b = 0.0
         dz_to_b = 0.0
         
-        CALL s_to_obstacle(old_grid, temp_grid, x, y, z, dx, dy, dz, iobst_local, s, obstacles)
+        CALL s_to_obstacle(old_grid, x, y, z, dx, dy, dz, iobst_local, s, obstacles)
 
         IF (s <= 0.0_realk) THEN
             iface = 0
@@ -907,13 +916,12 @@ MODULE particle_boundaries_mod
     END SUBROUTINE move_to_boundary_target
 
 
-    SUBROUTINE s_to_obstacle(old_grid, temp_grid, x, y, z, dx, dy, dz, iobst_local, s, obstacles)
+    SUBROUTINE s_to_obstacle(old_grid, x, y, z, dx, dy, dz, iobst_local, s, obstacles)
 
         !$omp declare target
 
         ! subroutine arguments
         INTEGER(intk), INTENT(in) :: old_grid
-        INTEGER(intk), INTENT(in) :: temp_grid
         REAL(realk), INTENT(in) :: x, y, z
         REAL(realk), INTENT(in) :: dx, dy, dz
         INTEGER(intk), INTENT(inout) :: iobst_local
@@ -1371,6 +1379,236 @@ MODULE particle_boundaries_mod
     END SUBROUTINE to_grid_boundary2
 
 
+    SUBROUTINE move_particle_target3(particle, dx, dy, dz, dx_eff, dy_eff, dz_eff, temp_x, temp_y, temp_z, temp_grid_prev, boundaries, obstacles, dreplace)
+
+        !$omp declare target
+
+        ! subroutine arguments
+        TYPE(baseparticle_t), INTENT(inout) :: particle
+        REAL(realk), INTENT(in) :: dx, dy, dz
+        REAL(realk), INTENT(out) :: dx_eff, dy_eff, dz_eff
+        REAL(realk), INTENT(inout) :: temp_x, temp_y, temp_z
+        INTEGER(intk), INTENT(inout) :: temp_grid_prev
+        TYPE(particle_boundaries_t), INTENT(in) :: boundaries(ngrid)
+        TYPE(obstacle_t), POINTER, CONTIGUOUS, DIMENSION(:), INTENT(in) :: obstacles
+        LOGICAL, INTENT(inout) :: dreplace 
+        
+        ! local variables
+        INTEGER(intk) :: temp_grid, iface, iobst_local, destgrid, i
+        INTEGER(intk) :: reflect(3)
+        REAL(realk) :: x, y, z
+        REAL(realk) :: dx_step, dy_step, dz_step
+        REAL(realk) :: dx_from_here, dy_from_here, dz_from_here
+        REAL(realk) :: bbox(6)
+
+        dreplace = .FALSE.
+
+        dx_eff = 0.0
+        dy_eff = 0.0
+        dz_eff = 0.0
+
+        temp_grid = temp_grid_prev
+
+        x = temp_x
+        y = temp_y
+        z = temp_z
+
+        dx_from_here = dx
+        dy_from_here = dy
+        dz_from_here = dz
+
+        iobst_local = 0
+
+        ! to avoid branch divergence here, just iterate to the max. number of iterations that would be a stoping criterion anyways
+        DO i = 1, 10
+
+            CALL get_bbox_target(bbox(1), bbox(2), bbox(3), bbox(4), bbox(5), bbox(6), temp_grid)
+
+            CALL move_to_boundary_target(particle%igrid, temp_grid, x, y, z, &
+             dx_from_here, dy_from_here, dz_from_here, dx_step, dy_step, dz_step, iface, iobst_local, obstacles, bbox)
+
+            ! TODO: reactivate particle replacement (?)
+            ! replace current particle coordinates by a random valid position on the particles curren grid
+            IF (dreplace) THEN
+                RETURN
+            END IF
+
+            dx_eff = dx_eff + dx_step
+            dy_eff = dy_eff + dy_step
+            dz_eff = dz_eff + dz_step
+
+            IF (0 < iobst_local) THEN
+
+                CALL reflect_at_obstacle(x, y, z, dx_from_here, dy_from_here, dz_from_here, obstacles(iobst_local))
+
+            ELSEIF (0 < iface) THEN
+
+                destgrid = boundaries(temp_grid)%face_neighbours(iface)
+
+                CALL reflect_at_boundary(dx_from_here, dy_from_here, dz_from_here, &
+                 boundaries(temp_grid)%face_normals(1, iface), &
+                 boundaries(temp_grid)%face_normals(2, iface), &
+                 boundaries(temp_grid)%face_normals(3, iface), reflect)
+
+                CALL update_coordinates_target(temp_grid, destgrid, iface, x, y, z, bbox, reflect)
+
+                temp_grid = destgrid
+
+            END IF
+
+        END DO
+
+        temp_x = x
+        temp_y = y
+        temp_z = z
+
+        temp_grid_prev = temp_grid
+
+        ! do not update the particle grid here
+        ! and do not apply periodic boundaries here
+        particle%x = particle%x + dx_eff
+        particle%y = particle%y + dy_eff
+        particle%z = particle%z + dz_eff
+
+        !particle%xyz_abs(1) = particle%xyz_abs(1) + dx_eff
+        !particle%xyz_abs(2) = particle%xyz_abs(2) + dy_eff
+        !particle%xyz_abs(3) = particle%xyz_abs(3) + dz_eff
+
+    END SUBROUTINE move_particle_target3
+
+
+    SUBROUTINE move_to_boundary_target3(gcorner_boundary, old_grid, x, y, z, dx, dy, dz, dx_to_b, dy_to_b, dz_to_b, iface, iobst_local, obstacles)
+
+        !$omp declare target
+
+        ! subroutine arguments
+        TYPE(particle_gcorner_boundaries_t), INTENT(in) :: gcorner_boundary 
+        INTEGER(intk), INTENT(in) :: old_grid
+        REAL(realk), INTENT(inout) :: x, y, z
+        REAL(realk), INTENT(inout) :: dx, dy, dz
+        REAL(realk), INTENT(out) :: dx_to_b, dy_to_b, dz_to_b
+        INTEGER(intk), INTENT(out) :: iface
+        INTEGER(intk), INTENT(inout) :: iobst_local
+        TYPE(obstacle_t), POINTER, CONTIGUOUS, DIMENSION(:), INTENT(in) :: obstacles
+
+        !local variables
+        REAL(realk) :: s
+
+        dx_to_b = 0.0
+        dy_to_b = 0.0
+        dz_to_b = 0.0
+        
+        CALL s_to_obstacle(old_grid, x, y, z, dx, dy, dz, iobst_local, s, obstacles)
+
+        IF (s <= 0.0_realk) THEN
+            iface = 0
+            RETURN
+        END IF
+
+        CALL to_grid_boundary3(gcorner_boundary, x, y, z, dx, dy, dz, dx_to_b, dy_to_b, dz_to_b, s, iface, iobst_local)
+
+    END SUBROUTINE move_to_boundary_target3
+
+
+    SUBROUTINE to_grid_boundary3(gcorner_boundary, x, y, z, dx, dy, dz, dx_to_b, dy_to_b, dz_to_b, s, iface, iobst_local)
+
+        !$omp declare target
+
+        ! subroutine arguments
+        TYPE(particle_gcorner_boundaries_t), INTENT(in) :: gcorner_boundary 
+        REAL(realk), INTENT(inout) :: x, y, z
+        REAL(realk), INTENT(inout) :: dx, dy, dz
+        REAL(realk), INTENT(out) :: dx_to_b, dy_to_b, dz_to_b
+        REAL(realk), INTENT(inout) :: s
+        INTEGER(intk), INTENT(out) :: iface
+        INTEGER(intk), INTENT(inout) :: iobst_local
+
+        !local variables
+        REAL(realk) :: lx_a, ly_a, lz_a, rx, ry, rz
+
+        ! STEP 2 - GRID BOUNDARIES
+
+        iface = 0_intk
+
+        ! abs distance of particle to grid boundaries
+        lx_a = ABS(x - gcorner_boundary%face_coord(1))
+        ly_a = ABS(y - gcorner_boundary%face_coord(2))
+        lz_a = ABS(z - gcorner_boundary%face_coord(3))
+        
+        ! relative distance to boundaries (negative value indicates particle is moving away from boundary)
+        rx = gcorner_boundary%location(1) * (s * dx / lx_a)
+        ry = gcorner_boundary%location(2) * (s * dy / ly_a)
+        rz = gcorner_boundary%location(3) * (s * dz / lz_a)
+
+        IF (rx < 1.0_realk .AND. ry < 1.0_realk .AND. rz < 1.0_realk) THEN
+
+            dx_to_b = dx * s
+            dy_to_b = dy * s
+            dz_to_b = dz * s
+            x = x + dx_to_b
+            y = y + dy_to_b
+            z = z + dz_to_b
+            dx = dx - dx_to_b
+            dy = dy - dy_to_b
+            dz = dz - dz_to_b
+            RETURN
+        END IF
+
+        iobst_local = 0_intk
+
+        IF (ry <= rx .AND. rz <= rx) THEN
+
+            iface = 1_intk + MAX(gcorner_boundary%location(1), 0_intk)
+
+            dx_to_b = gcorner_boundary%location(1) * lx_a
+            dy_to_b = (lx_a / ABS(dx) * dy)
+            dz_to_b = (lx_a / ABS(dx) * dz)
+            ! avoid floating point errors and put the particle EXACTLY at the boundary
+            x = gcorner_boundary%face_coord(1) 
+            ! avoid particles to hit corners or edges => - EPSILON(x_i) * gcorner_boundary%location(i)
+            y = y + dy_to_b - EPSILON(y) * gcorner_boundary%location(2)
+            z = z + dz_to_b - EPSILON(z) * gcorner_boundary%location(3)
+            dx = dx - dx_to_b
+            dy = dy - dy_to_b
+            dz = dz - dz_to_b
+
+        ELSEIF (rx < ry .AND. rz <= ry) THEN
+
+            iface = 3_intk + MAX(gcorner_boundary%location(2), 0_intk)
+
+            dx_to_b = (ly_a / ABS(dy) * dx)
+            dy_to_b = gcorner_boundary%location(2) * ly_a
+            dz_to_b = (ly_a / ABS(dy) * dz)
+            ! avoid particles to hit corners or edges => - EPSILON(x_i) * gcorner_boundary%location(i)
+            x = x + dx_to_b - EPSILON(x) * gcorner_boundary%location(1)
+            ! avoid floating point errors and put the particle EXACTLY at the boundary
+            y = gcorner_boundary%face_coord(2) 
+            z = z + dz_to_b - EPSILON(z) * gcorner_boundary%location(3)
+            dx = dx - dx_to_b
+            dy = dy - dy_to_b
+            dz = dz - dz_to_b
+
+        ELSEIF (rx < rz .AND. ry < rz) THEN
+
+            iface = 5_intk + MAX(gcorner_boundary%location(3), 0_intk)
+
+            dx_to_b = (lz_a / ABS(dz) * dx)
+            dy_to_b = (lz_a / ABS(dz) * dy)
+            dz_to_b = gcorner_boundary%location(3) * lz_a
+            ! avoid particles to hit corners or edges => - EPSILON(x_i) * gcorner_boundary%location(i)
+            x = x + dx_to_b - EPSILON(x) * gcorner_boundary%location(1)
+            y = y + dy_to_b - EPSILON(y) * gcorner_boundary%location(2)
+            ! avoid floating point errors and put the particle EXACTLY at the boundary
+            z = gcorner_boundary%face_coord(3) 
+            dx = dx - dx_to_b
+            dy = dy - dy_to_b
+            dz = dz - dz_to_b
+
+        END IF
+
+    END SUBROUTINE to_grid_boundary3
+
+
     SUBROUTINE replace_particle(particle)
 
         ! subroutine arguments
@@ -1617,21 +1855,16 @@ MODULE particle_boundaries_mod
         REAL(realk), INTENT(out) :: n(3)
 
         ! local variables 
-        INTEGER(intk) :: inormal, mod1, mod2
+        INTEGER(intk) :: inormal
         REAL(realk) :: nfactor
 
-        mod1 = MOD(ndir + 1_intk, 3_intk)
-        mod2 = MOD(ndir + 2_intk, 3_intk)
+        n = 0.0_realk
 
-        inormal = 4 * ndir + stag(mod2) * 2 + stag(mod1) * 1 + 1
+        inormal = 4 * ndir + stag(MOD(ndir + 2_intk, 3_intk)) * 2 + stag(MOD(ndir + 1_intk, 3_intk)) * 1 + 1
 
-        nfactor = SIGN(1_realk, 0.5_real - 1_realk * REAL(stag(ndir)))
+        nfactor = SIGN(1.0_realk, (0.5_realk - 1.0_realk * REAL(stag(ndir), realk)))
 
-        n(ndir)  = nfactor * gcorner_boundary%face_normals(ndir, inormal)
-
-        ! TODO: change this, since both entries should be zero in all cases (?)
-        n(mod1) = gcorner_boundary%face_normals(mod1, inormal)
-        n(mod2) = gcorner_boundary%face_normals(mod2, inormal)
+        n(ndir) = nfactor * gcorner_boundary%face_normals(inormal)
 
     END SUBROUTINE get_gcorner_normal
 
@@ -1642,18 +1875,31 @@ MODULE particle_boundaries_mod
         INTEGER(intk), INTENT(in) :: igrid, icorn
 
         ! local variables 
-        INTEGER(intk) :: jgrid, iface_of_corner
+        INTEGER(intk) :: jgrid, iface, idir, iface_of_corner
         INTEGER(intk) :: neighbours(26)
+        REAL(realk) :: minx, maxx, miny, maxy, minz, maxz
 
         iface_of_corner = 18_intk + icorn
 
         CALL get_neighbours(neighbours, igrid)
+
+        CALL get_bbox(minx, maxx, miny, maxy, minz, maxz, igrid)
 
         ! TODO: unify convention for neighbours an normals!
 
         ! mapping the grid wise particle_boundaries onto the particle_gcorner_boundaries
         SELECT CASE(iface_of_corner)
             CASE(19_intk)
+
+                ! LOCATION
+                particle_gcorner_boundaries((igrid - 1_intk) * 8_intk + icorn)%location(1) = -1_intk
+                particle_gcorner_boundaries((igrid - 1_intk) * 8_intk + icorn)%location(2) = -1_intk
+                particle_gcorner_boundaries((igrid - 1_intk) * 8_intk + icorn)%location(3) = -1_intk
+
+                ! FACE COORDINATES
+                particle_gcorner_boundaries((igrid - 1_intk) * 8_intk + icorn)%face_coord(1) = minx
+                particle_gcorner_boundaries((igrid - 1_intk) * 8_intk + icorn)%face_coord(2) = miny
+                particle_gcorner_boundaries((igrid - 1_intk) * 8_intk + icorn)%face_coord(3) = minz
 
                 ! NEIGBHOURS
                 particle_gcorner_boundaries((igrid - 1_intk) * 8_intk + icorn)%face_neighbours(1) = igrid
@@ -1666,73 +1912,62 @@ MODULE particle_boundaries_mod
                 particle_gcorner_boundaries((igrid - 1_intk) * 8_intk + icorn)%face_neighbours(8) = particle_boundaries(igrid)%face_neighbours(19)
 
                 ! FACE NORMALS
-                ! x-direction (1-4) 
+                ! x-direction (1-4)
+                idir = 1_intk
                 iface = 1_intk
                 jgrid = igrid
-                particle_gcorner_boundaries((igrid - 1_intk) * 8_intk + icorn)%face_normals(1, 1) = particle_boundaries(jgrid)%face_normals(1, iface)
-                particle_gcorner_boundaries((igrid - 1_intk) * 8_intk + icorn)%face_normals(2, 1) = particle_boundaries(jgrid)%face_normals(2, iface)
-                particle_gcorner_boundaries((igrid - 1_intk) * 8_intk + icorn)%face_normals(3, 1) = particle_boundaries(jgrid)%face_normals(3, iface)
+                particle_gcorner_boundaries((igrid - 1_intk) * 8_intk + icorn)%face_normals( 1) = particle_boundaries(jgrid)%face_normals(idir, iface)
 
                 jgrid = neighbours(3)
-                particle_gcorner_boundaries((igrid - 1_intk) * 8_intk + icorn)%face_normals(1, 2) = particle_boundaries(jgrid)%face_normals(1, iface)
-                particle_gcorner_boundaries((igrid - 1_intk) * 8_intk + icorn)%face_normals(2, 2) = particle_boundaries(jgrid)%face_normals(2, iface)
-                particle_gcorner_boundaries((igrid - 1_intk) * 8_intk + icorn)%face_normals(3, 2) = particle_boundaries(jgrid)%face_normals(3, iface)
+                particle_gcorner_boundaries((igrid - 1_intk) * 8_intk + icorn)%face_normals( 2) = particle_boundaries(jgrid)%face_normals(idir, iface)
 
                 jgrid = neighbours(5)
-                particle_gcorner_boundaries((igrid - 1_intk) * 8_intk + icorn)%face_normals(1, 3) = particle_boundaries(jgrid)%face_normals(1, iface)
-                particle_gcorner_boundaries((igrid - 1_intk) * 8_intk + icorn)%face_normals(2, 3) = particle_boundaries(jgrid)%face_normals(2, iface)
-                particle_gcorner_boundaries((igrid - 1_intk) * 8_intk + icorn)%face_normals(3, 3) = particle_boundaries(jgrid)%face_normals(3, iface)
+                particle_gcorner_boundaries((igrid - 1_intk) * 8_intk + icorn)%face_normals( 3) = particle_boundaries(jgrid)%face_normals(idir, iface)
 
                 jgrid = neighbours(15)
-                particle_gcorner_boundaries((igrid - 1_intk) * 8_intk + icorn)%face_normals(1, 4) = particle_boundaries(jgrid)%face_normals(1, iface)
-                particle_gcorner_boundaries((igrid - 1_intk) * 8_intk + icorn)%face_normals(2, 4) = particle_boundaries(jgrid)%face_normals(2, iface)
-                particle_gcorner_boundaries((igrid - 1_intk) * 8_intk + icorn)%face_normals(3, 4) = particle_boundaries(jgrid)%face_normals(3, iface)
+                particle_gcorner_boundaries((igrid - 1_intk) * 8_intk + icorn)%face_normals( 4) = particle_boundaries(jgrid)%face_normals(idir, iface)
 
                 ! y-direction (5-8) 
+                idir = 2_intk
                 iface = 3_intk
                 jgrid = igrid
-                particle_gcorner_boundaries((igrid - 1_intk) * 8_intk + icorn)%face_normals(1, 5) = particle_boundaries(jgrid)%face_normals(1, iface)
-                particle_gcorner_boundaries((igrid - 1_intk) * 8_intk + icorn)%face_normals(2, 5) = particle_boundaries(jgrid)%face_normals(2, iface)
-                particle_gcorner_boundaries((igrid - 1_intk) * 8_intk + icorn)%face_normals(3, 5) = particle_boundaries(jgrid)%face_normals(3, iface)
+                particle_gcorner_boundaries((igrid - 1_intk) * 8_intk + icorn)%face_normals( 5) = particle_boundaries(jgrid)%face_normals(idir, iface)
 
                 jgrid = neighbours(5)
-                particle_gcorner_boundaries((igrid - 1_intk) * 8_intk + icorn)%face_normals(1, 6) = particle_boundaries(jgrid)%face_normals(1, iface)
-                particle_gcorner_boundaries((igrid - 1_intk) * 8_intk + icorn)%face_normals(2, 6) = particle_boundaries(jgrid)%face_normals(2, iface)
-                particle_gcorner_boundaries((igrid - 1_intk) * 8_intk + icorn)%face_normals(3, 6) = particle_boundaries(jgrid)%face_normals(3, iface)
+                particle_gcorner_boundaries((igrid - 1_intk) * 8_intk + icorn)%face_normals( 6) = particle_boundaries(jgrid)%face_normals(idir, iface)
 
                 jgrid = neighbours(1)
-                particle_gcorner_boundaries((igrid - 1_intk) * 8_intk + icorn)%face_normals(1, 7) = particle_boundaries(jgrid)%face_normals(1, iface)
-                particle_gcorner_boundaries((igrid - 1_intk) * 8_intk + icorn)%face_normals(2, 7) = particle_boundaries(jgrid)%face_normals(2, iface)
-                particle_gcorner_boundaries((igrid - 1_intk) * 8_intk + icorn)%face_normals(3, 7) = particle_boundaries(jgrid)%face_normals(3, iface)
+                particle_gcorner_boundaries((igrid - 1_intk) * 8_intk + icorn)%face_normals( 7) = particle_boundaries(jgrid)%face_normals(idir, iface)
 
                 jgrid = neighbours(9)
-                particle_gcorner_boundaries((igrid - 1_intk) * 8_intk + icorn)%face_normals(1, 8) = particle_boundaries(jgrid)%face_normals(1, iface)
-                particle_gcorner_boundaries((igrid - 1_intk) * 8_intk + icorn)%face_normals(2, 8) = particle_boundaries(jgrid)%face_normals(2, iface)
-                particle_gcorner_boundaries((igrid - 1_intk) * 8_intk + icorn)%face_normals(3, 8) = particle_boundaries(jgrid)%face_normals(3, iface)
+                particle_gcorner_boundaries((igrid - 1_intk) * 8_intk + icorn)%face_normals( 8) = particle_boundaries(jgrid)%face_normals(idir, iface)
 
                 ! z-direction (9-12) 
+                idir = 3_intk
                 iface = 5_intk
                 jgrid = igrid
-                particle_gcorner_boundaries((igrid - 1_intk) * 8_intk + icorn)%face_normals(1, 9) = particle_boundaries(jgrid)%face_normals(1, iface)
-                particle_gcorner_boundaries((igrid - 1_intk) * 8_intk + icorn)%face_normals(2, 9) = particle_boundaries(jgrid)%face_normals(2, iface)
-                particle_gcorner_boundaries((igrid - 1_intk) * 8_intk + icorn)%face_normals(3, 9) = particle_boundaries(jgrid)%face_normals(3, iface)
+                particle_gcorner_boundaries((igrid - 1_intk) * 8_intk + icorn)%face_normals( 9) = particle_boundaries(jgrid)%face_normals(idir, iface)
 
                 jgrid = neighbours(1)
-                particle_gcorner_boundaries((igrid - 1_intk) * 8_intk + icorn)%face_normals(1,10) = particle_boundaries(jgrid)%face_normals(1, iface)
-                particle_gcorner_boundaries((igrid - 1_intk) * 8_intk + icorn)%face_normals(2,10) = particle_boundaries(jgrid)%face_normals(2, iface)
-                particle_gcorner_boundaries((igrid - 1_intk) * 8_intk + icorn)%face_normals(3,10) = particle_boundaries(jgrid)%face_normals(3, iface)
+                particle_gcorner_boundaries((igrid - 1_intk) * 8_intk + icorn)%face_normals(10) = particle_boundaries(jgrid)%face_normals(idir, iface)
 
                 jgrid = neighbours(3)
-                particle_gcorner_boundaries((igrid - 1_intk) * 8_intk + icorn)%face_normals(1,11) = particle_boundaries(jgrid)%face_normals(1, iface)
-                particle_gcorner_boundaries((igrid - 1_intk) * 8_intk + icorn)%face_normals(2,11) = particle_boundaries(jgrid)%face_normals(2, iface)
-                particle_gcorner_boundaries((igrid - 1_intk) * 8_intk + icorn)%face_normals(3,11) = particle_boundaries(jgrid)%face_normals(3, iface)
+                particle_gcorner_boundaries((igrid - 1_intk) * 8_intk + icorn)%face_normals(11) = particle_boundaries(jgrid)%face_normals(idir, iface)
 
                 jgrid = neighbours(7)
-                particle_gcorner_boundaries((igrid - 1_intk) * 8_intk + icorn)%face_normals(1,12) = particle_boundaries(jgrid)%face_normals(1, iface)
-                particle_gcorner_boundaries((igrid - 1_intk) * 8_intk + icorn)%face_normals(2,12) = particle_boundaries(jgrid)%face_normals(2, iface)
-                particle_gcorner_boundaries((igrid - 1_intk) * 8_intk + icorn)%face_normals(3,12) = particle_boundaries(jgrid)%face_normals(3, iface)
+                particle_gcorner_boundaries((igrid - 1_intk) * 8_intk + icorn)%face_normals(12) = particle_boundaries(jgrid)%face_normals(idir, iface)
 
             CASE(20_intk)
+
+                ! LOCATION
+                particle_gcorner_boundaries((igrid - 1_intk) * 8_intk + icorn)%location(1) = -1_intk
+                particle_gcorner_boundaries((igrid - 1_intk) * 8_intk + icorn)%location(2) = -1_intk
+                particle_gcorner_boundaries((igrid - 1_intk) * 8_intk + icorn)%location(3) =  1_intk
+
+                ! FACE COORDINATES
+                particle_gcorner_boundaries((igrid - 1_intk) * 8_intk + icorn)%face_coord(1) = minx
+                particle_gcorner_boundaries((igrid - 1_intk) * 8_intk + icorn)%face_coord(2) = miny
+                particle_gcorner_boundaries((igrid - 1_intk) * 8_intk + icorn)%face_coord(3) = maxz
 
                 ! NEIGBHOURS
                 particle_gcorner_boundaries((igrid - 1_intk) * 8_intk + icorn)%face_neighbours(1) = igrid
@@ -1744,73 +1979,63 @@ MODULE particle_boundaries_mod
                 particle_gcorner_boundaries((igrid - 1_intk) * 8_intk + icorn)%face_neighbours(7) = particle_boundaries(igrid)%face_neighbours(7)
                 particle_gcorner_boundaries((igrid - 1_intk) * 8_intk + icorn)%face_neighbours(8) = particle_boundaries(igrid)%face_neighbours(20)
 
+                ! FACE NORMALS
                 ! x-direction (1-4) 
+                idir = 1_intk
                 iface = 1_intk
                 jgrid = igrid
-                particle_gcorner_boundaries((igrid - 1_intk) * 8_intk + icorn)%face_normals(1, 1) = particle_boundaries(jgrid)%face_normals(1, iface)
-                particle_gcorner_boundaries((igrid - 1_intk) * 8_intk + icorn)%face_normals(2, 1) = particle_boundaries(jgrid)%face_normals(2, iface)
-                particle_gcorner_boundaries((igrid - 1_intk) * 8_intk + icorn)%face_normals(3, 1) = particle_boundaries(jgrid)%face_normals(3, iface)
+                particle_gcorner_boundaries((igrid - 1_intk) * 8_intk + icorn)%face_normals( 1) = particle_boundaries(jgrid)%face_normals(idir, iface)
 
                 jgrid = neighbours(3)
-                particle_gcorner_boundaries((igrid - 1_intk) * 8_intk + icorn)%face_normals(1, 2) = particle_boundaries(jgrid)%face_normals(1, iface)
-                particle_gcorner_boundaries((igrid - 1_intk) * 8_intk + icorn)%face_normals(2, 2) = particle_boundaries(jgrid)%face_normals(2, iface)
-                particle_gcorner_boundaries((igrid - 1_intk) * 8_intk + icorn)%face_normals(3, 2) = particle_boundaries(jgrid)%face_normals(3, iface)
+                particle_gcorner_boundaries((igrid - 1_intk) * 8_intk + icorn)%face_normals( 2) = particle_boundaries(jgrid)%face_normals(idir, iface)
 
                 jgrid = neighbours(6)
-                particle_gcorner_boundaries((igrid - 1_intk) * 8_intk + icorn)%face_normals(1, 3) = particle_boundaries(jgrid)%face_normals(1, iface)
-                particle_gcorner_boundaries((igrid - 1_intk) * 8_intk + icorn)%face_normals(2, 3) = particle_boundaries(jgrid)%face_normals(2, iface)
-                particle_gcorner_boundaries((igrid - 1_intk) * 8_intk + icorn)%face_normals(3, 3) = particle_boundaries(jgrid)%face_normals(3, iface)
+                particle_gcorner_boundaries((igrid - 1_intk) * 8_intk + icorn)%face_normals( 3) = particle_boundaries(jgrid)%face_normals(idir, iface)
 
                 jgrid = neighbours(16)
-                particle_gcorner_boundaries((igrid - 1_intk) * 8_intk + icorn)%face_normals(1, 4) = particle_boundaries(jgrid)%face_normals(1, iface)
-                particle_gcorner_boundaries((igrid - 1_intk) * 8_intk + icorn)%face_normals(2, 4) = particle_boundaries(jgrid)%face_normals(2, iface)
-                particle_gcorner_boundaries((igrid - 1_intk) * 8_intk + icorn)%face_normals(3, 4) = particle_boundaries(jgrid)%face_normals(3, iface)
+                particle_gcorner_boundaries((igrid - 1_intk) * 8_intk + icorn)%face_normals( 4) = particle_boundaries(jgrid)%face_normals(idir, iface)
 
                 ! y-direction (5-8) 
+                idir = 2_intk
                 iface = 3_intk
                 jgrid = igrid
-                particle_gcorner_boundaries((igrid - 1_intk) * 8_intk + icorn)%face_normals(1, 5) = particle_boundaries(jgrid)%face_normals(1, iface)
-                particle_gcorner_boundaries((igrid - 1_intk) * 8_intk + icorn)%face_normals(2, 5) = particle_boundaries(jgrid)%face_normals(2, iface)
-                particle_gcorner_boundaries((igrid - 1_intk) * 8_intk + icorn)%face_normals(3, 5) = particle_boundaries(jgrid)%face_normals(3, iface)
+                particle_gcorner_boundaries((igrid - 1_intk) * 8_intk + icorn)%face_normals( 5) = particle_boundaries(jgrid)%face_normals(idir, iface)
 
                 jgrid = neighbours(6)
-                particle_gcorner_boundaries((igrid - 1_intk) * 8_intk + icorn)%face_normals(1, 6) = particle_boundaries(jgrid)%face_normals(1, iface)
-                particle_gcorner_boundaries((igrid - 1_intk) * 8_intk + icorn)%face_normals(2, 6) = particle_boundaries(jgrid)%face_normals(2, iface)
-                particle_gcorner_boundaries((igrid - 1_intk) * 8_intk + icorn)%face_normals(3, 6) = particle_boundaries(jgrid)%face_normals(3, iface)
+                particle_gcorner_boundaries((igrid - 1_intk) * 8_intk + icorn)%face_normals( 6) = particle_boundaries(jgrid)%face_normals(idir, iface)
 
                 jgrid = neighbours(1)
-                particle_gcorner_boundaries((igrid - 1_intk) * 8_intk + icorn)%face_normals(1, 7) = particle_boundaries(jgrid)%face_normals(1, iface)
-                particle_gcorner_boundaries((igrid - 1_intk) * 8_intk + icorn)%face_normals(2, 7) = particle_boundaries(jgrid)%face_normals(2, iface)
-                particle_gcorner_boundaries((igrid - 1_intk) * 8_intk + icorn)%face_normals(3, 7) = particle_boundaries(jgrid)%face_normals(3, iface)
+                particle_gcorner_boundaries((igrid - 1_intk) * 8_intk + icorn)%face_normals( 7) = particle_boundaries(jgrid)%face_normals(idir, iface)
 
                 jgrid = neighbours(10)
-                particle_gcorner_boundaries((igrid - 1_intk) * 8_intk + icorn)%face_normals(1, 8) = particle_boundaries(jgrid)%face_normals(1, iface)
-                particle_gcorner_boundaries((igrid - 1_intk) * 8_intk + icorn)%face_normals(2, 8) = particle_boundaries(jgrid)%face_normals(2, iface)
-                particle_gcorner_boundaries((igrid - 1_intk) * 8_intk + icorn)%face_normals(3, 8) = particle_boundaries(jgrid)%face_normals(3, iface)
+                particle_gcorner_boundaries((igrid - 1_intk) * 8_intk + icorn)%face_normals( 8) = particle_boundaries(jgrid)%face_normals(idir, iface)
 
-                ! z-direction (9-12) 
+                ! z-direction (9-12)
+                idir = 3_intk 
                 iface = 6_intk
                 jgrid = igrid
-                particle_gcorner_boundaries((igrid - 1_intk) * 8_intk + icorn)%face_normals(1, 9) = particle_boundaries(jgrid)%face_normals(1, iface)
-                particle_gcorner_boundaries((igrid - 1_intk) * 8_intk + icorn)%face_normals(2, 9) = particle_boundaries(jgrid)%face_normals(2, iface)
-                particle_gcorner_boundaries((igrid - 1_intk) * 8_intk + icorn)%face_normals(3, 9) = particle_boundaries(jgrid)%face_normals(3, iface)
+                particle_gcorner_boundaries((igrid - 1_intk) * 8_intk + icorn)%face_normals( 9) = particle_boundaries(jgrid)%face_normals(idir, iface)
 
                 jgrid = neighbours(1)
-                particle_gcorner_boundaries((igrid - 1_intk) * 8_intk + icorn)%face_normals(1,10) = particle_boundaries(jgrid)%face_normals(1, iface)
-                particle_gcorner_boundaries((igrid - 1_intk) * 8_intk + icorn)%face_normals(2,10) = particle_boundaries(jgrid)%face_normals(2, iface)
-                particle_gcorner_boundaries((igrid - 1_intk) * 8_intk + icorn)%face_normals(3,10) = particle_boundaries(jgrid)%face_normals(3, iface)
+                particle_gcorner_boundaries((igrid - 1_intk) * 8_intk + icorn)%face_normals(10) = particle_boundaries(jgrid)%face_normals(idir, iface)
 
                 jgrid = neighbours(3)
-                particle_gcorner_boundaries((igrid - 1_intk) * 8_intk + icorn)%face_normals(1,11) = particle_boundaries(jgrid)%face_normals(1, iface)
-                particle_gcorner_boundaries((igrid - 1_intk) * 8_intk + icorn)%face_normals(2,11) = particle_boundaries(jgrid)%face_normals(2, iface)
-                particle_gcorner_boundaries((igrid - 1_intk) * 8_intk + icorn)%face_normals(3,11) = particle_boundaries(jgrid)%face_normals(3, iface)
+                particle_gcorner_boundaries((igrid - 1_intk) * 8_intk + icorn)%face_normals(11) = particle_boundaries(jgrid)%face_normals(idir, iface)
 
                 jgrid = neighbours(7)
-                particle_gcorner_boundaries((igrid - 1_intk) * 8_intk + icorn)%face_normals(1,12) = particle_boundaries(jgrid)%face_normals(1, iface)
-                particle_gcorner_boundaries((igrid - 1_intk) * 8_intk + icorn)%face_normals(2,12) = particle_boundaries(jgrid)%face_normals(2, iface)
-                particle_gcorner_boundaries((igrid - 1_intk) * 8_intk + icorn)%face_normals(3,12) = particle_boundaries(jgrid)%face_normals(3, iface)
+                particle_gcorner_boundaries((igrid - 1_intk) * 8_intk + icorn)%face_normals(12) = particle_boundaries(jgrid)%face_normals(idir, iface)
 
             CASE(21_intk)
+
+                ! LOCATION
+                particle_gcorner_boundaries((igrid - 1_intk) * 8_intk + icorn)%location(1) = -1_intk
+                particle_gcorner_boundaries((igrid - 1_intk) * 8_intk + icorn)%location(2) =  1_intk
+                particle_gcorner_boundaries((igrid - 1_intk) * 8_intk + icorn)%location(3) = -1_intk
+
+                ! FACE COORDINATES
+                particle_gcorner_boundaries((igrid - 1_intk) * 8_intk + icorn)%face_coord(1) = minx
+                particle_gcorner_boundaries((igrid - 1_intk) * 8_intk + icorn)%face_coord(2) = maxy
+                particle_gcorner_boundaries((igrid - 1_intk) * 8_intk + icorn)%face_coord(3) = minz
 
                 ! NEIGBHOURS
                 particle_gcorner_boundaries((igrid - 1_intk) * 8_intk + icorn)%face_neighbours(1) = igrid
@@ -1822,73 +2047,63 @@ MODULE particle_boundaries_mod
                 particle_gcorner_boundaries((igrid - 1_intk) * 8_intk + icorn)%face_neighbours(7) = particle_boundaries(igrid)%face_neighbours(8)
                 particle_gcorner_boundaries((igrid - 1_intk) * 8_intk + icorn)%face_neighbours(8) = particle_boundaries(igrid)%face_neighbours(21)
 
+                ! FACE NORMALS
                 ! x-direction (1-4) 
+                idir = 1_intk
                 iface = 1_intk
                 jgrid = igrid
-                particle_gcorner_boundaries((igrid - 1_intk) * 8_intk + icorn)%face_normals(1, 1) = particle_boundaries(jgrid)%face_normals(1, iface)
-                particle_gcorner_boundaries((igrid - 1_intk) * 8_intk + icorn)%face_normals(2, 1) = particle_boundaries(jgrid)%face_normals(2, iface)
-                particle_gcorner_boundaries((igrid - 1_intk) * 8_intk + icorn)%face_normals(3, 1) = particle_boundaries(jgrid)%face_normals(3, iface)
+                particle_gcorner_boundaries((igrid - 1_intk) * 8_intk + icorn)%face_normals( 1) = particle_boundaries(jgrid)%face_normals(idir, iface)
 
                 jgrid = neighbours(4)
-                particle_gcorner_boundaries((igrid - 1_intk) * 8_intk + icorn)%face_normals(1, 2) = particle_boundaries(jgrid)%face_normals(1, iface)
-                particle_gcorner_boundaries((igrid - 1_intk) * 8_intk + icorn)%face_normals(2, 2) = particle_boundaries(jgrid)%face_normals(2, iface)
-                particle_gcorner_boundaries((igrid - 1_intk) * 8_intk + icorn)%face_normals(3, 2) = particle_boundaries(jgrid)%face_normals(3, iface)
+                particle_gcorner_boundaries((igrid - 1_intk) * 8_intk + icorn)%face_normals( 2) = particle_boundaries(jgrid)%face_normals(idir, iface)
 
                 jgrid = neighbours(5)
-                particle_gcorner_boundaries((igrid - 1_intk) * 8_intk + icorn)%face_normals(1, 3) = particle_boundaries(jgrid)%face_normals(1, iface)
-                particle_gcorner_boundaries((igrid - 1_intk) * 8_intk + icorn)%face_normals(2, 3) = particle_boundaries(jgrid)%face_normals(2, iface)
-                particle_gcorner_boundaries((igrid - 1_intk) * 8_intk + icorn)%face_normals(3, 3) = particle_boundaries(jgrid)%face_normals(3, iface)
+                particle_gcorner_boundaries((igrid - 1_intk) * 8_intk + icorn)%face_normals( 3) = particle_boundaries(jgrid)%face_normals(idir, iface)
 
                 jgrid = neighbours(17)
-                particle_gcorner_boundaries((igrid - 1_intk) * 8_intk + icorn)%face_normals(1, 4) = particle_boundaries(jgrid)%face_normals(1, iface)
-                particle_gcorner_boundaries((igrid - 1_intk) * 8_intk + icorn)%face_normals(2, 4) = particle_boundaries(jgrid)%face_normals(2, iface)
-                particle_gcorner_boundaries((igrid - 1_intk) * 8_intk + icorn)%face_normals(3, 4) = particle_boundaries(jgrid)%face_normals(3, iface)
+                particle_gcorner_boundaries((igrid - 1_intk) * 8_intk + icorn)%face_normals( 4) = particle_boundaries(jgrid)%face_normals(idir, iface)
 
                 ! y-direction (5-8) 
+                idir = 2_intk
                 iface = 4_intk
                 jgrid = igrid
-                particle_gcorner_boundaries((igrid - 1_intk) * 8_intk + icorn)%face_normals(1, 5) = particle_boundaries(jgrid)%face_normals(1, iface)
-                particle_gcorner_boundaries((igrid - 1_intk) * 8_intk + icorn)%face_normals(2, 5) = particle_boundaries(jgrid)%face_normals(2, iface)
-                particle_gcorner_boundaries((igrid - 1_intk) * 8_intk + icorn)%face_normals(3, 5) = particle_boundaries(jgrid)%face_normals(3, iface)
+                particle_gcorner_boundaries((igrid - 1_intk) * 8_intk + icorn)%face_normals( 5) = particle_boundaries(jgrid)%face_normals(idir, iface)
 
                 jgrid = neighbours(5)
-                particle_gcorner_boundaries((igrid - 1_intk) * 8_intk + icorn)%face_normals(1, 6) = particle_boundaries(jgrid)%face_normals(1, iface)
-                particle_gcorner_boundaries((igrid - 1_intk) * 8_intk + icorn)%face_normals(2, 6) = particle_boundaries(jgrid)%face_normals(2, iface)
-                particle_gcorner_boundaries((igrid - 1_intk) * 8_intk + icorn)%face_normals(3, 6) = particle_boundaries(jgrid)%face_normals(3, iface)
+                particle_gcorner_boundaries((igrid - 1_intk) * 8_intk + icorn)%face_normals( 6) = particle_boundaries(jgrid)%face_normals(idir, iface)
 
                 jgrid = neighbours(1)
-                particle_gcorner_boundaries((igrid - 1_intk) * 8_intk + icorn)%face_normals(1, 7) = particle_boundaries(jgrid)%face_normals(1, iface)
-                particle_gcorner_boundaries((igrid - 1_intk) * 8_intk + icorn)%face_normals(2, 7) = particle_boundaries(jgrid)%face_normals(2, iface)
-                particle_gcorner_boundaries((igrid - 1_intk) * 8_intk + icorn)%face_normals(3, 7) = particle_boundaries(jgrid)%face_normals(3, iface)
+                particle_gcorner_boundaries((igrid - 1_intk) * 8_intk + icorn)%face_normals( 7) = particle_boundaries(jgrid)%face_normals(idir, iface)
 
                 jgrid = neighbours(9)
-                particle_gcorner_boundaries((igrid - 1_intk) * 8_intk + icorn)%face_normals(1, 8) = particle_boundaries(jgrid)%face_normals(1, iface)
-                particle_gcorner_boundaries((igrid - 1_intk) * 8_intk + icorn)%face_normals(2, 8) = particle_boundaries(jgrid)%face_normals(2, iface)
-                particle_gcorner_boundaries((igrid - 1_intk) * 8_intk + icorn)%face_normals(3, 8) = particle_boundaries(jgrid)%face_normals(3, iface)
+                particle_gcorner_boundaries((igrid - 1_intk) * 8_intk + icorn)%face_normals( 8) = particle_boundaries(jgrid)%face_normals(idir, iface)
 
                 ! z-direction (9-12) 
+                idir = 3_intk
                 iface = 5_intk
                 jgrid = igrid
-                particle_gcorner_boundaries((igrid - 1_intk) * 8_intk + icorn)%face_normals(1, 9) = particle_boundaries(jgrid)%face_normals(1, iface)
-                particle_gcorner_boundaries((igrid - 1_intk) * 8_intk + icorn)%face_normals(2, 9) = particle_boundaries(jgrid)%face_normals(2, iface)
-                particle_gcorner_boundaries((igrid - 1_intk) * 8_intk + icorn)%face_normals(3, 9) = particle_boundaries(jgrid)%face_normals(3, iface)
+                particle_gcorner_boundaries((igrid - 1_intk) * 8_intk + icorn)%face_normals( 9) = particle_boundaries(jgrid)%face_normals(idir, iface)
 
                 jgrid = neighbours(1)
-                particle_gcorner_boundaries((igrid - 1_intk) * 8_intk + icorn)%face_normals(1,10) = particle_boundaries(jgrid)%face_normals(1, iface)
-                particle_gcorner_boundaries((igrid - 1_intk) * 8_intk + icorn)%face_normals(2,10) = particle_boundaries(jgrid)%face_normals(2, iface)
-                particle_gcorner_boundaries((igrid - 1_intk) * 8_intk + icorn)%face_normals(3,10) = particle_boundaries(jgrid)%face_normals(3, iface)
+                particle_gcorner_boundaries((igrid - 1_intk) * 8_intk + icorn)%face_normals(10) = particle_boundaries(jgrid)%face_normals(idir, iface)
 
                 jgrid = neighbours(4)
-                particle_gcorner_boundaries((igrid - 1_intk) * 8_intk + icorn)%face_normals(1,11) = particle_boundaries(jgrid)%face_normals(1, iface)
-                particle_gcorner_boundaries((igrid - 1_intk) * 8_intk + icorn)%face_normals(2,11) = particle_boundaries(jgrid)%face_normals(2, iface)
-                particle_gcorner_boundaries((igrid - 1_intk) * 8_intk + icorn)%face_normals(3,11) = particle_boundaries(jgrid)%face_normals(3, iface)
+                particle_gcorner_boundaries((igrid - 1_intk) * 8_intk + icorn)%face_normals(11) = particle_boundaries(jgrid)%face_normals(idir, iface)
 
                 jgrid = neighbours(8)
-                particle_gcorner_boundaries((igrid - 1_intk) * 8_intk + icorn)%face_normals(1,12) = particle_boundaries(jgrid)%face_normals(1, iface)
-                particle_gcorner_boundaries((igrid - 1_intk) * 8_intk + icorn)%face_normals(2,12) = particle_boundaries(jgrid)%face_normals(2, iface)
-                particle_gcorner_boundaries((igrid - 1_intk) * 8_intk + icorn)%face_normals(3,12) = particle_boundaries(jgrid)%face_normals(3, iface)
+                particle_gcorner_boundaries((igrid - 1_intk) * 8_intk + icorn)%face_normals(12) = particle_boundaries(jgrid)%face_normals(idir, iface)
 
             CASE(22_intk)
+
+                ! LOCATION
+                particle_gcorner_boundaries((igrid - 1_intk) * 8_intk + icorn)%location(1) = -1_intk
+                particle_gcorner_boundaries((igrid - 1_intk) * 8_intk + icorn)%location(2) =  1_intk
+                particle_gcorner_boundaries((igrid - 1_intk) * 8_intk + icorn)%location(3) =  1_intk
+
+                ! FACE COORDINATES
+                particle_gcorner_boundaries((igrid - 1_intk) * 8_intk + icorn)%face_coord(1) = minx
+                particle_gcorner_boundaries((igrid - 1_intk) * 8_intk + icorn)%face_coord(2) = maxy
+                particle_gcorner_boundaries((igrid - 1_intk) * 8_intk + icorn)%face_coord(3) = maxz
 
                 ! NEIGBHOURS
                 particle_gcorner_boundaries((igrid - 1_intk) * 8_intk + icorn)%face_neighbours(1) = igrid
@@ -1900,73 +2115,63 @@ MODULE particle_boundaries_mod
                 particle_gcorner_boundaries((igrid - 1_intk) * 8_intk + icorn)%face_neighbours(7) = particle_boundaries(igrid)%face_neighbours(8)
                 particle_gcorner_boundaries((igrid - 1_intk) * 8_intk + icorn)%face_neighbours(8) = particle_boundaries(igrid)%face_neighbours(22)
 
+                ! FACE NORMALS
                 ! x-direction (1-4) 
+                idir = 1_intk
                 iface = 1_intk
                 jgrid = igrid
-                particle_gcorner_boundaries((igrid - 1_intk) * 8_intk + icorn)%face_normals(1, 1) = particle_boundaries(jgrid)%face_normals(1, iface)
-                particle_gcorner_boundaries((igrid - 1_intk) * 8_intk + icorn)%face_normals(2, 1) = particle_boundaries(jgrid)%face_normals(2, iface)
-                particle_gcorner_boundaries((igrid - 1_intk) * 8_intk + icorn)%face_normals(3, 1) = particle_boundaries(jgrid)%face_normals(3, iface)
+                particle_gcorner_boundaries((igrid - 1_intk) * 8_intk + icorn)%face_normals( 1) = particle_boundaries(jgrid)%face_normals(idir, iface)
 
                 jgrid = neighbours(4)
-                particle_gcorner_boundaries((igrid - 1_intk) * 8_intk + icorn)%face_normals(1, 2) = particle_boundaries(jgrid)%face_normals(1, iface)
-                particle_gcorner_boundaries((igrid - 1_intk) * 8_intk + icorn)%face_normals(2, 2) = particle_boundaries(jgrid)%face_normals(2, iface)
-                particle_gcorner_boundaries((igrid - 1_intk) * 8_intk + icorn)%face_normals(3, 2) = particle_boundaries(jgrid)%face_normals(3, iface)
+                particle_gcorner_boundaries((igrid - 1_intk) * 8_intk + icorn)%face_normals( 2) = particle_boundaries(jgrid)%face_normals(idir, iface)
 
                 jgrid = neighbours(6)
-                particle_gcorner_boundaries((igrid - 1_intk) * 8_intk + icorn)%face_normals(1, 3) = particle_boundaries(jgrid)%face_normals(1, iface)
-                particle_gcorner_boundaries((igrid - 1_intk) * 8_intk + icorn)%face_normals(2, 3) = particle_boundaries(jgrid)%face_normals(2, iface)
-                particle_gcorner_boundaries((igrid - 1_intk) * 8_intk + icorn)%face_normals(3, 3) = particle_boundaries(jgrid)%face_normals(3, iface)
+                particle_gcorner_boundaries((igrid - 1_intk) * 8_intk + icorn)%face_normals( 3) = particle_boundaries(jgrid)%face_normals(idir, iface)
 
                 jgrid = neighbours(18)
-                particle_gcorner_boundaries((igrid - 1_intk) * 8_intk + icorn)%face_normals(1, 4) = particle_boundaries(jgrid)%face_normals(1, iface)
-                particle_gcorner_boundaries((igrid - 1_intk) * 8_intk + icorn)%face_normals(2, 4) = particle_boundaries(jgrid)%face_normals(2, iface)
-                particle_gcorner_boundaries((igrid - 1_intk) * 8_intk + icorn)%face_normals(3, 4) = particle_boundaries(jgrid)%face_normals(3, iface)
+                particle_gcorner_boundaries((igrid - 1_intk) * 8_intk + icorn)%face_normals( 4) = particle_boundaries(jgrid)%face_normals(idir, iface)
 
                 ! y-direction (5-8) 
+                idir = 2_intk
                 iface = 4_intk
                 jgrid = igrid
-                particle_gcorner_boundaries((igrid - 1_intk) * 8_intk + icorn)%face_normals(1, 5) = particle_boundaries(jgrid)%face_normals(1, iface)
-                particle_gcorner_boundaries((igrid - 1_intk) * 8_intk + icorn)%face_normals(2, 5) = particle_boundaries(jgrid)%face_normals(2, iface)
-                particle_gcorner_boundaries((igrid - 1_intk) * 8_intk + icorn)%face_normals(3, 5) = particle_boundaries(jgrid)%face_normals(3, iface)
+                particle_gcorner_boundaries((igrid - 1_intk) * 8_intk + icorn)%face_normals( 5) = particle_boundaries(jgrid)%face_normals(idir, iface)
 
                 jgrid = neighbours(6)
-                particle_gcorner_boundaries((igrid - 1_intk) * 8_intk + icorn)%face_normals(1, 6) = particle_boundaries(jgrid)%face_normals(1, iface)
-                particle_gcorner_boundaries((igrid - 1_intk) * 8_intk + icorn)%face_normals(2, 6) = particle_boundaries(jgrid)%face_normals(2, iface)
-                particle_gcorner_boundaries((igrid - 1_intk) * 8_intk + icorn)%face_normals(3, 6) = particle_boundaries(jgrid)%face_normals(3, iface)
+                particle_gcorner_boundaries((igrid - 1_intk) * 8_intk + icorn)%face_normals( 6) = particle_boundaries(jgrid)%face_normals(idir, iface)
 
                 jgrid = neighbours(1)
-                particle_gcorner_boundaries((igrid - 1_intk) * 8_intk + icorn)%face_normals(1, 7) = particle_boundaries(jgrid)%face_normals(1, iface)
-                particle_gcorner_boundaries((igrid - 1_intk) * 8_intk + icorn)%face_normals(2, 7) = particle_boundaries(jgrid)%face_normals(2, iface)
-                particle_gcorner_boundaries((igrid - 1_intk) * 8_intk + icorn)%face_normals(3, 7) = particle_boundaries(jgrid)%face_normals(3, iface)
+                particle_gcorner_boundaries((igrid - 1_intk) * 8_intk + icorn)%face_normals( 7) = particle_boundaries(jgrid)%face_normals(idir, iface)
 
                 jgrid = neighbours(10)
-                particle_gcorner_boundaries((igrid - 1_intk) * 8_intk + icorn)%face_normals(1, 8) = particle_boundaries(jgrid)%face_normals(1, iface)
-                particle_gcorner_boundaries((igrid - 1_intk) * 8_intk + icorn)%face_normals(2, 8) = particle_boundaries(jgrid)%face_normals(2, iface)
-                particle_gcorner_boundaries((igrid - 1_intk) * 8_intk + icorn)%face_normals(3, 8) = particle_boundaries(jgrid)%face_normals(3, iface)
+                particle_gcorner_boundaries((igrid - 1_intk) * 8_intk + icorn)%face_normals( 8) = particle_boundaries(jgrid)%face_normals(idir, iface)
 
                 ! z-direction (9-12) 
+                idir = 3_intk
                 iface = 6_intk
                 jgrid = igrid
-                particle_gcorner_boundaries((igrid - 1_intk) * 8_intk + icorn)%face_normals(1, 9) = particle_boundaries(jgrid)%face_normals(1, iface)
-                particle_gcorner_boundaries((igrid - 1_intk) * 8_intk + icorn)%face_normals(2, 9) = particle_boundaries(jgrid)%face_normals(2, iface)
-                particle_gcorner_boundaries((igrid - 1_intk) * 8_intk + icorn)%face_normals(3, 9) = particle_boundaries(jgrid)%face_normals(3, iface)
+                particle_gcorner_boundaries((igrid - 1_intk) * 8_intk + icorn)%face_normals( 9) = particle_boundaries(jgrid)%face_normals(idir, iface)
 
                 jgrid = neighbours(1)
-                particle_gcorner_boundaries((igrid - 1_intk) * 8_intk + icorn)%face_normals(1,10) = particle_boundaries(jgrid)%face_normals(1, iface)
-                particle_gcorner_boundaries((igrid - 1_intk) * 8_intk + icorn)%face_normals(2,10) = particle_boundaries(jgrid)%face_normals(2, iface)
-                particle_gcorner_boundaries((igrid - 1_intk) * 8_intk + icorn)%face_normals(3,10) = particle_boundaries(jgrid)%face_normals(3, iface)
+                particle_gcorner_boundaries((igrid - 1_intk) * 8_intk + icorn)%face_normals(10) = particle_boundaries(jgrid)%face_normals(idir, iface)
 
                 jgrid = neighbours(4)
-                particle_gcorner_boundaries((igrid - 1_intk) * 8_intk + icorn)%face_normals(1,11) = particle_boundaries(jgrid)%face_normals(1, iface)
-                particle_gcorner_boundaries((igrid - 1_intk) * 8_intk + icorn)%face_normals(2,11) = particle_boundaries(jgrid)%face_normals(2, iface)
-                particle_gcorner_boundaries((igrid - 1_intk) * 8_intk + icorn)%face_normals(3,11) = particle_boundaries(jgrid)%face_normals(3, iface)
+                particle_gcorner_boundaries((igrid - 1_intk) * 8_intk + icorn)%face_normals(11) = particle_boundaries(jgrid)%face_normals(idir, iface)
 
                 jgrid = neighbours(8)
-                particle_gcorner_boundaries((igrid - 1_intk) * 8_intk + icorn)%face_normals(1,12) = particle_boundaries(jgrid)%face_normals(1, iface)
-                particle_gcorner_boundaries((igrid - 1_intk) * 8_intk + icorn)%face_normals(2,12) = particle_boundaries(jgrid)%face_normals(2, iface)
-                particle_gcorner_boundaries((igrid - 1_intk) * 8_intk + icorn)%face_normals(3,12) = particle_boundaries(jgrid)%face_normals(3, iface)
+                particle_gcorner_boundaries((igrid - 1_intk) * 8_intk + icorn)%face_normals(12) = particle_boundaries(jgrid)%face_normals(idir, iface)
 
             CASE(23_intk)
+
+                ! LOCATION
+                particle_gcorner_boundaries((igrid - 1_intk) * 8_intk + icorn)%location(1) =  1_intk
+                particle_gcorner_boundaries((igrid - 1_intk) * 8_intk + icorn)%location(2) = -1_intk
+                particle_gcorner_boundaries((igrid - 1_intk) * 8_intk + icorn)%location(3) = -1_intk
+
+                ! FACE COORDINATES
+                particle_gcorner_boundaries((igrid - 1_intk) * 8_intk + icorn)%face_coord(1) = maxx
+                particle_gcorner_boundaries((igrid - 1_intk) * 8_intk + icorn)%face_coord(2) = miny
+                particle_gcorner_boundaries((igrid - 1_intk) * 8_intk + icorn)%face_coord(3) = minz
 
                 ! NEIGBHOURS
                 particle_gcorner_boundaries((igrid - 1_intk) * 8_intk + icorn)%face_neighbours(1) = igrid
@@ -1978,73 +2183,63 @@ MODULE particle_boundaries_mod
                 particle_gcorner_boundaries((igrid - 1_intk) * 8_intk + icorn)%face_neighbours(7) = particle_boundaries(igrid)%face_neighbours(11)
                 particle_gcorner_boundaries((igrid - 1_intk) * 8_intk + icorn)%face_neighbours(8) = particle_boundaries(igrid)%face_neighbours(23)
 
+                ! FACE NORMALS
                 ! x-direction (1-4) 
+                idir = 1_intk
                 iface = 2_intk
                 jgrid = igrid
-                particle_gcorner_boundaries((igrid - 1_intk) * 8_intk + icorn)%face_normals(1, 1) = particle_boundaries(jgrid)%face_normals(1, iface)
-                particle_gcorner_boundaries((igrid - 1_intk) * 8_intk + icorn)%face_normals(2, 1) = particle_boundaries(jgrid)%face_normals(2, iface)
-                particle_gcorner_boundaries((igrid - 1_intk) * 8_intk + icorn)%face_normals(3, 1) = particle_boundaries(jgrid)%face_normals(3, iface)
+                particle_gcorner_boundaries((igrid - 1_intk) * 8_intk + icorn)%face_normals( 1) = particle_boundaries(jgrid)%face_normals(idir, iface)
 
                 jgrid = neighbours(3)
-                particle_gcorner_boundaries((igrid - 1_intk) * 8_intk + icorn)%face_normals(1, 2) = particle_boundaries(jgrid)%face_normals(1, iface)
-                particle_gcorner_boundaries((igrid - 1_intk) * 8_intk + icorn)%face_normals(2, 2) = particle_boundaries(jgrid)%face_normals(2, iface)
-                particle_gcorner_boundaries((igrid - 1_intk) * 8_intk + icorn)%face_normals(3, 2) = particle_boundaries(jgrid)%face_normals(3, iface)
+                particle_gcorner_boundaries((igrid - 1_intk) * 8_intk + icorn)%face_normals( 2) = particle_boundaries(jgrid)%face_normals(idir, iface)
 
                 jgrid = neighbours(5)
-                particle_gcorner_boundaries((igrid - 1_intk) * 8_intk + icorn)%face_normals(1, 3) = particle_boundaries(jgrid)%face_normals(1, iface)
-                particle_gcorner_boundaries((igrid - 1_intk) * 8_intk + icorn)%face_normals(2, 3) = particle_boundaries(jgrid)%face_normals(2, iface)
-                particle_gcorner_boundaries((igrid - 1_intk) * 8_intk + icorn)%face_normals(3, 3) = particle_boundaries(jgrid)%face_normals(3, iface)
+                particle_gcorner_boundaries((igrid - 1_intk) * 8_intk + icorn)%face_normals( 3) = particle_boundaries(jgrid)%face_normals(idir, iface)
 
                 jgrid = neighbours(15)
-                particle_gcorner_boundaries((igrid - 1_intk) * 8_intk + icorn)%face_normals(1, 4) = particle_boundaries(jgrid)%face_normals(1, iface)
-                particle_gcorner_boundaries((igrid - 1_intk) * 8_intk + icorn)%face_normals(2, 4) = particle_boundaries(jgrid)%face_normals(2, iface)
-                particle_gcorner_boundaries((igrid - 1_intk) * 8_intk + icorn)%face_normals(3, 4) = particle_boundaries(jgrid)%face_normals(3, iface)
+                particle_gcorner_boundaries((igrid - 1_intk) * 8_intk + icorn)%face_normals( 4) = particle_boundaries(jgrid)%face_normals(idir, iface)
 
                 ! y-direction (5-8) 
+                idir = 2_intk
                 iface = 3_intk
                 jgrid = igrid
-                particle_gcorner_boundaries((igrid - 1_intk) * 8_intk + icorn)%face_normals(1, 5) = particle_boundaries(jgrid)%face_normals(1, iface)
-                particle_gcorner_boundaries((igrid - 1_intk) * 8_intk + icorn)%face_normals(2, 5) = particle_boundaries(jgrid)%face_normals(2, iface)
-                particle_gcorner_boundaries((igrid - 1_intk) * 8_intk + icorn)%face_normals(3, 5) = particle_boundaries(jgrid)%face_normals(3, iface)
+                particle_gcorner_boundaries((igrid - 1_intk) * 8_intk + icorn)%face_normals( 5) = particle_boundaries(jgrid)%face_normals(idir, iface)
 
                 jgrid = neighbours(5)
-                particle_gcorner_boundaries((igrid - 1_intk) * 8_intk + icorn)%face_normals(1, 6) = particle_boundaries(jgrid)%face_normals(1, iface)
-                particle_gcorner_boundaries((igrid - 1_intk) * 8_intk + icorn)%face_normals(2, 6) = particle_boundaries(jgrid)%face_normals(2, iface)
-                particle_gcorner_boundaries((igrid - 1_intk) * 8_intk + icorn)%face_normals(3, 6) = particle_boundaries(jgrid)%face_normals(3, iface)
+                particle_gcorner_boundaries((igrid - 1_intk) * 8_intk + icorn)%face_normals( 6) = particle_boundaries(jgrid)%face_normals(idir, iface)
 
                 jgrid = neighbours(2)
-                particle_gcorner_boundaries((igrid - 1_intk) * 8_intk + icorn)%face_normals(1, 7) = particle_boundaries(jgrid)%face_normals(1, iface)
-                particle_gcorner_boundaries((igrid - 1_intk) * 8_intk + icorn)%face_normals(2, 7) = particle_boundaries(jgrid)%face_normals(2, iface)
-                particle_gcorner_boundaries((igrid - 1_intk) * 8_intk + icorn)%face_normals(3, 7) = particle_boundaries(jgrid)%face_normals(3, iface)
+                particle_gcorner_boundaries((igrid - 1_intk) * 8_intk + icorn)%face_normals( 7) = particle_boundaries(jgrid)%face_normals(idir, iface)
 
                 jgrid = neighbours(13)
-                particle_gcorner_boundaries((igrid - 1_intk) * 8_intk + icorn)%face_normals(1, 8) = particle_boundaries(jgrid)%face_normals(1, iface)
-                particle_gcorner_boundaries((igrid - 1_intk) * 8_intk + icorn)%face_normals(2, 8) = particle_boundaries(jgrid)%face_normals(2, iface)
-                particle_gcorner_boundaries((igrid - 1_intk) * 8_intk + icorn)%face_normals(3, 8) = particle_boundaries(jgrid)%face_normals(3, iface)
+                particle_gcorner_boundaries((igrid - 1_intk) * 8_intk + icorn)%face_normals( 8) = particle_boundaries(jgrid)%face_normals(idir, iface)
 
                 ! z-direction (9-12) 
+                idir = 3_intk
                 iface = 5_intk
                 jgrid = igrid
-                particle_gcorner_boundaries((igrid - 1_intk) * 8_intk + icorn)%face_normals(1, 9) = particle_boundaries(jgrid)%face_normals(1, iface)
-                particle_gcorner_boundaries((igrid - 1_intk) * 8_intk + icorn)%face_normals(2, 9) = particle_boundaries(jgrid)%face_normals(2, iface)
-                particle_gcorner_boundaries((igrid - 1_intk) * 8_intk + icorn)%face_normals(3, 9) = particle_boundaries(jgrid)%face_normals(3, iface)
+                particle_gcorner_boundaries((igrid - 1_intk) * 8_intk + icorn)%face_normals( 9) = particle_boundaries(jgrid)%face_normals(idir, iface)
 
                 jgrid = neighbours(2)
-                particle_gcorner_boundaries((igrid - 1_intk) * 8_intk + icorn)%face_normals(1,10) = particle_boundaries(jgrid)%face_normals(1, iface)
-                particle_gcorner_boundaries((igrid - 1_intk) * 8_intk + icorn)%face_normals(2,10) = particle_boundaries(jgrid)%face_normals(2, iface)
-                particle_gcorner_boundaries((igrid - 1_intk) * 8_intk + icorn)%face_normals(3,10) = particle_boundaries(jgrid)%face_normals(3, iface)
+                particle_gcorner_boundaries((igrid - 1_intk) * 8_intk + icorn)%face_normals(10) = particle_boundaries(jgrid)%face_normals(idir, iface)
 
                 jgrid = neighbours(3)
-                particle_gcorner_boundaries((igrid - 1_intk) * 8_intk + icorn)%face_normals(1,11) = particle_boundaries(jgrid)%face_normals(1, iface)
-                particle_gcorner_boundaries((igrid - 1_intk) * 8_intk + icorn)%face_normals(2,11) = particle_boundaries(jgrid)%face_normals(2, iface)
-                particle_gcorner_boundaries((igrid - 1_intk) * 8_intk + icorn)%face_normals(3,11) = particle_boundaries(jgrid)%face_normals(3, iface)
+                particle_gcorner_boundaries((igrid - 1_intk) * 8_intk + icorn)%face_normals(11) = particle_boundaries(jgrid)%face_normals(idir, iface)
 
                 jgrid = neighbours(11)
-                particle_gcorner_boundaries((igrid - 1_intk) * 8_intk + icorn)%face_normals(1,12) = particle_boundaries(jgrid)%face_normals(1, iface)
-                particle_gcorner_boundaries((igrid - 1_intk) * 8_intk + icorn)%face_normals(2,12) = particle_boundaries(jgrid)%face_normals(2, iface)
-                particle_gcorner_boundaries((igrid - 1_intk) * 8_intk + icorn)%face_normals(3,12) = particle_boundaries(jgrid)%face_normals(3, iface)
+                particle_gcorner_boundaries((igrid - 1_intk) * 8_intk + icorn)%face_normals(12) = particle_boundaries(jgrid)%face_normals(idir, iface)
 
             CASE(24_intk)
+
+                ! LOCATION
+                particle_gcorner_boundaries((igrid - 1_intk) * 8_intk + icorn)%location(1) =  1_intk
+                particle_gcorner_boundaries((igrid - 1_intk) * 8_intk + icorn)%location(2) = -1_intk
+                particle_gcorner_boundaries((igrid - 1_intk) * 8_intk + icorn)%location(3) =  1_intk
+
+                ! FACE COORDINATES
+                particle_gcorner_boundaries((igrid - 1_intk) * 8_intk + icorn)%face_coord(1) = maxx
+                particle_gcorner_boundaries((igrid - 1_intk) * 8_intk + icorn)%face_coord(2) = miny
+                particle_gcorner_boundaries((igrid - 1_intk) * 8_intk + icorn)%face_coord(3) = maxz
 
                 ! NEIGBHOURS
                 particle_gcorner_boundaries((igrid - 1_intk) * 8_intk + icorn)%face_neighbours(1) = igrid
@@ -2056,73 +2251,64 @@ MODULE particle_boundaries_mod
                 particle_gcorner_boundaries((igrid - 1_intk) * 8_intk + icorn)%face_neighbours(7) = particle_boundaries(igrid)%face_neighbours(11)
                 particle_gcorner_boundaries((igrid - 1_intk) * 8_intk + icorn)%face_neighbours(8) = particle_boundaries(igrid)%face_neighbours(24)
 
+                ! FACE NORMALS
                 ! x-direction (1-4) 
+                idir = 1_intk
                 iface = 2_intk
                 jgrid = igrid
-                particle_gcorner_boundaries((igrid - 1_intk) * 8_intk + icorn)%face_normals(1, 1) = particle_boundaries(jgrid)%face_normals(1, iface)
-                particle_gcorner_boundaries((igrid - 1_intk) * 8_intk + icorn)%face_normals(2, 1) = particle_boundaries(jgrid)%face_normals(2, iface)
-                particle_gcorner_boundaries((igrid - 1_intk) * 8_intk + icorn)%face_normals(3, 1) = particle_boundaries(jgrid)%face_normals(3, iface)
+                particle_gcorner_boundaries((igrid - 1_intk) * 8_intk + icorn)%face_normals( 1) = particle_boundaries(jgrid)%face_normals(idir, iface)
 
                 jgrid = neighbours(3)
-                particle_gcorner_boundaries((igrid - 1_intk) * 8_intk + icorn)%face_normals(1, 2) = particle_boundaries(jgrid)%face_normals(1, iface)
-                particle_gcorner_boundaries((igrid - 1_intk) * 8_intk + icorn)%face_normals(2, 2) = particle_boundaries(jgrid)%face_normals(2, iface)
-                particle_gcorner_boundaries((igrid - 1_intk) * 8_intk + icorn)%face_normals(3, 2) = particle_boundaries(jgrid)%face_normals(3, iface)
+                particle_gcorner_boundaries((igrid - 1_intk) * 8_intk + icorn)%face_normals( 2) = particle_boundaries(jgrid)%face_normals(idir, iface)
 
                 jgrid = neighbours(6)
-                particle_gcorner_boundaries((igrid - 1_intk) * 8_intk + icorn)%face_normals(1, 3) = particle_boundaries(jgrid)%face_normals(1, iface)
-                particle_gcorner_boundaries((igrid - 1_intk) * 8_intk + icorn)%face_normals(2, 3) = particle_boundaries(jgrid)%face_normals(2, iface)
-                particle_gcorner_boundaries((igrid - 1_intk) * 8_intk + icorn)%face_normals(3, 3) = particle_boundaries(jgrid)%face_normals(3, iface)
+                particle_gcorner_boundaries((igrid - 1_intk) * 8_intk + icorn)%face_normals( 3) = particle_boundaries(jgrid)%face_normals(idir, iface)
 
                 jgrid = neighbours(16)
-                particle_gcorner_boundaries((igrid - 1_intk) * 8_intk + icorn)%face_normals(1, 4) = particle_boundaries(jgrid)%face_normals(1, iface)
-                particle_gcorner_boundaries((igrid - 1_intk) * 8_intk + icorn)%face_normals(2, 4) = particle_boundaries(jgrid)%face_normals(2, iface)
-                particle_gcorner_boundaries((igrid - 1_intk) * 8_intk + icorn)%face_normals(3, 4) = particle_boundaries(jgrid)%face_normals(3, iface)
+                particle_gcorner_boundaries((igrid - 1_intk) * 8_intk + icorn)%face_normals( 4) = particle_boundaries(jgrid)%face_normals(idir, iface)
 
                 ! y-direction (5-8) 
+                idir = 2_intk
                 iface = 3_intk
                 jgrid = igrid
-                particle_gcorner_boundaries((igrid - 1_intk) * 8_intk + icorn)%face_normals(1, 5) = particle_boundaries(jgrid)%face_normals(1, iface)
-                particle_gcorner_boundaries((igrid - 1_intk) * 8_intk + icorn)%face_normals(2, 5) = particle_boundaries(jgrid)%face_normals(2, iface)
-                particle_gcorner_boundaries((igrid - 1_intk) * 8_intk + icorn)%face_normals(3, 5) = particle_boundaries(jgrid)%face_normals(3, iface)
+                particle_gcorner_boundaries((igrid - 1_intk) * 8_intk + icorn)%face_normals( 5) = particle_boundaries(jgrid)%face_normals(idir, iface)
 
                 jgrid = neighbours(6)
-                particle_gcorner_boundaries((igrid - 1_intk) * 8_intk + icorn)%face_normals(1, 6) = particle_boundaries(jgrid)%face_normals(1, iface)
-                particle_gcorner_boundaries((igrid - 1_intk) * 8_intk + icorn)%face_normals(2, 6) = particle_boundaries(jgrid)%face_normals(2, iface)
-                particle_gcorner_boundaries((igrid - 1_intk) * 8_intk + icorn)%face_normals(3, 6) = particle_boundaries(jgrid)%face_normals(3, iface)
+                particle_gcorner_boundaries((igrid - 1_intk) * 8_intk + icorn)%face_normals( 6) = particle_boundaries(jgrid)%face_normals(idir, iface)
+
 
                 jgrid = neighbours(2)
-                particle_gcorner_boundaries((igrid - 1_intk) * 8_intk + icorn)%face_normals(1, 7) = particle_boundaries(jgrid)%face_normals(1, iface)
-                particle_gcorner_boundaries((igrid - 1_intk) * 8_intk + icorn)%face_normals(2, 7) = particle_boundaries(jgrid)%face_normals(2, iface)
-                particle_gcorner_boundaries((igrid - 1_intk) * 8_intk + icorn)%face_normals(3, 7) = particle_boundaries(jgrid)%face_normals(3, iface)
+                particle_gcorner_boundaries((igrid - 1_intk) * 8_intk + icorn)%face_normals( 7) = particle_boundaries(jgrid)%face_normals(idir, iface)
 
                 jgrid = neighbours(14)
-                particle_gcorner_boundaries((igrid - 1_intk) * 8_intk + icorn)%face_normals(1, 8) = particle_boundaries(jgrid)%face_normals(1, iface)
-                particle_gcorner_boundaries((igrid - 1_intk) * 8_intk + icorn)%face_normals(2, 8) = particle_boundaries(jgrid)%face_normals(2, iface)
-                particle_gcorner_boundaries((igrid - 1_intk) * 8_intk + icorn)%face_normals(3, 8) = particle_boundaries(jgrid)%face_normals(3, iface)
+                particle_gcorner_boundaries((igrid - 1_intk) * 8_intk + icorn)%face_normals( 8) = particle_boundaries(jgrid)%face_normals(idir, iface)
 
-                ! z-direction (9-12) 
+                ! z-direction (9-12)
+                idir = 3_intk 
                 iface = 6_intk
                 jgrid = igrid
-                particle_gcorner_boundaries((igrid - 1_intk) * 8_intk + icorn)%face_normals(1, 9) = particle_boundaries(jgrid)%face_normals(1, iface)
-                particle_gcorner_boundaries((igrid - 1_intk) * 8_intk + icorn)%face_normals(2, 9) = particle_boundaries(jgrid)%face_normals(2, iface)
-                particle_gcorner_boundaries((igrid - 1_intk) * 8_intk + icorn)%face_normals(3, 9) = particle_boundaries(jgrid)%face_normals(3, iface)
+                particle_gcorner_boundaries((igrid - 1_intk) * 8_intk + icorn)%face_normals( 9) = particle_boundaries(jgrid)%face_normals(idir, iface)
 
                 jgrid = neighbours(2)
-                particle_gcorner_boundaries((igrid - 1_intk) * 8_intk + icorn)%face_normals(1,10) = particle_boundaries(jgrid)%face_normals(1, iface)
-                particle_gcorner_boundaries((igrid - 1_intk) * 8_intk + icorn)%face_normals(2,10) = particle_boundaries(jgrid)%face_normals(2, iface)
-                particle_gcorner_boundaries((igrid - 1_intk) * 8_intk + icorn)%face_normals(3,10) = particle_boundaries(jgrid)%face_normals(3, iface)
+                particle_gcorner_boundaries((igrid - 1_intk) * 8_intk + icorn)%face_normals(10) = particle_boundaries(jgrid)%face_normals(idir, iface)
 
                 jgrid = neighbours(3)
-                particle_gcorner_boundaries((igrid - 1_intk) * 8_intk + icorn)%face_normals(1,11) = particle_boundaries(jgrid)%face_normals(1, iface)
-                particle_gcorner_boundaries((igrid - 1_intk) * 8_intk + icorn)%face_normals(2,11) = particle_boundaries(jgrid)%face_normals(2, iface)
-                particle_gcorner_boundaries((igrid - 1_intk) * 8_intk + icorn)%face_normals(3,11) = particle_boundaries(jgrid)%face_normals(3, iface)
+                particle_gcorner_boundaries((igrid - 1_intk) * 8_intk + icorn)%face_normals(11) = particle_boundaries(jgrid)%face_normals(idir, iface)
 
                 jgrid = neighbours(11)
-                particle_gcorner_boundaries((igrid - 1_intk) * 8_intk + icorn)%face_normals(1,12) = particle_boundaries(jgrid)%face_normals(1, iface)
-                particle_gcorner_boundaries((igrid - 1_intk) * 8_intk + icorn)%face_normals(2,12) = particle_boundaries(jgrid)%face_normals(2, iface)
-                particle_gcorner_boundaries((igrid - 1_intk) * 8_intk + icorn)%face_normals(3,12) = particle_boundaries(jgrid)%face_normals(3, iface)
+                particle_gcorner_boundaries((igrid - 1_intk) * 8_intk + icorn)%face_normals(12) = particle_boundaries(jgrid)%face_normals(idir, iface)
 
             CASE(25_intk)
+
+                ! LOCATION
+                particle_gcorner_boundaries((igrid - 1_intk) * 8_intk + icorn)%location(1) =  1_intk
+                particle_gcorner_boundaries((igrid - 1_intk) * 8_intk + icorn)%location(2) =  1_intk
+                particle_gcorner_boundaries((igrid - 1_intk) * 8_intk + icorn)%location(3) = -1_intk
+
+                ! FACE COORDINATES
+                particle_gcorner_boundaries((igrid - 1_intk) * 8_intk + icorn)%face_coord(1) = maxx
+                particle_gcorner_boundaries((igrid - 1_intk) * 8_intk + icorn)%face_coord(2) = maxy
+                particle_gcorner_boundaries((igrid - 1_intk) * 8_intk + icorn)%face_coord(3) = minz
 
                 ! NEIGBHOURS
                 particle_gcorner_boundaries((igrid - 1_intk) * 8_intk + icorn)%face_neighbours(1) = igrid
@@ -2134,73 +2320,63 @@ MODULE particle_boundaries_mod
                 particle_gcorner_boundaries((igrid - 1_intk) * 8_intk + icorn)%face_neighbours(7) = particle_boundaries(igrid)%face_neighbours(12)
                 particle_gcorner_boundaries((igrid - 1_intk) * 8_intk + icorn)%face_neighbours(8) = particle_boundaries(igrid)%face_neighbours(25)
 
+                ! FACE NORMALS
                 ! x-direction (1-4) 
+                idir = 1_intk
                 iface = 2_intk
                 jgrid = igrid
-                particle_gcorner_boundaries((igrid - 1_intk) * 8_intk + icorn)%face_normals(1, 1) = particle_boundaries(jgrid)%face_normals(1, iface)
-                particle_gcorner_boundaries((igrid - 1_intk) * 8_intk + icorn)%face_normals(2, 1) = particle_boundaries(jgrid)%face_normals(2, iface)
-                particle_gcorner_boundaries((igrid - 1_intk) * 8_intk + icorn)%face_normals(3, 1) = particle_boundaries(jgrid)%face_normals(3, iface)
+                particle_gcorner_boundaries((igrid - 1_intk) * 8_intk + icorn)%face_normals( 1) = particle_boundaries(jgrid)%face_normals(idir, iface)
 
                 jgrid = neighbours(4)
-                particle_gcorner_boundaries((igrid - 1_intk) * 8_intk + icorn)%face_normals(1, 2) = particle_boundaries(jgrid)%face_normals(1, iface)
-                particle_gcorner_boundaries((igrid - 1_intk) * 8_intk + icorn)%face_normals(2, 2) = particle_boundaries(jgrid)%face_normals(2, iface)
-                particle_gcorner_boundaries((igrid - 1_intk) * 8_intk + icorn)%face_normals(3, 2) = particle_boundaries(jgrid)%face_normals(3, iface)
+                particle_gcorner_boundaries((igrid - 1_intk) * 8_intk + icorn)%face_normals( 2) = particle_boundaries(jgrid)%face_normals(idir, iface)
 
                 jgrid = neighbours(5)
-                particle_gcorner_boundaries((igrid - 1_intk) * 8_intk + icorn)%face_normals(1, 3) = particle_boundaries(jgrid)%face_normals(1, iface)
-                particle_gcorner_boundaries((igrid - 1_intk) * 8_intk + icorn)%face_normals(2, 3) = particle_boundaries(jgrid)%face_normals(2, iface)
-                particle_gcorner_boundaries((igrid - 1_intk) * 8_intk + icorn)%face_normals(3, 3) = particle_boundaries(jgrid)%face_normals(3, iface)
+                particle_gcorner_boundaries((igrid - 1_intk) * 8_intk + icorn)%face_normals( 3) = particle_boundaries(jgrid)%face_normals(idir, iface)
 
                 jgrid = neighbours(17)
-                particle_gcorner_boundaries((igrid - 1_intk) * 8_intk + icorn)%face_normals(1, 4) = particle_boundaries(jgrid)%face_normals(1, iface)
-                particle_gcorner_boundaries((igrid - 1_intk) * 8_intk + icorn)%face_normals(2, 4) = particle_boundaries(jgrid)%face_normals(2, iface)
-                particle_gcorner_boundaries((igrid - 1_intk) * 8_intk + icorn)%face_normals(3, 4) = particle_boundaries(jgrid)%face_normals(3, iface)
+                particle_gcorner_boundaries((igrid - 1_intk) * 8_intk + icorn)%face_normals( 4) = particle_boundaries(jgrid)%face_normals(idir, iface)
 
-                ! y-direction (5-8) 
+                ! y-direction (5-8)
+                idir = 2_intk 
                 iface = 4_intk
                 jgrid = igrid
-                particle_gcorner_boundaries((igrid - 1_intk) * 8_intk + icorn)%face_normals(1, 5) = particle_boundaries(jgrid)%face_normals(1, iface)
-                particle_gcorner_boundaries((igrid - 1_intk) * 8_intk + icorn)%face_normals(2, 5) = particle_boundaries(jgrid)%face_normals(2, iface)
-                particle_gcorner_boundaries((igrid - 1_intk) * 8_intk + icorn)%face_normals(3, 5) = particle_boundaries(jgrid)%face_normals(3, iface)
+                particle_gcorner_boundaries((igrid - 1_intk) * 8_intk + icorn)%face_normals( 5) = particle_boundaries(jgrid)%face_normals(idir, iface)
 
                 jgrid = neighbours(5)
-                particle_gcorner_boundaries((igrid - 1_intk) * 8_intk + icorn)%face_normals(1, 6) = particle_boundaries(jgrid)%face_normals(1, iface)
-                particle_gcorner_boundaries((igrid - 1_intk) * 8_intk + icorn)%face_normals(2, 6) = particle_boundaries(jgrid)%face_normals(2, iface)
-                particle_gcorner_boundaries((igrid - 1_intk) * 8_intk + icorn)%face_normals(3, 6) = particle_boundaries(jgrid)%face_normals(3, iface)
+                particle_gcorner_boundaries((igrid - 1_intk) * 8_intk + icorn)%face_normals( 6) = particle_boundaries(jgrid)%face_normals(idir, iface)
 
                 jgrid = neighbours(2)
-                particle_gcorner_boundaries((igrid - 1_intk) * 8_intk + icorn)%face_normals(1, 7) = particle_boundaries(jgrid)%face_normals(1, iface)
-                particle_gcorner_boundaries((igrid - 1_intk) * 8_intk + icorn)%face_normals(2, 7) = particle_boundaries(jgrid)%face_normals(2, iface)
-                particle_gcorner_boundaries((igrid - 1_intk) * 8_intk + icorn)%face_normals(3, 7) = particle_boundaries(jgrid)%face_normals(3, iface)
+                particle_gcorner_boundaries((igrid - 1_intk) * 8_intk + icorn)%face_normals( 7) = particle_boundaries(jgrid)%face_normals(idir, iface)
 
                 jgrid = neighbours(13)
-                particle_gcorner_boundaries((igrid - 1_intk) * 8_intk + icorn)%face_normals(1, 8) = particle_boundaries(jgrid)%face_normals(1, iface)
-                particle_gcorner_boundaries((igrid - 1_intk) * 8_intk + icorn)%face_normals(2, 8) = particle_boundaries(jgrid)%face_normals(2, iface)
-                particle_gcorner_boundaries((igrid - 1_intk) * 8_intk + icorn)%face_normals(3, 8) = particle_boundaries(jgrid)%face_normals(3, iface)
+                particle_gcorner_boundaries((igrid - 1_intk) * 8_intk + icorn)%face_normals( 8) = particle_boundaries(jgrid)%face_normals(idir, iface)
 
                 ! z-direction (9-12) 
+                idir = 3_intk
                 iface = 5_intk
                 jgrid = igrid
-                particle_gcorner_boundaries((igrid - 1_intk) * 8_intk + icorn)%face_normals(1, 9) = particle_boundaries(jgrid)%face_normals(1, iface)
-                particle_gcorner_boundaries((igrid - 1_intk) * 8_intk + icorn)%face_normals(2, 9) = particle_boundaries(jgrid)%face_normals(2, iface)
-                particle_gcorner_boundaries((igrid - 1_intk) * 8_intk + icorn)%face_normals(3, 9) = particle_boundaries(jgrid)%face_normals(3, iface)
+                particle_gcorner_boundaries((igrid - 1_intk) * 8_intk + icorn)%face_normals( 9) = particle_boundaries(jgrid)%face_normals(idir, iface)
 
                 jgrid = neighbours(2)
-                particle_gcorner_boundaries((igrid - 1_intk) * 8_intk + icorn)%face_normals(1,10) = particle_boundaries(jgrid)%face_normals(1, iface)
-                particle_gcorner_boundaries((igrid - 1_intk) * 8_intk + icorn)%face_normals(2,10) = particle_boundaries(jgrid)%face_normals(2, iface)
-                particle_gcorner_boundaries((igrid - 1_intk) * 8_intk + icorn)%face_normals(3,10) = particle_boundaries(jgrid)%face_normals(3, iface)
+                particle_gcorner_boundaries((igrid - 1_intk) * 8_intk + icorn)%face_normals(10) = particle_boundaries(jgrid)%face_normals(idir, iface)
 
                 jgrid = neighbours(4)
-                particle_gcorner_boundaries((igrid - 1_intk) * 8_intk + icorn)%face_normals(1,11) = particle_boundaries(jgrid)%face_normals(1, iface)
-                particle_gcorner_boundaries((igrid - 1_intk) * 8_intk + icorn)%face_normals(2,11) = particle_boundaries(jgrid)%face_normals(2, iface)
-                particle_gcorner_boundaries((igrid - 1_intk) * 8_intk + icorn)%face_normals(3,11) = particle_boundaries(jgrid)%face_normals(3, iface)
+                particle_gcorner_boundaries((igrid - 1_intk) * 8_intk + icorn)%face_normals(11) = particle_boundaries(jgrid)%face_normals(idir, iface)
 
                 jgrid = neighbours(12)
-                particle_gcorner_boundaries((igrid - 1_intk) * 8_intk + icorn)%face_normals(1,12) = particle_boundaries(jgrid)%face_normals(1, iface)
-                particle_gcorner_boundaries((igrid - 1_intk) * 8_intk + icorn)%face_normals(2,12) = particle_boundaries(jgrid)%face_normals(2, iface)
-                particle_gcorner_boundaries((igrid - 1_intk) * 8_intk + icorn)%face_normals(3,12) = particle_boundaries(jgrid)%face_normals(3, iface)
+                particle_gcorner_boundaries((igrid - 1_intk) * 8_intk + icorn)%face_normals(12) = particle_boundaries(jgrid)%face_normals(idir, iface)
 
             CASE(26_intk)   
+
+                ! LOCATION
+                particle_gcorner_boundaries((igrid - 1_intk) * 8_intk + icorn)%location(1) =  1_intk
+                particle_gcorner_boundaries((igrid - 1_intk) * 8_intk + icorn)%location(2) =  1_intk
+                particle_gcorner_boundaries((igrid - 1_intk) * 8_intk + icorn)%location(3) =  1_intk
+
+                ! FACE COORDINATES
+                particle_gcorner_boundaries((igrid - 1_intk) * 8_intk + icorn)%face_coord(1) = maxx
+                particle_gcorner_boundaries((igrid - 1_intk) * 8_intk + icorn)%face_coord(2) = maxy
+                particle_gcorner_boundaries((igrid - 1_intk) * 8_intk + icorn)%face_coord(3) = maxz
 
                 ! NEIGBHOURS
                 particle_gcorner_boundaries((igrid - 1_intk) * 8_intk + icorn)%face_neighbours(1) = igrid
@@ -2212,71 +2388,51 @@ MODULE particle_boundaries_mod
                 particle_gcorner_boundaries((igrid - 1_intk) * 8_intk + icorn)%face_neighbours(7) = particle_boundaries(igrid)%face_neighbours(12)
                 particle_gcorner_boundaries((igrid - 1_intk) * 8_intk + icorn)%face_neighbours(8) = particle_boundaries(igrid)%face_neighbours(26)
 
+                ! FACE NORMALS
                 ! x-direction (1-4) 
+                idir = 1_intk
                 iface = 2_intk
                 jgrid = igrid
-                particle_gcorner_boundaries((igrid - 1_intk) * 8_intk + icorn)%face_normals(1, 1) = particle_boundaries(jgrid)%face_normals(1, iface)
-                particle_gcorner_boundaries((igrid - 1_intk) * 8_intk + icorn)%face_normals(2, 1) = particle_boundaries(jgrid)%face_normals(2, iface)
-                particle_gcorner_boundaries((igrid - 1_intk) * 8_intk + icorn)%face_normals(3, 1) = particle_boundaries(jgrid)%face_normals(3, iface)
+                particle_gcorner_boundaries((igrid - 1_intk) * 8_intk + icorn)%face_normals( 1) = particle_boundaries(jgrid)%face_normals(idir, iface)
 
                 jgrid = neighbours(4)
-                particle_gcorner_boundaries((igrid - 1_intk) * 8_intk + icorn)%face_normals(1, 2) = particle_boundaries(jgrid)%face_normals(1, iface)
-                particle_gcorner_boundaries((igrid - 1_intk) * 8_intk + icorn)%face_normals(2, 2) = particle_boundaries(jgrid)%face_normals(2, iface)
-                particle_gcorner_boundaries((igrid - 1_intk) * 8_intk + icorn)%face_normals(3, 2) = particle_boundaries(jgrid)%face_normals(3, iface)
+                particle_gcorner_boundaries((igrid - 1_intk) * 8_intk + icorn)%face_normals( 2) = particle_boundaries(jgrid)%face_normals(idir, iface)
 
                 jgrid = neighbours(6)
-                particle_gcorner_boundaries((igrid - 1_intk) * 8_intk + icorn)%face_normals(1, 3) = particle_boundaries(jgrid)%face_normals(1, iface)
-                particle_gcorner_boundaries((igrid - 1_intk) * 8_intk + icorn)%face_normals(2, 3) = particle_boundaries(jgrid)%face_normals(2, iface)
-                particle_gcorner_boundaries((igrid - 1_intk) * 8_intk + icorn)%face_normals(3, 3) = particle_boundaries(jgrid)%face_normals(3, iface)
+                particle_gcorner_boundaries((igrid - 1_intk) * 8_intk + icorn)%face_normals( 3) = particle_boundaries(jgrid)%face_normals(idir, iface)
 
                 jgrid = neighbours(18)
-                particle_gcorner_boundaries((igrid - 1_intk) * 8_intk + icorn)%face_normals(1, 4) = particle_boundaries(jgrid)%face_normals(1, iface)
-                particle_gcorner_boundaries((igrid - 1_intk) * 8_intk + icorn)%face_normals(2, 4) = particle_boundaries(jgrid)%face_normals(2, iface)
-                particle_gcorner_boundaries((igrid - 1_intk) * 8_intk + icorn)%face_normals(3, 4) = particle_boundaries(jgrid)%face_normals(3, iface)
+                particle_gcorner_boundaries((igrid - 1_intk) * 8_intk + icorn)%face_normals( 4) = particle_boundaries(jgrid)%face_normals(idir, iface)
 
                 ! y-direction (5-8) 
+                idir = 2_intk
                 iface = 4_intk
                 jgrid = igrid
-                particle_gcorner_boundaries((igrid - 1_intk) * 8_intk + icorn)%face_normals(1, 5) = particle_boundaries(jgrid)%face_normals(1, iface)
-                particle_gcorner_boundaries((igrid - 1_intk) * 8_intk + icorn)%face_normals(2, 5) = particle_boundaries(jgrid)%face_normals(2, iface)
-                particle_gcorner_boundaries((igrid - 1_intk) * 8_intk + icorn)%face_normals(3, 5) = particle_boundaries(jgrid)%face_normals(3, iface)
+                particle_gcorner_boundaries((igrid - 1_intk) * 8_intk + icorn)%face_normals( 5) = particle_boundaries(jgrid)%face_normals(idir, iface)
 
                 jgrid = neighbours(6)
-                particle_gcorner_boundaries((igrid - 1_intk) * 8_intk + icorn)%face_normals(1, 6) = particle_boundaries(jgrid)%face_normals(1, iface)
-                particle_gcorner_boundaries((igrid - 1_intk) * 8_intk + icorn)%face_normals(2, 6) = particle_boundaries(jgrid)%face_normals(2, iface)
-                particle_gcorner_boundaries((igrid - 1_intk) * 8_intk + icorn)%face_normals(3, 6) = particle_boundaries(jgrid)%face_normals(3, iface)
+                particle_gcorner_boundaries((igrid - 1_intk) * 8_intk + icorn)%face_normals( 6) = particle_boundaries(jgrid)%face_normals(idir, iface)
 
                 jgrid = neighbours(2)
-                particle_gcorner_boundaries((igrid - 1_intk) * 8_intk + icorn)%face_normals(1, 7) = particle_boundaries(jgrid)%face_normals(1, iface)
-                particle_gcorner_boundaries((igrid - 1_intk) * 8_intk + icorn)%face_normals(2, 7) = particle_boundaries(jgrid)%face_normals(2, iface)
-                particle_gcorner_boundaries((igrid - 1_intk) * 8_intk + icorn)%face_normals(3, 7) = particle_boundaries(jgrid)%face_normals(3, iface)
+                particle_gcorner_boundaries((igrid - 1_intk) * 8_intk + icorn)%face_normals( 7) = particle_boundaries(jgrid)%face_normals(idir, iface)
 
                 jgrid = neighbours(14)
-                particle_gcorner_boundaries((igrid - 1_intk) * 8_intk + icorn)%face_normals(1, 8) = particle_boundaries(jgrid)%face_normals(1, iface)
-                particle_gcorner_boundaries((igrid - 1_intk) * 8_intk + icorn)%face_normals(2, 8) = particle_boundaries(jgrid)%face_normals(2, iface)
-                particle_gcorner_boundaries((igrid - 1_intk) * 8_intk + icorn)%face_normals(3, 8) = particle_boundaries(jgrid)%face_normals(3, iface)
+                particle_gcorner_boundaries((igrid - 1_intk) * 8_intk + icorn)%face_normals( 8) = particle_boundaries(jgrid)%face_normals(idir, iface)
 
                 ! z-direction (9-12) 
+                idir = 3_intk
                 iface = 6_intk
                 jgrid = igrid
-                particle_gcorner_boundaries((igrid - 1_intk) * 8_intk + icorn)%face_normals(1, 9) = particle_boundaries(jgrid)%face_normals(1, iface)
-                particle_gcorner_boundaries((igrid - 1_intk) * 8_intk + icorn)%face_normals(2, 9) = particle_boundaries(jgrid)%face_normals(2, iface)
-                particle_gcorner_boundaries((igrid - 1_intk) * 8_intk + icorn)%face_normals(3, 9) = particle_boundaries(jgrid)%face_normals(3, iface)
+                particle_gcorner_boundaries((igrid - 1_intk) * 8_intk + icorn)%face_normals( 9) = particle_boundaries(jgrid)%face_normals(idir, iface)
 
                 jgrid = neighbours(2)
-                particle_gcorner_boundaries((igrid - 1_intk) * 8_intk + icorn)%face_normals(1,10) = particle_boundaries(jgrid)%face_normals(1, iface)
-                particle_gcorner_boundaries((igrid - 1_intk) * 8_intk + icorn)%face_normals(2,10) = particle_boundaries(jgrid)%face_normals(2, iface)
-                particle_gcorner_boundaries((igrid - 1_intk) * 8_intk + icorn)%face_normals(3,10) = particle_boundaries(jgrid)%face_normals(3, iface)
+                particle_gcorner_boundaries((igrid - 1_intk) * 8_intk + icorn)%face_normals(10) = particle_boundaries(jgrid)%face_normals(idir, iface)
 
                 jgrid = neighbours(4)
-                particle_gcorner_boundaries((igrid - 1_intk) * 8_intk + icorn)%face_normals(1,11) = particle_boundaries(jgrid)%face_normals(1, iface)
-                particle_gcorner_boundaries((igrid - 1_intk) * 8_intk + icorn)%face_normals(2,11) = particle_boundaries(jgrid)%face_normals(2, iface)
-                particle_gcorner_boundaries((igrid - 1_intk) * 8_intk + icorn)%face_normals(3,11) = particle_boundaries(jgrid)%face_normals(3, iface)
+                particle_gcorner_boundaries((igrid - 1_intk) * 8_intk + icorn)%face_normals(11) = particle_boundaries(jgrid)%face_normals(idir, iface)
 
                 jgrid = neighbours(12)
-                particle_gcorner_boundaries((igrid - 1_intk) * 8_intk + icorn)%face_normals(1,12) = particle_boundaries(jgrid)%face_normals(1, iface)
-                particle_gcorner_boundaries((igrid - 1_intk) * 8_intk + icorn)%face_normals(2,12) = particle_boundaries(jgrid)%face_normals(2, iface)
-                particle_gcorner_boundaries((igrid - 1_intk) * 8_intk + icorn)%face_normals(3,12) = particle_boundaries(jgrid)%face_normals(3, iface)
+                particle_gcorner_boundaries((igrid - 1_intk) * 8_intk + icorn)%face_normals(12) = particle_boundaries(jgrid)%face_normals(idir, iface)
 
         END SELECT
 
