@@ -278,7 +278,7 @@ CONTAINS
             IF (dsim_particles) THEN ! <------------------------------------particles
                 ! timeintegration of particles
 #ifdef _MGLET_OPENMP_
-                CALL timeintegrate_particles_target(itstep, dt)
+                CALL timeintegrate_particles_target3(itstep, dt)
 #else
                 CALL timeintegrate_particles(itstep, dt)
 #endif

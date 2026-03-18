@@ -662,13 +662,28 @@ CONTAINS
         REAL(realk) :: pdx_eff, pdy_eff, pdz_eff
         LOGICAL :: dreplace
 
+
+!TYPE(particle_gcorner_boundaries_t) :: gcorner_boundary_test_arr(ngrid * 8)
+!!$omp target map(tofrom: gcorner_boundary_test_arr)
+!    gcorner_boundary_test_arr = particle_gcorner_boundaries
+!!$omp end target
+!IF (myid == 0) THEN
+!        DO igrid = 1, ngrid
+!            DO icorn = 1, ncorn
+!                WRITE(*, *) "------ (Corner) Boundaries, Grid:   ", igrid, " Corner:   ", icorn, "------"
+!                WRITE(*, *) "Face Neighbour Grids:   ", gcorner_boundary_test_arr((igrid - 1) * 8 + icorn)%face_neighbours
+!                WRITE(*, *) "Normals:   ", gcorner_boundary_test_arr((igrid - 1) * 8 + icorn)%face_normals
+!            END DO
+!        END DO
+!END IF
+
         CALL start_timer(900)
 
         IF (dadvection) THEN
             !$omp target update to(u_offload, v_offload, w_offload)
         END IF
         
-        !CALL write_particle_list_txt(itstep, 'pre')
+        CALL write_particle_list_txt(itstep, 'pre')
 
 #if defined __INTEL_COMPILER
         !$omp target update to(my_particle_list%particles)
@@ -758,7 +773,7 @@ CONTAINS
 
                         ! Particle Boundary Interaction
                         CALL move_particle_target3(my_particle_list%particles(ipart), pstag, pdx, pdy, pdz, &
-                        pdx_eff, pdy_eff, pdz_eff, particle_gcorner_boundaries(igrid * 8_intk + icorn), obstacles, dreplace)
+                        pdx_eff, pdy_eff, pdz_eff, particle_gcorner_boundaries((igrid - 1) * 8_intk + icorn), obstacles, dreplace)
                         
                         IF (dreplace) THEN
                             CALL replace_particle_target(my_particle_list%particles(ipart), obstacles, kk, jj, ii, x, y, z, dx, dy, dz)
@@ -780,7 +795,7 @@ CONTAINS
                     CALL generate_diffusive_displacement_target(dt, D(1), D(2), D(3), pdx, pdy, pdz, my_particle_list%particles(ipart)%seed)
 
                     CALL move_particle_target3(my_particle_list%particles(ipart), pstag, pdx, pdy, pdz, &
-                        pdx_eff, pdy_eff, pdz_eff, particle_gcorner_boundaries(igrid * 8_intk + icorn), obstacles, dreplace)
+                        pdx_eff, pdy_eff, pdz_eff, particle_gcorner_boundaries((igrid - 1) * 8_intk + icorn), obstacles, dreplace)
 
                     IF (dreplace) THEN
                         CALL replace_particle_target(my_particle_list%particles(ipart), obstacles, kk, jj, ii, x, y, z, dx, dy, dz)
@@ -805,7 +820,7 @@ CONTAINS
         !$omp target update from(my_particle_list)
 #endif
 
-        !CALL write_particle_list_txt(itstep, 'pos')
+        CALL write_particle_list_txt(itstep, 'pos')
 
         CALL stop_timer(900)
 

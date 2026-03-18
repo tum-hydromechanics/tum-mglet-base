@@ -277,9 +277,9 @@ CONTAINS
         !    CALL errr(__FILE__, __LINE__)
         !END IF
 
-        IF (.NOT. solve_flow .AND. .NOT. duse_avg_flow) THEN
-            dadvection = .FALSE.
-        END IF
+        !IF (.NOT. solve_flow .AND. .NOT. duse_avg_flow) THEN
+        !    dadvection = .FALSE.
+        !END IF
 
         != = = = = = = = = = DIFFUSION = = = = = = = = = =
 
