@@ -1415,9 +1415,10 @@ MODULE particle_boundaries_mod
         LOGICAL, INTENT(inout) :: dreplace 
         
         ! local variables
-        INTEGER(intk) :: temp_grid, idir, iobst_local, destgrid, i
+        INTEGER(intk) :: idir, iobst_local, i
         INTEGER(intk) :: pstag_counter(3)
         REAL(realk) :: n(3)
+        REAL(realk) :: s, temp 
 
         dreplace = .FALSE.
 
@@ -1432,18 +1433,48 @@ MODULE particle_boundaries_mod
         ! to avoid branch divergence here, just iterate to the max. number of iterations that would be a stoping criterion anyways
         DO i = 1, 10
 
-            CALL move_to_boundary_target3(gcorner_boundary, pstag, particle%igrid, particle%x, particle%y, particle%z, &
-             dx, dy, dz, dx_eff, dy_eff, dz_eff, idir, iobst_local, obstacles)
+            idir = 0
+            s = 1.0
+
+            CALL s_to_obstacle(particle%igrid, particle%x, particle%y, particle%z, dx, dy, dz, iobst_local, s, obstacles)
+
+            IF (s > 0.0_realk) CALL to_grid_boundary3(gcorner_boundary, pstag, particle%x, particle%y, particle%z, &
+             dx, dy, dz, dx_eff, dy_eff, dz_eff, s, idir, iobst_local)
 
             IF (0 < iobst_local) THEN
 
-                CALL reflect_at_obstacle3(particle%x, particle%y, particle%z, dx, dy, dz, obstacles(iobst_local))
+                ! reflect at obstacle
+                ! compute normal vector
+                n(1) = particle%x - obstacles(iobst_local)%x
+                n(2) = particle%y - obstacles(iobst_local)%y
+                n(3) = particle%z - obstacles(iobst_local)%z
+
+                ! magnitude
+                temp = SQRT(n(1)**2 + n(2)**2 + n(3)**2)
+
+                n(1) = n(1) / temp
+                n(2) = n(2) / temp
+                n(3) = n(3) / temp
+
+                ! alter displacement verctor
+                ! dot product
+                temp = MIN((n(1) * dx + n(2) * dy + n(3) * dz), 0.0)
+
+                dx = dx - 2 * temp * n(1)
+                dy = dy - 2 * temp * n(2)
+                dz = dz - 2 * temp * n(3)
 
             ELSEIF (0 < idir) THEN
                 
                 CALL get_gcorner_normal(gcorner_boundary, pstag, idir, n)
+                
+                ! reflect at grid boundary
+                ! dot product
+                temp = MIN((n(1) * dx + n(2) * dy + n(3) * dz), 0.0)
 
-                CALL reflect_at_boundary(dx, dy, dz, n(1), n(2), n(3))
+                dx = dx - 2 * temp * n(1)
+                dy = dy - 2 * temp * n(2)
+                dz = dz - 2 * temp * n(3)
 
                 !update pstag (normal vector idir component must be zero or point inwards for this method to work)
                 pstag(idir) = pstag(idir) + 1 + NINT(n(idir) * gcorner_boundary%location(idir))
@@ -1457,39 +1488,6 @@ MODULE particle_boundaries_mod
         !particle%xyz_abs(3) = particle%xyz_abs(3) + dz_eff
 
     END SUBROUTINE move_particle_target3
-
-
-    SUBROUTINE move_to_boundary_target3(gcorner_boundary, pstag, igrid, x, y, z, dx, dy, dz, dx_eff, dy_eff, dz_eff, idir, iobst_local, obstacles)
-
-        !$omp declare target
-
-        ! subroutine arguments
-        TYPE(particle_gcorner_boundaries_t), INTENT(in) :: gcorner_boundary 
-        INTEGER(intk), INTENT(in) :: pstag(3)
-        INTEGER(intk), INTENT(in) :: igrid
-        REAL(realk), INTENT(inout) :: x, y, z
-        REAL(realk), INTENT(inout) :: dx, dy, dz
-        REAL(realk), INTENT(inout) :: dx_eff, dy_eff, dz_eff
-        INTEGER(intk), INTENT(out) :: idir
-        INTEGER(intk), INTENT(inout) :: iobst_local
-        TYPE(obstacle_t), POINTER, CONTIGUOUS, DIMENSION(:), INTENT(in) :: obstacles
-
-        !local variables
-        REAL(realk) :: s
-        
-        s = 1.0
-
-        CALL s_to_obstacle(igrid, x, y, z, dx, dy, dz, iobst_local, s, obstacles)
-
-        IF (s <= 0.0_realk) THEN
-            idir = 0
-            RETURN
-        END IF
-
-        CALL to_grid_boundary3(gcorner_boundary, pstag, x, y, z, dx, dy, dz, dx_eff, dy_eff, dz_eff, s, idir, iobst_local)
-
-    END SUBROUTINE move_to_boundary_target3
-
 
     SUBROUTINE to_grid_boundary3(gcorner_boundary, pstag, x, y, z, dx, dy, dz, dx_eff, dy_eff, dz_eff, s, idir, iobst_local)
 
@@ -1805,27 +1803,6 @@ MODULE particle_boundaries_mod
     END SUBROUTINE reflect_at_boundary
 
 
-    SUBROUTINE reflect_at_boundary3(dx, dy, dz, n1, n2, n3)
-        
-        !$omp declare target
-        
-        ! Presumption: Particle is already exactly on the boundary!
-
-        ! subroutine arguments
-        REAL(realk), INTENT(inout) :: dx, dy, dz
-        REAL(realk), INTENT(in) :: n1, n2, n3 ! normal vector components of the surface the particle is reflected from
-        ! local variables
-        REAL(realk) :: dot_product
-
-        dot_product = MIN((n1 * dx + n2 * dy + n3 * dz), 0.0)
-
-        dx = dx - 2 * dot_product * n1
-        dy = dy - 2 * dot_product * n2
-        dz = dz - 2 * dot_product * n3
-
-    END SUBROUTINE reflect_at_boundary3
-
-
     ! TODO: make this (partly) an obstacle method
     SUBROUTINE reflect_at_obstacle(x, y, z, dx, dy, dz, obstacle)
 
@@ -1855,37 +1832,6 @@ MODULE particle_boundaries_mod
         CALL reflect_at_boundary(dx, dy, dz, n1, n2, n3)
 
     END SUBROUTINE reflect_at_obstacle
-
-
-    SUBROUTINE reflect_at_obstacle3(x, y, z, dx, dy, dz, obstacle)
-
-        !$omp declare target
-
-        ! Presumption 1: Particle is already exactly on the boundary!
-        ! Presumption 2: Obstacle is a sphere!
-
-        ! subroutine arguments
-        REAL(realk), INTENT(in) :: x, y, z
-        REAL(realk), INTENT(inout) :: dx, dy, dz
-        TYPE(obstacle_t) :: obstacle
-
-        ! local variables
-        REAL(realk) :: n1, n2 , n3, magnitude
-
-        n1 = x - obstacle%x
-        n2 = y - obstacle%y
-        n3 = z - obstacle%z
-
-        magnitude = SQRT(n1**2 + n2**2 + n3**2)
-
-        n1 = n1 / magnitude
-        n2 = n2 / magnitude
-        n3 = n3 / magnitude
-
-        CALL reflect_at_boundary3(dx, dy, dz, n1, n2, n3)
-
-    END SUBROUTINE reflect_at_obstacle3
-
 
 
     SUBROUTINE get_gcorner_neighbour(gcorner_boundary, stag, neighbour_grid)
