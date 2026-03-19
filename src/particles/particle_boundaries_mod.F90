@@ -57,7 +57,7 @@ MODULE particle_boundaries_mod
 
     TYPE :: particle_gcorner_boundaries_t
 
-        INTEGER(intk) :: location(3) = -99
+        REAL(realk) :: location(3) = -99
 
         REAL(realk) :: face_coord(3) = -99.0
 
@@ -1446,7 +1446,7 @@ MODULE particle_boundaries_mod
                 CALL reflect_at_boundary(dx, dy, dz, n(1), n(2), n(3))
 
                 !update pstag (normal vector idir component must be zero or point inwards for this method to work)
-                pstag(idir) = pstag(idir) + 1 + NINT(n(idir)) * gcorner_boundary%location(idir)
+                pstag(idir) = pstag(idir) + 1 + NINT(n(idir) * gcorner_boundary%location(idir))
                 pstag_counter(idir) = pstag_counter(idir) + 1_intk
             END IF
 
@@ -1523,19 +1523,19 @@ MODULE particle_boundaries_mod
         !rz = gcorner_boundary%location(3) * ((-1_intk) ** pstag(3)) * ((s * dz) / (lz_a))
         ! small modification to avoid division by zero
         IF (lx_a < EPSILON(lx_a)) THEN
-            rx = SIGN(HUGE(rx), gcorner_boundary%location(1) * ((-1_intk) ** pstag(1)) * dx) * ABS(dx)
+            rx = SIGN(HUGE(rx), gcorner_boundary%location(1) * ((-1.0) ** pstag(1)) * dx) * ABS(dx)
         ELSE
             rx = gcorner_boundary%location(1) * ((-1_intk) ** pstag(1)) * ((s * dx) / (lx_a))
         END IF
 
         IF (ly_a < EPSILON(ly_a)) THEN
-            ry = SIGN(HUGE(ry), gcorner_boundary%location(2) * ((-1_intk) ** pstag(2)) * dy) * ABS(dy)
+            ry = SIGN(HUGE(ry), gcorner_boundary%location(2) * ((-1.0) ** pstag(2)) * dy) * ABS(dy)
         ELSE
             ry = gcorner_boundary%location(2) * ((-1_intk) ** pstag(2)) * ((s * dy) / (ly_a))
         END IF
 
         IF (lz_a < EPSILON(lz_a)) THEN
-            rz = SIGN(HUGE(rz), gcorner_boundary%location(3) * ((-1_intk) ** pstag(3)) * dz) * ABS(dz)
+            rz = SIGN(HUGE(rz), gcorner_boundary%location(3) * ((-1.0) ** pstag(3)) * dz) * ABS(dz)
         ELSE
             rz = gcorner_boundary%location(3) * ((-1_intk) ** pstag(3)) * ((s * dz) / (lz_a))
         END IF
@@ -1562,15 +1562,15 @@ MODULE particle_boundaries_mod
 
             ratio = lx_a / ABS(dx)
 
-            dx_eff = dx_eff + REAL(gcorner_boundary%location(1)) * lx_a
+            dx_eff = dx_eff + gcorner_boundary%location(1) * lx_a
             dy_eff = dy_eff + (ratio * dy)
             dz_eff = dz_eff + (ratio * dz)
             ! avoid floating point errors and put the particle EXACTLY at the boundary
             x = gcorner_boundary%face_coord(1) 
             ! avoid particles to hit corners or edges => - EPSILON(x_i) * gcorner_boundary%location(i)
-            y = y + (ratio * dy) - EPSILON(y) * REAL(gcorner_boundary%location(2))
-            z = z + (ratio * dz) - EPSILON(z) * REAL(gcorner_boundary%location(3))
-            dx = dx - REAL(gcorner_boundary%location(1)) * lx_a
+            y = y + (ratio * dy) - EPSILON(y) * gcorner_boundary%location(2)
+            z = z + (ratio * dz) - EPSILON(z) * gcorner_boundary%location(3)
+            dx = dx - gcorner_boundary%location(1) * lx_a
             dy = dy - (ratio * dy)
             dz = dz - (ratio * dz)
 
@@ -1581,15 +1581,15 @@ MODULE particle_boundaries_mod
             ratio = ly_a / ABS(dy)
 
             dx_eff = dx_eff + (ratio * dx)
-            dy_eff = dy_eff + REAL(gcorner_boundary%location(2)) * ly_a
+            dy_eff = dy_eff + gcorner_boundary%location(2) * ly_a
             dz_eff = dz_eff + (ratio * dz)
             ! avoid particles to hit corners or edges => - EPSILON(x_i) * gcorner_boundary%location(i)
-            x = x + (ratio * dx) - EPSILON(x) * REAL(gcorner_boundary%location(1))
+            x = x + (ratio * dx) - EPSILON(x) * gcorner_boundary%location(1)
             ! avoid floating point errors and put the particle EXACTLY at the boundary
             y = gcorner_boundary%face_coord(2) 
-            z = z + (ratio * dz) - EPSILON(z) * REAL(gcorner_boundary%location(3))
+            z = z + (ratio * dz) - EPSILON(z) * gcorner_boundary%location(3)
             dx = dx - (ratio * dx)
-            dy = dy - REAL(gcorner_boundary%location(2)) * ly_a
+            dy = dy - gcorner_boundary%location(2) * ly_a
             dz = dz - (ratio * dz)
 
         ELSEIF (rx < rz .AND. ry < rz) THEN
@@ -1600,15 +1600,15 @@ MODULE particle_boundaries_mod
 
             dx_eff = dx_eff + (ratio * dx)
             dy_eff = dy_eff + (ratio * dy)
-            dz_eff = dz_eff + REAL(gcorner_boundary%location(3)) * lz_a
+            dz_eff = dz_eff + gcorner_boundary%location(3) * lz_a
             ! avoid particles to hit corners or edges => - EPSILON(x_i) * gcorner_boundary%location(i)
-            x = x + (ratio * dx) - EPSILON(x) * REAL(gcorner_boundary%location(1))
-            y = y + (ratio * dy) - EPSILON(y) * REAL(gcorner_boundary%location(2))
+            x = x + (ratio * dx) - EPSILON(x) * gcorner_boundary%location(1)
+            y = y + (ratio * dy) - EPSILON(y) * gcorner_boundary%location(2)
             ! avoid floating point errors and put the particle EXACTLY at the boundary
             z = gcorner_boundary%face_coord(3) 
             dx = dx - (ratio * dx)
             dy = dy - (ratio * dy)
-            dz = dz - REAL(gcorner_boundary%location(3)) * lz_a
+            dz = dz - gcorner_boundary%location(3) * lz_a
 
         END IF
 
@@ -1817,11 +1817,11 @@ MODULE particle_boundaries_mod
         ! local variables
         REAL(realk) :: dot_product
 
-        dot_product = MAX(-1.0 * (n1 * dx + n2 * dy + n3 * dz), 0.0)
+        dot_product = MIN((n1 * dx + n2 * dy + n3 * dz), 0.0)
 
-        dx = dx + 2 * dot_product * n1
-        dy = dy + 2 * dot_product * n2
-        dz = dz + 2 * dot_product * n3
+        dx = dx - 2 * dot_product * n1
+        dy = dy - 2 * dot_product * n2
+        dz = dz - 2 * dot_product * n3
 
     END SUBROUTINE reflect_at_boundary3
 
@@ -1950,9 +1950,9 @@ MODULE particle_boundaries_mod
             CASE(19_intk)
 
                 ! LOCATION
-                particle_gcorner_boundaries((igrid - 1_intk) * 8_intk + icorn)%location(1) = -1_intk
-                particle_gcorner_boundaries((igrid - 1_intk) * 8_intk + icorn)%location(2) = -1_intk
-                particle_gcorner_boundaries((igrid - 1_intk) * 8_intk + icorn)%location(3) = -1_intk
+                particle_gcorner_boundaries((igrid - 1_intk) * 8_intk + icorn)%location(1) = -1.0
+                particle_gcorner_boundaries((igrid - 1_intk) * 8_intk + icorn)%location(2) = -1.0
+                particle_gcorner_boundaries((igrid - 1_intk) * 8_intk + icorn)%location(3) = -1.0
 
                 ! FACE COORDINATES
                 particle_gcorner_boundaries((igrid - 1_intk) * 8_intk + icorn)%face_coord(1) = minx
@@ -2018,9 +2018,9 @@ MODULE particle_boundaries_mod
             CASE(20_intk)
 
                 ! LOCATION
-                particle_gcorner_boundaries((igrid - 1_intk) * 8_intk + icorn)%location(1) = -1_intk
-                particle_gcorner_boundaries((igrid - 1_intk) * 8_intk + icorn)%location(2) = -1_intk
-                particle_gcorner_boundaries((igrid - 1_intk) * 8_intk + icorn)%location(3) =  1_intk
+                particle_gcorner_boundaries((igrid - 1_intk) * 8_intk + icorn)%location(1) = -1.0
+                particle_gcorner_boundaries((igrid - 1_intk) * 8_intk + icorn)%location(2) = -1.0
+                particle_gcorner_boundaries((igrid - 1_intk) * 8_intk + icorn)%location(3) =  1.0
 
                 ! FACE COORDINATES
                 particle_gcorner_boundaries((igrid - 1_intk) * 8_intk + icorn)%face_coord(1) = minx
@@ -2086,9 +2086,9 @@ MODULE particle_boundaries_mod
             CASE(21_intk)
 
                 ! LOCATION
-                particle_gcorner_boundaries((igrid - 1_intk) * 8_intk + icorn)%location(1) = -1_intk
-                particle_gcorner_boundaries((igrid - 1_intk) * 8_intk + icorn)%location(2) =  1_intk
-                particle_gcorner_boundaries((igrid - 1_intk) * 8_intk + icorn)%location(3) = -1_intk
+                particle_gcorner_boundaries((igrid - 1_intk) * 8_intk + icorn)%location(1) = -1.0
+                particle_gcorner_boundaries((igrid - 1_intk) * 8_intk + icorn)%location(2) =  1.0
+                particle_gcorner_boundaries((igrid - 1_intk) * 8_intk + icorn)%location(3) = -1.0
 
                 ! FACE COORDINATES
                 particle_gcorner_boundaries((igrid - 1_intk) * 8_intk + icorn)%face_coord(1) = minx
@@ -2154,9 +2154,9 @@ MODULE particle_boundaries_mod
             CASE(22_intk)
 
                 ! LOCATION
-                particle_gcorner_boundaries((igrid - 1_intk) * 8_intk + icorn)%location(1) = -1_intk
-                particle_gcorner_boundaries((igrid - 1_intk) * 8_intk + icorn)%location(2) =  1_intk
-                particle_gcorner_boundaries((igrid - 1_intk) * 8_intk + icorn)%location(3) =  1_intk
+                particle_gcorner_boundaries((igrid - 1_intk) * 8_intk + icorn)%location(1) = -1.0
+                particle_gcorner_boundaries((igrid - 1_intk) * 8_intk + icorn)%location(2) =  1.0
+                particle_gcorner_boundaries((igrid - 1_intk) * 8_intk + icorn)%location(3) =  1.0
 
                 ! FACE COORDINATES
                 particle_gcorner_boundaries((igrid - 1_intk) * 8_intk + icorn)%face_coord(1) = minx
@@ -2222,9 +2222,9 @@ MODULE particle_boundaries_mod
             CASE(23_intk)
 
                 ! LOCATION
-                particle_gcorner_boundaries((igrid - 1_intk) * 8_intk + icorn)%location(1) =  1_intk
-                particle_gcorner_boundaries((igrid - 1_intk) * 8_intk + icorn)%location(2) = -1_intk
-                particle_gcorner_boundaries((igrid - 1_intk) * 8_intk + icorn)%location(3) = -1_intk
+                particle_gcorner_boundaries((igrid - 1_intk) * 8_intk + icorn)%location(1) =  1.0
+                particle_gcorner_boundaries((igrid - 1_intk) * 8_intk + icorn)%location(2) = -1.0
+                particle_gcorner_boundaries((igrid - 1_intk) * 8_intk + icorn)%location(3) = -1.0
 
                 ! FACE COORDINATES
                 particle_gcorner_boundaries((igrid - 1_intk) * 8_intk + icorn)%face_coord(1) = maxx
@@ -2290,9 +2290,9 @@ MODULE particle_boundaries_mod
             CASE(24_intk)
 
                 ! LOCATION
-                particle_gcorner_boundaries((igrid - 1_intk) * 8_intk + icorn)%location(1) =  1_intk
-                particle_gcorner_boundaries((igrid - 1_intk) * 8_intk + icorn)%location(2) = -1_intk
-                particle_gcorner_boundaries((igrid - 1_intk) * 8_intk + icorn)%location(3) =  1_intk
+                particle_gcorner_boundaries((igrid - 1_intk) * 8_intk + icorn)%location(1) =  1.0
+                particle_gcorner_boundaries((igrid - 1_intk) * 8_intk + icorn)%location(2) = -1.0
+                particle_gcorner_boundaries((igrid - 1_intk) * 8_intk + icorn)%location(3) =  1.0
 
                 ! FACE COORDINATES
                 particle_gcorner_boundaries((igrid - 1_intk) * 8_intk + icorn)%face_coord(1) = maxx
@@ -2359,9 +2359,9 @@ MODULE particle_boundaries_mod
             CASE(25_intk)
 
                 ! LOCATION
-                particle_gcorner_boundaries((igrid - 1_intk) * 8_intk + icorn)%location(1) =  1_intk
-                particle_gcorner_boundaries((igrid - 1_intk) * 8_intk + icorn)%location(2) =  1_intk
-                particle_gcorner_boundaries((igrid - 1_intk) * 8_intk + icorn)%location(3) = -1_intk
+                particle_gcorner_boundaries((igrid - 1_intk) * 8_intk + icorn)%location(1) =  1.0
+                particle_gcorner_boundaries((igrid - 1_intk) * 8_intk + icorn)%location(2) =  1.0
+                particle_gcorner_boundaries((igrid - 1_intk) * 8_intk + icorn)%location(3) = -1.0
 
                 ! FACE COORDINATES
                 particle_gcorner_boundaries((igrid - 1_intk) * 8_intk + icorn)%face_coord(1) = maxx
@@ -2427,9 +2427,9 @@ MODULE particle_boundaries_mod
             CASE(26_intk)   
 
                 ! LOCATION
-                particle_gcorner_boundaries((igrid - 1_intk) * 8_intk + icorn)%location(1) =  1_intk
-                particle_gcorner_boundaries((igrid - 1_intk) * 8_intk + icorn)%location(2) =  1_intk
-                particle_gcorner_boundaries((igrid - 1_intk) * 8_intk + icorn)%location(3) =  1_intk
+                particle_gcorner_boundaries((igrid - 1_intk) * 8_intk + icorn)%location(1) =  1.0
+                particle_gcorner_boundaries((igrid - 1_intk) * 8_intk + icorn)%location(2) =  1.0
+                particle_gcorner_boundaries((igrid - 1_intk) * 8_intk + icorn)%location(3) =  1.0
 
                 ! FACE COORDINATES
                 particle_gcorner_boundaries((igrid - 1_intk) * 8_intk + icorn)%face_coord(1) = maxx
