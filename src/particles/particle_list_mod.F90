@@ -681,6 +681,7 @@ CONTAINS    !===================================
 
             CALL RANDOM_NUMBER(grid_rn)
             
+            grid_counter = SIZE(my_grid_volume_fractions)
             DO j = 1, nmygridslvl(particle_level)
                 IF (grid_rn <= my_grid_volume_fractions(j)) THEN
                     grid_counter = j
