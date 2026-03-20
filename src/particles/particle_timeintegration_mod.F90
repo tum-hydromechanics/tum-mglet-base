@@ -662,28 +662,13 @@ CONTAINS
         REAL(realk) :: pdx_eff, pdy_eff, pdz_eff
         LOGICAL :: dreplace
 
-
-!TYPE(particle_gcorner_boundaries_t) :: gcorner_boundary_test_arr(ngrid * 8)
-!!$omp target map(tofrom: gcorner_boundary_test_arr)
-!    gcorner_boundary_test_arr = particle_gcorner_boundaries
-!!$omp end target
-!IF (myid == 0) THEN
-!        DO igrid = 1, ngrid
-!            DO icorn = 1, ncorn
-!                WRITE(*, *) "------ (Corner) Boundaries, Grid:   ", igrid, " Corner:   ", icorn, "------"
-!                WRITE(*, *) "Face Neighbour Grids:   ", gcorner_boundary_test_arr((igrid - 1) * 8 + icorn)%face_neighbours
-!                WRITE(*, *) "Normals:   ", gcorner_boundary_test_arr((igrid - 1) * 8 + icorn)%face_normals
-!            END DO
-!        END DO
-!END IF
-
         CALL start_timer(900)
 
         IF (dadvection) THEN
             !$omp target update to(u_offload, v_offload, w_offload)
         END IF
         
-        CALL write_particle_list_txt(itstep, 'pre')
+        !CALL write_particle_list_txt(itstep, 'pre')
 
 #if defined __INTEL_COMPILER
         !$omp target update to(my_particle_list%particles)
@@ -829,7 +814,7 @@ CONTAINS
         !$omp target update from(my_particle_list)
 #endif
 
-        CALL write_particle_list_txt(itstep, 'pos')
+        !CALL write_particle_list_txt(itstep, 'pos')
 
         CALL stop_timer(900)
 

@@ -680,10 +680,12 @@ CONTAINS    !===================================
             valid_location = .TRUE.
 
             CALL RANDOM_NUMBER(grid_rn)
-
-            grid_counter = 1
-            DO WHILE (grid_rn > my_grid_volume_fractions(grid_counter))
-                grid_counter = grid_counter + 1
+            
+            DO j = 1, nmygridslvl(particle_level)
+                IF (grid_rn <= my_grid_volume_fractions(j)) THEN
+                    grid_counter = j
+                    EXIT
+                END IF
             END DO
 
             igrid = mygridslvl(grid_counter, particle_level)
