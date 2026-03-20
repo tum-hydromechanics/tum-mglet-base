@@ -30,7 +30,7 @@ MODULE gc_flowstencils_mod
     TYPE(int_stencils_t), ALLOCATABLE, TARGET :: wpoldsol(:), wpoldsolvel(:)
     TYPE(real_stencils_t), ALLOCATABLE, TARGET :: woldsol(:), woldsolvel(:)
 
-    PUBLIC :: create_flowstencils, setpointvalues, setibvalues, getibvalues, &
+    PUBLIC :: create_flowstencils, setpointvalues, setpointvalues_all, setibvalues, getibvalues, &
         finish_flowstencils
 
 CONTAINS

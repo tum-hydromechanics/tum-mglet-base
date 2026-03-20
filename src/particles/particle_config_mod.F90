@@ -10,6 +10,7 @@ MODULE particle_config_mod
     USE timer_mod
     USE grids_mod
     USE utils_mod
+    USE fort7_mod
     USE flowcore_mod, ONLY: solve_flow ! to check compatability of particle rk scheme
 
     IMPLICIT NONE
@@ -246,6 +247,17 @@ CONTAINS
         != = = = = = = = = = ADVECTION = = = = = = = = = =
 
         CALL pconf%get_value("/duse_avg_flow", duse_avg_flow, .FALSE.)
+
+        IF (duse_avg_flow .AND. .NOT. dcont) THEN
+            WRITE(*, *) "ERROR: Using the averaged flow field for particles requires continue to be set true."
+            WRITE(*, *) "HINT: A typical combination would be:"
+            WRITE(*, *) "      read: true"
+            WRITE(*, *) "      write: false"
+            WRITE(*, *) "      continue: true"
+            WRITE(*, *) "      solve flow: false"
+            WRITE(*, *) "      duse_avg_flow: true"
+            CALL errr(__FILE__,__LINE__)
+        END IF
 
         CALL pconf%get_value("/rk_method", prkmethod, "euler")
 

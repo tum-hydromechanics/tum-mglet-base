@@ -18,6 +18,9 @@ CONTAINS
 
     SUBROUTINE init_particle_timeintegration()
 
+        USE gc_flowstencils_mod
+        USE bound_flow_mod
+
         CALL start_timer(900)
         CALL start_timer(910)
 
@@ -29,6 +32,7 @@ CONTAINS
             BLOCK
                 TYPE(field_t), POINTER :: pwu_avg_f, pwv_avg_f, pww_avg_f
                 TYPE(field_t), POINTER :: u_avg_f, v_avg_f, w_avg_f
+                INTEGER(intk) :: ilevel
 
                 CALL set_field("PWU_AVG", istag=1, buffers=.TRUE.)
                 CALL set_field("PWV_AVG", jstag=1, buffers=.TRUE.)
@@ -42,7 +46,27 @@ CONTAINS
                 CALL get_field(v_avg_f, "V_AVG")
                 CALL get_field(w_avg_f, "W_AVG")
 
-                CALL setpointvalues(pwu_avg_f, pwv_avg_f, pww_avg_f, u_avg_f, v_avg_f, w_avg_f, .TRUE.)
+                pwu_avg_f%arr = u_avg_f%arr
+                pwv_avg_f%arr = v_avg_f%arr
+                pww_avg_f%arr = w_avg_f%arr
+
+                IF (ib%type == "GHOSTCELL") THEN
+                    ! mimic setpointvalues (cannot call setpointvalues because AVG fields have no field buffer) 
+                    CALL setpointvalues_all('X', pwu_avg_f, pwv_avg_f, pww_avg_f)
+                    CALL setpointvalues_all('Y', pwu_avg_f, pwv_avg_f, pww_avg_f)
+
+                    DO ilevel = minlevel, maxlevel
+                        CALL connect(ilevel, 1, v1=pwu_avg_f, v2=pwv_avg_f, v3=pww_avg_f, geom=.TRUE.)
+                        CALL bound_flow%bound(ilevel, pwu_avg_f, pwv_avg_f, pww_avg_f)
+                    END DO
+
+                    CALL setpointvalues_all('Z', pwu_avg_f, pwv_avg_f, pww_avg_f)
+                ELSE
+                    DO ilevel = minlevel, maxlevel
+                        CALL connect(ilevel, 1, v1=pwu_avg_f, v2=pwv_avg_f, v3=pww_avg_f, geom=.TRUE.)
+                        CALL bound_flow%bound(ilevel, pwu_avg_f, pwv_avg_f, pww_avg_f)
+                    END DO
+                END IF
             END BLOCK
 
         END IF
