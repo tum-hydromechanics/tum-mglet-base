@@ -765,8 +765,6 @@ CONTAINS
                         CALL prkstep(pdx_pot, pdy_pot, pdz_pot, pu_adv, pv_adv, pw_adv, dt, &
                         A_offload(irk), B_offload(irk), pdx, pdy, pdz)
 
-WRITE(*, *) "pu", pu_adv, "pv", pv_adv, "pw", pw_adv
-
                         ! Particle Boundary Interaction
                         CALL move_particle_target3(my_particle_list%particles(ipart), pstag, pdx, pdy, pdz, &
                         pdx_eff, pdy_eff, pdz_eff, particle_gcorner_boundaries((igrid - 1) * 8_intk + icorn), obstacles, dreplace)
