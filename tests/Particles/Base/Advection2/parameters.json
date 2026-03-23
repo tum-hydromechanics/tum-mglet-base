@@ -52,6 +52,7 @@
         "terminal": "verbose",
         "snapshot_step": 1,
         "dinterp": true,
-        "rk_method": "euler"
+        "rk_method": "euler",
+        "grid_boundary_coupling": "SCAL"
     }
 }

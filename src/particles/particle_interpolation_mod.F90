@@ -55,6 +55,8 @@ CONTAINS    !===================================
         INTEGER(intk) :: p_ip, p_im, p_jp, p_jm, p_kp, p_km
         REAL(realk) :: p_x, p_y, p_z, alpha, beta, gamma, delta
 
+        ! TODO: FIX GRADIENTS AT NO FLUX GRID BOUNDARIES !!!
+
         !just for readability of the following expressions
         p_i = particle%ijkcell(1)
         p_j = particle%ijkcell(2)

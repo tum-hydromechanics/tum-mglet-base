@@ -91,7 +91,7 @@ CONTAINS
                     END DO
                 END IF
             END BLOCK
-
+            
         END IF
 
         CALL stop_timer(910)
@@ -221,7 +221,7 @@ CONTAINS
                 ! for debugging
                 IF (TRIM(particle_terminal) == "verbose") THEN
                     WRITE(*,'("Pre Motion - Particle Status:")')
-                    CALL print_particle_status(my_particle_list%particles(i))
+                    CALL print_particle_status(my_particle_list%particles(ipart))
                     WRITE(*, '()')
                 END IF
 
@@ -764,6 +764,8 @@ CONTAINS
 
                         CALL prkstep(pdx_pot, pdy_pot, pdz_pot, pu_adv, pv_adv, pw_adv, dt, &
                         A_offload(irk), B_offload(irk), pdx, pdy, pdz)
+
+WRITE(*, *) "pu", pu_adv, "pv", pv_adv, "pw", pw_adv
 
                         ! Particle Boundary Interaction
                         CALL move_particle_target3(my_particle_list%particles(ipart), pstag, pdx, pdy, pdz, &

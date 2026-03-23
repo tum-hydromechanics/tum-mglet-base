@@ -59,6 +59,9 @@ MODULE particle_config_mod
     REAL(realk) :: truncation_limit ! "particles/truncation_limit"
     REAL(realk) :: D(3) ! "particles/D"
 
+    ! BOUNDARIES
+    CHARACTER(len = 4) :: bc_coupling_mode ! must be "FLOW", "SCAL" or "PART"
+
     ! STATISTICS (GRID AND SLICE SAMPLES)
     LOGICAL :: dgridstat = .FALSE. ! "particles/dgridstat"
     INTEGER(intk) :: rt_ittot_start ! "particles/rt_ittot_start"
@@ -277,9 +280,9 @@ CONTAINS
         !    CALL errr(__FILE__, __LINE__)
         !END IF
 
-        !IF (.NOT. solve_flow .AND. .NOT. duse_avg_flow) THEN
-        !    dadvection = .FALSE.
-        !END IF
+        IF (.NOT. solve_flow .AND. .NOT. duse_avg_flow) THEN
+            WRITE(*, *) "WARNING: This combination is not supported and might lead to flawed/unexpected results!"
+        END IF
 
         != = = = = = = = = = DIFFUSION = = = = = = = = = =
 
@@ -345,6 +348,18 @@ CONTAINS
         IF (D(1) <= EPSILON(D(1)) .AND. D(2) <= EPSILON(D(2)) .AND. D(3) <= EPSILON(D(3))) THEN
             ddiffusion = .FALSE.
             dput_seed = .FALSE.
+        END IF
+
+        != = = = = = = = = = BOUNDARIES = = = = = = = = = =
+
+        CALL pconf%get_value("/grid_boundary_coupling", bc_coupling_mode, "FLOW")
+
+
+        IF (.NOT. bc_coupling_mode == "FLOW" .AND. .NOT. bc_coupling_mode == "SCAL" .AND. .NOT. bc_coupling_mode == "PART") THEN
+            WRITE(*, *) "ERROR: The specified grid_broundary_coupling mode is invalid!"
+            WRITE(*, *) "HINT: FLOW, SCAL, or PART are valid characters for grid_boundary_coupling."
+            WRITE(*, *) "      For the implications of those options, refer to the get_particle_bc() Routine"
+            CALL errr(__FILE__, __LINE__)
         END IF
 
         != = = = = = = = = = STATISTICS = = = = = = = = = =
@@ -602,6 +617,9 @@ CONTAINS
                     WRITE(*, '("        Global Diffusion Const. Dy:       ", E12.3)') D(2)
                     WRITE(*, '("        Global Diffusion Const. Dz:       ", E12.3)') D(3)
                     END IF
+                    ! BOUNDARIES
+                    WRITE(*, '("    Grid Boundaries:")')
+                    WRITE(*, '("        Particle Grid Boundary Coupling:  ", A12)') bc_coupling_mode
                     ! STATISTICS
                     WRITE(*, '("    Statistics:")')
                     WRITE(*, '("        Collecting Grid Statistics:       ", L12)') dgridstat

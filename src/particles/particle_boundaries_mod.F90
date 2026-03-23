@@ -11,8 +11,6 @@ MODULE particle_boundaries_mod
 
     IMPLICIT NONE
 
-    CHARACTER(len = 4) :: bc_coupling_mode = "FLOW" ! must be "FLOW", "SCAL" or "PART"
-
     INTEGER(intk), PARAMETER :: facelist_b(4,26) = RESHAPE((/ &
         1, 1, 0, 0, &
         1, 2, 0, 0, &
@@ -634,8 +632,9 @@ MODULE particle_boundaries_mod
             ! motion vector is reflected towards temp_grid
             IF (lx >= 0.0_realk) THEN
                 iobst_local = 0
+                ! TODO: remove this projection! the projection causes an unphysical behaviour near edges and corners!
                 ! if a particle is already on a face (esp. edge or corner), its future coordinates have to be
-                ! "projected" to assign the right ecit face (otherwise, particles might get stuck on edges or corners)
+                ! "projected" to assign the right exit face (otherwise, particles might get stuck on edges or corners)
                 CALL get_exit_face(temp_grid, x + dx, y + dy, z + dz, dist, iface)
                 RETURN
             END IF
@@ -1432,6 +1431,10 @@ MODULE particle_boundaries_mod
 
         ! to avoid branch divergence here, just iterate to the max. number of iterations that would be a stoping criterion anyways
         DO i = 1, 10
+
+!WRITE(*,*) ""
+!WRITE(*,*) ">>>>> ipart: ", particle%ipart, " | x: ", particle%x, " | y: ", particle%y, " | z: ", particle%z, &
+!  " | dx: ", dx , " | dy: ", dy, " | dz: ", dz
 
             idir = 0
             s = 1.0
