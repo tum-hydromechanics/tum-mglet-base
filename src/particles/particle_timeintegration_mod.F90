@@ -653,7 +653,7 @@ CONTAINS
         REAL(realk), POINTER, CONTIGUOUS, DIMENSION(:, :, :) :: pwu, pwv, pww
         TYPE(obstacle_t), POINTER, CONTIGUOUS, DIMENSION(:) :: obstacles
 
-        INTEGER(intk) :: irk, gnp, ltid
+        INTEGER(intk) :: irk
         INTEGER(intk) :: pstag(3)
         REAL(realk) :: bbox(6)
         REAL(realk) :: pu_adv, pv_adv, pw_adv
@@ -692,7 +692,7 @@ CONTAINS
 #else 
         !$omp target map(tofrom: dev_num, num_teams, num_threads)
 #endif
-        !$omp teams distribute private(igrid, gnp, ltid, ipart, icorn, pstag, ii, jj, kk, &
+        !$omp teams distribute private(igrid, ipart, icorn, pstag, ii, jj, kk, &
         !$omp irk, pu_adv, pv_adv, pw_adv, pdx, pdy, pdz, pdx_pot, pdy_pot, pdz_pot, pdx_eff, pdy_eff, pdz_eff, &
         !$omp x, y, z, dx, dy, dz, ddx, ddy, ddz, pwu, pwv, pww, obstacles, bbox) reduction(max: num_threads)
         DO i = 1, nmy_particle_grids
@@ -732,9 +732,7 @@ CONTAINS
             
             CALL get_bbox_target(bbox(1), bbox(2), bbox(3), bbox(4), bbox(5), bbox(6), igrid)
             
-            gnp = grids_np(i)
-
-            !$omp parallel do private(ltid, ipart, icorn, pstag) firstprivate(igrid, gnp, ii, jj, kk, &
+            !$omp parallel do private(ipart, icorn, pstag) firstprivate(igrid, ii, jj, kk, &
             !$omp irk, pu_adv, pv_adv, pw_adv, pdx, pdy, pdz, pdx_pot, pdy_pot, pdz_pot, pdx_eff, pdy_eff, pdz_eff, bbox) &
             !$omp shared(x, y, z, dx, dy, dz, ddx, ddy, ddz, pwu, pwv, pww, obstacles)
             DO j = 1, grids_np(i)
@@ -742,14 +740,8 @@ CONTAINS
                 !number of threads in the team (working on j-loop)
                 num_threads = omp_get_num_threads()
                 
-                !local thread id (ZERO INDEXING)
-                ltid = omp_get_thread_num()
-
-                !compute ipart such that each thread processes a coalesced bunch of particles
-                !hint: integer division leads to integer result by truncation towards zero 
-                !-----|-- grid displ --|---------- grid local displacement for each thread ------------|----- thread local iter. -----
-                ipart = plist_displ(i) + ltid * (gnp / num_threads) + MIN(MOD(gnp, num_threads), ltid) + (j - 1) / num_threads + 1
-
+                ipart = plist_displ(i) + j
+                
                 CALL get_particle_gcorner_target(my_particle_list%particles(ipart), bbox, icorn)
 
                 pstag = 0_intk
