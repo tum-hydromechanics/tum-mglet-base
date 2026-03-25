@@ -1604,15 +1604,14 @@ MODULE particle_boundaries_mod
         INTEGER(intk), INTENT(inout) :: iobst_local
 
         !local variables
-        INTEGER(intk) :: i, j
+        INTEGER(intk) :: i, j, idir_arr(1)
         REAL(realk) :: l_a(3), r(3), ratio
-        TYPE(reduction_pair_t) :: r_dir_pair 
 
         ! STEP 2 - GRID BOUNDARIES
 
         idir = 0_intk
         
-        !$omp simd reduction(maxpair: r_dir_pair)
+        !$omp simd
         DO i = 1, 3
             ! abs distance of particle to grid boundaries
             l_a(i) = ABS(cvec(i) - gcorner_boundary%face_coord(i))
@@ -1621,29 +1620,23 @@ MODULE particle_boundaries_mod
             ELSE
                 r(i) = gcorner_boundary%location(i) * ((-1_intk) ** pstag(i)) * ((s * dvec(i)) / (l_a(i)))
             END IF
-            ! store thrad local maximum
-            IF (r_dir_pair%value < r(i)) THEN
-                r_dir_pair%value = r(i)
-                r_dir_pair%tag = i
-            END IF
         END DO
 
-        IF (r_dir_pair%value < 1.0_realk) THEN
-            deff_vec(1) = deff_vec(1) + dvec(1) * s
-            deff_vec(2) = deff_vec(2) + dvec(2) * s
-            deff_vec(3) = deff_vec(3) + dvec(3) * s
-            cvec(1) = cvec(1) + dvec(1) * s
-            cvec(2) = cvec(2) + dvec(2) * s
-            cvec(3) = cvec(3) + dvec(3) * s
-            dvec(1) = dvec(1) - dvec(1) * s
-            dvec(2) = dvec(2) - dvec(2) * s
-            dvec(3) = dvec(3) - dvec(3) * s
+        IF (MAX(r(1), r(2), r(3)) < 1.0_realk) THEN
+            !$omp simd
+            DO i = 1, 3
+                deff_vec(i) = deff_vec(i) + dvec(i) * s
+                cvec(i) = cvec(i) + dvec(i) * s
+                dvec(i) = dvec(i) - dvec(i) * s
+            END DO
             RETURN
         END IF
 
         iobst_local = 0_intk
 
-        idir = r_dir_pair%tag
+        ! is there a nicer way?
+        idir_arr = MAXLOC(r)
+        idir = idir_arr(1)
 
         ratio = l_a(idir) / ABS(dvec(idir))
 
