@@ -1415,7 +1415,6 @@ MODULE particle_boundaries_mod
         
         ! local variables
         INTEGER(intk) :: idir, iobst_local, i
-        INTEGER(intk) :: pstag_counter(3)
         REAL(realk) :: n(3)
         REAL(realk) :: s, temp 
 
@@ -1427,7 +1426,6 @@ MODULE particle_boundaries_mod
 
         iobst_local = 0
         idir = 0
-        pstag_counter = 0
 
         ! to avoid branch divergence here, just iterate to the max. number of iterations that would be a stoping criterion anyways
         DO i = 1, 10
@@ -1481,7 +1479,6 @@ MODULE particle_boundaries_mod
 
                 !update pstag (normal vector idir component must be zero or point inwards for this method to work)
                 pstag(idir) = pstag(idir) + 1 + NINT(n(idir) * gcorner_boundary%location(idir))
-                pstag_counter(idir) = pstag_counter(idir) + 1_intk
             END IF
 
         END DO
