@@ -1428,7 +1428,10 @@ MODULE particle_boundaries_mod
 
             s = 1.0
 
-            CALL s_to_obstacle3(particle%igrid, particle%x, particle%y, particle%z, dx, dy, dz, iobst_local_old, iobst_local_new, s, obstacles)
+            IF (n_my_obstacles_on_grid(particle%igrid) > 0) THEN
+                CALL s_to_obstacle3(particle%igrid, particle%x, particle%y, particle%z, dx, dy, dz, &
+                 iobst_local_old, iobst_local_new, s, obstacles)
+            END IF
 
 !WRITE(*,*) "iaprt", particle%ipart, "iobst: ", iobst_local_new, "s: ", s 
 
@@ -1497,7 +1500,7 @@ MODULE particle_boundaries_mod
         TYPE(obstacle_t), POINTER, CONTIGUOUS, DIMENSION(:), INTENT(in) :: obstacles
 
         !local variables
-        INTEGER(intk) :: i, nobst
+        INTEGER(intk) :: i
         REAL(realk) :: sa, sb, sc, sd, a, b, b0, c, c0, d, r
 
         ! STEP 1 - OBSTACLES
@@ -1512,13 +1515,13 @@ MODULE particle_boundaries_mod
         ! first coefficient
         a = (dx**2 + dy**2 + dz**2)
 
+        IF (dx**2 + dy**2 + dz**2 == 0.0) RETURN
+        
         b0 = 2*x*dx + 2*y*dy + 2*z*dz
         c0 = x**2 + y**2 + z**2
 
         ! iterate over all obstacles of the grid
-        nobst = n_my_obstacles_on_grid(old_grid) * a_greater_b(a, 0.0_realk)
-
-        DO i = 1, nobst
+        DO i = 1, n_my_obstacles_on_grid(old_grid)
 
             ! check if a particle interacts with the obstacle it has been deflected from in the previous timestep
             IF (i == iobst_local_old .OR. obstacles(i)%iobst < 0) THEN
