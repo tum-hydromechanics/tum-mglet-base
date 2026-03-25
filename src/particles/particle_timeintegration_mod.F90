@@ -728,7 +728,7 @@ CONTAINS
             CALL ptr_to_grid_3(v_offload, igrid, pwv)
             CALL ptr_to_grid_3(w_offload, igrid, pww)
 
-            obstacles => my_obstacles_offload(obstacle_displ(igrid) + 1: obstacle_displ(igrid) + MAX(1_intk, n_my_obstacles_on_grid(igrid)))
+            obstacles => my_obstacles_offload(obstacle_displ(igrid) + 1: obstacle_displ(igrid) + 1_intk + n_my_obstacles_on_grid(igrid))
             
             CALL get_bbox_target(bbox(1), bbox(2), bbox(3), bbox(4), bbox(5), bbox(6), igrid)
             
