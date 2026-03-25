@@ -11,6 +11,19 @@ MODULE particle_boundaries_mod
 
     IMPLICIT NONE
 
+    TYPE :: reduction_pair_t 
+        REAL(realk) :: value = -HUGE(0.0_realk)
+        INTEGER(intk) :: tag = 0
+    END TYPE reduction_pair_t 
+    
+    !$omp declare reduction(minpair : reduction_pair_t : & 
+    !$omp omp_out = merge(omp_in, omp_out, omp_in%value < omp_out%value)) &
+    !$omp initializer( omp_priv = reduction_pair_t( huge(0.0_realk), 0)) 
+    
+    !$omp declare reduction(maxpair : reduction_pair_t : &
+    !$omp omp_out = merge(omp_in, omp_out, omp_in%value > omp_out%value)) & 
+    !$omp initializer( omp_priv = reduction_pair_t(-huge(0.0_realk), 0))
+
     INTEGER(intk), PARAMETER :: facelist_b(4,26) = RESHAPE((/ &
         1, 1, 0, 0, &
         1, 2, 0, 0, &
@@ -1388,7 +1401,7 @@ MODULE particle_boundaries_mod
     END SUBROUTINE to_grid_boundary2
 
 
-    SUBROUTINE move_particle_target3(particle, pstag, dvec, dx_eff, dy_eff, dz_eff, gcorner_boundary, obstacles, dreplace)
+    SUBROUTINE move_particle_target3(particle, pstag, dvec, deff_vec, gcorner_boundary, obstacles, dreplace)
 
         !$omp declare target
 
@@ -1396,7 +1409,7 @@ MODULE particle_boundaries_mod
         TYPE(baseparticle_t), INTENT(inout) :: particle
         INTEGER(intk), INTENT(inout) :: pstag(3)
         REAL(realk), INTENT(inout) :: dvec(3)
-        REAL(realk), INTENT(out) :: dx_eff, dy_eff, dz_eff
+        REAL(realk), INTENT(out) :: deff_vec(3)
         TYPE(particle_gcorner_boundaries_t), INTENT(in) :: gcorner_boundary 
         TYPE(obstacle_t), POINTER, CONTIGUOUS, DIMENSION(:), INTENT(in) :: obstacles
         LOGICAL, INTENT(inout) :: dreplace 
@@ -1408,9 +1421,7 @@ MODULE particle_boundaries_mod
 
         dreplace = .FALSE.
 
-        dx_eff = 0.0
-        dy_eff = 0.0
-        dz_eff = 0.0
+        deff_vec = 0.0
 
         cvec(1) = particle%x
         cvec(2) = particle%y
@@ -1433,8 +1444,8 @@ MODULE particle_boundaries_mod
                  iobst_local_old, iobst_local_new, s, obstacles)
             END IF
 
-            IF (s > 0.0_realk) CALL to_grid_boundary3(gcorner_boundary, pstag, cvec, dvec, &
-             dx_eff, dy_eff, dz_eff, s, idir, iobst_local_new)
+            IF (s > 0.0_realk) CALL to_grid_boundary3(gcorner_boundary, pstag, cvec, dvec, deff_vec, &
+             s, idir, iobst_local_new)
 
             IF (0 < iobst_local_new) THEN
 
@@ -1481,9 +1492,9 @@ MODULE particle_boundaries_mod
         particle%y = cvec(2)
         particle%z = cvec(3)
 
-        !particle%xyz_abs(1) = particle%xyz_abs(1) + dx_eff
-        !particle%xyz_abs(2) = particle%xyz_abs(2) + dy_eff
-        !particle%xyz_abs(3) = particle%xyz_abs(3) + dz_eff
+        !particle%xyz_abs(1) = particle%xyz_abs(1) + deff_vec(1)
+        !particle%xyz_abs(2) = particle%xyz_abs(2) + deff_vec(2)
+        !particle%xyz_abs(3) = particle%xyz_abs(3) + deff_vec(3)
 
     END SUBROUTINE move_particle_target3
 
@@ -1578,7 +1589,7 @@ MODULE particle_boundaries_mod
     END SUBROUTINE s_to_obstacle3
 
 
-    SUBROUTINE to_grid_boundary3(gcorner_boundary, pstag, cvec, dvec, dx_eff, dy_eff, dz_eff, s, idir, iobst_local)
+    SUBROUTINE to_grid_boundary3(gcorner_boundary, pstag, cvec, dvec, deff_vec, s, idir, iobst_local)
 
         !$omp declare target
 
@@ -1587,13 +1598,13 @@ MODULE particle_boundaries_mod
         INTEGER(intk), INTENT(in) :: pstag(3)
         REAL(realk), INTENT(inout) :: cvec(3)
         REAL(realk), INTENT(inout) :: dvec(3)
-        REAL(realk), INTENT(inout) :: dx_eff, dy_eff, dz_eff
+        REAL(realk), INTENT(inout) :: deff_vec(3)
         REAL(realk), INTENT(inout) :: s
         INTEGER(intk), INTENT(out) :: idir
         INTEGER(intk), INTENT(inout) :: iobst_local
 
         !local variables
-        INTEGER(intk) :: i
+        INTEGER(intk) :: i, j
         REAL(realk) :: l_a(3), r(3), ratio
         TYPE(reduction_pair_t) :: r_dir_pair 
 
@@ -1601,7 +1612,7 @@ MODULE particle_boundaries_mod
 
         idir = 0_intk
         
-        !$omp simd
+        !$omp simd reduction(maxpair: r_dir_pair)
         DO i = 1, 3
             ! abs distance of particle to grid boundaries
             l_a(i) = ABS(cvec(i) - gcorner_boundary%face_coord(i))
@@ -1610,13 +1621,17 @@ MODULE particle_boundaries_mod
             ELSE
                 r(i) = gcorner_boundary%location(i) * ((-1_intk) ** pstag(i)) * ((s * dvec(i)) / (l_a(i)))
             END IF
+            ! store thrad local maximum
+            IF (r_dir_pair%value < r(i)) THEN
+                r_dir_pair%value = r(i)
+                r_dir_pair%tag = i
+            END IF
         END DO
-        
-        IF (r(1) < 1.0_realk .AND. r(2) < 1.0_realk .AND. r(3) < 1.0_realk) THEN
 
-            dx_eff = dx_eff + dvec(1) * s
-            dy_eff = dy_eff + dvec(2) * s
-            dz_eff = dz_eff + dvec(3) * s
+        IF (r_dir_pair%value < 1.0_realk) THEN
+            deff_vec(1) = deff_vec(1) + dvec(1) * s
+            deff_vec(2) = deff_vec(2) + dvec(2) * s
+            deff_vec(3) = deff_vec(3) + dvec(3) * s
             cvec(1) = cvec(1) + dvec(1) * s
             cvec(2) = cvec(2) + dvec(2) * s
             cvec(3) = cvec(3) + dvec(3) * s
@@ -1628,61 +1643,20 @@ MODULE particle_boundaries_mod
 
         iobst_local = 0_intk
 
-        IF (r(2) <= r(1) .AND. r(3) <= r(1)) THEN
+        idir = r_dir_pair%tag
 
-            idir = 1_intk
+        ratio = l_a(idir) / ABS(dvec(idir))
 
-            ratio = l_a(1) / ABS(dvec(1))
-
-            dx_eff = dx_eff + gcorner_boundary%location(1) * l_a(1)
-            dy_eff = dy_eff + (ratio * dvec(2))
-            dz_eff = dz_eff + (ratio * dvec(3))
-            ! avoid floating point errors and put the particle EXACTLY at the boundary
-            cvec(1) = gcorner_boundary%face_coord(1) 
-            ! avoid particles to hit corners or edges => - EPSILON(x_i) * gcorner_boundary%location(i)
-            cvec(2) = cvec(2) + (ratio * dvec(2)) - EPSILON(cvec(2)) * gcorner_boundary%location(2)
-            cvec(3) = cvec(3) + (ratio * dvec(3)) - EPSILON(cvec(3)) * gcorner_boundary%location(3)
-            dvec(1) = dvec(1) - gcorner_boundary%location(1) * l_a(1)
-            dvec(2) = dvec(2) - (ratio * dvec(2))
-            dvec(3) = dvec(3) - (ratio * dvec(3))
-
-        ELSEIF (r(1) < r(2) .AND. r(3) <= r(2)) THEN
-
-            idir = 2_intk
-            
-            ratio = l_a(2) / ABS(dvec(2))
-
-            dx_eff = dx_eff + (ratio * dvec(1))
-            dy_eff = dy_eff + gcorner_boundary%location(2) * l_a(2)
-            dz_eff = dz_eff + (ratio * dvec(3))
-            ! avoid particles to hit corners or edges => - EPSILON(x_i) * gcorner_boundary%location(i)
-            cvec(1) = cvec(1) + (ratio * dvec(1)) - EPSILON(cvec(1)) * gcorner_boundary%location(1)
-            ! avoid floating point errors and put the particle EXACTLY at the boundary
-            cvec(2) = gcorner_boundary%face_coord(2) 
-            cvec(3) = cvec(3) + (ratio * dvec(3)) - EPSILON(cvec(3)) * gcorner_boundary%location(3)
-            dvec(1) = dvec(1) - (ratio * dvec(1))
-            dvec(2) = dvec(2) - gcorner_boundary%location(2) * l_a(2)
-            dvec(3) = dvec(3) - (ratio * dvec(3))
-
-        ELSEIF (r(1) < r(3) .AND. r(2) < r(3)) THEN
-
-            idir = 3_intk
-
-            ratio = l_a(3) / ABS(dvec(3))
-
-            dx_eff = dx_eff + (ratio * dvec(1))
-            dy_eff = dy_eff + (ratio * dvec(2))
-            dz_eff = dz_eff + gcorner_boundary%location(3) * l_a(3)
-            ! avoid particles to hit corners or edges => - EPSILON(x_i) * gcorner_boundary%location(i)
-            cvec(1) = cvec(1) + (ratio * dvec(1)) - EPSILON(cvec(1)) * gcorner_boundary%location(1)
-            cvec(2) = cvec(2) + (ratio * dvec(2)) - EPSILON(cvec(2)) * gcorner_boundary%location(2)
-            ! avoid floating point errors and put the particle EXACTLY at the boundary
-            cvec(3) = gcorner_boundary%face_coord(3) 
-            dvec(1) = dvec(1) - (ratio * dvec(1))
-            dvec(2) = dvec(2) - (ratio * dvec(2))
-            dvec(3) = dvec(3) - gcorner_boundary%location(3) * l_a(3)
-
-        END IF
+        deff_vec(idir) = deff_vec(idir) + gcorner_boundary%location(idir) * l_a(idir)
+        cvec(idir) = gcorner_boundary%face_coord(idir) 
+        dvec(idir) = dvec(idir) - gcorner_boundary%location(idir) * l_a(idir)
+        !$omp simd
+        DO j = 0, 1
+            i = MOD(idir + j, 3) + 1
+            deff_vec(i) = deff_vec(i) + (ratio * dvec(i))
+            cvec(i) = cvec(i) + (ratio * dvec(i)) - EPSILON(cvec(i)) * gcorner_boundary%location(i)
+            dvec(i) = dvec(i) - (ratio * dvec(i))
+        END DO
 
     END SUBROUTINE to_grid_boundary3
 

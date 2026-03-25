@@ -659,7 +659,7 @@ CONTAINS
         REAL(realk) :: pu_adv, pv_adv, pw_adv
         REAL(realk) :: dvec(3)
         REAL(realk) :: pdx_pot, pdy_pot, pdz_pot
-        REAL(realk) :: pdx_eff, pdy_eff, pdz_eff
+        REAL(realk) :: deff_vec(3)
         LOGICAL :: dreplace
 
         CALL start_timer(900)
@@ -693,7 +693,7 @@ CONTAINS
         !$omp target map(tofrom: dev_num, num_teams, num_threads)
 #endif
         !$omp teams distribute private(igrid, ipart, icorn, pstag, ii, jj, kk, &
-        !$omp irk, pu_adv, pv_adv, pw_adv, dvec, pdx_pot, pdy_pot, pdz_pot, pdx_eff, pdy_eff, pdz_eff, &
+        !$omp irk, pu_adv, pv_adv, pw_adv, dvec, pdx_pot, pdy_pot, pdz_pot, deff_vec, &
         !$omp x, y, z, dx, dy, dz, ddx, ddy, ddz, pwu, pwv, pww, obstacles, bbox) reduction(max: num_threads)
         DO i = 1, nmy_particle_grids
 
@@ -733,7 +733,7 @@ CONTAINS
             CALL get_bbox_target(bbox(1), bbox(2), bbox(3), bbox(4), bbox(5), bbox(6), igrid)
             
             !$omp parallel do private(ipart, icorn, pstag) firstprivate(igrid, ii, jj, kk, &
-            !$omp irk, pu_adv, pv_adv, pw_adv, dvec, pdx_pot, pdy_pot, pdz_pot, pdx_eff, pdy_eff, pdz_eff, bbox) &
+            !$omp irk, pu_adv, pv_adv, pw_adv, dvec, pdx_pot, pdy_pot, pdz_pot, deff_vec, bbox) &
             !$omp shared(x, y, z, dx, dy, dz, ddx, ddy, ddz, pwu, pwv, pww, obstacles)
             DO j = 1, grids_np(i)
 
@@ -759,7 +759,7 @@ CONTAINS
 
                         ! Particle Boundary Interaction
                         CALL move_particle_target3(my_particle_list%particles(ipart), pstag, dvec, &
-                        pdx_eff, pdy_eff, pdz_eff, particle_gcorner_boundaries((igrid - 1) * 8_intk + icorn), obstacles, dreplace)
+                         deff_vec, particle_gcorner_boundaries((igrid - 1) * 8_intk + icorn), obstacles, dreplace)
                         
                         IF (dreplace) THEN
                             CALL replace_particle_target(my_particle_list%particles(ipart), obstacles, kk, jj, ii, x, y, z, dx, dy, dz)
@@ -767,9 +767,9 @@ CONTAINS
                             CALL update_particle_cell_target(my_particle_list%particles(ipart), kk, jj, ii, x, y, z, dx, dy, dz)
                         END IF
 
-                        pdx_pot = pdx_eff / B_offload(irk)
-                        pdy_pot = pdy_eff / B_offload(irk)
-                        pdz_pot = pdz_eff / B_offload(irk)
+                        pdx_pot = deff_vec(1) / B_offload(irk)
+                        pdy_pot = deff_vec(2) / B_offload(irk)
+                        pdz_pot = deff_vec(3) / B_offload(irk)
 
                     ! TODO: reintroduce particle runtime statistics
                     END DO
@@ -781,7 +781,7 @@ CONTAINS
                     CALL generate_diffusive_displacement_target(dt, D(1), D(2), D(3), dvec(1), dvec(2), dvec(3), my_particle_list%particles(ipart)%seed)
 
                     CALL move_particle_target3(my_particle_list%particles(ipart), pstag, dvec, &
-                        pdx_eff, pdy_eff, pdz_eff, particle_gcorner_boundaries((igrid - 1) * 8_intk + icorn), obstacles, dreplace)
+                        deff_vec, particle_gcorner_boundaries((igrid - 1) * 8_intk + icorn), obstacles, dreplace)
 
                     IF (dreplace) THEN
                         CALL replace_particle_target(my_particle_list%particles(ipart), obstacles, kk, jj, ii, x, y, z, dx, dy, dz)
