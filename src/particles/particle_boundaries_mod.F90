@@ -850,7 +850,7 @@ MODULE particle_boundaries_mod
 
             IF (0 < iobst_local) THEN
 
-                CALL reflect_at_obstacle(x, y, z, dx_from_here, dy_from_here, dz_from_here, obstacles(iobst_local + 1))
+                CALL reflect_at_obstacle(x, y, z, dx_from_here, dy_from_here, dz_from_here, obstacles(iobst_local))
 
             ELSEIF (0 < iface) THEN
 
@@ -974,22 +974,22 @@ MODULE particle_boundaries_mod
         DO i = 1, nobst
 
             ! check if a particle interacts with the obstacle it has been deflected from in the previous timestep
-            IF (i == iobst_local .OR. obstacles(i + 1)%iobst < 0) THEN
+            IF (i == iobst_local .OR. obstacles(i)%iobst < 0) THEN
                 CYCLE
             END IF
 
             b = b0 - &
-                2*obstacles(i + 1)%x*dx - &
-                2*obstacles(i + 1)%y*dy - &
-                2*obstacles(i + 1)%z*dz
+                2*obstacles(i)%x*dx - &
+                2*obstacles(i)%y*dy - &
+                2*obstacles(i)%z*dz
             c = c0 + &
-                obstacles(i + 1)%x**2 + &
-                obstacles(i + 1)%y**2 + &
-                obstacles(i + 1)%z**2 - &
-                obstacles(i + 1)%x - &
-                obstacles(i + 1)%y - &
-                obstacles(i + 1)%z - &
-                obstacles(i + 1)%radius**2
+                obstacles(i)%x**2 + &
+                obstacles(i)%y**2 + &
+                obstacles(i)%z**2 - &
+                obstacles(i)%x - &
+                obstacles(i)%y - &
+                obstacles(i)%z - &
+                obstacles(i)%radius**2
             d = b**2 - 4*a*c
 
             IF (d < EPSILON(0.0_realk)) THEN
@@ -1210,6 +1210,196 @@ MODULE particle_boundaries_mod
     END SUBROUTINE to_grid_boundary
 
 
+    SUBROUTINE move_to_boundary_target2(temp_grid, x, y, z, dx, dy, dz, dx_to_b, dy_to_b, dz_to_b, iface, iobst_local, replace, obstacles, bbox)
+
+        !$omp declare target
+
+        ! subroutine arguments
+        INTEGER(intk), INTENT(inout) :: temp_grid
+        REAL(realk), INTENT(inout) :: x, y, z
+        REAL(realk), INTENT(inout) :: dx, dy, dz
+        REAL(realk), INTENT(out) :: dx_to_b, dy_to_b, dz_to_b
+        INTEGER(intk), INTENT(out) :: iface
+        INTEGER(intk), INTENT(inout) :: iobst_local
+        LOGICAL, INTENT(out) :: replace
+        TYPE(obstacle_t), POINTER, CONTIGUOUS, DIMENSION(:), INTENT(in) :: obstacles
+        REAL(realk), INTENT(in) :: bbox(6)
+
+        !local variables
+        INTEGER(intk) :: closestbx, closestby, closestbz, sum
+        REAL(realk) :: dist, s
+        REAL(realk) :: lx, ly, lz
+        REAL(realk) :: newcoord(3)
+
+        replace = .FALSE.
+        s = 1.0_realk
+
+        dx_to_b = 0.0
+        dy_to_b = 0.0
+        dz_to_b = 0.0
+
+        CALL s_to_obstacle2(temp_grid, x, y, z, dx, dy, dz, iobst_local, s, obstacles)
+
+        CALL to_grid_boundary2(temp_grid, x, y, z, dx, dy, dz, dx_to_b, dy_to_b, dz_to_b, s, iobst_local, bbox)
+
+        CALL get_exit_face_target(bbox, x, y, z, dist, iface)
+
+    END SUBROUTINE move_to_boundary_target2
+
+
+    SUBROUTINE s_to_obstacle2(temp_grid, x, y, z, dx, dy, dz, iobst_local, s, obstacles)
+
+        !$omp declare target
+
+        ! subroutine arguments
+        INTEGER(intk), INTENT(in) :: temp_grid
+        REAL(realk), INTENT(in) :: x, y, z
+        REAL(realk), INTENT(in) :: dx, dy, dz
+        INTEGER(intk), INTENT(inout) :: iobst_local
+        REAl(realk), INTENT(inout) :: s
+        TYPE(obstacle_t), POINTER, CONTIGUOUS, DIMENSION(:), INTENT(in) :: obstacles
+
+        !local variables
+        INTEGER(intk) :: i, nobst
+        REAL(realk) :: sa, sb, a, b, b0, c, c0, d, r
+        REAL(realk) :: cond0, cond1, cond2
+
+        ! STEP 1 - OBSTACLES
+
+        ! find intersection points of the line the particle moves on (straight) and the sphere surface
+            ! particle path: X(s) = X + dX * s with s: [0, 1] (X is the vector (x/y/z))
+            ! => |X + dX * s - C| = r (C is the sphere center (cx/cy/cz))
+            ! => (x + dx * s -cx)² + (y + dy * s -cy)² + (z + dz * s -cz)² = r² (r is the sphere radius)
+            ! => s1/s2 = sa/sb = (-b +/- sqrt(b² - 4ac)) / 2a (corefficients see code)
+
+        ! first coefficient
+        a = (dx**2 + dy**2 + dz**2)
+        b0 = 2*x*dx + 2*y*dy + 2*z*dz
+        c0 = x**2 + y**2 + z**2
+
+        ! iterate over all obstacles of the grid
+        nobst = n_my_obstacles_on_grid(temp_grid)
+        DO i = 1, nobst
+
+            ! check if a particle interacts with the obstacle it has been deflected from in the previous timestep
+            cond0 = a_greater_b(i, iobst_local) &
+                    + a_greater_b(iobst_local, i)
+
+            ! sphere dependent coefficients
+            b = b0 - &
+                2*obstacles(i)%x*dx - &
+                2*obstacles(i)%y*dy - &
+                2*obstacles(i)%z*dz
+            c = c0 + &
+                obstacles(i)%x**2 + &
+                obstacles(i)%y**2 + &
+                obstacles(i)%z**2 - &
+                2*x*obstacles(i)%x - &
+                2*y*obstacles(i)%y - &
+                2*z*obstacles(i)%z - &
+                obstacles(i)%radius**2
+            d = b**2 - 4*a*c
+
+            sa = (-b + SQRT(MAX(0.0_realk, d))) / 2 / MAX(EPSILON(a), a)
+            sb = (-b - SQRT(MAX(0.0_realk, d))) / 2 / MAX(EPSILON(a), a)
+
+            cond1 = a_greaterequal_b(sa, 0.0_realk) * a_greaterequal_b(sb, 0.0_realk) &
+                    * a_greater_b(a, 0.0_realk) * a_greater_b(d, 0.0_realk)
+
+            cond2 = a_greater_b(ABS(MAX(sa, sb)), ABS(MIN(sa, sb))) &
+                    * a_greater_b(a, 0.0_realk) * a_greater_b(d, 0.0_realk)
+
+            s = s - (s - MIN(sa, sb)) * cond1 - s * cond2
+
+            iobst_local = iobst_local * NINT(1.0_realk - cond1) &
+                 + i * NINT(cond1)
+
+            iobst_local = iobst_local * NINT(1.0_realk - cond2) &
+                 + i * NINT(cond2)
+        
+        END DO
+
+    END SUBROUTINE s_to_obstacle2
+
+
+    SUBROUTINE to_grid_boundary2(temp_grid, x, y, z, dx, dy, dz, dx_to_b, dy_to_b, dz_to_b, s, iobst_local, bbox)
+
+        !$omp declare target
+
+        ! subroutine arguments
+        INTEGER(intk), INTENT(inout) :: temp_grid
+        REAL(realk), INTENT(inout) :: x, y, z
+        REAL(realk), INTENT(inout) :: dx, dy, dz
+        REAL(realk), INTENT(out) :: dx_to_b, dy_to_b, dz_to_b
+        REAL(realk), INTENT(inout) :: s
+        INTEGER(intk), INTENT(inout) :: iobst_local
+        REAL(realk), INTENT(in) :: bbox(6)
+
+        !local variables
+        INTEGER(intk) :: closestbx, closestby, closestbz, sum
+        REAL(realk) :: lx, ly, lz, dist
+        REAL(realk) :: newcoord(3)
+
+        ! STEP 2 - GRID BOUNDARIES
+        ! signed distance of particle to grid boundaries
+        lx = 0.0_realk + (bbox(1) - x) * a_greater_b(0.0_realk, dx) + (bbox(2) - x) * a_greater_b(dx, 0.0_realk) ! = lx
+        ly = 0.0_realk + (bbox(3) - y) * a_greater_b(0.0_realk, dy) + (bbox(4) - y) * a_greater_b(dy, 0.0_realk) ! = ly
+        lz = 0.0_realk + (bbox(5) - z) * a_greater_b(0.0_realk, dz) + (bbox(6) - z) * a_greater_b(dz, 0.0_realk) ! = lz
+        
+        closestbx = 0
+        closestby = 0
+        closestbz = 0
+
+        ! check which face is hit first
+        IF (ABS(dx) > 0.0_realk) THEN
+            closestbx = MAX(0_intk, CEILING(s - MAX(0.0_realk, lx/dx)) * INT(SIGN(1.0_realk, lx/dx)))
+            s = MIN(s, MAX(0.0_realk, lx/dx))
+        END IF
+
+        IF (ABS(dy) > 0.0_realk) THEN
+            closestby = MAX(0_intk, CEILING(s - MAX(0.0_realk, ly/dy)) * INT(SIGN(1.0_realk, ly/dy)))
+            closestbx = MAX(0_intk, closestbx - closestby)
+            s = MIN(s, MAX(0.0_realk, ly/dy))
+        END IF
+
+        IF (ABS(dz) > 0.0_realk) THEN
+            closestbz = MAX(0_intk, CEILING(s - MAX(0.0_realk, lz/dz)) * INT(SIGN(1.0_realk, lz/dz)))
+            closestby = MAX(0_intk, closestby - closestbz)
+            closestbx = MAX(0_intk, closestbx - closestbz)
+            s = MIN(s, MAX(0.0_realk, lz/dz))
+        END IF
+
+        dx_to_b = 0.0_realk + dx * s
+        dy_to_b = 0.0_realk + dy * s
+        dz_to_b = 0.0_realk + dz * s
+
+        dx = dx - dx_to_b
+        dy = dy - dy_to_b
+        dz = dz - dz_to_b
+
+        newcoord(1) = bbox(1)
+        newcoord(2)  = x + dx_to_b
+        newcoord(3)  = bbox(2)
+        x = newcoord(2 + closestbx * INT(SIGN(1.0_realk, dx)))
+        
+        newcoord(1) = bbox(3)
+        newcoord(2)  = y + dy_to_b
+        newcoord(3)  = bbox(4)
+        y = newcoord(2 + closestby * INT(SIGN(1.0_realk, dy)))
+        
+        newcoord(1) = bbox(5)
+        newcoord(2) = z + dz_to_b
+        newcoord(3) = bbox(6)
+        z = newcoord(2 + closestbz * INT(SIGN(1.0_realk, dz)))
+
+        sum = closestbx + closestby + closestbz
+        IF (sum > 0) THEN
+            iobst_local = 0_intk
+        END IF
+
+    END SUBROUTINE to_grid_boundary2
+
+
     SUBROUTINE move_particle_target3(particle, pstag, dx, dy, dz, dx_eff, dy_eff, dz_eff, gcorner_boundary, obstacles, dreplace)
 
         !$omp declare target
@@ -1225,6 +1415,7 @@ MODULE particle_boundaries_mod
         
         ! local variables
         INTEGER(intk) :: idir, iobst_local, i
+        INTEGER(intk) :: pstag_counter(3)
         REAL(realk) :: n(3)
         REAL(realk) :: s, temp 
 
@@ -1236,6 +1427,7 @@ MODULE particle_boundaries_mod
 
         iobst_local = 0
         idir = 0
+        pstag_counter = 0
 
         ! to avoid branch divergence here, just iterate to the max. number of iterations that would be a stoping criterion anyways
         DO i = 1, 10
@@ -1252,39 +1444,45 @@ MODULE particle_boundaries_mod
             IF (s > 0.0_realk) CALL to_grid_boundary3(gcorner_boundary, pstag, particle%x, particle%y, particle%z, &
              dx, dy, dz, dx_eff, dy_eff, dz_eff, s, idir, iobst_local)
 
-            ! reflect at obstacle
-            ! compute normal vector
-            n(1) = particle%x - obstacles(iobst_local + 1)%x
-            n(2) = particle%y - obstacles(iobst_local + 1)%y
-            n(3) = particle%z - obstacles(iobst_local + 1)%z
+            IF (0 < iobst_local) THEN
 
-            ! magnitude
-            temp = SQRT(n(1)**2 + n(2)**2 + n(3)**2)
+                ! reflect at obstacle
+                ! compute normal vector
+                n(1) = particle%x - obstacles(iobst_local)%x
+                n(2) = particle%y - obstacles(iobst_local)%y
+                n(3) = particle%z - obstacles(iobst_local)%z
 
-            n(1) = n(1) / temp
-            n(2) = n(2) / temp
-            n(3) = n(3) / temp
+                ! magnitude
+                temp = SQRT(n(1)**2 + n(2)**2 + n(3)**2)
 
-            ! alter displacement verctor
-            ! dot product
-            temp = MIN((n(1) * dx + n(2) * dy + n(3) * dz), 0.0)
+                n(1) = n(1) / temp
+                n(2) = n(2) / temp
+                n(3) = n(3) / temp
 
-            dx = dx - 2 * temp * n(1) * REAL(iobst_local)
-            dy = dy - 2 * temp * n(2) * REAL(iobst_local)
-            dz = dz - 2 * temp * n(3) * REAL(iobst_local)   
+                ! alter displacement verctor
+                ! dot product
+                temp = MIN((n(1) * dx + n(2) * dy + n(3) * dz), 0.0)
 
-            CALL get_gcorner_normal(gcorner_boundary, pstag, idir, n)
-            
-            ! reflect at grid boundary
-            ! dot product
-            temp = MIN((n(1) * dx + n(2) * dy + n(3) * dz), 0.0)
+                dx = dx - 2 * temp * n(1)
+                dy = dy - 2 * temp * n(2)
+                dz = dz - 2 * temp * n(3)
 
-            dx = dx - 2 * temp * n(1) * REAL(idir)
-            dy = dy - 2 * temp * n(2) * REAL(idir)
-            dz = dz - 2 * temp * n(3) * REAL(idir)
+            ELSEIF (0 < idir) THEN
+                
+                CALL get_gcorner_normal(gcorner_boundary, pstag, idir, n)
+                
+                ! reflect at grid boundary
+                ! dot product
+                temp = MIN((n(1) * dx + n(2) * dy + n(3) * dz), 0.0)
 
-            !update pstag (normal vector idir component must be zero or point inwards for this method to work)
-            pstag(idir) = pstag(idir) + (1 + NINT(n(idir) * gcorner_boundary%location(idir)) * MIN(idir, 1_intk))
+                dx = dx - 2 * temp * n(1)
+                dy = dy - 2 * temp * n(2)
+                dz = dz - 2 * temp * n(3)
+
+                !update pstag (normal vector idir component must be zero or point inwards for this method to work)
+                pstag(idir) = pstag(idir) + 1 + NINT(n(idir) * gcorner_boundary%location(idir))
+                pstag_counter(idir) = pstag_counter(idir) + 1_intk
+            END IF
 
         END DO
 
@@ -1516,11 +1714,11 @@ MODULE particle_boundaries_mod
 
             DO i = 1, n_my_obstacles_on_grid(igrid)
 
-                dist_to_center = SQRT((obstacles(i + 1)%x - x_new)**2 + &
-                 (obstacles(i + 1)%y - y_new)**2 + &
-                 (obstacles(i + 1)%z - z_new)**2)
+                dist_to_center = SQRT((obstacles(i)%x - x_new)**2 + &
+                 (obstacles(i)%y - y_new)**2 + &
+                 (obstacles(i)%z - z_new)**2)
 
-                IF (dist_to_center < obstacles(i + 1)%radius + EPSILON(dist_to_center)) THEN
+                IF (dist_to_center < obstacles(i)%radius + EPSILON(dist_to_center)) THEN
                     valid_location = .FALSE.
                     EXIT
                 ELSE
