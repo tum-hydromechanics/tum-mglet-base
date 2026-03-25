@@ -97,9 +97,9 @@ CONTAINS    !===================================
             ALLOCATE(my_obstacles(0))
             ALLOCATE(my_obstacle_pointers(0))
             ! allocate to size 1 to avoid omp trouble ...
-            ALLOCATE(my_obstacles_offload(1))
-            ALLOCATE(obstacle_displ(1))
-            obstacle_displ = 0
+            ALLOCATE(my_obstacles_offload(0:0))
+            ALLOCATE(obstacle_displ(ngrid))
+            obstacle_displ = -1
             ALLOCATE(n_my_obstacles_on_grid(ngrid))
             n_my_obstacles_on_grid = 0
             RETURN
@@ -419,9 +419,10 @@ CONTAINS    !===================================
             obstacle_displ(igrid) = obstacle_displ(igrid - 1) + n_my_obstacles_on_grid(igrid - 1)
         END DO
 
-        ALLOCATE(my_obstacles_offload(SUM(n_my_obstacles_on_grid)))
+        ALLOCATE(my_obstacles_offload(0:SUM(n_my_obstacles_on_grid)))
         
         DO igrid = 1, ngrid
+            IF (n_my_obstacles_on_grid(igrid) == 0) obstacle_displ(igrid) = -1
             DO i = 1, n_my_obstacles_on_grid(igrid)
                 my_obstacles_offload(obstacle_displ(igrid) + i) = my_obstacles(my_obstacle_pointers(igrid)%grid_obstacles(i))
             END DO
