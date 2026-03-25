@@ -657,7 +657,7 @@ CONTAINS
         INTEGER(intk) :: pstag(3)
         REAL(realk) :: bbox(6)
         REAL(realk) :: pu_adv, pv_adv, pw_adv
-        REAL(realk) :: pdx, pdy, pdz
+        REAL(realk) :: dvec(3)
         REAL(realk) :: pdx_pot, pdy_pot, pdz_pot
         REAL(realk) :: pdx_eff, pdy_eff, pdz_eff
         LOGICAL :: dreplace
@@ -693,7 +693,7 @@ CONTAINS
         !$omp target map(tofrom: dev_num, num_teams, num_threads)
 #endif
         !$omp teams distribute private(igrid, ipart, icorn, pstag, ii, jj, kk, &
-        !$omp irk, pu_adv, pv_adv, pw_adv, pdx, pdy, pdz, pdx_pot, pdy_pot, pdz_pot, pdx_eff, pdy_eff, pdz_eff, &
+        !$omp irk, pu_adv, pv_adv, pw_adv, dvec, pdx_pot, pdy_pot, pdz_pot, pdx_eff, pdy_eff, pdz_eff, &
         !$omp x, y, z, dx, dy, dz, ddx, ddy, ddz, pwu, pwv, pww, obstacles, bbox) reduction(max: num_threads)
         DO i = 1, nmy_particle_grids
 
@@ -733,7 +733,7 @@ CONTAINS
             CALL get_bbox_target(bbox(1), bbox(2), bbox(3), bbox(4), bbox(5), bbox(6), igrid)
             
             !$omp parallel do private(ipart, icorn, pstag) firstprivate(igrid, ii, jj, kk, &
-            !$omp irk, pu_adv, pv_adv, pw_adv, pdx, pdy, pdz, pdx_pot, pdy_pot, pdz_pot, pdx_eff, pdy_eff, pdz_eff, bbox) &
+            !$omp irk, pu_adv, pv_adv, pw_adv, dvec, pdx_pot, pdy_pot, pdz_pot, pdx_eff, pdy_eff, pdz_eff, bbox) &
             !$omp shared(x, y, z, dx, dy, dz, ddx, ddy, ddz, pwu, pwv, pww, obstacles)
             DO j = 1, grids_np(i)
 
@@ -755,10 +755,10 @@ CONTAINS
                         pwu, pwv, pww, pu_adv, pv_adv, pw_adv)
 
                         CALL prkstep(pdx_pot, pdy_pot, pdz_pot, pu_adv, pv_adv, pw_adv, dt, &
-                        A_offload(irk), B_offload(irk), pdx, pdy, pdz)
+                        A_offload(irk), B_offload(irk), dvec(1), dvec(2), dvec(3))
 
                         ! Particle Boundary Interaction
-                        CALL move_particle_target3(my_particle_list%particles(ipart), pstag, pdx, pdy, pdz, &
+                        CALL move_particle_target3(my_particle_list%particles(ipart), pstag, dvec, &
                         pdx_eff, pdy_eff, pdz_eff, particle_gcorner_boundaries((igrid - 1) * 8_intk + icorn), obstacles, dreplace)
                         
                         IF (dreplace) THEN
@@ -778,9 +778,9 @@ CONTAINS
 
 #ifdef _MGLET_OPENMP_
                 IF (ddiffusion) THEN
-                    CALL generate_diffusive_displacement_target(dt, D(1), D(2), D(3), pdx, pdy, pdz, my_particle_list%particles(ipart)%seed)
+                    CALL generate_diffusive_displacement_target(dt, D(1), D(2), D(3), dvec(1), dvec(2), dvec(3), my_particle_list%particles(ipart)%seed)
 
-                    CALL move_particle_target3(my_particle_list%particles(ipart), pstag, pdx, pdy, pdz, &
+                    CALL move_particle_target3(my_particle_list%particles(ipart), pstag, dvec, &
                         pdx_eff, pdy_eff, pdz_eff, particle_gcorner_boundaries((igrid - 1) * 8_intk + icorn), obstacles, dreplace)
 
                     IF (dreplace) THEN

@@ -267,7 +267,7 @@ MODULE particle_boundaries_mod
         !$omp particle_boundaries(1:ngrid)%face_normals)
         !$omp target enter data map(mapper(particle_gcorner_boundaries_t), to: particle_gcorner_boundaries(1:ngrid))
         !$omp target enter data map(particle_gcorner_boundaries(1:ngrid)%face_neighbours, &
-        !$omp particle_gcorner_boundaries(1:ngrid)%location, particle_gcorner_boundaries(1:ngrid)%face_coord
+        !$omp particle_gcorner_boundaries(1:ngrid)%location, particle_gcorner_boundaries(1:ngrid)%face_coord, &
         !$omp particle_gcorner_boundaries(1:ngrid)%face_normals)
 #else
         !$omp target enter data map(always, to: particle_boundaries)
@@ -1388,22 +1388,22 @@ MODULE particle_boundaries_mod
     END SUBROUTINE to_grid_boundary2
 
 
-    SUBROUTINE move_particle_target3(particle, pstag, dx, dy, dz, dx_eff, dy_eff, dz_eff, gcorner_boundary, obstacles, dreplace)
+    SUBROUTINE move_particle_target3(particle, pstag, dvec, dx_eff, dy_eff, dz_eff, gcorner_boundary, obstacles, dreplace)
 
         !$omp declare target
 
         ! subroutine arguments
         TYPE(baseparticle_t), INTENT(inout) :: particle
         INTEGER(intk), INTENT(inout) :: pstag(3)
-        REAL(realk), INTENT(inout) :: dx, dy, dz
+        REAL(realk), INTENT(inout) :: dvec(3)
         REAL(realk), INTENT(out) :: dx_eff, dy_eff, dz_eff
         TYPE(particle_gcorner_boundaries_t), INTENT(in) :: gcorner_boundary 
         TYPE(obstacle_t), POINTER, CONTIGUOUS, DIMENSION(:), INTENT(in) :: obstacles
         LOGICAL, INTENT(inout) :: dreplace 
         
         ! local variables
-        INTEGER(intk) :: idir, iobst_local_new, iobst_local_old, i
-        REAL(realk) :: n(3)
+        INTEGER(intk) :: idir, iobst_local_new, iobst_local_old, i, j
+        REAL(realk) :: n(3), cvec(3)
         REAL(realk) :: s, temp 
 
         dreplace = .FALSE.
@@ -1412,15 +1412,15 @@ MODULE particle_boundaries_mod
         dy_eff = 0.0
         dz_eff = 0.0
 
+        cvec(1) = particle%x
+        cvec(2) = particle%y
+        cvec(3) = particle%z
+
         iobst_local_new = 0
         idir = 0
 
         ! to avoid branch divergence here, just iterate to the max. number of iterations that would be a stoping criterion anyways
         DO i = 1, 10
-
-!WRITE(*,*) ""
-!WRITE(*,*) ">>>>> ipart: ", particle%ipart, " | x: ", particle%x, " | y: ", particle%y, " | z: ", particle%z, &
-!  " | dx: ", dx , " | dy: ", dy, " | dz: ", dz
 
             idir = 0
             iobst_local_old = iobst_local_new
@@ -1429,22 +1429,20 @@ MODULE particle_boundaries_mod
             s = 1.0
 
             IF (n_my_obstacles_on_grid(particle%igrid) > 0) THEN
-                CALL s_to_obstacle3(particle%igrid, particle%x, particle%y, particle%z, dx, dy, dz, &
+                CALL s_to_obstacle3(particle%igrid, cvec(1), cvec(2), cvec(3), dvec(1), dvec(2), dvec(3), &
                  iobst_local_old, iobst_local_new, s, obstacles)
             END IF
 
-!WRITE(*,*) "iaprt", particle%ipart, "iobst: ", iobst_local_new, "s: ", s 
-
-            IF (s > 0.0_realk) CALL to_grid_boundary3(gcorner_boundary, pstag, particle%x, particle%y, particle%z, &
-             dx, dy, dz, dx_eff, dy_eff, dz_eff, s, idir, iobst_local_new)
+            IF (s > 0.0_realk) CALL to_grid_boundary3(gcorner_boundary, pstag, cvec, dvec, &
+             dx_eff, dy_eff, dz_eff, s, idir, iobst_local_new)
 
             IF (0 < iobst_local_new) THEN
 
                 ! reflect at obstacle
                 ! compute normal vector
-                n(1) = particle%x - obstacles(iobst_local_new)%x
-                n(2) = particle%y - obstacles(iobst_local_new)%y
-                n(3) = particle%z - obstacles(iobst_local_new)%z
+                n(1) = cvec(1) - obstacles(iobst_local_new)%x
+                n(2) = cvec(2) - obstacles(iobst_local_new)%y
+                n(3) = cvec(3) - obstacles(iobst_local_new)%z
 
                 ! magnitude
                 temp = SQRT(n(1)**2 + n(2)**2 + n(3)**2)
@@ -1455,11 +1453,11 @@ MODULE particle_boundaries_mod
 
                 ! alter displacement verctor
                 ! dot product
-                temp = MIN((n(1) * dx + n(2) * dy + n(3) * dz), 0.0)
+                temp = MIN((n(1) * dvec(1) + n(2) * dvec(2) + n(3) * dvec(3)), 0.0)
 
-                dx = dx - 2 * temp * n(1)
-                dy = dy - 2 * temp * n(2)
-                dz = dz - 2 * temp * n(3)
+                dvec(1) = dvec(1) - 2 * temp * n(1)
+                dvec(2) = dvec(2) - 2 * temp * n(2)
+                dvec(3) = dvec(3) - 2 * temp * n(3)
 
             ELSEIF (0 < idir) THEN
                 
@@ -1467,17 +1465,21 @@ MODULE particle_boundaries_mod
                 
                 ! reflect at grid boundary
                 ! dot product
-                temp = MIN((n(1) * dx + n(2) * dy + n(3) * dz), 0.0)
+                temp = MIN((n(1) * dvec(1) + n(2) * dvec(2) + n(3) * dvec(3)), 0.0)
 
-                dx = dx - 2 * temp * n(1)
-                dy = dy - 2 * temp * n(2)
-                dz = dz - 2 * temp * n(3)
+                DO j = 1, 3
+                    dvec(j) = dvec(j) - 2 * temp * n(j)
+                END DO
 
                 !update pstag (normal vector idir component must be zero or point inwards for this method to work)
                 pstag(idir) = pstag(idir) + 1 + NINT(n(idir) * gcorner_boundary%location(idir))
             END IF
 
         END DO
+
+        particle%x = cvec(1)
+        particle%y = cvec(2)
+        particle%z = cvec(3)
 
         !particle%xyz_abs(1) = particle%xyz_abs(1) + dx_eff
         !particle%xyz_abs(2) = particle%xyz_abs(2) + dy_eff
@@ -1576,124 +1578,109 @@ MODULE particle_boundaries_mod
     END SUBROUTINE s_to_obstacle3
 
 
-    SUBROUTINE to_grid_boundary3(gcorner_boundary, pstag, x, y, z, dx, dy, dz, dx_eff, dy_eff, dz_eff, s, idir, iobst_local)
+    SUBROUTINE to_grid_boundary3(gcorner_boundary, pstag, cvec, dvec, dx_eff, dy_eff, dz_eff, s, idir, iobst_local)
 
         !$omp declare target
 
         ! subroutine arguments
         TYPE(particle_gcorner_boundaries_t), INTENT(in) :: gcorner_boundary
         INTEGER(intk), INTENT(in) :: pstag(3)
-        REAL(realk), INTENT(inout) :: x, y, z
-        REAL(realk), INTENT(inout) :: dx, dy, dz
+        REAL(realk), INTENT(inout) :: cvec(3)
+        REAL(realk), INTENT(inout) :: dvec(3)
         REAL(realk), INTENT(inout) :: dx_eff, dy_eff, dz_eff
         REAL(realk), INTENT(inout) :: s
         INTEGER(intk), INTENT(out) :: idir
         INTEGER(intk), INTENT(inout) :: iobst_local
 
         !local variables
-        REAL(realk) :: lx_a, ly_a, lz_a, rx, ry, rz, ratio
+        INTEGER(intk) :: i
+        REAL(realk) :: l_a(3), r(3), ratio
+        TYPE(reduction_pair_t) :: r_dir_pair 
 
         ! STEP 2 - GRID BOUNDARIES
 
         idir = 0_intk
+        
+        !$omp simd
+        DO i = 1, 3
+            ! abs distance of particle to grid boundaries
+            l_a(i) = ABS(cvec(i) - gcorner_boundary%face_coord(i))
+            IF (l_a(i) < EPSILON(l_a(i))) THEN
+                r(i) = SIGN(HUGE(r(i)), gcorner_boundary%location(i) * ((-1.0) ** pstag(i)) * dvec(i)) * ABS(dvec(i))
+            ELSE
+                r(i) = gcorner_boundary%location(i) * ((-1_intk) ** pstag(i)) * ((s * dvec(i)) / (l_a(i)))
+            END IF
+        END DO
+        
+        IF (r(1) < 1.0_realk .AND. r(2) < 1.0_realk .AND. r(3) < 1.0_realk) THEN
 
-        ! abs distance of particle to grid boundaries
-        lx_a = ABS(x - gcorner_boundary%face_coord(1))
-        ly_a = ABS(y - gcorner_boundary%face_coord(2))
-        lz_a = ABS(z - gcorner_boundary%face_coord(3))
-
-        ! relative distance to boundaries (negative value indicates particle is moving away from boundary)
-        !rx = gcorner_boundary%location(1) * ((-1_intk) ** pstag(1)) * ((s * dx) / (lx_a))
-        !ry = gcorner_boundary%location(2) * ((-1_intk) ** pstag(2)) * ((s * dy) / (ly_a))
-        !rz = gcorner_boundary%location(3) * ((-1_intk) ** pstag(3)) * ((s * dz) / (lz_a))
-        ! small modification to avoid division by zero
-        IF (lx_a < EPSILON(lx_a)) THEN
-            rx = SIGN(HUGE(rx), gcorner_boundary%location(1) * ((-1.0) ** pstag(1)) * dx) * ABS(dx)
-        ELSE
-            rx = gcorner_boundary%location(1) * ((-1_intk) ** pstag(1)) * ((s * dx) / (lx_a))
-        END IF
-
-        IF (ly_a < EPSILON(ly_a)) THEN
-            ry = SIGN(HUGE(ry), gcorner_boundary%location(2) * ((-1.0) ** pstag(2)) * dy) * ABS(dy)
-        ELSE
-            ry = gcorner_boundary%location(2) * ((-1_intk) ** pstag(2)) * ((s * dy) / (ly_a))
-        END IF
-
-        IF (lz_a < EPSILON(lz_a)) THEN
-            rz = SIGN(HUGE(rz), gcorner_boundary%location(3) * ((-1.0) ** pstag(3)) * dz) * ABS(dz)
-        ELSE
-            rz = gcorner_boundary%location(3) * ((-1_intk) ** pstag(3)) * ((s * dz) / (lz_a))
-        END IF
-
-        IF (rx < 1.0_realk .AND. ry < 1.0_realk .AND. rz < 1.0_realk) THEN
-
-            dx_eff = dx_eff + dx * s
-            dy_eff = dy_eff + dy * s
-            dz_eff = dz_eff + dz * s
-            x = x + dx * s
-            y = y + dy * s
-            z = z + dz * s
-            dx = dx - dx * s
-            dy = dy - dy * s
-            dz = dz - dz * s
+            dx_eff = dx_eff + dvec(1) * s
+            dy_eff = dy_eff + dvec(2) * s
+            dz_eff = dz_eff + dvec(3) * s
+            cvec(1) = cvec(1) + dvec(1) * s
+            cvec(2) = cvec(2) + dvec(2) * s
+            cvec(3) = cvec(3) + dvec(3) * s
+            dvec(1) = dvec(1) - dvec(1) * s
+            dvec(2) = dvec(2) - dvec(2) * s
+            dvec(3) = dvec(3) - dvec(3) * s
             RETURN
         END IF
 
         iobst_local = 0_intk
 
-        IF (ry <= rx .AND. rz <= rx) THEN
+        IF (r(2) <= r(1) .AND. r(3) <= r(1)) THEN
 
             idir = 1_intk
 
-            ratio = lx_a / ABS(dx)
+            ratio = l_a(1) / ABS(dvec(1))
 
-            dx_eff = dx_eff + gcorner_boundary%location(1) * lx_a
-            dy_eff = dy_eff + (ratio * dy)
-            dz_eff = dz_eff + (ratio * dz)
+            dx_eff = dx_eff + gcorner_boundary%location(1) * l_a(1)
+            dy_eff = dy_eff + (ratio * dvec(2))
+            dz_eff = dz_eff + (ratio * dvec(3))
             ! avoid floating point errors and put the particle EXACTLY at the boundary
-            x = gcorner_boundary%face_coord(1) 
+            cvec(1) = gcorner_boundary%face_coord(1) 
             ! avoid particles to hit corners or edges => - EPSILON(x_i) * gcorner_boundary%location(i)
-            y = y + (ratio * dy) - EPSILON(y) * gcorner_boundary%location(2)
-            z = z + (ratio * dz) - EPSILON(z) * gcorner_boundary%location(3)
-            dx = dx - gcorner_boundary%location(1) * lx_a
-            dy = dy - (ratio * dy)
-            dz = dz - (ratio * dz)
+            cvec(2) = cvec(2) + (ratio * dvec(2)) - EPSILON(cvec(2)) * gcorner_boundary%location(2)
+            cvec(3) = cvec(3) + (ratio * dvec(3)) - EPSILON(cvec(3)) * gcorner_boundary%location(3)
+            dvec(1) = dvec(1) - gcorner_boundary%location(1) * l_a(1)
+            dvec(2) = dvec(2) - (ratio * dvec(2))
+            dvec(3) = dvec(3) - (ratio * dvec(3))
 
-        ELSEIF (rx < ry .AND. rz <= ry) THEN
+        ELSEIF (r(1) < r(2) .AND. r(3) <= r(2)) THEN
 
             idir = 2_intk
             
-            ratio = ly_a / ABS(dy)
+            ratio = l_a(2) / ABS(dvec(2))
 
-            dx_eff = dx_eff + (ratio * dx)
-            dy_eff = dy_eff + gcorner_boundary%location(2) * ly_a
-            dz_eff = dz_eff + (ratio * dz)
+            dx_eff = dx_eff + (ratio * dvec(1))
+            dy_eff = dy_eff + gcorner_boundary%location(2) * l_a(2)
+            dz_eff = dz_eff + (ratio * dvec(3))
             ! avoid particles to hit corners or edges => - EPSILON(x_i) * gcorner_boundary%location(i)
-            x = x + (ratio * dx) - EPSILON(x) * gcorner_boundary%location(1)
+            cvec(1) = cvec(1) + (ratio * dvec(1)) - EPSILON(cvec(1)) * gcorner_boundary%location(1)
             ! avoid floating point errors and put the particle EXACTLY at the boundary
-            y = gcorner_boundary%face_coord(2) 
-            z = z + (ratio * dz) - EPSILON(z) * gcorner_boundary%location(3)
-            dx = dx - (ratio * dx)
-            dy = dy - gcorner_boundary%location(2) * ly_a
-            dz = dz - (ratio * dz)
+            cvec(2) = gcorner_boundary%face_coord(2) 
+            cvec(3) = cvec(3) + (ratio * dvec(3)) - EPSILON(cvec(3)) * gcorner_boundary%location(3)
+            dvec(1) = dvec(1) - (ratio * dvec(1))
+            dvec(2) = dvec(2) - gcorner_boundary%location(2) * l_a(2)
+            dvec(3) = dvec(3) - (ratio * dvec(3))
 
-        ELSEIF (rx < rz .AND. ry < rz) THEN
+        ELSEIF (r(1) < r(3) .AND. r(2) < r(3)) THEN
 
             idir = 3_intk
 
-            ratio = lz_a / ABS(dz)
+            ratio = l_a(3) / ABS(dvec(3))
 
-            dx_eff = dx_eff + (ratio * dx)
-            dy_eff = dy_eff + (ratio * dy)
-            dz_eff = dz_eff + gcorner_boundary%location(3) * lz_a
+            dx_eff = dx_eff + (ratio * dvec(1))
+            dy_eff = dy_eff + (ratio * dvec(2))
+            dz_eff = dz_eff + gcorner_boundary%location(3) * l_a(3)
             ! avoid particles to hit corners or edges => - EPSILON(x_i) * gcorner_boundary%location(i)
-            x = x + (ratio * dx) - EPSILON(x) * gcorner_boundary%location(1)
-            y = y + (ratio * dy) - EPSILON(y) * gcorner_boundary%location(2)
+            cvec(1) = cvec(1) + (ratio * dvec(1)) - EPSILON(cvec(1)) * gcorner_boundary%location(1)
+            cvec(2) = cvec(2) + (ratio * dvec(2)) - EPSILON(cvec(2)) * gcorner_boundary%location(2)
             ! avoid floating point errors and put the particle EXACTLY at the boundary
-            z = gcorner_boundary%face_coord(3) 
-            dx = dx - (ratio * dx)
-            dy = dy - (ratio * dy)
-            dz = dz - gcorner_boundary%location(3) * lz_a
+            cvec(3) = gcorner_boundary%face_coord(3) 
+            dvec(1) = dvec(1) - (ratio * dvec(1))
+            dvec(2) = dvec(2) - (ratio * dvec(2))
+            dvec(3) = dvec(3) - gcorner_boundary%location(3) * l_a(3)
 
         END IF
 
@@ -1939,6 +1926,8 @@ MODULE particle_boundaries_mod
 
 
     SUBROUTINE get_gcorner_normal(gcorner_boundary, stag, idir, n)
+        
+        !$omp declare target
 
         ! subroutine arguments
         TYPE(particle_gcorner_boundaries_t), INTENT(in) :: gcorner_boundary
