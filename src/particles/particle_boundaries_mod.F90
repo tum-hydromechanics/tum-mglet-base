@@ -68,20 +68,20 @@ MODULE particle_boundaries_mod
 
     TYPE :: particle_gcorner_boundaries_t
 
-        REAL(realk) :: location(3) = -99
+        REAL(realk) :: location(3)
 
-        REAL(realk) :: face_coord(3) = -99.0
+        REAL(realk) :: face_coord(3)
 
-        INTEGER(intk) :: face_neighbours(8) = -99
+        INTEGER(intk) :: face_neighbours(8)
 
-        REAL(realk) :: face_normals(12) = 0.0
+        REAL(realk) :: face_normals(12)
 
     END TYPE particle_gcorner_boundaries_t
 
     TYPE(particle_gcorner_boundaries_t), ALLOCATABLE :: particle_gcorner_boundaries(:)
 
 #if defined __INTEL_COMPILER
-    !$omp declare mapper(particle_boundaries_t :: bnd) map(to: bnd, bnd%face_neighbours, bnd%face_normals)
+    ! declare mapper(particle_boundaries_t :: bnd) map(to: bnd, bnd%face_neighbours, bnd%face_normals)
     !$omp declare mapper(particle_gcorner_boundaries_t :: cbnd) map(to: cbnd, &
     !$omp cbnd%location, cbnd%face_coord, cbnd%face_neighbours, cbnd%face_normals)
 #endif
@@ -275,15 +275,15 @@ MODULE particle_boundaries_mod
         !$omp target enter data map(to: ngrid)
 
 #if defined __INTEL_COMPILER
-        !$omp target enter data map(mapper(particle_boundaries_t), to: particle_boundaries(1:ngrid))
-        !$omp target enter data map(particle_boundaries(1:ngrid)%face_neighbours, &
-        !$omp particle_boundaries(1:ngrid)%face_normals)
-        !$omp target enter data map(mapper(particle_gcorner_boundaries_t), to: particle_gcorner_boundaries(1:ngrid))
-        !$omp target enter data map(particle_gcorner_boundaries(1:ngrid)%face_neighbours, &
-        !$omp particle_gcorner_boundaries(1:ngrid)%location, particle_gcorner_boundaries(1:ngrid)%face_coord, &
-        !$omp particle_gcorner_boundaries(1:ngrid)%face_normals)
+        ! target enter data map(mapper(particle_boundaries_t), to: particle_boundaries(1:ngrid))
+        ! target enter data map(particle_boundaries(1:ngrid)%face_neighbours, &
+        ! particle_boundaries(1:ngrid)%face_normals)
+        !$omp target enter data map(mapper(particle_gcorner_boundaries_t), to: particle_gcorner_boundaries(1:ngrid * 8))
+        !$omp target enter data map(particle_gcorner_boundaries(1:ngrid * 8)%face_neighbours, &
+        !$omp particle_gcorner_boundaries(1:ngrid * 8)%location, particle_gcorner_boundaries(1:ngrid * 8)%face_coord, &
+        !$omp particle_gcorner_boundaries(1:ngrid * 8)%face_normals)
 #else
-        !$omp target enter data map(always, to: particle_boundaries)
+        ! target enter data map(always, to: particle_boundaries)
         !$omp target enter data map(always, to: particle_gcorner_boundaries)
 #endif
         
