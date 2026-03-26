@@ -1478,9 +1478,9 @@ MODULE particle_boundaries_mod
                 ! dot product
                 temp = MIN((n(1) * dvec(1) + n(2) * dvec(2) + n(3) * dvec(3)), 0.0)
 
-                DO j = 1, 3
-                    dvec(j) = dvec(j) - 2 * temp * n(j)
-                END DO
+                dvec(1) = dvec(1) - 2 * temp * n(1)
+                dvec(2) = dvec(2) - 2 * temp * n(2)
+                dvec(3) = dvec(3) - 2 * temp * n(3)
 
                 !update pstag (normal vector idir component must be zero or point inwards for this method to work)
                 pstag(idir) = pstag(idir) + 1 + NINT(n(idir) * gcorner_boundary%location(idir))
@@ -1604,52 +1604,79 @@ MODULE particle_boundaries_mod
         INTEGER(intk), INTENT(inout) :: iobst_local
 
         !local variables
-        INTEGER(intk) :: i, j, idir_arr(1)
-        REAL(realk) :: l_a(3), r(3), ratio
+        INTEGER(intk) :: i
+        REAL(realk) :: l_a(3), r(3), ratio, rmax
 
         ! STEP 2 - GRID BOUNDARIES
 
-        idir = 0_intk
-        
-        !$omp simd
-        DO i = 1, 3
-            ! abs distance of particle to grid boundaries
-            l_a(i) = ABS(cvec(i) - gcorner_boundary%face_coord(i))
-            IF (l_a(i) < EPSILON(l_a(i))) THEN
-                r(i) = SIGN(HUGE(r(i)), gcorner_boundary%location(i) * ((-1.0) ** pstag(i)) * dvec(i)) * ABS(dvec(i))
-            ELSE
-                r(i) = gcorner_boundary%location(i) * ((-1_intk) ** pstag(i)) * ((s * dvec(i)) / (l_a(i)))
-            END IF
-        END DO
+        idir = 0
+        rmax = 1.0
 
-        IF (MAX(r(1), r(2), r(3)) < 1.0_realk) THEN
-            !$omp simd
-            DO i = 1, 3
-                deff_vec(i) = deff_vec(i) + dvec(i) * s
-                cvec(i) = cvec(i) + dvec(i) * s
-                dvec(i) = dvec(i) - dvec(i) * s
-            END DO
+        ! abs distance of particle to grid boundaries
+        l_a(1) = ABS(cvec(1) - gcorner_boundary%face_coord(1))
+        IF (l_a(1) < EPSILON(l_a(1))) THEN
+            r(1) = SIGN(HUGE(r(1)), gcorner_boundary%location(1) * ((-1.0) ** pstag(1)) * dvec(1)) * ABS(dvec(1))
+        ELSE
+            r(1) = gcorner_boundary%location(1) * ((-1_intk) ** pstag(1)) * ((s * dvec(1)) / (l_a(1)))
+        END IF
+
+        IF (rmax <= r(1)) THEN 
+            rmax = r(1)
+            idir = 1
+        END IF
+
+        l_a(2) = ABS(cvec(2) - gcorner_boundary%face_coord(2))
+        IF (l_a(2) < EPSILON(l_a(2))) THEN
+            r(2) = SIGN(HUGE(r(2)), gcorner_boundary%location(2) * ((-1.0) ** pstag(2)) * dvec(2)) * ABS(dvec(2))
+        ELSE
+            r(2) = gcorner_boundary%location(2) * ((-1_intk) ** pstag(2)) * ((s * dvec(2)) / (l_a(2)))
+        END IF
+
+        IF (rmax <= r(2)) THEN 
+            rmax = r(2)
+            idir = 2
+        END IF
+
+        l_a(3) = ABS(cvec(3) - gcorner_boundary%face_coord(3))
+        IF (l_a(3) < EPSILON(l_a(3))) THEN
+            r(3) = SIGN(HUGE(r(3)), gcorner_boundary%location(3) * ((-1.0) ** pstag(3)) * dvec(3)) * ABS(dvec(3))
+        ELSE
+            r(3) = gcorner_boundary%location(3) * ((-1_intk) ** pstag(3)) * ((s * dvec(3)) / (l_a(3)))
+        END IF
+
+        IF (rmax <= r(3)) THEN 
+            rmax = r(3)
+            idir = 3
+        END IF
+
+        IF (idir == 0) THEN
+            deff_vec(1) = deff_vec(1) + dvec(1) * s
+            cvec(1) = cvec(1) + dvec(1) * s
+            dvec(1) = dvec(1) - dvec(1) * s
+            deff_vec(2) = deff_vec(2) + dvec(2) * s
+            cvec(2) = cvec(2) + dvec(2) * s
+            dvec(2) = dvec(2) - dvec(2) * s
+            deff_vec(3) = deff_vec(3) + dvec(3) * s
+            cvec(3) = cvec(3) + dvec(3) * s
+            dvec(3) = dvec(3) - dvec(3) * s
             RETURN
         END IF
 
         iobst_local = 0_intk
-
-        ! is there a nicer way?
-        idir_arr = MAXLOC(r)
-        idir = idir_arr(1)
 
         ratio = l_a(idir) / ABS(dvec(idir))
 
         deff_vec(idir) = deff_vec(idir) + gcorner_boundary%location(idir) * l_a(idir)
         cvec(idir) = gcorner_boundary%face_coord(idir) 
         dvec(idir) = dvec(idir) - gcorner_boundary%location(idir) * l_a(idir)
-        !$omp simd
-        DO j = 0, 1
-            i = MOD(idir + j, 3) + 1
-            deff_vec(i) = deff_vec(i) + (ratio * dvec(i))
-            cvec(i) = cvec(i) + (ratio * dvec(i)) - EPSILON(cvec(i)) * gcorner_boundary%location(i)
-            dvec(i) = dvec(i) - (ratio * dvec(i))
-        END DO
+        i = MOD(idir, 3) + 1
+        deff_vec(i) = deff_vec(i) + (ratio * dvec(i))
+        cvec(i) = cvec(i) + (ratio * dvec(i)) - EPSILON(cvec(i)) * gcorner_boundary%location(i)
+        dvec(i) = dvec(i) - (ratio * dvec(i))
+        i = MOD(idir + 1, 3) + 1
+        deff_vec(i) = deff_vec(i) + (ratio * dvec(i))
+        cvec(i) = cvec(i) + (ratio * dvec(i)) - EPSILON(cvec(i)) * gcorner_boundary%location(i)
+        dvec(i) = dvec(i) - (ratio * dvec(i))
 
     END SUBROUTINE to_grid_boundary3
 
