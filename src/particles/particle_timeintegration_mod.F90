@@ -653,7 +653,7 @@ CONTAINS
         REAL(realk), POINTER, CONTIGUOUS, DIMENSION(:, :, :) :: pwu, pwv, pww
         TYPE(obstacle_t), POINTER, CONTIGUOUS, DIMENSION(:) :: obstacles
 
-        INTEGER(intk) :: irk
+        INTEGER(intk) :: ip, len, irk
         INTEGER(intk) :: pstag(3)
         REAL(realk) :: bbox(6)
         REAL(realk) :: pu_adv, pv_adv, pw_adv
@@ -707,7 +707,7 @@ CONTAINS
         !$omp target map(tofrom: dev_num, num_teams, num_threads)
 #endif
         !$omp teams distribute private(igrid, ipart, icorn, pstag, ii, jj, kk, &
-        !$omp irk, pu_adv, pv_adv, pw_adv, dvec, pdx_pot, pdy_pot, pdz_pot, deff_vec, &
+        !$omp ip, len, irk, pu_adv, pv_adv, pw_adv, dvec, pdx_pot, pdy_pot, pdz_pot, deff_vec, &
         !$omp x, y, z, dx, dy, dz, ddx, ddy, ddz, pwu, pwv, pww, obstacles, bbox) reduction(max: num_threads)
         DO i = 1, nmy_particle_grids
 
@@ -725,22 +725,28 @@ CONTAINS
             igrid = my_particle_grids(i)
 
             CALL get_mgdims_target(kk, jj, ii, igrid)
-            
-            CALL ptr_to_grid_1(x_offload, igrid, x, 1_intk)
-            CALL ptr_to_grid_1(y_offload, igrid, y, 2_intk)
-            CALL ptr_to_grid_1(z_offload, igrid, z, 3_intk)
 
-            CALL ptr_to_grid_1(dx_offload, igrid, dx, 1_intk)
-            CALL ptr_to_grid_1(dy_offload, igrid, dy, 2_intk)
-            CALL ptr_to_grid_1(dz_offload, igrid, dz, 3_intk)
-            
-            CALL ptr_to_grid_1(ddx_offload, igrid, ddx, 1_intk)
-            CALL ptr_to_grid_1(ddy_offload, igrid, ddy, 2_intk)
-            CALL ptr_to_grid_1(ddz_offload, igrid, ddz, 3_intk)
+            ip = ip1d_offload(igrid)
 
-            CALL ptr_to_grid_3(u_offload, igrid, pwu)
-            CALL ptr_to_grid_3(v_offload, igrid, pwv)
-            CALL ptr_to_grid_3(w_offload, igrid, pww)
+            len = mgdims_offload((igrid - 1) * 3 + 1)
+            x(1:len) => x_offload(ip:ip+len-1)
+            dx(1:len) => dx_offload(ip:ip+len-1)
+            ddx(1:len) => ddx_offload(ip:ip+len-1)
+
+            len = mgdims_offload((igrid - 1) * 3 + 2)
+            y(1:len) => y_offload(ip:ip+len-1)
+            dy(1:len) => dy_offload(ip:ip+len-1)
+            ddy(1:len) => ddy_offload(ip:ip+len-1)
+
+            len = mgdims_offload((igrid - 1) * 3 + 3)
+            z(1:len) => z_offload(ip:ip+len-1)
+            dz(1:len) => dz_offload(ip:ip+len-1)
+            ddz(1:len) => ddz_offload(ip:ip+len-1)
+
+            ip = ip3d_offload(igrid)
+            pwu(1:kk, 1:jj, 1:ii) => u_offload(ip:ip+kk*jj*ii-1)
+            pwv(1:kk, 1:jj, 1:ii) => v_offload(ip:ip+kk*jj*ii-1)
+            pww(1:kk, 1:jj, 1:ii) => w_offload(ip:ip+kk*jj*ii-1)
 
             obstacles => my_obstacles_offload(obstacle_displ(igrid) + 1: obstacle_displ(igrid) + MAX(1_intk, n_my_obstacles_on_grid(igrid)))
             
