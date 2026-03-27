@@ -44,10 +44,19 @@ CONTAINS
 
             ! PARTICLE TIMEINTEGRATION:
             CALL set_timer(920, 'PSIM_TIMEINTEGRATION')
+
+#if defined _MGLET_OPENMP_
+                CALL set_timer(921, 'FIELDS_TO_DEV')
+                CALL set_timer(922, 'PART_TO_DEV')
+                CALL set_timer(923, 'COUNT_POG_TO_DEV')
+                CALL set_timer(924, 'PART_TI_KERNEL')
+                CALL set_timer(925, 'PART_FROM_DEV')
+#else
                 CALL set_timer(921, 'ADV_VELOCITY')
                 CALL set_timer(922, 'ADV_MOTION')
                 CALL set_timer(924, 'DIF_RN_GENERATION')
                 CALL set_timer(925, 'DIF_MOTION')
+#endif
 
             ! PARTICLE BOUNDARY INTERACTION:
             ! ... see TIMEINTEGRATION

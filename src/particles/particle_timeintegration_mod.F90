@@ -664,11 +664,19 @@ CONTAINS
 
         CALL start_timer(900)
 
+        CALL start_timer(920)
+
+        CALL start_timer(921)
+
         IF (dadvection) THEN
             !$omp target update to(u_offload, v_offload, w_offload)
         END IF
         
+        CALL stop_timer(921)
+
         !CALL write_particle_list_txt(itstep, 'pre')
+
+        CALL start_timer(922)
 
 #if defined __INTEL_COMPILER
         !$omp target update to(my_particle_list%particles)
@@ -676,16 +684,22 @@ CONTAINS
         !$omp target update to(my_particle_list)
 #endif
 
-        CALL start_timer(920)
+        CALL stop_timer(922)
+
+        CALL start_timer(923)
 
         CALL count_pog(my_particle_list, grids_np, plist_displ)
 
         !$omp target update to(plist_displ(1:nmy_particle_grids))
         !$omp target update to(grids_np(1:nmy_particle_grids))
 
+        CALL stop_timer(923)
+
         dev_num = -99
         num_teams = -99
         num_threads = -99
+
+        CALL start_timer(924)
 
 #if defined __INTEL_COMPILER
         !$omp target map(tofrom: dev_num, num_teams, num_threads) map(mapper(obstacle_t), alloc: obstacles)
@@ -798,7 +812,9 @@ CONTAINS
         !$omp end teams distribute
         !$omp end target
 
-        CALL stop_timer(920)
+        CALL stop_timer(924)
+
+        CALL start_timer(925)
         
 #if defined __INTEL_COMPILER
         !$omp target update from(my_particle_list%particles)
@@ -806,14 +822,18 @@ CONTAINS
         !$omp target update from(my_particle_list)
 #endif
 
-        !CALL write_particle_list_txt(itstep, 'pos')
+        CALL stop_timer(925)
 
-        CALL stop_timer(900)
+        !CALL write_particle_list_txt(itstep, 'pos')
 
         WRITE(*, '("    Timeintegration on Process:                     ", I9)') myid
         WRITE(*, '("        Device Number:                              ", I9)') dev_num
         WRITE(*, '("        Number of Teams:                            ", I9)') num_teams
         WRITE(*, '("        Max. Number of Threds (per Team):           ", I9)') num_threads
+
+        CALL stop_timer(920)
+
+        CALL stop_timer(900)
     
     END SUBROUTINE timeintegrate_particles_target3
 
