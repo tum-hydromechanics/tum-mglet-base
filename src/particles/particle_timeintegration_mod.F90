@@ -644,23 +644,24 @@ CONTAINS
         INTEGER(intk), INTENT(in) :: itstep
         REAL(realk), INTENT(in) :: dt
 
-        ! local variables
+        ! local variables (fixed)
         INTEGER(intk) :: dev_num, num_teams, num_threads
-        INTEGER(intk) :: igrid, icorn, ipart, i, j, k
+        INTEGER(intk) :: igrid, icorn, ipart, i, j, k, irk
         INTEGER(intk) :: ii, jj, kk
+        INTEGER(intk) :: pstag(3)
         REAL(realk), POINTER, CONTIGUOUS, DIMENSION(:) :: x, y, z
         REAL(realk), POINTER, CONTIGUOUS, DIMENSION(:) :: dx, dy, dz, ddx, ddy, ddz
         REAL(realk), POINTER, CONTIGUOUS, DIMENSION(:, :, :) :: pwu, pwv, pww
         TYPE(obstacle_t), POINTER, CONTIGUOUS, DIMENSION(:) :: obstacles
-
-        INTEGER(intk) :: ip, len, irk
-        INTEGER(intk) :: pstag(3)
-        REAL(realk) :: bbox(6)
-        REAL(realk) :: pu_adv, pv_adv, pw_adv
-        REAL(realk) :: dvec(3)
         REAL(realk) :: pdx_pot, pdy_pot, pdz_pot
-        REAL(realk) :: deff_vec(3)
-        LOGICAL :: dreplace
+        REAL(realk) :: dvec(3), cvec(3), n(3)
+        REAL(realk) :: bbox(6)
+
+        ! local variables (flexible)
+        INTEGER(intk) :: l, int_var_1, int_var_2, int_var_3
+        REAL(realk) :: real_var_1, real_var_2, real_var_3, real_var_4, real_var_5
+        REAL(realk) :: real_var_6, real_var_7, real_var_8, real_var_9, real_var_10
+        REAL(realk) :: real_arr_1(3)
 
         CALL start_timer(900)
 
@@ -707,8 +708,10 @@ CONTAINS
         !$omp target map(tofrom: dev_num, num_teams, num_threads)
 #endif
         !$omp teams distribute private(igrid, ipart, icorn, pstag, ii, jj, kk, &
-        !$omp ip, len, irk, pu_adv, pv_adv, pw_adv, dvec, pdx_pot, pdy_pot, pdz_pot, deff_vec, &
-        !$omp x, y, z, dx, dy, dz, ddx, ddy, ddz, pwu, pwv, pww, obstacles, bbox) reduction(max: num_threads)
+        !$omp irk, k, l, dvec, pdx_pot, pdy_pot, pdz_pot, x, y, z, dx, dy, dz, ddx, ddy, ddz, pwu, pwv, pww, obstacles, &
+        !$omp bbox, cvec, n, int_var_1, int_var_2, int_var_3, real_arr_1, &
+        !$omp real_var_1, real_var_2, real_var_3, real_var_4, real_var_5, real_var_6, real_var_7, real_var_8, real_var_9, real_var_10) &
+        !$omp reduction(max: num_threads)
         DO i = 1, nmy_particle_grids
 
 #ifdef __GFORTRAN__
@@ -726,34 +729,41 @@ CONTAINS
 
             CALL get_mgdims_target(kk, jj, ii, igrid)
 
-            ip = ip1d_offload(igrid)
+            ! >>> begin local "conceptual namespace" <<<
+            ! int_var_1 => ip
+            ! int_var_2 => len
 
-            len = mgdims_offload((igrid - 1) * 3 + 1)
-            x(1:len) => x_offload(ip:ip+len-1)
-            dx(1:len) => dx_offload(ip:ip+len-1)
-            ddx(1:len) => ddx_offload(ip:ip+len-1)
+            int_var_1 = ip1d_offload(igrid)
 
-            len = mgdims_offload((igrid - 1) * 3 + 2)
-            y(1:len) => y_offload(ip:ip+len-1)
-            dy(1:len) => dy_offload(ip:ip+len-1)
-            ddy(1:len) => ddy_offload(ip:ip+len-1)
+            int_var_2 = mgdims_offload((igrid - 1) * 3 + 1)
+            x(1:int_var_2) => x_offload(int_var_1:int_var_1+int_var_2-1)
+            dx(1:int_var_2) => dx_offload(int_var_1:int_var_1+int_var_2-1)
+            ddx(1:int_var_2) => ddx_offload(int_var_1:int_var_1+int_var_2-1)
 
-            len = mgdims_offload((igrid - 1) * 3 + 3)
-            z(1:len) => z_offload(ip:ip+len-1)
-            dz(1:len) => dz_offload(ip:ip+len-1)
-            ddz(1:len) => ddz_offload(ip:ip+len-1)
+            int_var_2 = mgdims_offload((igrid - 1) * 3 + 2)
+            y(1:int_var_2) => y_offload(int_var_1:int_var_1+int_var_2-1)
+            dy(1:int_var_2) => dy_offload(int_var_1:int_var_1+int_var_2-1)
+            ddy(1:int_var_2) => ddy_offload(int_var_1:int_var_1+int_var_2-1)
 
-            ip = ip3d_offload(igrid)
-            pwu(1:kk, 1:jj, 1:ii) => u_offload(ip:ip+kk*jj*ii-1)
-            pwv(1:kk, 1:jj, 1:ii) => v_offload(ip:ip+kk*jj*ii-1)
-            pww(1:kk, 1:jj, 1:ii) => w_offload(ip:ip+kk*jj*ii-1)
+            int_var_2 = mgdims_offload((igrid - 1) * 3 + 3)
+            z(1:int_var_2) => z_offload(int_var_1:int_var_1+int_var_2-1)
+            dz(1:int_var_2) => dz_offload(int_var_1:int_var_1+int_var_2-1)
+            ddz(1:int_var_2) => ddz_offload(int_var_1:int_var_1+int_var_2-1)
+
+            int_var_1 = ip3d_offload(igrid)
+            pwu(1:kk, 1:jj, 1:ii) => u_offload(int_var_1:int_var_1+kk*jj*ii-1)
+            pwv(1:kk, 1:jj, 1:ii) => v_offload(int_var_1:int_var_1+kk*jj*ii-1)
+            pww(1:kk, 1:jj, 1:ii) => w_offload(int_var_1:int_var_1+kk*jj*ii-1)
+
+            ! >>> end local "conceptual namespace" <<<
 
             obstacles => my_obstacles_offload(obstacle_displ(igrid) + 1: obstacle_displ(igrid) + MAX(1_intk, n_my_obstacles_on_grid(igrid)))
             
             CALL get_bbox_target(bbox(1), bbox(2), bbox(3), bbox(4), bbox(5), bbox(6), igrid)
             
-            !$omp parallel do private(ipart, icorn, pstag) firstprivate(igrid, ii, jj, kk, &
-            !$omp irk, pu_adv, pv_adv, pw_adv, dvec, pdx_pot, pdy_pot, pdz_pot, deff_vec, bbox) &
+            !$omp parallel do private(ipart, icorn, pstag, cvec, n, k, l, int_var_1, int_var_2, int_var_3, real_arr_1, &
+            !$omp real_var_1, real_var_2, real_var_3, real_var_4, real_var_5, real_var_6, real_var_7, real_var_8, real_var_9, real_var_10) &
+            !$omp firstprivate(igrid, ii, jj, kk, irk, dvec, pdx_pot, pdy_pot, pdz_pot, bbox) &
             !$omp shared(x, y, z, dx, dy, dz, ddx, ddy, ddz, pwu, pwv, pww, obstacles)
             DO j = 1, grids_np(i)
 
@@ -770,27 +780,263 @@ CONTAINS
 
                     DO irk = 1, pnrk
 
+                        ! >>> begin local "conceptual namespace" <<<
+                        ! real_var_1 => pu_adv
+                        ! real_var_2 => pv_adv
+                        ! real_var_3 => pw_adv
+
                         ! get particle velocity
                         CALL interpolate_lincon(my_particle_list%particles(ipart), kk, jj, ii, x, y, z, dx, dy, dz, ddx, ddy, ddz, &
-                        pwu, pwv, pww, pu_adv, pv_adv, pw_adv)
+                        pwu, pwv, pww, real_var_1, real_var_2, real_var_3)
 
-                        CALL prkstep(pdx_pot, pdy_pot, pdz_pot, pu_adv, pv_adv, pw_adv, dt, &
+                        CALL prkstep(pdx_pot, pdy_pot, pdz_pot, real_var_1, real_var_2, real_var_3, dt, &
                         A_offload(irk), B_offload(irk), dvec(1), dvec(2), dvec(3))
-
-                        ! Particle Boundary Interaction
-                        CALL move_particle_target3(my_particle_list%particles(ipart), pstag, dvec, &
-                         deff_vec, particle_gcorner_boundaries((igrid - 1) * 8_intk + icorn), obstacles, dreplace)
                         
-                        IF (dreplace) THEN
-                            CALL replace_particle_target(my_particle_list%particles(ipart), obstacles, kk, jj, ii, x, y, z, dx, dy, dz)
-                        ELSE 
-                            CALL update_particle_cell_target(my_particle_list%particles(ipart), kk, jj, ii, x, y, z, dx, dy, dz)
-                        END IF
+                        ! >>> end local "conceptual namespace" <<<
 
-                        pdx_pot = deff_vec(1) / B_offload(irk)
-                        pdy_pot = deff_vec(2) / B_offload(irk)
-                        pdz_pot = deff_vec(3) / B_offload(irk)
+                        ! >>> begin local "conceptual namespace" <<<
+                        ! int_var_1 => idir
+                        ! int_var_2 => iobst_local_new
+                        ! int_var_3 => iobst_local_old
+                        ! real_var_1 => s
+                        ! real_var_2 => temp 
+                        ! real_var_3-real_var_10 nested
 
+                        cvec(1) = my_particle_list%particles(ipart)%x
+                        cvec(2) = my_particle_list%particles(ipart)%y
+                        cvec(3) = my_particle_list%particles(ipart)%z
+
+                        int_var_2 = 0
+                        int_var_1 = 0
+
+                        ! to avoid branch divergence here, just iterate to the max. number of iterations that would be a stoping criterion anyways
+                        DO k = 1, 10
+
+                            int_var_1 = 0
+                            int_var_3 = int_var_2
+                            int_var_2 = 0
+
+                            real_var_1 = 1.0
+
+                            ! STEP 1 - OBSTACLES
+                            IF (n_my_obstacles_on_grid(igrid) > 0) THEN
+                                ! >>> begin local "conceptual namespace" <<<
+                                ! real_var_3  => a
+                                ! real_var_4  => b0
+                                ! real_var_5  => c0
+                                ! real_var_6  => sa
+                                ! real_var_7  => sb
+                                ! real_var_8-real_var_10 nested
+
+                                ! first coefficient
+                                real_var_3 = (dvec(1)**2 + dvec(2)**2 + dvec(3)**2)
+
+                                IF (.NOT. (dvec(1)**2 + dvec(2)**2 + dvec(3)**2 == 0.0)) THEN
+                                
+                                    real_var_4 = 2*cvec(1)*dvec(1) + 2*cvec(2)*dvec(2) + 2*cvec(3)*dvec(3)
+                                    real_var_5 = cvec(1)**2 + cvec(2)**2 + cvec(3)**2
+
+                                    ! iterate over all obstacles of the grid
+                                    DO l = 1, n_my_obstacles_on_grid(igrid)
+
+                                        ! check if a particle interacts with the obstacle it has been deflected from in the previous timestep
+                                        IF (l == int_var_3 .OR. obstacles(i)%iobst < 0) THEN
+                                            CYCLE
+                                        END IF
+
+                                        ! >>> begin local "conceptual namespace" <<<
+                                        ! real_var_8  => b
+                                        ! real_var_9  => c
+                                        ! real_var_10 => d
+
+                                        real_var_8 = real_var_4 - &
+                                            2*obstacles(i)%x*dvec(1) - &
+                                            2*obstacles(i)%y*dvec(2) - &
+                                            2*obstacles(i)%z*dvec(3)
+                                        real_var_9 = real_var_5 + &
+                                            obstacles(i)%x**2 + &
+                                            obstacles(i)%y**2 + &
+                                            obstacles(i)%z**2 - &
+                                            2*cvec(1)*obstacles(i)%x - &
+                                            2*cvec(2)*obstacles(i)%y - &
+                                            2*cvec(3)*obstacles(i)%z - &
+                                            obstacles(i)%radius**2
+                                        real_var_10 = real_var_8**2 - 4*real_var_3*real_var_9
+
+                                        IF (real_var_10 < EPSILON(0.0_realk)) THEN
+                                            CYCLE
+                                        END IF
+
+                                        real_var_6 = (-real_var_8 + SQRT(real_var_10)) / (2 * real_var_3)
+                                        real_var_7 = (-real_var_8 - SQRT(real_var_10)) / (2 * real_var_3)
+                                        ! >>> end local "conceptual namespace" <<<
+
+                                        ! >>> begin local "conceptual namespace" <<<
+                                        ! real_var_8  => sc
+                                        ! real_var_9  => sd
+
+                                        ! if a particle moves towards an obstacle, limit its motion to the closest intersection yet
+                                        IF (real_var_6 >= 0.0 .AND. real_var_7 >= 0.0) THEN
+                                            real_var_8 = MIN(real_var_6, real_var_7)
+                                            IF (real_var_8 < real_var_1) THEN
+                                                real_var_1 = real_var_8
+                                                int_var_2 = i
+                                            END IF
+                                        ELSEIF (real_var_6 <= 0.0 .AND. real_var_7 <= 0.0) THEN
+                                            CYCLE
+                                        ELSE
+                                            real_var_8 = MIN(real_var_6, real_var_7)
+                                            real_var_9 = MAX(real_var_6, real_var_7)
+
+                                            IF (ABS(real_var_8) < ABS(real_var_9)) THEN
+                                                real_var_1 = 0.0
+                                                int_var_2 = i
+                                                EXIT
+                                            ELSEIF (ABS(real_var_8) >= ABS(real_var_9)) THEN
+                                                CYCLE
+                                            END IF
+
+                                        END IF
+                                        ! >>> end local "conceptual namespace" <<<
+                                    END DO
+                                    ! >>> end local "conceptual namespace" <<<
+                                END IF
+                            END IF
+
+                            ! STEP 2 - GRID BOUNDARIES
+                            IF (real_var_1 > 0.0_realk) THEN
+                                ! >>> begin local "conceptual namespace" <<<
+                                ! real_arr_1(1)  => l_a(1)
+                                ! real_arr_1(2)  => l_a(2)
+                                ! real_arr_1(3)  => l_a(3)
+                                ! real_var_6  => rx
+                                ! real_var_7  => ry
+                                ! real_var_8  => rz
+                                ! real_var_9  => rmax
+                                ! real_var_10 => ratio
+
+                                int_var_1 = 0
+                                real_var_9 = 1.0
+
+                                ! abs distance of particle to grid boundaries
+                                real_arr_1(1) = ABS(cvec(1) - particle_gcorner_boundaries((igrid - 1) * 8_intk + icorn)%face_coord(1))
+                                IF (real_arr_1(1) < EPSILON(real_arr_1(1))) THEN
+                                    real_var_6 = SIGN(HUGE(real_var_6), particle_gcorner_boundaries((igrid - 1) * 8_intk + icorn)%location(1) * ((-1.0) ** pstag(1)) * dvec(1)) * ABS(dvec(1))
+                                ELSE
+                                    real_var_6 = particle_gcorner_boundaries((igrid - 1) * 8_intk + icorn)%location(1) * ((-1_intk) ** pstag(1)) * ((real_var_1 * dvec(1)) / (real_arr_1(1)))
+                                END IF
+
+                                IF (real_var_9 <= real_var_6) THEN 
+                                    real_var_9 = real_var_6
+                                    int_var_1 = 1
+                                END IF
+
+                                real_arr_1(2) = ABS(cvec(2) - particle_gcorner_boundaries((igrid - 1) * 8_intk + icorn)%face_coord(2))
+                                IF (real_arr_1(2) < EPSILON(real_arr_1(2))) THEN
+                                    real_var_7 = SIGN(HUGE(real_var_7), particle_gcorner_boundaries((igrid - 1) * 8_intk + icorn)%location(2) * ((-1.0) ** pstag(2)) * dvec(2)) * ABS(dvec(2))
+                                ELSE
+                                    real_var_7 = particle_gcorner_boundaries((igrid - 1) * 8_intk + icorn)%location(2) * ((-1_intk) ** pstag(2)) * ((real_var_1 * dvec(2)) / (real_arr_1(2)))
+                                END IF
+
+                                IF (real_var_9 <= real_var_7) THEN 
+                                    real_var_9 = real_var_7
+                                    int_var_1 = 2
+                                END IF
+
+                                real_arr_1(3) = ABS(cvec(3) - particle_gcorner_boundaries((igrid - 1) * 8_intk + icorn)%face_coord(3))
+                                IF (real_arr_1(3) < EPSILON(real_arr_1(3))) THEN
+                                    real_var_8 = SIGN(HUGE(real_var_8), particle_gcorner_boundaries((igrid - 1) * 8_intk + icorn)%location(3) * ((-1.0) ** pstag(3)) * dvec(3)) * ABS(dvec(3))
+                                ELSE
+                                    real_var_8 = particle_gcorner_boundaries((igrid - 1) * 8_intk + icorn)%location(3) * ((-1_intk) ** pstag(3)) * ((real_var_1 * dvec(3)) / (real_arr_1(3)))
+                                END IF
+
+                                IF (real_var_9 <= real_var_8) THEN 
+                                    real_var_9 = real_var_8
+                                    int_var_1 = 3
+                                END IF
+
+                                IF (int_var_1 == 0) THEN
+                                    cvec(1) = cvec(1) + dvec(1) * real_var_1
+                                    dvec(1) = dvec(1) - dvec(1) * real_var_1
+                                    cvec(2) = cvec(2) + dvec(2) * real_var_1
+                                    dvec(2) = dvec(2) - dvec(2) * real_var_1
+                                    cvec(3) = cvec(3) + dvec(3) * real_var_1
+                                    dvec(3) = dvec(3) - dvec(3) * real_var_1
+                                ELSE
+                                    int_var_2 = 0_intk
+
+                                    real_var_10 = real_arr_1(int_var_1) / ABS(dvec(int_var_1))
+
+                                    cvec(int_var_1) = particle_gcorner_boundaries((igrid - 1) * 8_intk + icorn)%face_coord(int_var_1) 
+                                    dvec(int_var_1) = dvec(int_var_1) - particle_gcorner_boundaries((igrid - 1) * 8_intk + icorn)%location(int_var_1) * real_arr_1(int_var_1)
+                                    l = MOD(int_var_1, 3) + 1
+                                    cvec(l) = cvec(l) + (real_var_10 * dvec(l)) - EPSILON(cvec(l)) * particle_gcorner_boundaries((igrid - 1) * 8_intk + icorn)%location(l)
+                                    dvec(l) = dvec(l) - (real_var_10 * dvec(l))
+                                    l = MOD(int_var_1 + 1, 3) + 1
+                                    cvec(l) = cvec(l) + (real_var_10 * dvec(l)) - EPSILON(cvec(l)) * particle_gcorner_boundaries((igrid - 1) * 8_intk + icorn)%location(l)
+                                    dvec(l) = dvec(l) - (real_var_10 * dvec(l))
+                                END IF
+                                ! >>> end local "conceptual namespace" <<<
+                            END IF
+
+                            IF (0 < int_var_2) THEN
+
+                                ! reflect at obstacle
+                                ! compute normal vector
+                                n(1) = cvec(1) - obstacles(int_var_2)%x
+                                n(2) = cvec(2) - obstacles(int_var_2)%y
+                                n(3) = cvec(3) - obstacles(int_var_2)%z
+
+                                ! magnitude
+                                real_var_2 = SQRT(n(1)**2 + n(2)**2 + n(3)**2)
+
+                                n(1) = n(1) / real_var_2
+                                n(2) = n(2) / real_var_2
+                                n(3) = n(3) / real_var_2
+
+                                ! alter displacement verctor
+                                ! dot product
+                                real_var_2 = MIN((n(1) * dvec(1) + n(2) * dvec(2) + n(3) * dvec(3)), 0.0)
+
+                                dvec(1) = dvec(1) - 2 * real_var_2 * n(1)
+                                dvec(2) = dvec(2) - 2 * real_var_2 * n(2)
+                                dvec(3) = dvec(3) - 2 * real_var_2 * n(3)
+
+                            ELSEIF (0 < int_var_1) THEN
+                                
+                                CALL get_gcorner_normal(particle_gcorner_boundaries((igrid - 1) * 8_intk + icorn), pstag, int_var_1, n)
+                                
+                                ! reflect at grid boundary
+                                ! dot product
+                                real_var_2 = MIN((n(1) * dvec(1) + n(2) * dvec(2) + n(3) * dvec(3)), 0.0)
+
+                                dvec(1) = dvec(1) - 2 * real_var_2 * n(1)
+                                dvec(2) = dvec(2) - 2 * real_var_2 * n(2)
+                                dvec(3) = dvec(3) - 2 * real_var_2 * n(3)
+
+                                !update pstag (normal vector idir (int_var_1) component must be zero or point inwards for this method to work)
+                                pstag(int_var_1) = pstag(int_var_1) + 1 + &
+                                 NINT(n(int_var_1) * particle_gcorner_boundaries((igrid - 1) * 8_intk + icorn)%location(int_var_1))
+                            END IF
+
+                        END DO
+
+                        pdx_pot = (cvec(1) - my_particle_list%particles(ipart)%x) / B_offload(irk)
+                        pdy_pot = (cvec(2) - my_particle_list%particles(ipart)%y) / B_offload(irk)
+                        pdz_pot = (cvec(3) - my_particle_list%particles(ipart)%z) / B_offload(irk)
+
+                        !my_particle_list%particles(ipart)%xyz_abs(1) = my_particle_list%particles(ipart)%xyz_abs(1) + (cvec(1) - my_particle_list%particles(ipart)%x)
+                        !my_particle_list%particles(ipart)%xyz_abs(2) = my_particle_list%particles(ipart)%xyz_abs(2) + (cvec(2) - my_particle_list%particles(ipart)%y)
+                        !my_particle_list%particles(ipart)%xyz_abs(3) = my_particle_list%particles(ipart)%xyz_abs(3) + (cvec(3) - my_particle_list%particles(ipart)%z)
+
+                        my_particle_list%particles(ipart)%x = cvec(1)
+                        my_particle_list%particles(ipart)%y = cvec(2)
+                        my_particle_list%particles(ipart)%z = cvec(3)
+
+                        CALL update_particle_cell_target(my_particle_list%particles(ipart), kk, jj, ii, x, y, z, dx, dy, dz)
+
+                        ! >>> end local "conceptual namespace" <<<
+                    
                     ! TODO: reintroduce particle runtime statistics
                     END DO
 
@@ -800,14 +1046,249 @@ CONTAINS
                 IF (ddiffusion) THEN
                     CALL generate_diffusive_displacement_target(dt, D(1), D(2), D(3), dvec(1), dvec(2), dvec(3), my_particle_list%particles(ipart)%seed)
 
-                    CALL move_particle_target3(my_particle_list%particles(ipart), pstag, dvec, &
-                        deff_vec, particle_gcorner_boundaries((igrid - 1) * 8_intk + icorn), obstacles, dreplace)
+                    ! >>> end local "conceptual namespace" <<<
 
-                    IF (dreplace) THEN
-                        CALL replace_particle_target(my_particle_list%particles(ipart), obstacles, kk, jj, ii, x, y, z, dx, dy, dz)
-                    ELSE 
-                        CALL update_particle_cell_target(my_particle_list%particles(ipart), kk, jj, ii, x, y, z, dx, dy, dz)
-                    END IF
+                    ! >>> begin local "conceptual namespace" <<<
+                    ! int_var_1 => idir
+                    ! int_var_2 => iobst_local_new
+                    ! int_var_3 => iobst_local_old
+                    ! real_var_1 => s
+                    ! real_var_2 => temp 
+
+                    cvec(1) = my_particle_list%particles(ipart)%x
+                    cvec(2) = my_particle_list%particles(ipart)%y
+                    cvec(3) = my_particle_list%particles(ipart)%z
+
+                    int_var_2 = 0
+                    int_var_1 = 0
+
+                    ! to avoid branch divergence here, just iterate to the max. number of iterations that would be a stoping criterion anyways
+                    DO k = 1, 10
+
+                        int_var_1 = 0
+                        int_var_3 = int_var_2
+                        int_var_2 = 0
+
+                        real_var_1 = 1.0
+
+                        ! STEP 1 - OBSTACLES
+                        IF (n_my_obstacles_on_grid(igrid) > 0) THEN
+                            ! >>> begin local "conceptual namespace" <<<
+                            ! real_var_3  => a
+                            ! real_var_4  => b0
+                            ! real_var_5  => c0
+                            ! real_var_6  => sa
+                            ! real_var_7  => sb
+                            ! real_var_8-real_var_10 nested
+
+                            ! first coefficient
+                            real_var_3 = (dvec(1)**2 + dvec(2)**2 + dvec(3)**2)
+
+                            IF (.NOT. (dvec(1)**2 + dvec(2)**2 + dvec(3)**2 == 0.0)) THEN
+                            
+                                real_var_4 = 2*cvec(1)*dvec(1) + 2*cvec(2)*dvec(2) + 2*cvec(3)*dvec(3)
+                                real_var_5 = cvec(1)**2 + cvec(2)**2 + cvec(3)**2
+
+                                ! iterate over all obstacles of the grid
+                                DO l = 1, n_my_obstacles_on_grid(igrid)
+
+                                    ! check if a particle interacts with the obstacle it has been deflected from in the previous timestep
+                                    IF (l == int_var_3 .OR. obstacles(i)%iobst < 0) THEN
+                                        CYCLE
+                                    END IF
+
+                                    ! >>> begin local "conceptual namespace" <<<
+                                    ! real_var_8  => b
+                                    ! real_var_9  => c
+                                    ! real_var_10 => d
+
+                                    real_var_8 = real_var_4 - &
+                                        2*obstacles(i)%x*dvec(1) - &
+                                        2*obstacles(i)%y*dvec(2) - &
+                                        2*obstacles(i)%z*dvec(3)
+                                    real_var_9 = real_var_5 + &
+                                        obstacles(i)%x**2 + &
+                                        obstacles(i)%y**2 + &
+                                        obstacles(i)%z**2 - &
+                                        2*cvec(1)*obstacles(i)%x - &
+                                        2*cvec(2)*obstacles(i)%y - &
+                                        2*cvec(3)*obstacles(i)%z - &
+                                        obstacles(i)%radius**2
+                                    real_var_10 = real_var_8**2 - 4*real_var_3*real_var_9
+
+                                    IF (real_var_10 < EPSILON(0.0_realk)) THEN
+                                        CYCLE
+                                    END IF
+
+                                    real_var_6 = (-real_var_8 + SQRT(real_var_10)) / (2 * real_var_3)
+                                    real_var_7 = (-real_var_8 - SQRT(real_var_10)) / (2 * real_var_3)
+                                    ! >>> end local "conceptual namespace" <<<
+
+                                    ! >>> begin local "conceptual namespace" <<<
+                                    ! real_var_8  => sc
+                                    ! real_var_9  => sd
+
+                                    ! if a particle moves towards an obstacle, limit its motion to the closest intersection yet
+                                    IF (real_var_6 >= 0.0 .AND. real_var_7 >= 0.0) THEN
+                                        real_var_8 = MIN(real_var_6, real_var_7)
+                                        IF (real_var_8 < real_var_1) THEN
+                                            real_var_1 = real_var_8
+                                            int_var_2 = i
+                                        END IF
+                                    ELSEIF (real_var_6 <= 0.0 .AND. real_var_7 <= 0.0) THEN
+                                        CYCLE
+                                    ELSE
+                                        real_var_8 = MIN(real_var_6, real_var_7)
+                                        real_var_9 = MAX(real_var_6, real_var_7)
+
+                                        IF (ABS(real_var_8) < ABS(real_var_9)) THEN
+                                            real_var_1 = 0.0
+                                            int_var_2 = i
+                                            EXIT
+                                        ELSEIF (ABS(real_var_8) >= ABS(real_var_9)) THEN
+                                            CYCLE
+                                        END IF
+
+                                    END IF
+                                    ! >>> end local "conceptual namespace" <<<
+                                END DO
+                                ! >>> end local "conceptual namespace" <<<
+                            END IF
+                        END IF
+
+                        ! STEP 2 - GRID BOUNDARIES
+                        IF (real_var_1 > 0.0_realk) THEN
+                            ! >>> begin local "conceptual namespace" <<<
+                            ! real_arr_1(1)  => l_a(1)
+                            ! real_arr_1(2)  => l_a(2)
+                            ! real_arr_1(3)  => l_a(3)
+                            ! real_var_6  => rx
+                            ! real_var_7  => ry
+                            ! real_var_8  => rz
+                            ! real_var_9  => rmax
+                            ! real_var_10 => ratio
+
+                            int_var_1 = 0
+                            real_var_9 = 1.0
+
+                            ! abs distance of particle to grid boundaries
+                            real_arr_1(1) = ABS(cvec(1) - particle_gcorner_boundaries((igrid - 1) * 8_intk + icorn)%face_coord(1))
+                            IF (real_arr_1(1) < EPSILON(real_arr_1(1))) THEN
+                                real_var_6 = SIGN(HUGE(real_var_6), particle_gcorner_boundaries((igrid - 1) * 8_intk + icorn)%location(1) * ((-1.0) ** pstag(1)) * dvec(1)) * ABS(dvec(1))
+                            ELSE
+                                real_var_6 = particle_gcorner_boundaries((igrid - 1) * 8_intk + icorn)%location(1) * ((-1_intk) ** pstag(1)) * ((real_var_1 * dvec(1)) / (real_arr_1(1)))
+                            END IF
+
+                            IF (real_var_9 <= real_var_6) THEN 
+                                real_var_9 = real_var_6
+                                int_var_1 = 1
+                            END IF
+
+                            real_arr_1(2) = ABS(cvec(2) - particle_gcorner_boundaries((igrid - 1) * 8_intk + icorn)%face_coord(2))
+                            IF (real_arr_1(2) < EPSILON(real_arr_1(2))) THEN
+                                real_var_7 = SIGN(HUGE(real_var_7), particle_gcorner_boundaries((igrid - 1) * 8_intk + icorn)%location(2) * ((-1.0) ** pstag(2)) * dvec(2)) * ABS(dvec(2))
+                            ELSE
+                                real_var_7 = particle_gcorner_boundaries((igrid - 1) * 8_intk + icorn)%location(2) * ((-1_intk) ** pstag(2)) * ((real_var_1 * dvec(2)) / (real_arr_1(2)))
+                            END IF
+
+                            IF (real_var_9 <= real_var_7) THEN 
+                                real_var_9 = real_var_7
+                                int_var_1 = 2
+                            END IF
+
+                            real_arr_1(3) = ABS(cvec(3) - particle_gcorner_boundaries((igrid - 1) * 8_intk + icorn)%face_coord(3))
+                            IF (real_arr_1(3) < EPSILON(real_arr_1(3))) THEN
+                                real_var_8 = SIGN(HUGE(real_var_8), particle_gcorner_boundaries((igrid - 1) * 8_intk + icorn)%location(3) * ((-1.0) ** pstag(3)) * dvec(3)) * ABS(dvec(3))
+                            ELSE
+                                real_var_8 = particle_gcorner_boundaries((igrid - 1) * 8_intk + icorn)%location(3) * ((-1_intk) ** pstag(3)) * ((real_var_1 * dvec(3)) / (real_arr_1(3)))
+                            END IF
+
+                            IF (real_var_9 <= real_var_8) THEN 
+                                real_var_9 = real_var_8
+                                int_var_1 = 3
+                            END IF
+
+                            IF (int_var_1 == 0) THEN
+                                cvec(1) = cvec(1) + dvec(1) * real_var_1
+                                dvec(1) = dvec(1) - dvec(1) * real_var_1
+                                cvec(2) = cvec(2) + dvec(2) * real_var_1
+                                dvec(2) = dvec(2) - dvec(2) * real_var_1
+                                cvec(3) = cvec(3) + dvec(3) * real_var_1
+                                dvec(3) = dvec(3) - dvec(3) * real_var_1
+                            ELSE
+                                int_var_2 = 0_intk
+
+                                real_var_10 = real_arr_1(int_var_1) / ABS(dvec(int_var_1))
+
+                                cvec(int_var_1) = particle_gcorner_boundaries((igrid - 1) * 8_intk + icorn)%face_coord(int_var_1) 
+                                dvec(int_var_1) = dvec(int_var_1) - particle_gcorner_boundaries((igrid - 1) * 8_intk + icorn)%location(int_var_1) * real_arr_1(int_var_1)
+                                l = MOD(int_var_1, 3) + 1
+                                cvec(l) = cvec(l) + (real_var_10 * dvec(l)) - EPSILON(cvec(l)) * particle_gcorner_boundaries((igrid - 1) * 8_intk + icorn)%location(l)
+                                dvec(l) = dvec(l) - (real_var_10 * dvec(l))
+                                l = MOD(int_var_1 + 1, 3) + 1
+                                cvec(l) = cvec(l) + (real_var_10 * dvec(l)) - EPSILON(cvec(l)) * particle_gcorner_boundaries((igrid - 1) * 8_intk + icorn)%location(l)
+                                dvec(l) = dvec(l) - (real_var_10 * dvec(l))
+                            END IF
+                            ! >>> end local "conceptual namespace" <<<
+                        END IF
+
+                        IF (0 < int_var_2) THEN
+
+                            ! reflect at obstacle
+                            ! compute normal vector
+                            n(1) = cvec(1) - obstacles(int_var_2)%x
+                            n(2) = cvec(2) - obstacles(int_var_2)%y
+                            n(3) = cvec(3) - obstacles(int_var_2)%z
+
+                            ! magnitude
+                            real_var_2 = SQRT(n(1)**2 + n(2)**2 + n(3)**2)
+
+                            n(1) = n(1) / real_var_2
+                            n(2) = n(2) / real_var_2
+                            n(3) = n(3) / real_var_2
+
+                            ! alter displacement verctor
+                            ! dot product
+                            real_var_2 = MIN((n(1) * dvec(1) + n(2) * dvec(2) + n(3) * dvec(3)), 0.0)
+
+                            dvec(1) = dvec(1) - 2 * real_var_2 * n(1)
+                            dvec(2) = dvec(2) - 2 * real_var_2 * n(2)
+                            dvec(3) = dvec(3) - 2 * real_var_2 * n(3)
+
+                        ELSEIF (0 < int_var_1) THEN
+                            
+                            CALL get_gcorner_normal(particle_gcorner_boundaries((igrid - 1) * 8_intk + icorn), pstag, int_var_1, n)
+                            
+                            ! reflect at grid boundary
+                            ! dot product
+                            real_var_2 = MIN((n(1) * dvec(1) + n(2) * dvec(2) + n(3) * dvec(3)), 0.0)
+
+                            dvec(1) = dvec(1) - 2 * real_var_2 * n(1)
+                            dvec(2) = dvec(2) - 2 * real_var_2 * n(2)
+                            dvec(3) = dvec(3) - 2 * real_var_2 * n(3)
+
+                            !update pstag (normal vector idir (int_var_1) component must be zero or point inwards for this method to work)
+                            pstag(int_var_1) = pstag(int_var_1) + 1 + &
+                             NINT(n(int_var_1) * particle_gcorner_boundaries((igrid - 1) * 8_intk + icorn)%location(int_var_1))
+                        END IF
+
+                    END DO
+
+                    pdx_pot = (cvec(1) - my_particle_list%particles(ipart)%x) / B_offload(irk)
+                    pdy_pot = (cvec(2) - my_particle_list%particles(ipart)%y) / B_offload(irk)
+                    pdz_pot = (cvec(3) - my_particle_list%particles(ipart)%z) / B_offload(irk)
+
+                    !my_particle_list%particles(ipart)%xyz_abs(1) = my_particle_list%particles(ipart)%xyz_abs(1) + (cvec(1) - my_particle_list%particles(ipart)%x)
+                    !my_particle_list%particles(ipart)%xyz_abs(2) = my_particle_list%particles(ipart)%xyz_abs(2) + (cvec(2) - my_particle_list%particles(ipart)%y)
+                    !my_particle_list%particles(ipart)%xyz_abs(3) = my_particle_list%particles(ipart)%xyz_abs(3) + (cvec(3) - my_particle_list%particles(ipart)%z)
+
+                    my_particle_list%particles(ipart)%x = cvec(1)
+                    my_particle_list%particles(ipart)%y = cvec(2)
+                    my_particle_list%particles(ipart)%z = cvec(3)
+
+                    ! >>> end local "conceptual namespace" <<<
+
+                    CALL update_particle_cell_target(my_particle_list%particles(ipart), kk, jj, ii, x, y, z, dx, dy, dz)
                 END IF
 #endif
 
