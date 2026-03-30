@@ -13,7 +13,8 @@ MODULE particle_timeintegration_mod
     USE particle_interpolation_mod
     USE particle_diffusion_mod
     USE particle_exchange_mod
-
+    USE particle_boundaries_mod
+    
     IMPLICIT NONE
 
     TYPE(rk_2n_t) :: prkscheme
