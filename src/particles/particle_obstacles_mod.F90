@@ -65,7 +65,13 @@ MODULE particle_obstacles_mod
     !$omp declare mapper(obstacle_t :: obst) map(obst, obst%iobst, obst%x, obst%y, obst%z, obst%radius)
 #endif 
 
+
+#if defined __INTEL_COMPILER
+    !$omp declare target link(aura)
+#else
     !$omp declare target(aura)
+#endif
+    
     !$omp declare target(my_obstacles_offload, obstacle_displ, n_my_obstacles_on_grid)
 
 CONTAINS    !===================================

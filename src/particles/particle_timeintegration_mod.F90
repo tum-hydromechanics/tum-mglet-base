@@ -762,9 +762,9 @@ CONTAINS
             
             CALL get_bbox_target(bbox(1), bbox(2), bbox(3), bbox(4), bbox(5), bbox(6), igrid)
             
-            !$omp parallel do private(ipart, icorn, pstag, cvec, n, k, l, int_var_1, int_var_2, int_var_3, real_arr_1, &
+            !$omp parallel do private(ipart, icorn, pstag, irk, cvec, dvec, n, k, l, int_var_1, int_var_2, int_var_3, real_arr_1, &
             !$omp real_var_1, real_var_2, real_var_3, real_var_4, real_var_5, real_var_6, real_var_7, real_var_8, real_var_9, real_var_10) &
-            !$omp firstprivate(igrid, ii, jj, kk, irk, dvec, pdx_pot, pdy_pot, pdz_pot, bbox) &
+            !$omp firstprivate(igrid, ii, jj, kk, pdx_pot, pdy_pot, pdz_pot, bbox) &
             !$omp shared(x, y, z, dx, dy, dz, ddx, ddy, ddz, pwu, pwv, pww, obstacles)
             DO j = 1, grids_np(i)
 
@@ -778,6 +778,10 @@ CONTAINS
                 pstag = 0_intk
 
                 IF (dadvection) THEN
+                    
+                    pdx_pot = 0.0
+                    pdy_pot = 0.0
+                    pdz_pot = 0.0
 
                     DO irk = 1, pnrk
 
@@ -916,7 +920,6 @@ CONTAINS
                                 ! real_var_9  => rmax
                                 ! real_var_10 => ratio
 
-                                int_var_1 = 0
                                 real_var_9 = 1.0
 
                                 ! abs distance of particle to grid boundaries
@@ -955,7 +958,7 @@ CONTAINS
                                     real_var_9 = real_var_8
                                     int_var_1 = 3
                                 END IF
-
+                                
                                 IF (int_var_1 == 0) THEN
                                     cvec(1) = cvec(1) + dvec(1) * real_var_1
                                     dvec(1) = dvec(1) - dvec(1) * real_var_1
