@@ -4,6 +4,7 @@ MODULE particle_interpolation_mod
     ! Interpolation of (staggered) fields at given point coordinates (particle location)
 
     USE particle_basetype_mod
+    USE particle_ofields_mod
 
     IMPLICIT NONE
 
@@ -83,7 +84,7 @@ CONTAINS    !===================================
         alpha = (v1(p_k, p_j, p_i) - v1(p_k, p_j, p_im)) / ddx(p_i)
 
         beta = 0.25 * ((v1(p_k, p_jp, p_i) + v1(p_k, p_jp, p_im) - v1(p_k, p_j, p_i) - v1(p_k, p_j, p_im)) / dy(p_j) &
-         + (v1(p_k, p_j, p_i) + v1(p_k, p_j, p_im) - v1(p_k, p_jm, p_i) - v1(p_k, p_jm, p_im)) / dy(p_j -1))
+         + (v1(p_k, p_j, p_i) + v1(p_k, p_j, p_im) - v1(p_k, p_jm, p_i) - v1(p_k, p_jm, p_im)) / dy(p_jm))
 
         gamma = 0.25 * ((v1(p_kp, p_j, p_i) + v1(p_kp, p_j, p_im) - v1(p_k, p_j, p_i) - v1(p_k, p_j, p_im)) / dz(p_k) &
          + (v1(p_k, p_j, p_i) + v1(p_k, p_j, p_im) - v1(p_km, p_j, p_i) - v1(p_km, p_j, p_im)) / dz(p_km))
@@ -122,6 +123,123 @@ CONTAINS    !===================================
         p_v3 = alpha * (p_z - z(p_k)) + beta * (p_x - x(p_i)) + gamma * (p_y - y(p_j)) + delta
 
     END SUBROUTINE interpolate_lincon
+
+
+    ! linear and differntially conservative interpolation of staggered vector field
+    ! from Gobert et. al, LAGRANGIAN SCALAR TRACKING FOR LAMINAR MICROMIXING AT HIGH SCHMIDT NUMBERS, 2006
+    SUBROUTINE interpolate_lincon_target(particle, igrid, kk, jj, ii, p_v1, p_v2, p_v3)
+
+        !$omp declare target
+
+        ! subroutine arguments
+        TYPE(baseparticle_t), INTENT(in) :: particle
+        INTEGER(intk), INTENT(in) :: igrid, kk, jj, ii
+        REAL(realk), INTENT(out) :: p_v1, p_v2, p_v3 ! particle values in x/y/z direction (velocity or diffusion constant)
+
+        ! local variables
+        INTEGER(intk) :: ip, i, j, k
+        REAL(realk) :: x, ddx, y, ddy, z, ddz
+        REAL(realk) :: dx(-1:0), dy(-1:0), dz(-1:0)
+        REAL(realk) :: v1(-1:1,-1:1,-1:0), v2(-1:1,-1:0,-1:1), v3(-1:0,-1:1,-1:1)
+        INTEGER(intk) :: p_ip, p_im, p_jp, p_jm, p_kp, p_km
+        REAL(realk) :: alpha, beta, gamma, delta
+
+        ! TODO: FIX GRADIENTS AT NO FLUX GRID BOUNDARIES !!!
+
+        p_im = MAX(MIN(particle%ijkcell(1) - 1, ii), 1)
+        p_ip = MAX(MIN(particle%ijkcell(1) + 1, ii), 1)
+        p_jm = MAX(MIN(particle%ijkcell(2) - 1, jj), 1)
+        p_jp = MAX(MIN(particle%ijkcell(2) + 1, jj), 1)
+        p_km = MAX(MIN(particle%ijkcell(3) - 1, kk), 1)
+        p_kp = MAX(MIN(particle%ijkcell(3) + 1, kk), 1)
+
+        ip = ip1d_offload(igrid)
+
+        x = x_offload(ip + particle%ijkcell(1) - 1) 
+        dx(-1:0) = dx_offload(ip + p_im - 1 : ip + particle%ijkcell(1) -1)
+        ddx = ddx_offload(ip + particle%ijkcell(1) - 1)
+
+        y = y_offload(ip + particle%ijkcell(2) - 1) 
+        dy(-1:0) = dy_offload(ip + p_jm - 1 : ip + particle%ijkcell(2) -1)
+        ddy = ddy_offload(ip + particle%ijkcell(2) - 1)
+
+        z = z_offload(ip + particle%ijkcell(3) - 1) 
+        dz(-1:0) = dz_offload(ip + p_km - 1 : ip + particle%ijkcell(3) -1)
+        ddz = ddz_offload(ip + particle%ijkcell(3) - 1)
+
+        ip = ip3d_offload(igrid)
+        
+        DO i=-1, 0
+            DO j=-1, 1
+                DO k=-1, 1
+                    v1(k, j, i) = u_offload(ip + (particle%ijkcell(3) + k - 1) + &
+                     (particle%ijkcell(2) + j - 1) * kk + (particle%ijkcell(1) + i - 1) * kk * jj)
+                END DO
+            END DO
+        END DO 
+        
+        DO i=-1, 1
+            DO j=-1, 0
+                DO k=-1, 1
+                    v2(k, j, i) = v_offload(ip + (particle%ijkcell(3) + k - 1) + &
+                     (particle%ijkcell(2) + j - 1) * kk + (particle%ijkcell(1) + i - 1) * kk * jj)
+                END DO
+            END DO
+        END DO
+
+        DO i=-1, 1
+            DO j=-1, 1
+                DO k=-1, 0
+                    v3(k, j, i) = w_offload(ip + (particle%ijkcell(3) + k - 1) + &
+                     (particle%ijkcell(2) + j - 1) * kk + (particle%ijkcell(1) + i - 1) * kk * jj)
+                END DO
+            END DO
+        END DO 
+
+        ! u interpolation
+        alpha = (v1(0, 0, 0) - v1(0, 0, -1)) / ddx
+
+        beta = 0.25 * ((v1(0, 1, 0) + v1(0, 1, -1) - v1(0, 0, 0) - v1(0, 0, -1)) / dy(0) &
+         + (v1(0, 0, 0) + v1(0, 0, -1) - v1(0, -1, 0) - v1(0, -1, -1)) / dy(-1))
+
+        gamma = 0.25 * ((v1(1, 0, 0) + v1(1, 0, -1) - v1(0, 0, 0) - v1(0, 0, -1)) / dz(0) &
+         + (v1(0, 0, 0) + v1(0, 0, -1) - v1(-1, 0, 0) - v1(-1, 0, -1)) / dz(-1))
+
+        delta = 0.5 * (v1(0, 0, 0) + v1(0, 0, -1) &
+         - alpha * (ddx - dx(-1)) - beta * (ddy - dy(-1)) - gamma * (ddz - dz(-1)))
+
+        p_v1 = alpha * (particle%x - x) + beta * (particle%y - y) + gamma * (particle%z - z) + delta
+
+        ! v interpolation
+        alpha = (v2(0, 0, 0) - v2(0, -1, 0)) / ddy
+
+        beta = 0.25 * ((v2(0, 0, 1) + v2(0, -1, 1) - v2(0, 0, 0) - v2(0, -1, 0)) / dx(0) &
+         + (v2(0, 0, 0) + v2(0, -1, 0) - v2(0, 0, -1) - v2(0, -1, -1)) /dx(-1))
+
+        gamma = 0.25 * ((v2(1, 0, 0) + v2(1, -1, 0) - v2(0, 0, 0) - v2(0, -1, 0)) / dz(0) &
+         + (v2(0, 0, 0) + v2(0, -1, 0) - v2(-1, 0, 0) - v2(-1, -1, 0)) / dz(-1))
+
+        delta = 0.5 * (v2(0, 0, 0) + v2(0, -1, 0) &
+         - alpha * (ddy - dy(-1)) - beta * (ddx - dx(-1)) - gamma * (ddz - dz(-1)))
+
+        p_v2 = alpha * (particle%y - y) + beta * (particle%x - x) + gamma * (particle%z - z) + delta
+
+        ! w interpolation
+        alpha = (v3(0, 0, 0) - v3(-1 ,0 ,0)) / ddz
+
+        beta = 0.25 * ((v3(0, 0, 1) + v3(-1, 0, 1) - v3(0, 0, 0) - v3(-1, 0, 0)) / dx(0) &
+         + (v3(0, 0, 0) + v3(-1, 0, 0) - v3(0, 0, -1) - v3(-1, 0, -1)) / dx(-1))
+
+        gamma = 0.25 * ((v3(0, -1, 0) + v3(-1, -1, 0) - v3(0, 0, 0) - v3(-1, 0, 0)) / dy(0) &
+         + (v3(0, 0, 0) + v3(-1, 0, 0) - v3(0, -1, 0) - v3(-1, -1, 0)) / dy(-1))
+
+        delta = 0.5 * (v3(0, 0, 0) + v3(-1, 0, 0) &
+         - alpha * (ddz - dz(-1)) - beta * (ddx - dx(-1)) - gamma * (ddy - dy(-1)))
+
+        p_v3 = alpha * (particle%z - z) + beta * (particle%x - x) + gamma * (particle%y - y) + delta
+
+    END SUBROUTINE interpolate_lincon_target
+
 
 
 END MODULE particle_interpolation_mod
