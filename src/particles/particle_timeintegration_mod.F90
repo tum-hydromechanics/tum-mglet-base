@@ -651,9 +651,7 @@ CONTAINS
         INTEGER(intk) :: ii, jj, kk
         INTEGER(intk) :: pstag(3)
         REAL(realk), POINTER, CONTIGUOUS, DIMENSION(:) :: x, y, z
-        REAL(realk), POINTER, CONTIGUOUS, DIMENSION(:) :: dx, dy, dz, ddx, ddy, ddz
-        REAL(realk), POINTER, CONTIGUOUS, DIMENSION(:, :, :) :: pwu, pwv, pww
-        TYPE(obstacle_t), POINTER, CONTIGUOUS, DIMENSION(:) :: obstacles
+        REAL(realk), POINTER, CONTIGUOUS, DIMENSION(:) :: dx, dy, dz
         REAL(realk) :: pdx_pot, pdy_pot, pdz_pot
         REAL(realk) :: dvec(3), cvec(3), n(3)
         REAL(realk) :: bbox(6)
@@ -703,13 +701,9 @@ CONTAINS
 
         CALL start_timer(924)
 
-#if defined __INTEL_COMPILER
-        !$omp target map(tofrom: dev_num, num_teams, num_threads) map(mapper(obstacle_t), alloc: obstacles)
-#else 
         !$omp target map(tofrom: dev_num, num_teams, num_threads)
-#endif
         !$omp teams distribute private(igrid, ipart, icorn, pstag, ii, jj, kk, &
-        !$omp irk, k, l, dvec, pdx_pot, pdy_pot, pdz_pot, x, y, z, dx, dy, dz, ddx, ddy, ddz, pwu, pwv, pww, obstacles, &
+        !$omp irk, k, l, dvec, pdx_pot, pdy_pot, pdz_pot, x, y, z, dx, dy, dz, &
         !$omp bbox, cvec, n, int_var_1, int_var_2, int_var_3, real_arr_1, &
         !$omp real_var_1, real_var_2, real_var_3, real_var_4, real_var_5, real_var_6, real_var_7, real_var_8, real_var_9, real_var_10) &
         !$omp reduction(max: num_threads)
@@ -739,33 +733,23 @@ CONTAINS
             int_var_2 = mgdims_offload((igrid - 1) * 3 + 1)
             x(1:int_var_2) => x_offload(int_var_1:int_var_1+int_var_2-1)
             dx(1:int_var_2) => dx_offload(int_var_1:int_var_1+int_var_2-1)
-            ddx(1:int_var_2) => ddx_offload(int_var_1:int_var_1+int_var_2-1)
 
             int_var_2 = mgdims_offload((igrid - 1) * 3 + 2)
             y(1:int_var_2) => y_offload(int_var_1:int_var_1+int_var_2-1)
             dy(1:int_var_2) => dy_offload(int_var_1:int_var_1+int_var_2-1)
-            ddy(1:int_var_2) => ddy_offload(int_var_1:int_var_1+int_var_2-1)
 
             int_var_2 = mgdims_offload((igrid - 1) * 3 + 3)
             z(1:int_var_2) => z_offload(int_var_1:int_var_1+int_var_2-1)
             dz(1:int_var_2) => dz_offload(int_var_1:int_var_1+int_var_2-1)
-            ddz(1:int_var_2) => ddz_offload(int_var_1:int_var_1+int_var_2-1)
-
-            int_var_1 = ip3d_offload(igrid)
-            pwu(1:kk, 1:jj, 1:ii) => u_offload(int_var_1:int_var_1+kk*jj*ii-1)
-            pwv(1:kk, 1:jj, 1:ii) => v_offload(int_var_1:int_var_1+kk*jj*ii-1)
-            pww(1:kk, 1:jj, 1:ii) => w_offload(int_var_1:int_var_1+kk*jj*ii-1)
 
             ! >>> end local "conceptual namespace" <<<
-
-            obstacles => my_obstacles_offload(obstacle_displ(igrid) + 1: obstacle_displ(igrid) + MAX(1_intk, n_my_obstacles_on_grid(igrid)))
             
             CALL get_bbox_target(bbox(1), bbox(2), bbox(3), bbox(4), bbox(5), bbox(6), igrid)
             
             !$omp parallel do private(ipart, icorn, pstag, irk, cvec, dvec, n, k, l, int_var_1, int_var_2, int_var_3, real_arr_1, &
             !$omp real_var_1, real_var_2, real_var_3, real_var_4, real_var_5, real_var_6, real_var_7, real_var_8, real_var_9, real_var_10) &
             !$omp firstprivate(igrid, ii, jj, kk, pdx_pot, pdy_pot, pdz_pot, bbox) &
-            !$omp shared(x, y, z, dx, dy, dz, ddx, ddy, ddz, pwu, pwv, pww, obstacles)
+            !$omp shared(x, y, z, dx, dy, dz)
             DO j = 1, grids_np(i)
 
                 !number of threads in the team (working on j-loop)
@@ -791,8 +775,7 @@ CONTAINS
                         ! real_var_3 => pw_adv
 
                         ! get particle velocity
-                        CALL interpolate_lincon(my_particle_list%particles(ipart), kk, jj, ii, x, y, z, dx, dy, dz, ddx, ddy, ddz, &
-                        pwu, pwv, pww, real_var_1, real_var_2, real_var_3)
+                        CALL interpolate_lincon_target(my_particle_list%particles(ipart), igrid, kk, jj, ii, real_var_1, real_var_2, real_var_3)
 
                         CALL prkstep(pdx_pot, pdy_pot, pdz_pot, real_var_1, real_var_2, real_var_3, dt, &
                         A_offload(irk), B_offload(irk), dvec(1), dvec(2), dvec(3))
@@ -845,7 +828,7 @@ CONTAINS
                                     DO l = 1, n_my_obstacles_on_grid(igrid)
 
                                         ! check if a particle interacts with the obstacle it has been deflected from in the previous timestep
-                                        IF (l == int_var_3 .OR. obstacles(i)%iobst < 0) THEN
+                                        IF (l == int_var_3 .OR. my_obstacles_offload(obstacle_displ(igrid) + l)%iobst < 0) THEN
                                             CYCLE
                                         END IF
 
@@ -855,17 +838,17 @@ CONTAINS
                                         ! real_var_10 => d
 
                                         real_var_8 = real_var_4 - &
-                                            2*obstacles(i)%x*dvec(1) - &
-                                            2*obstacles(i)%y*dvec(2) - &
-                                            2*obstacles(i)%z*dvec(3)
+                                            2*my_obstacles_offload(obstacle_displ(igrid) + l)%x*dvec(1) - &
+                                            2*my_obstacles_offload(obstacle_displ(igrid) + l)%y*dvec(2) - &
+                                            2*my_obstacles_offload(obstacle_displ(igrid) + l)%z*dvec(3)
                                         real_var_9 = real_var_5 + &
-                                            obstacles(i)%x**2 + &
-                                            obstacles(i)%y**2 + &
-                                            obstacles(i)%z**2 - &
-                                            2*cvec(1)*obstacles(i)%x - &
-                                            2*cvec(2)*obstacles(i)%y - &
-                                            2*cvec(3)*obstacles(i)%z - &
-                                            obstacles(i)%radius**2
+                                            my_obstacles_offload(obstacle_displ(igrid) + l)%x**2 + &
+                                            my_obstacles_offload(obstacle_displ(igrid) + l)%y**2 + &
+                                            my_obstacles_offload(obstacle_displ(igrid) + l)%z**2 - &
+                                            2*cvec(obstacle_displ(igrid) + l)*my_obstacles_offload(obstacle_displ(igrid) + l)%x - &
+                                            2*cvec(obstacle_displ(igrid) + l)*my_obstacles_offload(obstacle_displ(igrid) + l)%y - &
+                                            2*cvec(obstacle_displ(igrid) + l)*my_obstacles_offload(obstacle_displ(igrid) + l)%z - &
+                                            my_obstacles_offload(i)%radius**2
                                         real_var_10 = real_var_8**2 - 4*real_var_3*real_var_9
 
                                         IF (real_var_10 < EPSILON(0.0_realk)) THEN
@@ -987,9 +970,9 @@ CONTAINS
 
                                 ! reflect at obstacle
                                 ! compute normal vector
-                                n(1) = cvec(1) - obstacles(int_var_2)%x
-                                n(2) = cvec(2) - obstacles(int_var_2)%y
-                                n(3) = cvec(3) - obstacles(int_var_2)%z
+                                n(1) = cvec(1) - my_obstacles_offload(obstacle_displ(igrid) + int_var_2)%x
+                                n(2) = cvec(2) - my_obstacles_offload(obstacle_displ(igrid) + int_var_2)%y
+                                n(3) = cvec(3) - my_obstacles_offload(obstacle_displ(igrid) + int_var_2)%z
 
                                 ! magnitude
                                 real_var_2 = SQRT(n(1)**2 + n(2)**2 + n(3)**2)
@@ -1097,7 +1080,7 @@ CONTAINS
                                 DO l = 1, n_my_obstacles_on_grid(igrid)
 
                                     ! check if a particle interacts with the obstacle it has been deflected from in the previous timestep
-                                    IF (l == int_var_3 .OR. obstacles(i)%iobst < 0) THEN
+                                    IF (l == int_var_3 .OR. my_obstacles_offload(obstacle_displ(igrid) + l)%iobst < 0) THEN
                                         CYCLE
                                     END IF
 
@@ -1107,17 +1090,17 @@ CONTAINS
                                     ! real_var_10 => d
 
                                     real_var_8 = real_var_4 - &
-                                        2*obstacles(i)%x*dvec(1) - &
-                                        2*obstacles(i)%y*dvec(2) - &
-                                        2*obstacles(i)%z*dvec(3)
+                                        2*my_obstacles_offload(obstacle_displ(igrid) + l)%x*dvec(1) - &
+                                        2*my_obstacles_offload(obstacle_displ(igrid) + l)%y*dvec(2) - &
+                                        2*my_obstacles_offload(obstacle_displ(igrid) + l)%z*dvec(3)
                                     real_var_9 = real_var_5 + &
-                                        obstacles(i)%x**2 + &
-                                        obstacles(i)%y**2 + &
-                                        obstacles(i)%z**2 - &
-                                        2*cvec(1)*obstacles(i)%x - &
-                                        2*cvec(2)*obstacles(i)%y - &
-                                        2*cvec(3)*obstacles(i)%z - &
-                                        obstacles(i)%radius**2
+                                        my_obstacles_offload(obstacle_displ(igrid) + l)%x**2 + &
+                                        my_obstacles_offload(obstacle_displ(igrid) + l)%y**2 + &
+                                        my_obstacles_offload(obstacle_displ(igrid) + l)%z**2 - &
+                                        2*cvec(1)*my_obstacles_offload(obstacle_displ(igrid) + l)%x - &
+                                        2*cvec(2)*my_obstacles_offload(obstacle_displ(igrid) + l)%y - &
+                                        2*cvec(3)*my_obstacles_offload(obstacle_displ(igrid) + l)%z - &
+                                        my_obstacles_offload(obstacle_displ(igrid) + l)%radius**2
                                     real_var_10 = real_var_8**2 - 4*real_var_3*real_var_9
 
                                     IF (real_var_10 < EPSILON(0.0_realk)) THEN
@@ -1240,9 +1223,9 @@ CONTAINS
 
                             ! reflect at obstacle
                             ! compute normal vector
-                            n(1) = cvec(1) - obstacles(int_var_2)%x
-                            n(2) = cvec(2) - obstacles(int_var_2)%y
-                            n(3) = cvec(3) - obstacles(int_var_2)%z
+                            n(1) = cvec(1) - my_obstacles_offload(obstacle_displ(igrid) + int_var_2)%x
+                            n(2) = cvec(2) - my_obstacles_offload(obstacle_displ(igrid) + int_var_2)%y
+                            n(3) = cvec(3) - my_obstacles_offload(obstacle_displ(igrid) + int_var_2)%z
 
                             ! magnitude
                             real_var_2 = SQRT(n(1)**2 + n(2)**2 + n(3)**2)
