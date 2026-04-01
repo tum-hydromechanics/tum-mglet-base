@@ -63,6 +63,11 @@ CONTAINS
 
             ! PARTICLE EXCHANGE
             CALL set_timer(940, 'PSIM_EXCHANGE')
+            CALL set_timer(941, 'PREP_COMM')
+            CALL set_timer(942, 'MPI_COMM')
+            CALL set_timer(943, 'INSERT_PART')
+            CALL set_timer(944, 'SORT_PLIST')
+            CALL set_timer(945, 'SANITY_CHECKS')
 
             ! PARTICLE STATISTICS
             ! everything relatet to statistics (incl. init/finish_particle_statistics)
