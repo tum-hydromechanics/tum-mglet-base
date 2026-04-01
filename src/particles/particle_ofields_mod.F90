@@ -26,21 +26,33 @@ MODULE particle_ofields_mod
     ! |     - Prevent any unwanted intereference with the core flow implementation |
     ! |     - Allows to directly map field data without omp directives in fields   |
     ! └────────────────────────────────────────────────────────────────────────────┘
-    
-    TYPE :: grid_env_t
 
-        INTEGER(intk) :: mgdim(27*3)
-        REAL(realk) :: bbox(27*6)
+    !TYPE :: cell_geo_env_t 
 
-    END TYPE grid_env_t
+    !    REAL(realk) :: x
+    !    REAL(realk) :: y
+    !    REAL(realk) :: z
+    !    REAL(realk) :: dx(-1:0)
+    !    REAL(realk) :: dy(-1:0)
+    !    REAL(realk) :: dz(-1:0)
+    !    REAL(realk) :: ddx
+    !    REAL(realk) :: ddy
+    !    REAL(realk) :: ddz
 
-    TYPE :: cell_env_t
+    !END TYPE cell_geo_env_t 
 
-        REAL(realk) :: dc
-        REAL(realk) :: ddc(2)
-        REAL(realk) :: vel(10)
+    !TYPE :: cell_vel_env_t 
 
-    END TYPE cell_env_t 
+    !    REAL(realk) :: u(-1:1,-1:1,-1:1) 
+    !    REAL(realk) :: v(-1:1,-1:1,-1:1)
+    !    REAL(realk) :: w(-1:1,-1:1,-1:1)
+
+    !END TYPE cell_vel_env_t 
+
+    !! ----- Cell Environment Arrays -----
+
+    !TYPE(cell_geo_env_t), ALLOCATABLE :: cells_geometry_arr(:)
+    !TYPE(cell_vel_env_t), ALLOCATABLE :: cells_velocities_arr(:)
 
     ! ----- Pointers to fields -----
     ! Grid parameters
@@ -306,5 +318,23 @@ CONTAINS
         grid_ptr(1:kk, 1:jj, 1:ii) => arr_ptr(ip:ip+kk*jj*ii-1)
 
     END SUBROUTINE ptr_to_grid_3
+
+
+    !SUBROUTINE init_cell_env_arrays()
+
+
+    !END SUBROUTINE init_cell_env_arrays
+
+
+    !SUBROUTINE collapse_stencil()
+
+
+    !END SUBROUTINE collapse_stencil
+
+
+    !SUBROUTINE collapse_velocity_fields()
+
+
+    !END SUBROUTINE collapse_velocity_fields
 
 END MODULE particle_ofields_mod
