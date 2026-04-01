@@ -88,6 +88,8 @@ CONTAINS
         END IF
 
         !IF (MOD(ittot, loadbalance_step) == 0) CALL set_loadbalance_connections()
+        
+        CALL start_timer(941)
 
         active_np_old = particle_list%active_np
 
@@ -118,9 +120,9 @@ CONTAINS
             CALL update_coordinates(particle_list%particles(i), destgrid, iface)
 
             ! for particle slice statistics: must be called after update_coordinates !!!
-            CALL stop_timer(940)
+            !CALL stop_timer(940)
             !CALL associate_new_slice(particle_list%particles(i), ittot, itstep)
-            CALL start_timer(940)
+            !CALL start_timer(940)
 
             ! triage of particles
             IF (particle_list%particles(i)%igrid == destgrid) THEN
@@ -131,9 +133,9 @@ CONTAINS
             ELSE
 
                 ! for particle statistics
-                CALL stop_timer(940)
+                !CALL stop_timer(940)
                 !CALL deregister_particle(particle_list%particles(i), ittot, itstep)
-                CALL start_timer(940)
+                !CALL start_timer(940)
 
                 ! particle changes the grid
                 IF (destproc == myid) THEN
@@ -143,9 +145,9 @@ CONTAINS
                     CALL set_particle_cell(particle_list%particles(i))
 
                     ! for particle statistics
-                    CALL stop_timer(940)
+                    !CALL stop_timer(940)
                     !CALL register_particle(particle_list%particles(i), itstep)
-                    CALL start_timer(940)
+                    !CALL start_timer(940)
 
                 ELSE
 
@@ -164,6 +166,10 @@ CONTAINS
 
             END IF
         END DO
+
+        CALL stop_timer(941)
+
+        CALL start_timer(942)
 
         IF (numprocs > 1) THEN
             ! posting NON-blocking receives
@@ -342,32 +348,51 @@ CONTAINS
                     CALL set_particle_cell(recvBufParticle(i))
 
                     ! for gridstat
-                    CALL stop_timer(940)
+                    !CALL stop_timer(940)
                     !CALL register_particle(recvBufParticle(i), itstep)
-                    CALL start_timer(940)
+                    !CALL start_timer(940)
 
                 END DO
             END IF
         END IF
 
+        CALL stop_timer(942)
+
         ! Copy recieved particles into the list
         ! CAUTION: up to here, particle_list%particles(particle_list%ifinal)%state might be < 1 ("empty")
         IF (.NOT. dparticle_sorting) THEN
+            CALL start_timer(943)
             IF (numprocs > 1) CALL integrate_particles_unsorted(particle_list, sendind)
+            CALL stop_timer(943)
+            CALL start_timer(945)
             CALL check_plist(particle_list, abort = .TRUE.)
+            CALL stop_timer(945)
         ELSE
             IF (.NOT. high_mem_sorting) THEN
+                CALL start_timer(943)
                 IF (numprocs > 1) CALL integrate_particles_unsorted(particle_list, sendind)
+                CALL stop_timer(943)
+                CALL start_timer(945)
                 CALL check_plist(particle_list, abort = .TRUE.)
-
+                CALL stop_timer(945)
+                CALL start_timer(944)
                 CALL sort_by_grid(particle_list)
+                CALL stop_timer(944)
+                CALL start_timer(945)
                 CALL check_plist(particle_list, abort = .TRUE.)
+                CALL stop_timer(945)
             ELSE
+                CALL start_timer(943)
                 IF (numprocs > 1) CALL integrate_particles_sorted(particle_list, sendind)
+                CALL stop_timer(943)
+                CALL start_timer(945)
                 CALL check_plist(particle_list, abort = .TRUE.)
+                CALL stop_timer(945)
             END IF
         END IF
-    
+
+        CALL start_timer(945)
+
         ! Some safety checks
         IF (TRIM(particle_terminal) == "normal" .OR. TRIM(particle_terminal) == "verbose") THEN
             IF (myid /= 0) THEN
@@ -421,6 +446,8 @@ CONTAINS
         IF (err_global == 1) THEN
             CALL errr(__FILE__, __LINE__)
         END IF
+
+        CALL stop_timer(945)
 
         IF (ALLOCATED(sendBufParticle)) DEALLOCATE(sendBufParticle)
         IF (ALLOCATED(recvBufParticle)) DEALLOCATE(recvBufParticle)
