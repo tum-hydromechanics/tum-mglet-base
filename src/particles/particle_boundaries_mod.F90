@@ -72,6 +72,10 @@ MODULE particle_boundaries_mod
 
         REAL(realk) :: face_coord(3)
 
+        ! TODO: make neighbour_ref_coord a size 12 array and account for special cases!
+        ! this indicates how particle coordinates should be updated, if the particle leaves its current grid
+        REAL(realk) :: neighbour_ref_coord(3)
+
         INTEGER(intk) :: face_neighbours(8)
 
         REAL(realk) :: face_normals(12)
@@ -83,7 +87,7 @@ MODULE particle_boundaries_mod
 #if defined __INTEL_COMPILER
     ! declare mapper(particle_boundaries_t :: bnd) map(to: bnd, bnd%face_neighbours, bnd%face_normals)
     !$omp declare mapper(particle_gcorner_boundaries_t :: cbnd) map(to: cbnd, &
-    !$omp cbnd%location, cbnd%face_coord, cbnd%face_neighbours, cbnd%face_normals)
+    !$omp cbnd%location, cbnd%face_coord, cbnd%neighbour_ref_coord, cbnd%face_neighbours, cbnd%face_normals)
 #endif
 
     CONTAINS
@@ -280,8 +284,8 @@ MODULE particle_boundaries_mod
         ! particle_boundaries(1:ngrid)%face_normals)
         !$omp target enter data map(mapper(particle_gcorner_boundaries_t), to: particle_gcorner_boundaries(1:ngrid * 8))
         !$omp target enter data map(particle_gcorner_boundaries(1:ngrid * 8)%face_neighbours, &
-        !$omp particle_gcorner_boundaries(1:ngrid * 8)%location, particle_gcorner_boundaries(1:ngrid * 8)%face_coord, &
-        !$omp particle_gcorner_boundaries(1:ngrid * 8)%face_normals)
+        !$omp particle_gcorner_boundaries(1:ngrid * 8)%location, particle_gcorner_boundaries(1:ngrid * 8)%neighbour_ref_coord, &
+        !$omp particle_gcorner_boundaries(1:ngrid * 8)%face_coord, particle_gcorner_boundaries(1:ngrid * 8)%face_normals)
 #else
         ! target enter data map(always, to: particle_boundaries)
         !$omp target enter data map(always, to: particle_gcorner_boundaries)
@@ -1482,6 +1486,7 @@ MODULE particle_boundaries_mod
                 dvec(2) = dvec(2) - 2 * temp * n(2)
                 dvec(3) = dvec(3) - 2 * temp * n(3)
 
+                !pstag is either 0 or 1 
                 !update pstag (normal vector idir component must be zero or point inwards for this method to work)
                 pstag(idir) = pstag(idir) + 1 + NINT(n(idir) * gcorner_boundary%location(idir))
             END IF
@@ -1901,12 +1906,35 @@ MODULE particle_boundaries_mod
 
     END SUBROUTINE reflect_at_obstacle
 
+    ! update particle coordinates such if particle crossed a periodic boundary
+    SUBROUTINE update_coordinates_target3(gcorner_boundary, stag, particle)
 
-    SUBROUTINE get_gcorner_neighbour(gcorner_boundary, stag, neighbour_grid)
+        !$omp declare target
 
         ! subroutine arguments
         TYPE(particle_gcorner_boundaries_t), INTENT(in) :: gcorner_boundary
-        INTEGER(intk), INTENT(in) :: stag(3)
+        INTEGER(intk), INTENT(in) :: stag(3) !stag is either 0 or 1 
+        TYPE(baseparticle_t), INTENT(inout) :: particle
+
+        particle%x = particle%x * REAL(1 - stag(1)) + &
+         (particle%x - gcorner_boundary%face_coord(1) + gcorner_boundary%neighbour_ref_coord(1)) * REAL(stag(1))
+
+        particle%y = particle%y * REAL(1 - stag(2)) + &
+         (particle%y - gcorner_boundary%face_coord(2) + gcorner_boundary%neighbour_ref_coord(2)) * REAL(stag(2))
+
+        particle%z = particle%z * REAL(1 - stag(3)) + &
+         (particle%z - gcorner_boundary%face_coord(3) + gcorner_boundary%neighbour_ref_coord(3)) * REAL(stag(3))      
+
+    END SUBROUTINE update_coordinates_target3
+
+
+    SUBROUTINE get_gcorner_neighbour(gcorner_boundary, stag, neighbour_grid)
+
+        !$omp declare target
+
+        ! subroutine arguments
+        TYPE(particle_gcorner_boundaries_t), INTENT(in) :: gcorner_boundary
+        INTEGER(intk), INTENT(in) :: stag(3) !stag is either 0 or 1 
         INTEGER(intk), INTENT(out) :: neighbour_grid
 
         ! local variables
@@ -1915,6 +1943,7 @@ MODULE particle_boundaries_mod
         ineighbour = stag(1) * 4_intk + stag(2) * 2_intk + stag(3) * 1_intk + 1_intk
 
         neighbour_grid = gcorner_boundary%face_neighbours(ineighbour)
+
 
     END SUBROUTINE get_gcorner_neighbour
 
@@ -1925,7 +1954,7 @@ MODULE particle_boundaries_mod
 
         ! subroutine arguments
         TYPE(particle_gcorner_boundaries_t), INTENT(in) :: gcorner_boundary
-        INTEGER(intk), INTENT(in) :: stag(3), idir
+        INTEGER(intk), INTENT(in) :: stag(3), idir !stag is either 0 or 1 
         REAL(realk), INTENT(out) :: n(3)
 
         ! local variables 
@@ -1952,6 +1981,7 @@ MODULE particle_boundaries_mod
         INTEGER(intk) :: jgrid, iface, idir, iface_of_corner
         INTEGER(intk) :: neighbours(26)
         REAL(realk) :: minx, maxx, miny, maxy, minz, maxz
+        REAL(realk) :: minx_n, maxx_n, miny_n, maxy_n, minz_n, maxz_n
 
         iface_of_corner = 18_intk + icorn
 
@@ -1974,6 +2004,37 @@ MODULE particle_boundaries_mod
                 particle_gcorner_boundaries((igrid - 1_intk) * 8_intk + icorn)%face_coord(1) = minx
                 particle_gcorner_boundaries((igrid - 1_intk) * 8_intk + icorn)%face_coord(2) = miny
                 particle_gcorner_boundaries((igrid - 1_intk) * 8_intk + icorn)%face_coord(3) = minz
+
+                ! NEIGHBOUR REFERENCE COORDINATE (for particle coodinate update)
+                jgrid = neighbours(1)
+                IF (0 < jgrid .AND. jgrid <= ngrid) THEN
+                    CALL get_bbox(minx_n, maxx_n, miny_n, maxy_n, minz_n, maxz_n, jgrid)
+                    particle_gcorner_boundaries((igrid - 1_intk) * 8_intk + icorn)%neighbour_ref_coord(1) = maxx_n
+                ELSEIF (jgrid == 0) THEN
+                    particle_gcorner_boundaries((igrid - 1_intk) * 8_intk + icorn)%neighbour_ref_coord(1) = minx
+                ELSE
+                    CALL errr(__FILE__,__LINE__)
+                END IF
+
+                jgrid = neighbours(3)
+                IF (0 < jgrid .AND. jgrid <= ngrid) THEN
+                    CALL get_bbox(minx_n, maxx_n, miny_n, maxy_n, minz_n, maxz_n, jgrid)
+                    particle_gcorner_boundaries((igrid - 1_intk) * 8_intk + icorn)%neighbour_ref_coord(2) = maxy_n
+                ELSEIF (jgrid == 0) THEN
+                    particle_gcorner_boundaries((igrid - 1_intk) * 8_intk + icorn)%neighbour_ref_coord(2) = miny
+                ELSE
+                    CALL errr(__FILE__,__LINE__)
+                END IF
+
+                jgrid = neighbours(5)
+                IF (0 < jgrid .AND. jgrid <= ngrid) THEN
+                    CALL get_bbox(minx_n, maxx_n, miny_n, maxy_n, minz_n, maxz_n, jgrid)
+                    particle_gcorner_boundaries((igrid - 1_intk) * 8_intk + icorn)%neighbour_ref_coord(3) = maxz_n
+                ELSEIF (jgrid == 0) THEN
+                    particle_gcorner_boundaries((igrid - 1_intk) * 8_intk + icorn)%neighbour_ref_coord(3) = minz
+                ELSE
+                    CALL errr(__FILE__,__LINE__)
+                END IF
 
                 ! NEIGBHOURS
                 particle_gcorner_boundaries((igrid - 1_intk) * 8_intk + icorn)%face_neighbours(1) = igrid
@@ -2043,6 +2104,37 @@ MODULE particle_boundaries_mod
                 particle_gcorner_boundaries((igrid - 1_intk) * 8_intk + icorn)%face_coord(2) = miny
                 particle_gcorner_boundaries((igrid - 1_intk) * 8_intk + icorn)%face_coord(3) = maxz
 
+                ! NEIGHBOUR REFERENCE COORDINATE (for particle coodinate update)
+                jgrid = neighbours(1)
+                IF (0 < jgrid .AND. jgrid <= ngrid) THEN
+                    CALL get_bbox(minx_n, maxx_n, miny_n, maxy_n, minz_n, maxz_n, jgrid)
+                    particle_gcorner_boundaries((igrid - 1_intk) * 8_intk + icorn)%neighbour_ref_coord(1) = maxx_n
+                ELSEIF (jgrid == 0) THEN
+                    particle_gcorner_boundaries((igrid - 1_intk) * 8_intk + icorn)%neighbour_ref_coord(1) = minx
+                ELSE
+                    CALL errr(__FILE__,__LINE__)
+                END IF
+
+                jgrid = neighbours(3)
+                IF (0 < jgrid .AND. jgrid <= ngrid) THEN
+                    CALL get_bbox(minx_n, maxx_n, miny_n, maxy_n, minz_n, maxz_n, jgrid)
+                    particle_gcorner_boundaries((igrid - 1_intk) * 8_intk + icorn)%neighbour_ref_coord(2) = maxy_n
+                ELSEIF (jgrid == 0) THEN
+                    particle_gcorner_boundaries((igrid - 1_intk) * 8_intk + icorn)%neighbour_ref_coord(2) = miny
+                ELSE
+                    CALL errr(__FILE__,__LINE__)
+                END IF
+
+                jgrid = neighbours(6)
+                IF (0 < jgrid .AND. jgrid <= ngrid) THEN
+                    CALL get_bbox(minx_n, maxx_n, miny_n, maxy_n, minz_n, maxz_n, jgrid)
+                    particle_gcorner_boundaries((igrid - 1_intk) * 8_intk + icorn)%neighbour_ref_coord(3) = minz_n
+                ELSEIF (jgrid == 0) THEN
+                    particle_gcorner_boundaries((igrid - 1_intk) * 8_intk + icorn)%neighbour_ref_coord(3) = maxz
+                ELSE
+                    CALL errr(__FILE__,__LINE__)
+                END IF
+
                 ! NEIGBHOURS
                 particle_gcorner_boundaries((igrid - 1_intk) * 8_intk + icorn)%face_neighbours(1) = igrid
                 particle_gcorner_boundaries((igrid - 1_intk) * 8_intk + icorn)%face_neighbours(2) = particle_boundaries(igrid)%face_neighbours(6)
@@ -2110,6 +2202,37 @@ MODULE particle_boundaries_mod
                 particle_gcorner_boundaries((igrid - 1_intk) * 8_intk + icorn)%face_coord(1) = minx
                 particle_gcorner_boundaries((igrid - 1_intk) * 8_intk + icorn)%face_coord(2) = maxy
                 particle_gcorner_boundaries((igrid - 1_intk) * 8_intk + icorn)%face_coord(3) = minz
+
+                ! NEIGHBOUR REFERENCE COORDINATE (for particle coodinate update)
+                jgrid = neighbours(1)
+                IF (0 < jgrid .AND. jgrid <= ngrid) THEN
+                    CALL get_bbox(minx_n, maxx_n, miny_n, maxy_n, minz_n, maxz_n, jgrid)
+                    particle_gcorner_boundaries((igrid - 1_intk) * 8_intk + icorn)%neighbour_ref_coord(1) = maxx_n
+                ELSEIF (jgrid == 0) THEN
+                    particle_gcorner_boundaries((igrid - 1_intk) * 8_intk + icorn)%neighbour_ref_coord(1) = minx
+                ELSE
+                    CALL errr(__FILE__,__LINE__)
+                END IF
+
+                jgrid = neighbours(4)
+                IF (0 < jgrid .AND. jgrid <= ngrid) THEN
+                    CALL get_bbox(minx_n, maxx_n, miny_n, maxy_n, minz_n, maxz_n, jgrid)
+                    particle_gcorner_boundaries((igrid - 1_intk) * 8_intk + icorn)%neighbour_ref_coord(2) = miny_n
+                ELSEIF (jgrid == 0) THEN
+                    particle_gcorner_boundaries((igrid - 1_intk) * 8_intk + icorn)%neighbour_ref_coord(2) = maxy
+                ELSE
+                    CALL errr(__FILE__,__LINE__)
+                END IF
+
+                jgrid = neighbours(5)
+                IF (0 < jgrid .AND. jgrid <= ngrid) THEN
+                    CALL get_bbox(minx_n, maxx_n, miny_n, maxy_n, minz_n, maxz_n, jgrid)
+                    particle_gcorner_boundaries((igrid - 1_intk) * 8_intk + icorn)%neighbour_ref_coord(3) = maxz_n
+                ELSEIF (jgrid == 0) THEN
+                    particle_gcorner_boundaries((igrid - 1_intk) * 8_intk + icorn)%neighbour_ref_coord(3) = minz
+                ELSE
+                    CALL errr(__FILE__,__LINE__)
+                END IF
 
                 ! NEIGBHOURS
                 particle_gcorner_boundaries((igrid - 1_intk) * 8_intk + icorn)%face_neighbours(1) = igrid
@@ -2179,6 +2302,37 @@ MODULE particle_boundaries_mod
                 particle_gcorner_boundaries((igrid - 1_intk) * 8_intk + icorn)%face_coord(2) = maxy
                 particle_gcorner_boundaries((igrid - 1_intk) * 8_intk + icorn)%face_coord(3) = maxz
 
+                ! NEIGHBOUR REFERENCE COORDINATE (for particle coodinate update)
+                jgrid = neighbours(1)
+                IF (0 < jgrid .AND. jgrid <= ngrid) THEN
+                    CALL get_bbox(minx_n, maxx_n, miny_n, maxy_n, minz_n, maxz_n, jgrid)
+                    particle_gcorner_boundaries((igrid - 1_intk) * 8_intk + icorn)%neighbour_ref_coord(1) = maxx_n
+                ELSEIF (jgrid == 0) THEN
+                    particle_gcorner_boundaries((igrid - 1_intk) * 8_intk + icorn)%neighbour_ref_coord(1) = minx
+                ELSE
+                    CALL errr(__FILE__,__LINE__)
+                END IF
+
+                jgrid = neighbours(4)
+                IF (0 < jgrid .AND. jgrid <= ngrid) THEN
+                    CALL get_bbox(minx_n, maxx_n, miny_n, maxy_n, minz_n, maxz_n, jgrid)
+                    particle_gcorner_boundaries((igrid - 1_intk) * 8_intk + icorn)%neighbour_ref_coord(2) = miny_n
+                ELSEIF (jgrid == 0) THEN
+                    particle_gcorner_boundaries((igrid - 1_intk) * 8_intk + icorn)%neighbour_ref_coord(2) = maxy
+                ELSE
+                    CALL errr(__FILE__,__LINE__)
+                END IF
+
+                jgrid = neighbours(6)
+                IF (0 < jgrid .AND. jgrid <= ngrid) THEN
+                    CALL get_bbox(minx_n, maxx_n, miny_n, maxy_n, minz_n, maxz_n, jgrid)
+                    particle_gcorner_boundaries((igrid - 1_intk) * 8_intk + icorn)%neighbour_ref_coord(3) = minz_n
+                ELSEIF (jgrid == 0) THEN
+                    particle_gcorner_boundaries((igrid - 1_intk) * 8_intk + icorn)%neighbour_ref_coord(3) = maxz
+                ELSE
+                    CALL errr(__FILE__,__LINE__)
+                END IF
+
                 ! NEIGBHOURS
                 particle_gcorner_boundaries((igrid - 1_intk) * 8_intk + icorn)%face_neighbours(1) = igrid
                 particle_gcorner_boundaries((igrid - 1_intk) * 8_intk + icorn)%face_neighbours(2) = particle_boundaries(igrid)%face_neighbours(6)
@@ -2247,6 +2401,37 @@ MODULE particle_boundaries_mod
                 particle_gcorner_boundaries((igrid - 1_intk) * 8_intk + icorn)%face_coord(2) = miny
                 particle_gcorner_boundaries((igrid - 1_intk) * 8_intk + icorn)%face_coord(3) = minz
 
+                ! NEIGHBOUR REFERENCE COORDINATE (for particle coodinate update)
+                jgrid = neighbours(2)
+                IF (0 < jgrid .AND. jgrid <= ngrid) THEN
+                    CALL get_bbox(minx_n, maxx_n, miny_n, maxy_n, minz_n, maxz_n, jgrid)
+                    particle_gcorner_boundaries((igrid - 1_intk) * 8_intk + icorn)%neighbour_ref_coord(1) = minx_n
+                ELSEIF (jgrid == 0) THEN
+                    particle_gcorner_boundaries((igrid - 1_intk) * 8_intk + icorn)%neighbour_ref_coord(1) = maxx
+                ELSE
+                    CALL errr(__FILE__,__LINE__)
+                END IF
+
+                jgrid = neighbours(3)
+                IF (0 < jgrid .AND. jgrid <= ngrid) THEN
+                    CALL get_bbox(minx_n, maxx_n, miny_n, maxy_n, minz_n, maxz_n, jgrid)
+                    particle_gcorner_boundaries((igrid - 1_intk) * 8_intk + icorn)%neighbour_ref_coord(2) = maxy_n
+                ELSEIF (jgrid == 0) THEN
+                    particle_gcorner_boundaries((igrid - 1_intk) * 8_intk + icorn)%neighbour_ref_coord(2) = miny
+                ELSE
+                    CALL errr(__FILE__,__LINE__)
+                END IF
+
+                jgrid = neighbours(5)
+                IF (0 < jgrid .AND. jgrid <= ngrid) THEN
+                    CALL get_bbox(minx_n, maxx_n, miny_n, maxy_n, minz_n, maxz_n, jgrid)
+                    particle_gcorner_boundaries((igrid - 1_intk) * 8_intk + icorn)%neighbour_ref_coord(3) = maxz_n
+                ELSEIF (jgrid == 0) THEN
+                    particle_gcorner_boundaries((igrid - 1_intk) * 8_intk + icorn)%neighbour_ref_coord(3) = minz
+                ELSE
+                    CALL errr(__FILE__,__LINE__)
+                END IF
+
                 ! NEIGBHOURS
                 particle_gcorner_boundaries((igrid - 1_intk) * 8_intk + icorn)%face_neighbours(1) = igrid
                 particle_gcorner_boundaries((igrid - 1_intk) * 8_intk + icorn)%face_neighbours(2) = particle_boundaries(igrid)%face_neighbours(5)
@@ -2314,6 +2499,37 @@ MODULE particle_boundaries_mod
                 particle_gcorner_boundaries((igrid - 1_intk) * 8_intk + icorn)%face_coord(1) = maxx
                 particle_gcorner_boundaries((igrid - 1_intk) * 8_intk + icorn)%face_coord(2) = miny
                 particle_gcorner_boundaries((igrid - 1_intk) * 8_intk + icorn)%face_coord(3) = maxz
+
+                ! NEIGHBOUR REFERENCE COORDINATE (for particle coodinate update)
+                jgrid = neighbours(2)
+                IF (0 < jgrid .AND. jgrid <= ngrid) THEN
+                    CALL get_bbox(minx_n, maxx_n, miny_n, maxy_n, minz_n, maxz_n, jgrid)
+                    particle_gcorner_boundaries((igrid - 1_intk) * 8_intk + icorn)%neighbour_ref_coord(1) = minx_n
+                ELSEIF (jgrid == 0) THEN
+                    particle_gcorner_boundaries((igrid - 1_intk) * 8_intk + icorn)%neighbour_ref_coord(1) = maxx
+                ELSE
+                    CALL errr(__FILE__,__LINE__)
+                END IF
+
+                jgrid = neighbours(3)
+                IF (0 < jgrid .AND. jgrid <= ngrid) THEN
+                    CALL get_bbox(minx_n, maxx_n, miny_n, maxy_n, minz_n, maxz_n, jgrid)
+                    particle_gcorner_boundaries((igrid - 1_intk) * 8_intk + icorn)%neighbour_ref_coord(2) = maxy_n
+                ELSEIF (jgrid == 0) THEN
+                    particle_gcorner_boundaries((igrid - 1_intk) * 8_intk + icorn)%neighbour_ref_coord(2) = miny
+                ELSE
+                    CALL errr(__FILE__,__LINE__)
+                END IF
+
+                jgrid = neighbours(6)
+                IF (0 < jgrid .AND. jgrid <= ngrid) THEN
+                    CALL get_bbox(minx_n, maxx_n, miny_n, maxy_n, minz_n, maxz_n, jgrid)
+                    particle_gcorner_boundaries((igrid - 1_intk) * 8_intk + icorn)%neighbour_ref_coord(3) = minz_n
+                ELSEIF (jgrid == 0) THEN
+                    particle_gcorner_boundaries((igrid - 1_intk) * 8_intk + icorn)%neighbour_ref_coord(3) = maxz
+                ELSE
+                    CALL errr(__FILE__,__LINE__)
+                END IF
 
                 ! NEIGBHOURS
                 particle_gcorner_boundaries((igrid - 1_intk) * 8_intk + icorn)%face_neighbours(1) = igrid
@@ -2384,6 +2600,37 @@ MODULE particle_boundaries_mod
                 particle_gcorner_boundaries((igrid - 1_intk) * 8_intk + icorn)%face_coord(2) = maxy
                 particle_gcorner_boundaries((igrid - 1_intk) * 8_intk + icorn)%face_coord(3) = minz
 
+                ! NEIGHBOUR REFERENCE COORDINATE (for particle coodinate update)
+                jgrid = neighbours(2)
+                IF (0 < jgrid .AND. jgrid <= ngrid) THEN
+                    CALL get_bbox(minx_n, maxx_n, miny_n, maxy_n, minz_n, maxz_n, jgrid)
+                    particle_gcorner_boundaries((igrid - 1_intk) * 8_intk + icorn)%neighbour_ref_coord(1) = minx_n
+                ELSEIF (jgrid == 0) THEN
+                    particle_gcorner_boundaries((igrid - 1_intk) * 8_intk + icorn)%neighbour_ref_coord(1) = maxx
+                ELSE
+                    CALL errr(__FILE__,__LINE__)
+                END IF
+
+                jgrid = neighbours(4)
+                IF (0 < jgrid .AND. jgrid <= ngrid) THEN
+                    CALL get_bbox(minx_n, maxx_n, miny_n, maxy_n, minz_n, maxz_n, jgrid)
+                    particle_gcorner_boundaries((igrid - 1_intk) * 8_intk + icorn)%neighbour_ref_coord(2) = miny_n
+                ELSEIF (jgrid == 0) THEN
+                    particle_gcorner_boundaries((igrid - 1_intk) * 8_intk + icorn)%neighbour_ref_coord(2) = maxy
+                ELSE
+                    CALL errr(__FILE__,__LINE__)
+                END IF
+
+                jgrid = neighbours(5)
+                IF (0 < jgrid .AND. jgrid <= ngrid) THEN
+                    CALL get_bbox(minx_n, maxx_n, miny_n, maxy_n, minz_n, maxz_n, jgrid)
+                    particle_gcorner_boundaries((igrid - 1_intk) * 8_intk + icorn)%neighbour_ref_coord(3) = maxz_n
+                ELSEIF (jgrid == 0) THEN
+                    particle_gcorner_boundaries((igrid - 1_intk) * 8_intk + icorn)%neighbour_ref_coord(3) = minz
+                ELSE
+                    CALL errr(__FILE__,__LINE__)
+                END IF
+
                 ! NEIGBHOURS
                 particle_gcorner_boundaries((igrid - 1_intk) * 8_intk + icorn)%face_neighbours(1) = igrid
                 particle_gcorner_boundaries((igrid - 1_intk) * 8_intk + icorn)%face_neighbours(2) = particle_boundaries(igrid)%face_neighbours(5)
@@ -2451,6 +2698,37 @@ MODULE particle_boundaries_mod
                 particle_gcorner_boundaries((igrid - 1_intk) * 8_intk + icorn)%face_coord(1) = maxx
                 particle_gcorner_boundaries((igrid - 1_intk) * 8_intk + icorn)%face_coord(2) = maxy
                 particle_gcorner_boundaries((igrid - 1_intk) * 8_intk + icorn)%face_coord(3) = maxz
+
+                ! NEIGHBOUR REFERENCE COORDINATE (for particle coodinate update)
+                jgrid = neighbours(2)
+                IF (0 < jgrid .AND. jgrid <= ngrid) THEN
+                    CALL get_bbox(minx_n, maxx_n, miny_n, maxy_n, minz_n, maxz_n, jgrid)
+                    particle_gcorner_boundaries((igrid - 1_intk) * 8_intk + icorn)%neighbour_ref_coord(1) = minx_n
+                ELSEIF (jgrid == 0) THEN
+                    particle_gcorner_boundaries((igrid - 1_intk) * 8_intk + icorn)%neighbour_ref_coord(1) = maxx
+                ELSE
+                    CALL errr(__FILE__,__LINE__)
+                END IF
+
+                jgrid = neighbours(4)
+                IF (0 < jgrid .AND. jgrid <= ngrid) THEN
+                    CALL get_bbox(minx_n, maxx_n, miny_n, maxy_n, minz_n, maxz_n, jgrid)
+                    particle_gcorner_boundaries((igrid - 1_intk) * 8_intk + icorn)%neighbour_ref_coord(2) = miny_n
+                ELSEIF (jgrid == 0) THEN
+                    particle_gcorner_boundaries((igrid - 1_intk) * 8_intk + icorn)%neighbour_ref_coord(2) = maxy
+                ELSE
+                    CALL errr(__FILE__,__LINE__)
+                END IF
+
+                jgrid = neighbours(6)
+                IF (0 < jgrid .AND. jgrid <= ngrid) THEN
+                    CALL get_bbox(minx_n, maxx_n, miny_n, maxy_n, minz_n, maxz_n, jgrid)
+                    particle_gcorner_boundaries((igrid - 1_intk) * 8_intk + icorn)%neighbour_ref_coord(3) = minz_n
+                ELSEIF (jgrid == 0) THEN
+                    particle_gcorner_boundaries((igrid - 1_intk) * 8_intk + icorn)%neighbour_ref_coord(3) = maxz
+                ELSE
+                    CALL errr(__FILE__,__LINE__)
+                END IF
 
                 ! NEIGBHOURS
                 particle_gcorner_boundaries((igrid - 1_intk) * 8_intk + icorn)%face_neighbours(1) = igrid

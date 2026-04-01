@@ -89,12 +89,49 @@ CONTAINS
 
         !IF (MOD(ittot, loadbalance_step) == 0) CALL set_loadbalance_connections()
         
-        CALL start_timer(941)
-
         active_np_old = particle_list%active_np
 
         npsend = 0
         nprecv = -1
+
+#if defined _MGLET_OPENMP_
+
+        CALL start_timer(941)
+
+        DO i = 1, particle_list%ifinal
+
+            IF (particle_list%particles(i)%state < 1) THEN
+                IF (TRIM(particle_terminal) == "normal" .OR. TRIM(particle_terminal) == "verbose") THEN
+                        WRITE(*, '("WARNING on proc ", I0, ": Particle list entry ", I0, " unexpectately holds and inactive Partcle!")') myid, i
+                END IF
+                err_local = 1
+                CYCLE
+            END IF
+
+            destproc = idprocofgrd(particle_list%particles(i)%igrid)
+            particle_list%particles(i)%iproc = destproc
+
+            IF (destproc > numprocs .OR. destproc < 0) THEN
+                WRITE(*,*) 'Obviously ill-addressed particle to proc', destproc
+                CALL errr(__FILE__, __LINE__)
+            END IF
+        
+            IF (destproc == myid) THEN
+                CONTINUE
+            ELSE
+                DO iproc = 1, nConns
+                    IF (symConns(2, iproc) == destproc) THEN
+                        npsend(iproc) = npsend(iproc) + 1
+                    END IF
+                END DO
+            END IF
+
+        END DO
+
+        CALL stop_timer(941)
+
+#else
+        CALL start_timer(941)
 
         DO i = 1, particle_list%ifinal
 
@@ -168,6 +205,8 @@ CONTAINS
         END DO
 
         CALL stop_timer(941)
+
+#endif
 
         CALL start_timer(942)
 

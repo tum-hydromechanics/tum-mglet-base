@@ -648,7 +648,7 @@ CONTAINS
         ! local variables (fixed)
         INTEGER(intk) :: dev_num, num_teams, num_threads
         INTEGER(intk) :: igrid, icorn, ipart, i, j, k, irk
-        INTEGER(intk) :: ii, jj, kk
+        INTEGER(intk) :: ip, ii, jj, kk
         INTEGER(intk) :: pstag(3)
         REAL(realk), POINTER, CONTIGUOUS, DIMENSION(:) :: x, y, z
         REAL(realk), POINTER, CONTIGUOUS, DIMENSION(:) :: dx, dy, dz
@@ -702,7 +702,7 @@ CONTAINS
         CALL start_timer(924)
 
         !$omp target map(tofrom: dev_num, num_teams, num_threads)
-        !$omp teams distribute private(igrid, ipart, icorn, pstag, ii, jj, kk, &
+        !$omp teams distribute private(igrid, ipart, icorn, pstag, ip, ii, jj, kk, &
         !$omp irk, k, l, dvec, pdx_pot, pdy_pot, pdz_pot, x, y, z, dx, dy, dz, &
         !$omp bbox, cvec, n, int_var_1, int_var_2, int_var_3, real_arr_1, &
         !$omp real_var_1, real_var_2, real_var_3, real_var_4, real_var_5, real_var_6, real_var_7, real_var_8, real_var_9, real_var_10) &
@@ -724,31 +724,13 @@ CONTAINS
 
             CALL get_mgdims_target(kk, jj, ii, igrid)
 
-            ! >>> begin local "conceptual namespace" <<<
-            ! int_var_1 => ip
-            ! int_var_2 => len
-
-            int_var_1 = ip1d_offload(igrid)
-
-            int_var_2 = mgdims_offload((igrid - 1) * 3 + 1)
-            x(1:int_var_2) => x_offload(int_var_1:int_var_1+int_var_2-1)
-            dx(1:int_var_2) => dx_offload(int_var_1:int_var_1+int_var_2-1)
-
-            int_var_2 = mgdims_offload((igrid - 1) * 3 + 2)
-            y(1:int_var_2) => y_offload(int_var_1:int_var_1+int_var_2-1)
-            dy(1:int_var_2) => dy_offload(int_var_1:int_var_1+int_var_2-1)
-
-            int_var_2 = mgdims_offload((igrid - 1) * 3 + 3)
-            z(1:int_var_2) => z_offload(int_var_1:int_var_1+int_var_2-1)
-            dz(1:int_var_2) => dz_offload(int_var_1:int_var_1+int_var_2-1)
-
-            ! >>> end local "conceptual namespace" <<<
+            ip = ip1d_offload(igrid)
             
             CALL get_bbox_target(bbox(1), bbox(2), bbox(3), bbox(4), bbox(5), bbox(6), igrid)
             
             !$omp parallel do private(ipart, icorn, pstag, irk, cvec, dvec, n, k, l, int_var_1, int_var_2, int_var_3, real_arr_1, &
             !$omp real_var_1, real_var_2, real_var_3, real_var_4, real_var_5, real_var_6, real_var_7, real_var_8, real_var_9, real_var_10) &
-            !$omp firstprivate(igrid, ii, jj, kk, pdx_pot, pdy_pot, pdz_pot, bbox) &
+            !$omp firstprivate(igrid, ip, ii, jj, kk, pdx_pot, pdy_pot, pdz_pot, bbox) &
             !$omp shared(x, y, z, dx, dy, dz)
             DO j = 1, grids_np(i)
 
@@ -1020,7 +1002,9 @@ CONTAINS
                         my_particle_list%particles(ipart)%y = cvec(2)
                         my_particle_list%particles(ipart)%z = cvec(3)
 
-                        CALL update_particle_cell_target(my_particle_list%particles(ipart), kk, jj, ii, x, y, z, dx, dy, dz)
+                        CALL update_particle_cell_target(my_particle_list%particles(ipart), kk, jj, ii, &
+                        x_offload(ip:ip+ii-1), y_offload(ip:ip+jj-1), z_offload(ip:ip+kk-1), &
+                        dx_offload(ip:ip+ii-1), dy_offload(ip:ip+jj-1), dz_offload(ip:ip+kk-1))
 
                         ! >>> end local "conceptual namespace" <<<
                     
@@ -1275,9 +1259,33 @@ CONTAINS
 
                     ! >>> end local "conceptual namespace" <<<
 
-                    CALL update_particle_cell_target(my_particle_list%particles(ipart), kk, jj, ii, x, y, z, dx, dy, dz)
+                    !CALL update_particle_cell_target(my_particle_list%particles(ipart), kk, jj, ii, x, y, z, dx, dy, dz)
                 END IF
 #endif
+                ! >>>>>>>>>>>> UPDATE OF PARTICLE COORDINATES (neccesary for PER boundaries) AND GRID <<<<<<<<<<<<
+               
+                ! >>> begin local "conceptual namespace" <<<
+                ! int_var_1 => destgrid
+
+                CALL get_gcorner_neighbour(particle_gcorner_boundaries((igrid - 1) * 8_intk + icorn), pstag, int_var_1)
+
+                IF (int_var_1 == 0) int_var_1 = my_particle_list%particles(ipart)%igrid
+
+                CALL update_coordinates_target(my_particle_list%particles(ipart), int_var_1, 99, bbox)
+                
+                my_particle_list%particles(ipart)%igrid = int_var_1
+
+                ip = ip1d_offload(my_particle_list%particles(ipart)%igrid)
+
+                CALL get_mgdims_target(kk, jj, ii, my_particle_list%particles(ipart)%igrid)
+
+                CALL set_particle_cell_target(my_particle_list%particles(ipart), kk, jj, ii, &
+                 x_offload(ip:ip+ii-1), y_offload(ip:ip+jj-1), z_offload(ip:ip+kk-1), &
+                 dx_offload(ip:ip+ii-1), dy_offload(ip:ip+jj-1), dz_offload(ip:ip+kk-1))
+
+                !CALL update_coordinates_target3(particle_gcorner_boundaries((igrid - 1) * 8_intk + icorn), pstag, my_particle_list%particles(ipart))
+
+                ! >>> end local "conceptual namespace" <<<
 
                 ! TODO: reintroduce particle runtime statistics
             END DO
