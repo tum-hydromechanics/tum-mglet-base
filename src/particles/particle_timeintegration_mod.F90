@@ -650,8 +650,6 @@ CONTAINS
         INTEGER(intk) :: igrid, icorn, ipart, i, j, k, irk
         INTEGER(intk) :: ip, ii, jj, kk
         INTEGER(intk) :: pstag(3)
-        REAL(realk), POINTER, CONTIGUOUS, DIMENSION(:) :: x, y, z
-        REAL(realk), POINTER, CONTIGUOUS, DIMENSION(:) :: dx, dy, dz
         REAL(realk) :: pdx_pot, pdy_pot, pdz_pot
         REAL(realk) :: dvec(3), cvec(3), n(3)
         REAL(realk) :: bbox(6)
@@ -703,7 +701,7 @@ CONTAINS
 
         !$omp target map(tofrom: dev_num, num_teams, num_threads)
         !$omp teams distribute private(igrid, ipart, icorn, pstag, ip, ii, jj, kk, &
-        !$omp irk, k, l, dvec, pdx_pot, pdy_pot, pdz_pot, x, y, z, dx, dy, dz, &
+        !$omp irk, k, l, dvec, pdx_pot, pdy_pot, pdz_pot, &
         !$omp bbox, cvec, n, int_var_1, int_var_2, int_var_3, real_arr_1, &
         !$omp real_var_1, real_var_2, real_var_3, real_var_4, real_var_5, real_var_6, real_var_7, real_var_8, real_var_9, real_var_10) &
         !$omp reduction(max: num_threads)
@@ -730,8 +728,7 @@ CONTAINS
             
             !$omp parallel do private(ipart, icorn, pstag, irk, cvec, dvec, n, k, l, int_var_1, int_var_2, int_var_3, real_arr_1, &
             !$omp real_var_1, real_var_2, real_var_3, real_var_4, real_var_5, real_var_6, real_var_7, real_var_8, real_var_9, real_var_10) &
-            !$omp firstprivate(igrid, ip, ii, jj, kk, pdx_pot, pdy_pot, pdz_pot, bbox) &
-            !$omp shared(x, y, z, dx, dy, dz)
+            !$omp firstprivate(igrid, ip, ii, jj, kk, pdx_pot, pdy_pot, pdz_pot, bbox)
             DO j = 1, grids_np(i)
 
                 !number of threads in the team (working on j-loop)
@@ -777,7 +774,6 @@ CONTAINS
                         cvec(3) = my_particle_list%particles(ipart)%z
 
                         int_var_2 = 0
-                        int_var_1 = 0
 
                         ! to avoid branch divergence here, just iterate to the max. number of iterations that would be a stoping criterion anyways
                         DO k = 1, 10
@@ -984,8 +980,8 @@ CONTAINS
                                 dvec(3) = dvec(3) - 2 * real_var_2 * n(3)
 
                                 !update pstag (normal vector idir (int_var_1) component must be zero or point inwards for this method to work)
-                                pstag(int_var_1) = pstag(int_var_1) + 1 + &
-                                 NINT(n(int_var_1) * particle_gcorner_boundaries((igrid - 1) * 8_intk + icorn)%location(int_var_1))
+                                pstag(int_var_1) = MAX(pstag(int_var_1) + (1 - pstag(int_var_1)) + &
+                                 NINT(n(int_var_1) * particle_gcorner_boundaries((igrid - 1) * 8_intk + icorn)%location(int_var_1)), 0)
                             END IF
 
                         END DO
@@ -1031,7 +1027,6 @@ CONTAINS
                     cvec(3) = my_particle_list%particles(ipart)%z
 
                     int_var_2 = 0
-                    int_var_1 = 0
 
                     ! to avoid branch divergence here, just iterate to the max. number of iterations that would be a stoping criterion anyways
                     DO k = 1, 10
@@ -1239,8 +1234,8 @@ CONTAINS
                             dvec(3) = dvec(3) - 2 * real_var_2 * n(3)
 
                             !update pstag (normal vector idir (int_var_1) component must be zero or point inwards for this method to work)
-                            pstag(int_var_1) = pstag(int_var_1) + 1 + &
-                             NINT(n(int_var_1) * particle_gcorner_boundaries((igrid - 1) * 8_intk + icorn)%location(int_var_1))
+                            pstag(int_var_1) = MAX(pstag(int_var_1) + (1 - pstag(int_var_1)) + &
+                             NINT(n(int_var_1) * particle_gcorner_boundaries((igrid - 1) * 8_intk + icorn)%location(int_var_1)), 0)
                         END IF
 
                     END DO
@@ -1271,17 +1266,23 @@ CONTAINS
 
                 IF (int_var_1 == 0) int_var_1 = my_particle_list%particles(ipart)%igrid
 
+!IF(int_var_1 < 1 .OR. int_var_1 > ngrid) WRITE(*,*) ">>>>>>>>>>>>>>>>>> ipart: ", my_particle_list%particles(ipart)%ipart, " igrid: ", &
+!   my_particle_list%particles(ipart)%igrid, &
+!  "destgrid: ", int_var_1, " ip: ", ip, "Pstag: ", pstag
+                
                 CALL update_coordinates_target(my_particle_list%particles(ipart), int_var_1, 99, bbox)
                 
                 my_particle_list%particles(ipart)%igrid = int_var_1
 
                 ip = ip1d_offload(my_particle_list%particles(ipart)%igrid)
 
-                CALL get_mgdims_target(kk, jj, ii, my_particle_list%particles(ipart)%igrid)
+                IF (ip > 0) THEN
+                    CALL get_mgdims_target(kk, jj, ii, my_particle_list%particles(ipart)%igrid)
 
-                CALL set_particle_cell_target(my_particle_list%particles(ipart), kk, jj, ii, &
-                 x_offload(ip:ip+ii-1), y_offload(ip:ip+jj-1), z_offload(ip:ip+kk-1), &
-                 dx_offload(ip:ip+ii-1), dy_offload(ip:ip+jj-1), dz_offload(ip:ip+kk-1))
+                    CALL set_particle_cell_target(my_particle_list%particles(ipart), kk, jj, ii, &
+                    x_offload(ip:ip+ii-1), y_offload(ip:ip+jj-1), z_offload(ip:ip+kk-1), &
+                    dx_offload(ip:ip+ii-1), dy_offload(ip:ip+jj-1), dz_offload(ip:ip+kk-1))
+                END IF
 
                 !CALL update_coordinates_target3(particle_gcorner_boundaries((igrid - 1) * 8_intk + icorn), pstag, my_particle_list%particles(ipart))
 
