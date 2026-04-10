@@ -704,11 +704,11 @@ CONTAINS
         !$omp irk, k, l, dvec, pdx_pot, pdy_pot, pdz_pot, &
         !$omp bbox, cvec, n, int_var_1, int_var_2, int_var_3, real_arr_1, &
         !$omp real_var_1, real_var_2, real_var_3, real_var_4, real_var_5, real_var_6, real_var_7, real_var_8, real_var_9, real_var_10) &
-        !$omp reduction(max: num_threads)
+        !$omp reduction(max: num_threads) 
         DO i = 1, nmy_particle_grids
 
 #ifdef __GFORTRAN__
-            !$omp master
+            !$omp master  
                 dev_num = omp_get_device_num()
                 num_teams = omp_get_num_teams()
             !$omp end master
@@ -823,9 +823,9 @@ CONTAINS
                                             my_obstacles_offload(obstacle_displ(igrid) + l)%x**2 + &
                                             my_obstacles_offload(obstacle_displ(igrid) + l)%y**2 + &
                                             my_obstacles_offload(obstacle_displ(igrid) + l)%z**2 - &
-                                            2*cvec(obstacle_displ(igrid) + l)*my_obstacles_offload(obstacle_displ(igrid) + l)%x - &
-                                            2*cvec(obstacle_displ(igrid) + l)*my_obstacles_offload(obstacle_displ(igrid) + l)%y - &
-                                            2*cvec(obstacle_displ(igrid) + l)*my_obstacles_offload(obstacle_displ(igrid) + l)%z - &
+                                            2*cvec(1)*my_obstacles_offload(obstacle_displ(igrid) + l)%x - &
+                                            2*cvec(2)*my_obstacles_offload(obstacle_displ(igrid) + l)%y - &
+                                            2*cvec(3)*my_obstacles_offload(obstacle_displ(igrid) + l)%z - &
                                             my_obstacles_offload(i)%radius**2
                                         real_var_10 = real_var_8**2 - 4*real_var_3*real_var_9
 
