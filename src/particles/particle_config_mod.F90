@@ -78,10 +78,10 @@ MODULE particle_config_mod
     REAL(realk), ALLOCATABLE :: slice_levels(:) ! "particles/slice_levels"
 
 #if defined __INTEL_COMPILER
-    !$omp declare target link(D, truncation_limit)
+    !$omp declare target link(truncation_limit)
 #else
-    !$omp declare target(D, truncation_limit)
-#endif
+    !$omp declare target(truncation_limit)
+#endif link
 
 CONTAINS
 
@@ -281,7 +281,8 @@ CONTAINS
         !END IF
 
         IF (.NOT. solve_flow .AND. .NOT. duse_avg_flow) THEN
-            WRITE(*, *) "WARNING: This combination is not supported and might lead to flawed/unexpected results!"
+            WRITE(*, *) "WARNING: This combination is not supported. Not simulating particle advection!"
+            dadvection = .FALSE.
         END IF
 
         != = = = = = = = = = DIFFUSION = = = = = = = = = =
@@ -662,7 +663,7 @@ CONTAINS
             END IF
         END IF
 
-        !$omp target enter data map(always, to: D, truncation_limit)
+        !$omp target enter data map(always, to: truncation_limit)
 
         DEALLOCATE(seed)
 
@@ -672,7 +673,7 @@ CONTAINS
 
     SUBROUTINE finish_particle_config()
 
-        !$omp target exit data map(delete: D, truncation_limit)
+        !$omp target exit data map(delete: truncation_limit)
         IF (ALLOCATED(nslices)) DEALLOCATE(nslices)
         IF (ALLOCATED(slice_levels)) DEALLOCATE(slice_levels)
         IF (ALLOCATED(particle_seed)) DEALLOCATE(particle_seed)

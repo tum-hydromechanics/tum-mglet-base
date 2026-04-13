@@ -92,7 +92,7 @@ MODULE particle_ofields_mod
     !$omp declare target(w_offload)
 
     ! Public subroutines for device
-    PUBLIC :: ptr_to_grid_1, ptr_to_grid_3, get_bbox_target, get_mgdims_target
+    PUBLIC :: ptr_to_grid_1, ptr_to_grid_3, get_bbox_target, get_mgdims_target, get_grid_ptr1_target, get_grid_ptr3_target
 
     ! Public variables for device
     PUBLIC :: x_offload, y_offload, z_offload, &
@@ -195,7 +195,7 @@ CONTAINS
 
     SUBROUTINE map_flow()
         ! Local variables
-        TYPE(field_t), POINTER :: u_f, v_f, w_f, sca_f, g_f
+        TYPE(field_t), POINTER :: u_f, v_f, w_f
 
         IF (dadvection) THEN
             IF (duse_avg_flow) THEN
@@ -259,6 +259,30 @@ CONTAINS
         jj = mgdims_offload(i+1)
         kk = mgdims_offload(i+2)
     END SUBROUTINE get_mgdims_target
+
+
+    SUBROUTINE get_grid_ptr1_target(ip, igrid)
+        
+        !$omp declare target
+
+        INTEGER(intk), INTENT(OUT) :: ip
+        INTEGER(intk), INTENT(IN) :: igrid
+        
+        ip = ip1d_offload(igrid)
+
+    END SUBROUTINE get_grid_ptr1_target
+
+
+    SUBROUTINE get_grid_ptr3_target(ip, igrid)
+        
+        !$omp declare target
+
+        INTEGER(intk), INTENT(OUT) :: ip
+        INTEGER(intk), INTENT(IN) :: igrid
+        
+        ip = ip3d_offload(igrid)
+
+    END SUBROUTINE get_grid_ptr3_target
 
 
     SUBROUTINE get_bbox_target(minx, maxx, miny, maxy, minz, maxz, igrid)

@@ -88,8 +88,9 @@ MODULE particle_boundaries_mod
     ! declare mapper(particle_boundaries_t :: bnd) map(to: bnd, bnd%face_neighbours, bnd%face_normals)
     !$omp declare mapper(particle_gcorner_boundaries_t :: cbnd) map(to: cbnd, &
     !$omp cbnd%location, cbnd%face_coord, cbnd%neighbour_ref_coord, cbnd%face_neighbours, cbnd%face_normals)
+#else
+    !$omp declare target(particle_gcorner_boundaries)
 #endif
-
     CONTAINS
 
     SUBROUTINE init_particle_boundaries()
@@ -279,15 +280,11 @@ MODULE particle_boundaries_mod
         !$omp target enter data map(to: ngrid)
 
 #if defined __INTEL_COMPILER
-        ! target enter data map(mapper(particle_boundaries_t), to: particle_boundaries(1:ngrid))
-        ! target enter data map(particle_boundaries(1:ngrid)%face_neighbours, &
-        ! particle_boundaries(1:ngrid)%face_normals)
-        !$omp target enter data map(mapper(particle_gcorner_boundaries_t), to: particle_gcorner_boundaries(1:ngrid * 8))
-        !$omp target enter data map(particle_gcorner_boundaries(1:ngrid * 8)%face_neighbours, &
+        !$omp target enter data map(always, mapper(particle_gcorner_boundaries_t), to: particle_gcorner_boundaries(1:ngrid * 8))
+        !$omp target enter data map(always, to: particle_gcorner_boundaries(1:ngrid * 8)%face_neighbours, &
         !$omp particle_gcorner_boundaries(1:ngrid * 8)%location, particle_gcorner_boundaries(1:ngrid * 8)%neighbour_ref_coord, &
         !$omp particle_gcorner_boundaries(1:ngrid * 8)%face_coord, particle_gcorner_boundaries(1:ngrid * 8)%face_normals)
 #else
-        ! target enter data map(always, to: particle_boundaries)
         !$omp target enter data map(always, to: particle_gcorner_boundaries)
 #endif
         
@@ -1405,25 +1402,21 @@ MODULE particle_boundaries_mod
     END SUBROUTINE to_grid_boundary2
 
 
-    SUBROUTINE move_particle_target3(particle, pstag, dvec, deff_vec, gcorner_boundary, obstacles, dreplace)
+    SUBROUTINE move_particle_target3(particle, icorn, pstag, dvec, deff_vec)
 
         !$omp declare target
 
         ! subroutine arguments
         TYPE(baseparticle_t), INTENT(inout) :: particle
+        INTEGER(intk), INTENT(in) :: icorn
         INTEGER(intk), INTENT(inout) :: pstag(3)
         REAL(realk), INTENT(inout) :: dvec(3)
         REAL(realk), INTENT(out) :: deff_vec(3)
-        TYPE(particle_gcorner_boundaries_t), INTENT(in) :: gcorner_boundary 
-        TYPE(obstacle_t), POINTER, CONTIGUOUS, DIMENSION(:), INTENT(in) :: obstacles
-        LOGICAL, INTENT(inout) :: dreplace 
         
         ! local variables
         INTEGER(intk) :: idir, iobst_local_new, iobst_local_old, i, j
         REAL(realk) :: n(3), cvec(3)
         REAL(realk) :: s, temp 
-
-        dreplace = .FALSE.
 
         deff_vec = 0.0
 
@@ -1445,19 +1438,19 @@ MODULE particle_boundaries_mod
 
             IF (n_my_obstacles_on_grid(particle%igrid) > 0) THEN
                 CALL s_to_obstacle3(particle%igrid, cvec(1), cvec(2), cvec(3), dvec(1), dvec(2), dvec(3), &
-                 iobst_local_old, iobst_local_new, s, obstacles)
+                 iobst_local_old, iobst_local_new, s)
             END IF
 
-            IF (s > 0.0_realk) CALL to_grid_boundary3(gcorner_boundary, pstag, cvec, dvec, deff_vec, &
-             s, idir, iobst_local_new)
+            IF (s > 0.0_realk) CALL to_grid_boundary3(particle_gcorner_boundaries((particle%igrid - 1) * 8_intk + icorn), &
+             pstag, cvec, dvec, deff_vec, s, idir, iobst_local_new)
 
             IF (0 < iobst_local_new) THEN
 
                 ! reflect at obstacle
                 ! compute normal vector
-                n(1) = cvec(1) - obstacles(iobst_local_new)%x
-                n(2) = cvec(2) - obstacles(iobst_local_new)%y
-                n(3) = cvec(3) - obstacles(iobst_local_new)%z
+                n(1) = cvec(1) - my_obstacles_offload(obstacle_displ(particle%igrid) + iobst_local_new)%x
+                n(2) = cvec(2) - my_obstacles_offload(obstacle_displ(particle%igrid) + iobst_local_new)%y
+                n(3) = cvec(3) - my_obstacles_offload(obstacle_displ(particle%igrid) + iobst_local_new)%z
 
                 ! magnitude
                 temp = SQRT(n(1)**2 + n(2)**2 + n(3)**2)
@@ -1476,7 +1469,7 @@ MODULE particle_boundaries_mod
 
             ELSEIF (0 < idir) THEN
                 
-                CALL get_gcorner_normal(gcorner_boundary, pstag, idir, n)
+                CALL get_gcorner_normal(particle_gcorner_boundaries((particle%igrid - 1) * 8_intk + icorn), pstag, idir, n)
                 
                 ! reflect at grid boundary
                 ! dot product
@@ -1488,7 +1481,8 @@ MODULE particle_boundaries_mod
 
                 !pstag is either 0 or 1 
                 !update pstag (normal vector idir component must be zero or point inwards for this method to work)
-                pstag(idir) = pstag(idir) + 1 + NINT(n(idir) * gcorner_boundary%location(idir))
+                pstag(idir) = MAX(pstag(idir) + (1 - pstag(idir)) + &
+                 NINT(n(idir) * particle_gcorner_boundaries((particle%igrid - 1) * 8_intk + icorn)%location(idir)), 0)
             END IF
 
         END DO
@@ -1504,7 +1498,7 @@ MODULE particle_boundaries_mod
     END SUBROUTINE move_particle_target3
 
 
-    SUBROUTINE s_to_obstacle3(old_grid, x, y, z, dx, dy, dz, iobst_local_old, iobst_local_new, s, obstacles)
+    SUBROUTINE s_to_obstacle3(old_grid, x, y, z, dx, dy, dz, iobst_local_old, iobst_local_new, s)
 
         !$omp declare target
 
@@ -1515,7 +1509,6 @@ MODULE particle_boundaries_mod
         INTEGER(intk), INTENT(in) :: iobst_local_old
         INTEGER(intk), INTENT(out) :: iobst_local_new
         REAl(realk), INTENT(inout) :: s
-        TYPE(obstacle_t), POINTER, CONTIGUOUS, DIMENSION(:), INTENT(in) :: obstacles
 
         !local variables
         INTEGER(intk) :: i
@@ -1542,22 +1535,22 @@ MODULE particle_boundaries_mod
         DO i = 1, n_my_obstacles_on_grid(old_grid)
 
             ! check if a particle interacts with the obstacle it has been deflected from in the previous timestep
-            IF (i == iobst_local_old .OR. obstacles(i)%iobst < 0) THEN
+            IF (i == iobst_local_old .OR. my_obstacles_offload(obstacle_displ(old_grid) + i)%iobst < 0) THEN
                 CYCLE
             END IF
 
             b = b0 - &
-                2*obstacles(i)%x*dx - &
-                2*obstacles(i)%y*dy - &
-                2*obstacles(i)%z*dz
+                2 * dx * my_obstacles_offload(obstacle_displ(old_grid) + i)%x - &
+                2 * dy * my_obstacles_offload(obstacle_displ(old_grid) + i)%y - &
+                2 * dz * my_obstacles_offload(obstacle_displ(old_grid) + i)%z
             c = c0 + &
-                obstacles(i)%x**2 + &
-                obstacles(i)%y**2 + &
-                obstacles(i)%z**2 - &
-                2*x*obstacles(i)%x - &
-                2*y*obstacles(i)%y - &
-                2*z*obstacles(i)%z - &
-                obstacles(i)%radius**2
+                my_obstacles_offload(obstacle_displ(old_grid) + i)%x**2 + &
+                my_obstacles_offload(obstacle_displ(old_grid) + i)%y**2 + &
+                my_obstacles_offload(obstacle_displ(old_grid) + i)%z**2 - &
+                2 * x * my_obstacles_offload(obstacle_displ(old_grid) + i)%x - &
+                2 * y * my_obstacles_offload(obstacle_displ(old_grid) + i)%y - &
+                2 * z * my_obstacles_offload(obstacle_displ(old_grid) + i)%z - &
+                my_obstacles_offload(obstacle_displ(old_grid) + i)%radius**2
             d = b**2 - 4*a*c
 
             IF (d < EPSILON(0.0_realk)) THEN
@@ -1755,7 +1748,7 @@ MODULE particle_boundaries_mod
 
         ! local variables
         LOGICAL :: valid_location
-        INTEGER(intk) :: i, igrid
+        INTEGER(intk) :: i, igrid, ip
         REAL(realk) :: minx, maxx, miny, maxy, minz, maxz, x_new, y_new, z_new, dist_to_center
 
         ! for readability
@@ -1803,7 +1796,9 @@ MODULE particle_boundaries_mod
         particle%y = y_new
         particle%z = z_new
 
-        CALL set_particle_cell_target(particle, kk, jj, ii, x, y, z, dx, dy, dz)
+        CALL get_grid_ptr1_target(ip, igrid)
+
+        CALL set_particle_cell_target(particle, kk, jj, ii, ip)
 
     END SUBROUTINE replace_particle_target
 
@@ -1907,33 +1902,37 @@ MODULE particle_boundaries_mod
     END SUBROUTINE reflect_at_obstacle
 
     ! update particle coordinates such if particle crossed a periodic boundary
-    SUBROUTINE update_coordinates_target3(gcorner_boundary, stag, particle)
+    SUBROUTINE update_coordinates_target3(particle, icorn, stag)
 
         !$omp declare target
 
         ! subroutine arguments
-        TYPE(particle_gcorner_boundaries_t), INTENT(in) :: gcorner_boundary
-        INTEGER(intk), INTENT(in) :: stag(3) !stag is either 0 or 1 
         TYPE(baseparticle_t), INTENT(inout) :: particle
+        INTEGER(intk), INTENT(in) :: icorn
+        INTEGER(intk), INTENT(in) :: stag(3) !stag is either 0 or 1 
 
         particle%x = particle%x * REAL(1 - stag(1)) + &
-         (particle%x - gcorner_boundary%face_coord(1) + gcorner_boundary%neighbour_ref_coord(1)) * REAL(stag(1))
+         (particle%x - particle_gcorner_boundaries((particle%igrid - 1) * 8_intk + icorn)%face_coord(1) &
+         + particle_gcorner_boundaries((particle%igrid - 1) * 8_intk + icorn)%neighbour_ref_coord(1)) * REAL(stag(1))
 
         particle%y = particle%y * REAL(1 - stag(2)) + &
-         (particle%y - gcorner_boundary%face_coord(2) + gcorner_boundary%neighbour_ref_coord(2)) * REAL(stag(2))
+         (particle%y - particle_gcorner_boundaries((particle%igrid - 1) * 8_intk + icorn)%face_coord(2) &
+         + particle_gcorner_boundaries((particle%igrid - 1) * 8_intk + icorn)%neighbour_ref_coord(2)) * REAL(stag(2))
 
         particle%z = particle%z * REAL(1 - stag(3)) + &
-         (particle%z - gcorner_boundary%face_coord(3) + gcorner_boundary%neighbour_ref_coord(3)) * REAL(stag(3))      
+         (particle%z - particle_gcorner_boundaries((particle%igrid - 1) * 8_intk + icorn)%face_coord(3) &
+         + particle_gcorner_boundaries((particle%igrid - 1) * 8_intk + icorn)%neighbour_ref_coord(3)) * REAL(stag(3))      
 
     END SUBROUTINE update_coordinates_target3
 
 
-    SUBROUTINE get_gcorner_neighbour(gcorner_boundary, stag, neighbour_grid)
+    SUBROUTINE get_gcorner_neighbour(igrid, icorn, stag, neighbour_grid)
 
         !$omp declare target
 
         ! subroutine arguments
-        TYPE(particle_gcorner_boundaries_t), INTENT(in) :: gcorner_boundary
+        INTEGER(intk), INTENT(in) :: igrid
+        INTEGER(intk), INTENT(in) :: icorn
         INTEGER(intk), INTENT(in) :: stag(3) !stag is either 0 or 1 
         INTEGER(intk), INTENT(out) :: neighbour_grid
 
@@ -1942,7 +1941,7 @@ MODULE particle_boundaries_mod
 
         ineighbour = stag(1) * 4_intk + stag(2) * 2_intk + stag(3) * 1_intk + 1_intk
 
-        neighbour_grid = gcorner_boundary%face_neighbours(ineighbour)
+        neighbour_grid = particle_gcorner_boundaries((igrid - 1) * 8_intk + icorn)%face_neighbours(ineighbour)
 
 
     END SUBROUTINE get_gcorner_neighbour
