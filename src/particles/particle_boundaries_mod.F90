@@ -1761,6 +1761,7 @@ MODULE particle_boundaries_mod
 
             valid_location = .TRUE.
 
+#if defined _MGLET_OPENMP_
 #if defined __GFORTRAN__
             CALL RANDOM_NUMBER(x_new)
             CALL RANDOM_NUMBER(y_new)
@@ -1769,6 +1770,11 @@ MODULE particle_boundaries_mod
             CALL lcg(particle%seed, x_new)
             CALL lcg(particle%seed, y_new)
             CALL lcg(particle%seed, z_new)
+#endif
+#else
+            CALL RANDOM_NUMBER(x_new)
+            CALL RANDOM_NUMBER(y_new)
+            CALL RANDOM_NUMBER(z_new)
 #endif
 
             x_new = minx + x_new * (maxx - minx)
