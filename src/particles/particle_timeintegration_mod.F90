@@ -384,21 +384,6 @@ CONTAINS
         REAL(realk) :: dvec(3), deff_vec(3), n(3)
         REAL(realk) :: bbox(6)
 
-!INTEGER(intk) :: pnrk_test
-!INTEGER(intk), ALLOCATABLE :: processed(:)
-!REAL(intk), ALLOCATABLE :: pui_adv(:,:,:)
-!REAL(intk), ALLOCATABLE :: deff(:,:,:)
-
-!pnrk_test = 0
-!ALLOCATE(processed(my_particle_list%ifinal))
-!processed = 0
-
-!ALLOCATE(pui_adv(my_particle_list%ifinal, pnrk, 3))
-!pui_adv = 0.0
-
-!ALLOCATE(deff(my_particle_list%ifinal, pnrk, 3))
-!deff = 0.0
-
         CALL start_timer(900)
 
         CALL start_timer(920)
@@ -406,25 +391,6 @@ CONTAINS
         CALL start_timer(921)
 
         IF (dadvection) THEN
-            !IF (duse_avg_flow) THEN
-            !    ! use the point values deduced from the average flow field
-            !    CALL get_field(u_f, "PWU_AVG")
-            !    CALL get_field(v_f, "PWV_AVG")
-            !    CALL get_field(w_f, "PWW_AVG")
-            !ELSE
-            !    IF (ib%type == "GHOSTCELL") THEN
-            !        CALL get_field(u_f, "PWU")
-            !        CALL get_field(v_f, "PWV")
-            !        CALL get_field(w_f, "PWW")
-            !    ELSE
-            !        CALL get_field(u_f, "U")
-            !        CALL get_field(v_f, "V")
-            !        CALL get_field(w_f, "W")
-            !    END IF
-            !END IF
-            !u_offload = u_f%arr
-            !v_offload = v_f%arr
-            !w_offload = w_f%arr
             !$omp target update to(u_offload, v_offload, w_offload)
         END IF
         
@@ -504,10 +470,6 @@ CONTAINS
                         ! get particle velocity
                         CALL interpolate_lincon_target(my_particle_list%particles(ipart), igrid, kk, jj, ii, pu_adv, pv_adv, pw_adv)
 
-!pui_adv(ipart, irk, 1) = pu_adv
-!pui_adv(ipart, irk, 2) = pv_adv
-!pui_adv(ipart, irk, 3) = pw_adv
-
                         ! runge kutta substep
                         CALL prkstep(pdx_pot, pdy_pot, pdz_pot, pu_adv, pv_adv, pw_adv, dt, &
                         A_offload(irk), B_offload(irk), dvec(1), dvec(2), dvec(3))
@@ -520,30 +482,22 @@ CONTAINS
                         pdy_pot = deff_vec(2) / B_offload(irk)
                         pdz_pot = deff_vec(3) / B_offload(irk)
 
-
-!deff(ipart, irk, 1) = deff_vec(1)
-!deff(ipart, irk, 2) = deff_vec(2)
-!deff(ipart, irk, 3) = deff_vec(3)
-
                         ! update particle cell
                         CALL update_particle_cell_target(my_particle_list%particles(ipart), kk, jj, ii, ip)
-                    
-!processed(ipart) = processed(ipart) + 1
-                    ! TODO: reintroduce particle runtime statistics
+            
+                        ! TODO: reintroduce particle runtime statistics
                     END DO
 
                 END IF
 
 #ifdef _MGLET_OPENMP_
                 IF (ddiffusion) THEN
+
                     CALL generate_diffusive_displacement_target(dt, D(1), D(2), D(3), dvec(1), dvec(2), dvec(3), &
                      my_particle_list%particles(ipart)%seed)
 
                     CALL move_particle_target3(my_particle_list%particles(ipart), icorn, pstag, dvec, deff_vec)
 
-!processed(ipart) = processed(ipart) + 1
-
-                    !CALL update_particle_cell_target(my_particle_list%particles(ipart), kk, jj, ii, ip)
                 END IF
 #endif
                 ! >>>>>>>>>>>> UPDATE OF PARTICLE COORDINATES (neccesary for PER boundaries) AND GRID <<<<<<<<<<<<
@@ -553,8 +507,6 @@ CONTAINS
                 IF (destgrid == 0) destgrid = my_particle_list%particles(ipart)%igrid
                 
                 CALL update_coordinates_target3(my_particle_list%particles(ipart), icorn, pstag)
-
-                !CALL update_coordinates_target(my_particle_list%particles(ipart), destgrid, 99, bbox)
                 
                 my_particle_list%particles(ipart)%igrid = destgrid
 
@@ -581,23 +533,6 @@ CONTAINS
         WRITE(*, '("        Device Number:                              ", I9)') dev_num
         WRITE(*, '("        Number of Teams:                            ", I9)') num_teams
         WRITE(*, '("        Max. Number of Threds (per Team):           ", I9)') num_threads
-
-!WRITE(*, *) ">>>>>>>>> processed: ", processed
-!WRITE(*, *) ""
-!WRITE(*, *) ">>>>>>>>> pui_adv: "
-!DO ipart = 1, my_particle_list%ifinal
-!    DO i = 1, pnrk
-!            WRITE(*,*) pui_adv(ipart, i, :)
-!    END DO
-!END DO
-!WRITE(*, *) ""
-!WRITE(*, *) ">>>>>>>>> deff: "
-!DO ipart = 1, my_particle_list%ifinal
-!    DO i = 1, pnrk
-!            WRITE(*,*) deff(ipart, i, :)
-!    END DO
-!END DO
-!WRITE(*, *) ""
 
         CALL stop_timer(920)
 
