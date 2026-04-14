@@ -3,10 +3,10 @@
         "mtstep": 100, 
         "dt": 0.05,
         "itinfo": 1,
-        "tstat": 5.0,
-        "read": false,
+        "tstat": 0.0,
+        "read": true,
         "write": false,
-        "continue": false
+        "continue": true
     },
     "io": {
         "grids": "output.h5",
@@ -17,11 +17,11 @@
         "type": "noib"
     },
     "flow": {
-    	"solve": true,
+    	"solve": false,
         "gmol": 0.001,
         "rho": 1.0,
         "tu_level": 0.01,
-        "uinf": [0.01, 0.01, 0.01],
+        "uinf": [0.01, 0.00, 0.00],
         "gradp": [-0.01, 0.0, 0.0],
         "pressuresolver": {
             "type": "sip",
@@ -49,14 +49,15 @@
         "dread_obst_dict": false,
         "dwrite_part_h5": false,
         "terminal": "normal",
-        "snapshot_step": -1,
+        "snapshot_step":  -1,
 	"snapshot_npart": 1000,
 	"init_npart": 1000000, 
         "list_length": 1000000,
-        "dinterp": true,
+	"duse_avg_flow": true,
+	"dinterp": true,
         "rk_method": "williamson",
         "random_walk_mode": "uniform",
         "truncation_limit": 2.0,
-        "D":[0.001, 0.001, 0.001]
+        "D":[0.002, 0.002, 0.002]
     }
 }

@@ -1,3 +1,0 @@
-total number Spheres 1
-SPHERE
-0.5 0.0 0.0 0.0

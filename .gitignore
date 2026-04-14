@@ -56,5 +56,21 @@ mglet
 # Build folder(s)
 build*
 
-**/tests/**
 **/tmp.F90
+
+# MGLET (Particle) Test Output
+#**/tests/**
+*.OUT
+**/LOGS/*
+snapshots.h5
+probes.h5
+mglet-perf-report*
+ParticleList*
+**/Particle_Snapshots/**
+*.vtp
+*.pvtp
+
+# Nsight Profiling Output Files
+*.qdstrm
+*.nsys-rep
+*.sqlite
