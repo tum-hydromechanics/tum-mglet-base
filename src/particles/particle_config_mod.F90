@@ -48,13 +48,13 @@ MODULE particle_config_mod
     LOGICAL :: dparticle_sorting = .TRUE.
 
     ! ADVECTION
-    LOGICAL :: dadvection = .TRUE. !
+    LOGICAL :: dadvection ! "particles/do_advection"
     LOGICAL :: duse_avg_flow = .FALSE. ! "particles/duse_avg_flow"
     LOGICAL :: dinterp_padvection = .TRUE. ! "particles/dinterp"
     CHARACTER(len=16) :: prkmethod ! "particles/rk_method"
 
     ! DIFFUSION / RANDOM WALK
-    LOGICAL :: ddiffusion = .TRUE. ! indirectly via "particles/D"
+    LOGICAL :: ddiffusion ! "particles/do_diffusion"
     CHARACTER(len = 16) :: random_walk_mode ! "particles/random_walk_mode"
     REAL(realk) :: truncation_limit ! "particles/truncation_limit"
     REAL(realk) :: D(3) ! "particles/D"
@@ -259,6 +259,8 @@ CONTAINS
 
         != = = = = = = = = = ADVECTION = = = = = = = = = =
 
+        CALL pconf%get_value("/do_advection", dadvection, .TRUE.)
+
         CALL pconf%get_value("/duse_avg_flow", duse_avg_flow, .FALSE.)
 
         IF (duse_avg_flow .AND. .NOT. dcont) THEN
@@ -280,14 +282,14 @@ CONTAINS
         !    CALL errr(__FILE__, __LINE__)
         !END IF
 
-        IF (.NOT. solve_flow .AND. .NOT. duse_avg_flow) THEN
-            WRITE(*, *) "WARNING: Flow is not solved and duse_avg_flow is set false!"
-            WRITE(*, *) "Particle Advection will be based on the initial flow field!"
+        IF (dadvection .AND. .NOT. solve_flow .AND. .NOT. duse_avg_flow) THEN
+            WRITE(*, *) "WARNING: dadvection is set true (default), but flow is not solved and duse_avg_flow is set to false!"
+            WRITE(*, *) "Particle advection will be based on the initial flow field!"
         END IF
 
         != = = = = = = = = = DIFFUSION = = = = = = = = = =
 
-        ddiffusion = .TRUE.
+        CALL pconf%get_value("/do_diffusion", ddiffusion, .TRUE.)
 
         !- - - - - - - - - - - - - - - - - -
 
