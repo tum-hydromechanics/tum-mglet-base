@@ -281,8 +281,8 @@ CONTAINS
         !END IF
 
         IF (.NOT. solve_flow .AND. .NOT. duse_avg_flow) THEN
-            WRITE(*, *) "WARNING: This combination is not supported. Not simulating particle advection!"
-            dadvection = .FALSE.
+            WRITE(*, *) "WARNING: Flow is not solved and duse_avg_flow is set false!"
+            WRITE(*, *) "Particle Advection will be based on the initial flow field!"
         END IF
 
         != = = = = = = = = = DIFFUSION = = = = = = = = = =
