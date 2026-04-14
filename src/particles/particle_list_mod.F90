@@ -6,6 +6,7 @@ MODULE particle_list_mod
     ! Basic list manipulations.
     ! Initialization of particles.
 
+    USE ieee_arithmetic
     USE MPI_f08
     USE comms_mod
     USE grids_mod
@@ -304,9 +305,15 @@ CONTAINS    !===================================
                 END IF
                 IF (abort) CALL errr(__FILE__,__LINE__)
             END IF
+            IF (ieee_is_nan(particle_list%particles(i)%x) .OR. &
+                ieee_is_nan(particle_list%particles(i)%y) .OR. &
+                ieee_is_nan(particle_list%particles(i)%z)) THEN
+                WRITE(*, '("WARNING on proc ", I0, ": Particle list entry ", I0, " unexpectately holds NaN value(s) in rel. particle coordinates!")') myid, i
+                IF (abort) CALL errr(__FILE__,__LINE__)
+            END IF
         END DO
 
-    END SUBROUTINE
+    END SUBROUTINE check_plist
 
     !-----------------------------------
 
