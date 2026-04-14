@@ -1748,7 +1748,7 @@ MODULE particle_boundaries_mod
 
         ! local variables
         LOGICAL :: valid_location
-        INTEGER(intk) :: i, igrid, ip
+        INTEGER(intk) :: i, igrid, ip(3)
         REAL(realk) :: minx, maxx, miny, maxy, minz, maxz, x_new, y_new, z_new, dist_to_center
 
         ! for readability

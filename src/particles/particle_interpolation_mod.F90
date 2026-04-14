@@ -137,43 +137,53 @@ CONTAINS    !===================================
         REAL(realk), INTENT(out) :: p_v1, p_v2, p_v3 ! particle values in x/y/z direction (velocity or diffusion constant)
 
         ! local variables
-        INTEGER(intk) :: ip, i, j, k
+        INTEGER(intk) :: ip3d, ip1d(3), i, j, k
         REAL(realk) :: x, ddx, y, ddy, z, ddz
         REAL(realk) :: dx(-1:0), dy(-1:0), dz(-1:0)
         REAL(realk) :: v1(-1:1,-1:1,-1:0), v2(-1:1,-1:0,-1:1), v3(-1:0,-1:1,-1:1)
-        INTEGER(intk) :: p_ip, p_im, p_jp, p_jm, p_kp, p_km
+        INTEGER(intk) :: p_i(-1:1), p_j(-1:1), p_k(-1:1)
         REAL(realk) :: alpha, beta, gamma, delta
 
         ! TODO: FIX GRADIENTS AT NO FLUX GRID BOUNDARIES !!!
 
-        p_im = MAX(MIN(particle%ijkcell(1) - 1, ii), 1)
-        p_ip = MAX(MIN(particle%ijkcell(1) + 1, ii), 1)
-        p_jm = MAX(MIN(particle%ijkcell(2) - 1, jj), 1)
-        p_jp = MAX(MIN(particle%ijkcell(2) + 1, jj), 1)
-        p_km = MAX(MIN(particle%ijkcell(3) - 1, kk), 1)
-        p_kp = MAX(MIN(particle%ijkcell(3) + 1, kk), 1)
+        p_i(-1) = MAX(MIN(particle%ijkcell(1) - 1, ii), 1)
+        p_i( 0) = particle%ijkcell(1)
+        p_i( 1) = MAX(MIN(particle%ijkcell(1) + 1, ii), 1)
 
-        ip = ip1d_offload(igrid)
-
-        x = x_offload(ip + particle%ijkcell(1) - 1) 
-        dx(-1:0) = dx_offload(ip + p_im - 1 : ip + particle%ijkcell(1) -1)
-        ddx = ddx_offload(ip + particle%ijkcell(1) - 1)
-
-        y = y_offload(ip + particle%ijkcell(2) - 1) 
-        dy(-1:0) = dy_offload(ip + p_jm - 1 : ip + particle%ijkcell(2) -1)
-        ddy = ddy_offload(ip + particle%ijkcell(2) - 1)
-
-        z = z_offload(ip + particle%ijkcell(3) - 1) 
-        dz(-1:0) = dz_offload(ip + p_km - 1 : ip + particle%ijkcell(3) -1)
-        ddz = ddz_offload(ip + particle%ijkcell(3) - 1)
-
-        ip = ip3d_offload(igrid)
+        p_j(-1) = MAX(MIN(particle%ijkcell(2) - 1, jj), 1)
+        p_j( 0) = particle%ijkcell(2)
+        p_j( 1) = MAX(MIN(particle%ijkcell(2) + 1, jj), 1)
         
+        p_k(-1) = MAX(MIN(particle%ijkcell(3) - 1, kk), 1)
+        p_k( 0) = particle%ijkcell(3)
+        p_k( 1) = MAX(MIN(particle%ijkcell(3) + 1, kk), 1)
+
+        ip1d(:) = ip1d_offload(:,igrid)
+
+        x = x_offload(ip1d(1) + particle%ijkcell(1) - 1) 
+        dx(-1) = dx_offload(ip1d(1) + p_i(-1) - 1)
+        dx( 0) = dx_offload(ip1d(1) + particle%ijkcell(1) -1)
+        ddx = ddx_offload(ip1d(1) + particle%ijkcell(1) - 1)
+
+        y = y_offload(ip1d(2) + particle%ijkcell(2) - 1)
+        dy(-1) = dy_offload(ip1d(2) + p_j(-1) - 1)
+        dy( 0) = dy_offload(ip1d(2) + particle%ijkcell(2) -1)
+        ddy = ddy_offload(ip1d(2) + particle%ijkcell(2) - 1)
+
+        z = z_offload(ip1d(3) + particle%ijkcell(3) - 1) 
+        dz(-1) = dz_offload(ip1d(3) + p_k(-1) - 1)
+        dz( 0) = dz_offload(ip1d(3) + particle%ijkcell(3) -1)
+        ddz = ddz_offload(ip1d(3) + particle%ijkcell(3) - 1)
+
+        ip3d = ip3d_offload(igrid)
+
         DO i=-1, 0
             DO j=-1, 1
                 DO k=-1, 1
-                    v1(k, j, i) = u_offload(ip + (particle%ijkcell(3) + k - 1) + &
-                     (particle%ijkcell(2) + j - 1) * kk + (particle%ijkcell(1) + i - 1) * kk * jj)
+                    v1(k, j, i) = u_offload(ip3d + &
+                    (p_k(k) - 1) + &
+                    (p_j(j) - 1) * kk + &
+                    (p_i(i) - 1) * kk * jj)
                 END DO
             END DO
         END DO 
@@ -181,8 +191,10 @@ CONTAINS    !===================================
         DO i=-1, 1
             DO j=-1, 0
                 DO k=-1, 1
-                    v2(k, j, i) = v_offload(ip + (particle%ijkcell(3) + k - 1) + &
-                     (particle%ijkcell(2) + j - 1) * kk + (particle%ijkcell(1) + i - 1) * kk * jj)
+                    v2(k, j, i) = v_offload(ip3d + &
+                    (p_k(k) - 1) + &
+                    (p_j(j) - 1) * kk + &
+                    (p_i(i) - 1) * kk * jj)
                 END DO
             END DO
         END DO
@@ -190,8 +202,10 @@ CONTAINS    !===================================
         DO i=-1, 1
             DO j=-1, 1
                 DO k=-1, 0
-                    v3(k, j, i) = w_offload(ip + (particle%ijkcell(3) + k - 1) + &
-                     (particle%ijkcell(2) + j - 1) * kk + (particle%ijkcell(1) + i - 1) * kk * jj)
+                    v3(k, j, i) = w_offload(ip3d + &
+                    (p_k(k) - 1) + &
+                    (p_j(j) - 1) * kk + &
+                    (p_i(i) - 1) * kk * jj)
                 END DO
             END DO
         END DO 

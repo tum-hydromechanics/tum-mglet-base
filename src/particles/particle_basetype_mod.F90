@@ -491,7 +491,7 @@ CONTAINS
 
         ! subroutine arguments
         TYPE(baseparticle_t), INTENT(inout) :: particle
-        INTEGER(intk), INTENT(in) :: kk, jj, ii, ip
+        INTEGER(intk), INTENT(in) :: kk, jj, ii, ip(3)
 
         ! local variables
         INTEGER(intk) :: k, j, i, counter, max_iterations = 10
@@ -508,25 +508,25 @@ CONTAINS
 
         i = 3 + NINT((ii - 5) * (particle%x - minx) / (maxx - minx), intk)
         particle%ijkcell(1) = i
-        diff_old = ABS(x_offload(ip-1+i) - particle%x)
+        diff_old = ABS(x_offload(ip(1)-1+i) - particle%x)
         diff_new = 0
 
         DO WHILE (diff_new < diff_old .AND. counter <= max_iterations)
             particle%ijkcell(1) = i
-            diff_old = ABS(x_offload(ip-1+i) - particle%x)
-            IF (x_offload(ip-1+i) <= particle%x) THEN
+            diff_old = ABS(x_offload(ip(1)-1+i) - particle%x)
+            IF (x_offload(ip(1)-1+i) <= particle%x) THEN
                 ! the denominator of the fraction will NOT be zero because x(i) /= maxx for all i
-                i = i + CEILING((ii - 2 - i) * (particle%x - x_offload(ip-1+i)) / (maxx - x_offload(ip-1+i)), intk)
+                i = i + CEILING((ii - 2 - i) * (particle%x - x_offload(ip(1)-1+i)) / (maxx - x_offload(ip(1)-1+i)), intk)
                 i = MAX(i, 3) ! probalby unneccessary
                 i = MIN(i, ii-2) ! probalby unneccessary
-            ELSEIF (x_offload(ip-1+i) > particle%x) THEN
-                i = 3 + FLOOR((i - 2) * (particle%x - minx) / (x_offload(ip-1+i) - minx), intk)
+            ELSEIF (x_offload(ip(1)-1+i) > particle%x) THEN
+                i = 3 + FLOOR((i - 2) * (particle%x - minx) / (x_offload(ip(1)-1+i) - minx), intk)
                 i = MAX(i, 3) ! probalby unneccessary
                 i = MIN(i, ii-2) ! probalby unneccessary
             ELSE
                 EXIT
             END IF
-            diff_new = ABS(x_offload(ip-1+i) - particle%x)
+            diff_new = ABS(x_offload(ip(1)-1+i) - particle%x)
 
             counter = counter + 1
         END DO
@@ -544,25 +544,25 @@ CONTAINS
 
         j = 3 + NINT((jj - 5) * (particle%y - miny) / (maxy - miny), intk)
         particle%ijkcell(2) = j
-        diff_old = ABS(y_offload(ip-1+j) - particle%y)
+        diff_old = ABS(y_offload(ip(2)-1+j) - particle%y)
         diff_new = 0
 
         DO WHILE (diff_new < diff_old .AND. counter <= max_iterations)
             particle%ijkcell(2) = j
-            diff_old = ABS(y_offload(ip-1+j) - particle%y)
-            IF (y_offload(ip-1+j) <= particle%y) THEN
+            diff_old = ABS(y_offload(ip(2)-1+j) - particle%y)
+            IF (y_offload(ip(2)-1+j) <= particle%y) THEN
             ! the denominator of the fraction will NOT be zero because y(j) /= maxx for all j
-                j = j + CEILING((jj - 2 - j) * (particle%y - y_offload(ip-1+j)) / (maxy - y_offload(ip-1+j)), intk)
+                j = j + CEILING((jj - 2 - j) * (particle%y - y_offload(ip(2)-1+j)) / (maxy - y_offload(ip(2)-1+j)), intk)
                 j = MAX(j, 3) ! probalby unneccessary
                 j = MIN(j, jj-2) ! probalby unneccessary
-            ELSEIF (y_offload(ip-1+j) > particle%y) THEN
-                j = 3 + FLOOR((j - 2) * (particle%y - miny) / (y_offload(ip-1+j) - miny), intk)
+            ELSEIF (y_offload(ip(2)-1+j) > particle%y) THEN
+                j = 3 + FLOOR((j - 2) * (particle%y - miny) / (y_offload(ip(2)-1+j) - miny), intk)
                 j = MAX(j, 3) ! probalby unneccessary
                 j = MIN(j, jj-2) ! probalby unneccessary
             ELSE
                 EXIT
             END IF
-            diff_new = ABS(y_offload(ip-1+j) - particle%y)
+            diff_new = ABS(y_offload(ip(2)-1+j) - particle%y)
 
             counter = counter + 1
         END DO
@@ -580,25 +580,25 @@ CONTAINS
 
         k = 3 + NINT((kk - 5) * (particle%z - minz) / (maxz - minz), intk)
         particle%ijkcell(3) = k
-        diff_old = ABS(z_offload(ip-1+k) - particle%z)
+        diff_old = ABS(z_offload(ip(3)-1+k) - particle%z)
         diff_new = 0
 
         DO WHILE (diff_new < diff_old .AND. counter <= max_iterations)
             particle%ijkcell(3) = k
-            diff_old = ABS(z_offload(ip-1+k) - particle%z)
-            IF (z_offload(ip-1+k) <= particle%z) THEN
+            diff_old = ABS(z_offload(ip(3)-1+k) - particle%z)
+            IF (z_offload(ip(3)-1+k) <= particle%z) THEN
                 ! the denominator of the fraction will NOT be zero because z(k) /= maxx for all k
-                k = k + CEILING((kk - 2 - k) * (particle%z - z_offload(ip-1+k)) / (maxz - z_offload(ip-1+k)), intk)
+                k = k + CEILING((kk - 2 - k) * (particle%z - z_offload(ip(3)-1+k)) / (maxz - z_offload(ip(3)-1+k)), intk)
                 k = MAX(k, 3) ! probalby unneccessary
                 k = MIN(k, kk-2) ! probalby unneccessary
-            ELSEIF (z_offload(ip-1+k) > particle%z) THEN
-                k = 3 + FLOOR((k - 2) * (particle%z - minz) / (z_offload(ip-1+k) - minz), intk)
+            ELSEIF (z_offload(ip(3)-1+k) > particle%z) THEN
+                k = 3 + FLOOR((k - 2) * (particle%z - minz) / (z_offload(ip(3)-1+k) - minz), intk)
                 k = MAX(k, 3) ! probalby unneccessary
                 k = MIN(k, kk-2) ! probalby unneccessary
             ELSE
                 EXIT
             END IF
-            diff_new = ABS(z_offload(ip-1+k) - particle%z)
+            diff_new = ABS(z_offload(ip(3)-1+k) - particle%z)
 
             counter = counter + 1
         END DO
@@ -623,7 +623,7 @@ CONTAINS
 
         ! subroutine arguments
         TYPE(baseparticle_t), INTENT(inout) :: particle
-        INTEGER(intk), INTENT(in) :: kk, jj, ii, ip
+        INTEGER(intk), INTENT(in) :: kk, jj, ii, ip(3)
 
         ! local variables
         REAL(realk) :: diff_old, diff_new
@@ -633,52 +633,52 @@ CONTAINS
         ! the following procedure is capable of handling stretched grids!
 
         ! find nearest x:
-        istep = INT(SIGN(1.0_realk, particle%x - x_offload(ip-1+particle%ijkcell(1))), intk)
+        istep = INT(SIGN(1.0_realk, particle%x - x_offload(ip(1)-1+particle%ijkcell(1))), intk)
 
         i = MIN(MAX(particle%ijkcell(1) + istep, 1_intk), ii)
 
-        diff_old = ABS(x_offload(ip-1+particle%ijkcell(1)) - particle%x)
-        diff_new = ABS(x_offload(ip-1+i) - particle%x)
+        diff_old = ABS(x_offload(ip(1)-1+particle%ijkcell(1)) - particle%x)
+        diff_new = ABS(x_offload(ip(1)-1+i) - particle%x)
 
         DO WHILE (diff_new < diff_old)
             i = i + istep
             IF (i < 1_intk .OR. i > ii) EXIT
             diff_old = diff_new
-            diff_new = ABS(x_offload(ip-1+i) - particle%x)
+            diff_new = ABS(x_offload(ip(1)-1+i) - particle%x)
         END DO
 
         particle%ijkcell(1) = MIN(MAX(i - istep, 1_intk), ii) ! MIN/MAX should be obsolete here
 
         ! find nearest y:
-        jstep = INT(SIGN(1.0_realk, particle%y - y_offload(ip-1+particle%ijkcell(2))), intk)
+        jstep = INT(SIGN(1.0_realk, particle%y - y_offload(ip(2)-1+particle%ijkcell(2))), intk)
 
         j = MIN(MAX(particle%ijkcell(2) + jstep, 1_intk), jj)
 
-        diff_old = ABS(y_offload(ip-1+particle%ijkcell(2)) - particle%y)
-        diff_new = ABS(y_offload(ip-1+j) - particle%y)
+        diff_old = ABS(y_offload(ip(2)-1+particle%ijkcell(2)) - particle%y)
+        diff_new = ABS(y_offload(ip(2)-1+j) - particle%y)
 
         DO WHILE (diff_new < diff_old)
             j = j + jstep
             IF (j < 1_intk .OR. j > jj) EXIT
             diff_old = diff_new
-            diff_new = ABS(y_offload(ip-1+j) - particle%y)
+            diff_new = ABS(y_offload(ip(2)-1+j) - particle%y)
         END DO
 
         particle%ijkcell(2) = MIN(MAX(j - jstep, 1_intk), jj) ! MIN/MAX should be obsolete here
 
         ! find nearest z:
-        kstep = INT(SIGN(1.0_realk, particle%z - z_offload(ip-1+particle%ijkcell(3))), intk)
+        kstep = INT(SIGN(1.0_realk, particle%z - z_offload(ip(3)-1+particle%ijkcell(3))), intk)
 
         k = MIN(MAX(particle%ijkcell(3) + kstep, 1_intk), kk)
 
-        diff_old = ABS(z_offload(ip-1+particle%ijkcell(3)) - particle%z)
-        diff_new = ABS(z_offload(ip-1+k) - particle%z)
+        diff_old = ABS(z_offload(ip(3)-1+particle%ijkcell(3)) - particle%z)
+        diff_new = ABS(z_offload(ip(3)-1+k) - particle%z)
 
         DO WHILE (diff_new < diff_old)
             k = k + kstep
             IF (k < 1_intk .OR. k > kk) EXIT
             diff_old = diff_new
-            diff_new = ABS(z_offload(ip-1+k) - particle%z)
+            diff_new = ABS(z_offload(ip(3)-1+k) - particle%z)
         END DO
 
         particle%ijkcell(3) = MIN(MAX(k - kstep, 1_intk), kk) ! MIN/MAX should be obsolete here

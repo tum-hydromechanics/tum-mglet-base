@@ -378,10 +378,10 @@ CONTAINS
         TYPE(field_t), POINTER :: u_f, v_f, w_f
         INTEGER(intk) :: dev_num, num_teams, num_threads
         INTEGER(intk) :: igrid, icorn, ipart, i, j, irk
-        INTEGER(intk) :: ip, ii, jj, kk, destgrid
+        INTEGER(intk) :: ip1d(3), ii, jj, kk, destgrid
         INTEGER(intk) :: pstag(3)
         REAL(realk) :: pdx_pot, pdy_pot, pdz_pot, pu_adv, pv_adv, pw_adv
-        REAL(realk) :: dvec(3), deff_vec(3), n(3)
+        REAL(realk) :: dvec(3), deff_vec(3), dtot_vec(3), n(3)
         REAL(realk) :: bbox(6)
 
         CALL start_timer(900)
@@ -396,7 +396,7 @@ CONTAINS
         
         CALL stop_timer(921)
 
-        !CALL write_particle_list_txt(itstep, 'pre')
+!CALL write_particle_list_txt(itstep, 'pre')
 
         CALL start_timer(923)
 
@@ -417,10 +417,10 @@ CONTAINS
         !$omp map(tofrom: my_particle_list) &
 #endif
         !$omp map(tofrom: dev_num, num_teams, num_threads) map(to: my_particle_grids, plist_displ, grids_np, A_offload, B_offload, D) &
-        !$omp firstprivate(dt, nmy_particle_grids, pnrk, dadvection, ddiffusion) private(igrid, ipart, icorn, pstag, ip, ii, jj, kk, destgrid, irk, dvec, &
-        !$omp pu_adv, pv_adv, pw_adv, pdx_pot, pdy_pot, pdz_pot, bbox, deff_vec, n)
-        !$omp teams distribute firstprivate(dt, nmy_particle_grids, pnrk, dadvection, ddiffusion) private(igrid, ipart, icorn, pstag, ip, ii, jj, kk, destgrid, irk, dvec, &
-        !$omp pu_adv, pv_adv, pw_adv, pdx_pot, pdy_pot, pdz_pot, bbox, deff_vec, n) &
+        !$omp firstprivate(dt, nmy_particle_grids, pnrk, dadvection, ddiffusion) private(igrid, ipart, icorn, pstag, ip1d, ii, jj, kk, destgrid, irk, dvec, &
+        !$omp pu_adv, pv_adv, pw_adv, pdx_pot, pdy_pot, pdz_pot, bbox, deff_vec, dtot_vec, n)
+        !$omp teams distribute firstprivate(dt, nmy_particle_grids, pnrk, dadvection, ddiffusion) private(igrid, ipart, icorn, pstag, ip1d, ii, jj, kk, destgrid, irk, dvec, &
+        !$omp pu_adv, pv_adv, pw_adv, pdx_pot, pdy_pot, pdz_pot, bbox, deff_vec, dtot_vec, n) &
         !$omp shared(my_particle_grids, plist_displ, grids_np, A_offload, B_offload, D) &
         !$omp reduction(max: num_threads)
         DO i = 1, nmy_particle_grids
@@ -440,12 +440,12 @@ CONTAINS
 
             CALL get_mgdims_target(kk, jj, ii, igrid)
 
-            CALL get_grid_ptr1_target(ip, igrid)
+            CALL get_grid_ptr1_target(ip1d, igrid)
             
             CALL get_bbox_target(bbox(1), bbox(2), bbox(3), bbox(4), bbox(5), bbox(6), igrid)
             
-            !$omp parallel do firstprivate(dt, pnrk, igrid, ip, ii, jj, kk, bbox, dadvection, ddiffusion) &
-            !$omp private(ipart, icorn, pstag, destgrid, irk, deff_vec, dvec, &
+            !$omp parallel do firstprivate(dt, pnrk, igrid, ip1d, ii, jj, kk, bbox, dadvection, ddiffusion) &
+            !$omp private(ipart, icorn, pstag, destgrid, irk, deff_vec, dtot_vec, dvec, &
             !$omp pu_adv, pv_adv, pw_adv, pdx_pot, pdy_pot, pdz_pot, n) &
             !$omp shared(plist_displ, grids_np, A_offload, B_offload, D)
             DO j = 1, grids_np(i)
@@ -459,6 +459,10 @@ CONTAINS
 
                 pstag = 0_intk
 
+                dtot_vec(1) = 0.0
+                dtot_vec(2) = 0.0
+                dtot_vec(3) = 0.0
+
                 IF (dadvection) THEN
 
                     pdx_pot = 0.0
@@ -470,10 +474,12 @@ CONTAINS
                         ! get particle velocity
                         CALL interpolate_lincon_target(my_particle_list%particles(ipart), igrid, kk, jj, ii, pu_adv, pv_adv, pw_adv)
 
+!WRITE(*,*) ">>>>>>>>>>> pui_adv (ipart: ", my_particle_list%particles(ipart)%ipart,  "): ", pu_adv, pv_adv, pw_adv
+
                         ! runge kutta substep
                         CALL prkstep(pdx_pot, pdy_pot, pdz_pot, pu_adv, pv_adv, pw_adv, dt, &
                         A_offload(irk), B_offload(irk), dvec(1), dvec(2), dvec(3))
-
+                        
                         ! substep particle displacement
                         CALL move_particle_target3(my_particle_list%particles(ipart), icorn, pstag, dvec, deff_vec)
 
@@ -482,8 +488,12 @@ CONTAINS
                         pdy_pot = deff_vec(2) / B_offload(irk)
                         pdz_pot = deff_vec(3) / B_offload(irk)
 
+                        dtot_vec(1) = dtot_vec(1) + deff_vec(1)
+                        dtot_vec(2) = dtot_vec(2) + deff_vec(2)
+                        dtot_vec(3) = dtot_vec(3) + deff_vec(3)  
+
                         ! update particle cell
-                        CALL update_particle_cell_target(my_particle_list%particles(ipart), kk, jj, ii, ip)
+                        CALL update_particle_cell_target(my_particle_list%particles(ipart), kk, jj, ii, ip1d)
             
                         ! TODO: reintroduce particle runtime statistics
                     END DO
@@ -498,8 +508,15 @@ CONTAINS
 
                     CALL move_particle_target3(my_particle_list%particles(ipart), icorn, pstag, dvec, deff_vec)
 
+                    dtot_vec(1) = dtot_vec(1) + deff_vec(1)
+                    dtot_vec(2) = dtot_vec(2) + deff_vec(2)
+                    dtot_vec(3) = dtot_vec(3) + deff_vec(3)  
+
                 END IF
 #endif
+
+!WRITE(*,*) ">>>>>>>>>>> dtot_vec (ipart: ", my_particle_list%particles(ipart)%ipart,  "): ", dtot_vec
+
                 ! >>>>>>>>>>>> UPDATE OF PARTICLE COORDINATES (neccesary for PER boundaries) AND GRID <<<<<<<<<<<<
                
                 CALL get_gcorner_neighbour(igrid, icorn, pstag, destgrid)
@@ -510,13 +527,14 @@ CONTAINS
                 
                 my_particle_list%particles(ipart)%igrid = destgrid
 
-                CALL get_grid_ptr1_target(ip, my_particle_list%particles(ipart)%igrid)
-
-                IF (ip > 0) THEN
-                    CALL get_mgdims_target(kk, jj, ii, my_particle_list%particles(ipart)%igrid)
-
-                    CALL set_particle_cell_target(my_particle_list%particles(ipart), kk, jj, ii, ip)
-                END IF
+                DO irk = 1, nmy_particle_grids
+                    IF (my_particle_grids(irk) == destgrid) THEN
+                        CALL get_grid_ptr1_target(ip1d, my_particle_list%particles(ipart)%igrid)
+                        CALL get_mgdims_target(kk, jj, ii, my_particle_list%particles(ipart)%igrid)
+                        CALL set_particle_cell_target(my_particle_list%particles(ipart), kk, jj, ii, ip1d)
+                        EXIT
+                    END IF
+                END DO
 
                 ! TODO: reintroduce particle runtime statistics
             END DO
@@ -527,7 +545,7 @@ CONTAINS
 
         CALL stop_timer(924)
 
-        !CALL write_particle_list_txt(itstep, 'pos')
+!CALL write_particle_list_txt(itstep, 'pos')
 
         WRITE(*, '("    Timeintegration on Process:                     ", I9)') myid
         WRITE(*, '("        Device Number:                              ", I9)') dev_num

@@ -56,7 +56,7 @@ MODULE particle_ofields_mod
 
     ! ----- Pointers to fields -----
     ! Grid parameters
-    INTEGER(intk), ALLOCATABLE :: ip3d_offload(:), ip1d_offload(:)
+    INTEGER(intk), ALLOCATABLE :: ip3d_offload(:), ip1d_offload(:, :)
     INTEGER(intk), ALLOCATABLE :: mgdims_offload(:)
     REAL(realk), ALLOCATABLE :: bbox_offload(:)
     !TYPE(grid_env_t), ALLOCATABLE :: grid_env_arr(:)
@@ -115,7 +115,8 @@ CONTAINS
     SUBROUTINE map_grid_data()
 
         ! Local variables
-        INTEGER(intk) :: igrid, i, mgdims_arr_size, bbox_arr_size, kk, jj, ii
+        TYPE(field_t), POINTER :: x_f, y_f, z_f
+        INTEGER(intk) :: igrid, i, ip, mgdims_arr_size, bbox_arr_size, kk, jj, ii
         REAL(realk) :: minx, maxx, miny, maxy, minz, maxz
 
         ! Create grids_mod copy to offload
@@ -145,14 +146,33 @@ CONTAINS
 
         ! Create pointers to pointers_mod fields just to have all omp directives to map data in this file
         ALLOCATE(ip3d_offload(ngrid))
-        ALLOCATE(ip1d_offload(ngrid))
         ip3d_offload = ip3d
-        ip1d_offload = ip1d
-        
+
+        CALL get_field(x_f, "X")
+        CALL get_field(y_f, "Y")
+        CALL get_field(z_f, "Z")
+
+        ALLOCATE(ip1d_offload(3, ngrid))
+        ip1d_offload(:, 1) = 1
+
+        DO igrid = 2, ngrid
+                CALL get_mgdims(kk, jj, ii, igrid - 1)
+                ip1d_offload(1, igrid) = ip1d_offload(1, igrid - 1) + ii
+                CALL x_f%get_ip(ip, igrid)
+                IF (ip /= ip1d_offload(1, igrid)) CALL errr(__FILE__, __LINE__)
+                ip1d_offload(2, igrid) = ip1d_offload(2, igrid - 1) + jj
+                CALL y_f%get_ip(ip, igrid)
+                IF (ip /= ip1d_offload(2, igrid)) CALL errr(__FILE__, __LINE__)
+                ip1d_offload(3, igrid) = ip1d_offload(3, igrid - 1) + kk
+                CALL z_f%get_ip(ip, igrid)
+                IF (ip /= ip1d_offload(3, igrid)) CALL errr(__FILE__, __LINE__)
+        END DO
+
         !$omp target enter data map(always, to: ip3d_offload)
         !$omp target enter data map(always, to: ip1d_offload)
         !$omp target enter data map(always, to: mgdims_offload)
         !$omp target enter data map(always, to: bbox_offload)
+    
     END SUBROUTINE
 
 
@@ -265,10 +285,10 @@ CONTAINS
         
         !$omp declare target
 
-        INTEGER(intk), INTENT(OUT) :: ip
+        INTEGER(intk), INTENT(OUT) :: ip(3)
         INTEGER(intk), INTENT(IN) :: igrid
         
-        ip = ip1d_offload(igrid)
+        ip(:) = ip1d_offload(:, igrid)
 
     END SUBROUTINE get_grid_ptr1_target
 
@@ -305,7 +325,7 @@ CONTAINS
     END SUBROUTINE get_bbox_target
 
 
-    SUBROUTINE ptr_to_grid_1(arr_ptr, igrid, grid_ptr, dir)
+    SUBROUTINE ptr_to_grid_1(arr_ptr, igrid, grid_ptr, idir)
         
         !$omp declare target
 
@@ -313,13 +333,13 @@ CONTAINS
         REAL(realk), POINTER, CONTIGUOUS, INTENT(in) :: arr_ptr(:)
         REAL(realk), POINTER, CONTIGUOUS, INTENT(inout) :: grid_ptr(:)
         INTEGER(intk), INTENT(in) :: igrid
-        INTEGER(intk), INTENT(in) :: dir ! x:1; y:2; z:3 
+        INTEGER(intk), INTENT(in) :: idir ! x:1; y:2; z:3 
 
         ! Local variables
         INTEGER(intk) :: ip, len
         
-        ip = ip1d_offload(igrid)
-        len = mgdims_offload((igrid - 1) * 3 + dir)
+        ip = ip1d_offload(idir, igrid)
+        len = mgdims_offload((igrid - 1) * 3 + idir)
         grid_ptr(1:len) => arr_ptr(ip:ip+len-1)
 
     END SUBROUTINE ptr_to_grid_1
