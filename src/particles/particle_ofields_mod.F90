@@ -1,7 +1,7 @@
 MODULE particle_ofields_mod
     USE precision_mod, ONLY: intk, realk
     USE pointers_mod, ONLY: ip3d, ip1d
-    USE grids_mod, ONLY: nmygrids, get_mgdims, get_mgbasb, get_bbox, get_bc_ctyp
+    USE grids_mod, ONLY: nmygrids, mygrids, get_mgdims, get_mgbasb, get_bbox, get_bc_ctyp
     USE err_mod, ONLY: errr
     USE fields_mod
     USE realfield_mod
@@ -73,7 +73,6 @@ MODULE particle_ofields_mod
     ! Public subroutines for host
     PUBLIC :: offload_fields, finish_offload_fields
 
-
     !$omp declare target(mgdims_offload)
     !$omp declare target(ip3d_offload)
     !$omp declare target(ip1d_offload)
@@ -115,7 +114,7 @@ CONTAINS
     SUBROUTINE map_grid_data()
 
         ! Local variables
-        TYPE(field_t), POINTER :: x_f, y_f, z_f
+        TYPE(field_t), POINTER :: x_f, y_f, z_f, dx_f, dy_f, dz_f, ddx_f, ddy_f, ddz_f
         INTEGER(intk) :: igrid, i, ip, mgdims_arr_size, bbox_arr_size, kk, jj, ii
         REAL(realk) :: minx, maxx, miny, maxy, minz, maxz
 
@@ -148,24 +147,41 @@ CONTAINS
         ALLOCATE(ip3d_offload(ngrid))
         ip3d_offload = ip3d
 
+        ALLOCATE(ip1d_offload(3, ngrid))
+        ip1d_offload = 1
+
         CALL get_field(x_f, "X")
         CALL get_field(y_f, "Y")
         CALL get_field(z_f, "Z")
+        CALL get_field(dx_f, "DX")
+        CALL get_field(dy_f, "DY")
+        CALL get_field(dz_f, "DZ")
+        CALL get_field(ddx_f, "DDX")
+        CALL get_field(ddy_f, "DDY")
+        CALL get_field(ddz_f, "DDZ")
 
-        ALLOCATE(ip1d_offload(3, ngrid))
-        ip1d_offload(:, 1) = 1
+        DO i = 1, nmygrids
+            igrid = mygrids(i)
+            CALL x_f%get_ip(ip, igrid)
+            ip1d_offload(1, igrid) = ip
+            CALL dx_f%get_ip(ip, igrid)
+            IF (ip /= ip1d_offload(1, igrid)) CALL errr(__FILE__, __LINE__)
+            CALL ddx_f%get_ip(ip, igrid)
+            IF (ip /= ip1d_offload(1, igrid)) CALL errr(__FILE__, __LINE__)
 
-        DO igrid = 2, ngrid
-                CALL get_mgdims(kk, jj, ii, igrid - 1)
-                ip1d_offload(1, igrid) = ip1d_offload(1, igrid - 1) + ii
-                CALL x_f%get_ip(ip, igrid)
-                IF (ip /= ip1d_offload(1, igrid)) CALL errr(__FILE__, __LINE__)
-                ip1d_offload(2, igrid) = ip1d_offload(2, igrid - 1) + jj
-                CALL y_f%get_ip(ip, igrid)
-                IF (ip /= ip1d_offload(2, igrid)) CALL errr(__FILE__, __LINE__)
-                ip1d_offload(3, igrid) = ip1d_offload(3, igrid - 1) + kk
-                CALL z_f%get_ip(ip, igrid)
-                IF (ip /= ip1d_offload(3, igrid)) CALL errr(__FILE__, __LINE__)
+            CALL y_f%get_ip(ip, igrid)
+            ip1d_offload(2, igrid) = ip
+            CALL dy_f%get_ip(ip, igrid)
+            IF (ip /= ip1d_offload(2, igrid)) CALL errr(__FILE__, __LINE__)
+            CALL ddy_f%get_ip(ip, igrid)
+            IF (ip /= ip1d_offload(2, igrid)) CALL errr(__FILE__, __LINE__)
+
+            CALL z_f%get_ip(ip, igrid)
+            ip1d_offload(3, igrid) = ip
+            CALL dz_f%get_ip(ip, igrid)
+            IF (ip /= ip1d_offload(3, igrid)) CALL errr(__FILE__, __LINE__)
+            CALL ddz_f%get_ip(ip, igrid)
+            IF (ip /= ip1d_offload(3, igrid)) CALL errr(__FILE__, __LINE__)
         END DO
 
         !$omp target enter data map(always, to: ip3d_offload)
