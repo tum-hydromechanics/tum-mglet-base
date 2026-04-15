@@ -9,7 +9,7 @@
         "continue": true
     },
     "io": {
-        "grids": "particle_grids.h5",
+        "grids": "particle_grids_16.h5",
         "infile": "fields.h5",
         "outfile": "fields.h5"
     },
