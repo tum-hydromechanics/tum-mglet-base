@@ -24,6 +24,20 @@ MODULE particle_boundaries_mod
     !$omp omp_out = merge(omp_in, omp_out, omp_in%value > omp_out%value)) & 
     !$omp initializer( omp_priv = reduction_pair_t(-huge(0.0_realk), 0))
 
+    ! the following parameters specify the max number of particle boundary interactions (per move_particle(...) call)
+    ! based on the presence and morphology of obstacles:
+    ! no obstacles:
+    !INTEGER(intk), PARAMETER :: move_particle_num_iterations_obstacles_none = 3
+    ! obstacles present, but each obstacle is at least
+    ! the maximum expected particle displacement per move_particle(...) call away from all other obstacles
+    ! (i.e. particles hit only one obstacle per move_particle(...) call)
+    !INTEGER(intk), PARAMETER :: move_particle_num_iterations_obstacles_sparse = 7
+    ! obstacles present and densly packed so that particles might hit more than one obstacle per move_particle(...) call
+    ! (this number is a bit arbitrary)
+    !INTEGER(intk), PARAMETER :: move_particle_num_iterations_obstacles_dense = 10
+
+    !INTEGER(intk) :: move_particle_max_num_iterations
+
     INTEGER(intk), PARAMETER :: facelist_b(4,26) = RESHAPE((/ &
         1, 1, 0, 0, &
         1, 2, 0, 0, &
@@ -1424,8 +1438,10 @@ MODULE particle_boundaries_mod
         iobst_local_new = 0
         idir = 0
 
-        ! to avoid branch divergence here, just iterate to the max. number of iterations that would be a stoping criterion anyways
         DO i = 1, 10
+
+            temp = EPSILON(0.0_realk)
+            IF (ABS(dvec(1)) < temp .AND. ABS(dvec(2)) < temp .AND. ABS(dvec(3)) < temp) EXIT
 
             idir = 0
             iobst_local_old = iobst_local_new
