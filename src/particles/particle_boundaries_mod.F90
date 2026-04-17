@@ -85,12 +85,12 @@ MODULE particle_boundaries_mod
     TYPE(particle_gcorner_boundaries_t), ALLOCATABLE :: particle_gcorner_boundaries(:)
 
 #if defined __INTEL_COMPILER
-    ! declare mapper(particle_boundaries_t :: bnd) map(to: bnd, bnd%face_neighbours, bnd%face_normals)
     !$omp declare mapper(particle_gcorner_boundaries_t :: cbnd) map(to: cbnd, &
     !$omp cbnd%location, cbnd%face_coord, cbnd%neighbour_ref_coord, cbnd%face_neighbours, cbnd%face_normals)
-#else
-    !$omp declare target(particle_gcorner_boundaries)
 #endif
+
+    !$omp declare target(particle_gcorner_boundaries)
+
     CONTAINS
 
     SUBROUTINE init_particle_boundaries()
@@ -280,10 +280,7 @@ MODULE particle_boundaries_mod
         !$omp target enter data map(to: ngrid)
 
 #if defined __INTEL_COMPILER
-        !$omp target enter data map(always, mapper(particle_gcorner_boundaries_t), to: particle_gcorner_boundaries(1:ngrid * 8))
-        !$omp target enter data map(always, to: particle_gcorner_boundaries(1:ngrid * 8)%face_neighbours, &
-        !$omp particle_gcorner_boundaries(1:ngrid * 8)%location, particle_gcorner_boundaries(1:ngrid * 8)%neighbour_ref_coord, &
-        !$omp particle_gcorner_boundaries(1:ngrid * 8)%face_coord, particle_gcorner_boundaries(1:ngrid * 8)%face_normals)
+        !$omp target enter data map(always, to: particle_gcorner_boundaries)
 #else
         !$omp target enter data map(always, to: particle_gcorner_boundaries)
 #endif
@@ -294,6 +291,10 @@ MODULE particle_boundaries_mod
         !$omp target enter data map(always, to: n_my_obstacles_on_grid)
         !$omp target enter data map(always, to: obstacle_displ)
         !$omp target enter data map(always, to: aura)
+
+        ! target defaultmap(none)
+            !CALL print_gcorner_boundaries_target()
+        ! end target 
 
         CALL stop_timer(910)
         CALL stop_timer(900)
@@ -2849,5 +2850,24 @@ MODULE particle_boundaries_mod
         END SELECT
 
     END SUBROUTINE get_particle_bc
+
+    SUBROUTINE print_gcorner_boundaries_target()
+
+        !$omp declare target
+
+        INTEGER(intk) :: igrid, icorn
+
+        DO igrid = 1, ngrid
+            DO icorn = 1, 8
+                PRINT *, "------ (Corner) Boundaries, Grid:   ", igrid, " Corner:   ", icorn, "------"
+                PRINT *, "Face Neighbour Grids:   ", particle_gcorner_boundaries((igrid - 1) * 8 + icorn)%face_neighbours(:)
+                PRINT *, "Face Coordinates:   ", particle_gcorner_boundaries((igrid - 1) * 8 + icorn)%face_coord(:)
+                PRINT *, "Face Normals:   ", particle_gcorner_boundaries((igrid - 1) * 8 + icorn)%face_normals(:)
+            END DO
+        END DO
+        PRINT *, " "
+
+    END SUBROUTINE print_gcorner_boundaries_target
+
 
 END MODULE particle_boundaries_mod
