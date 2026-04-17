@@ -375,7 +375,6 @@ CONTAINS
         REAL(realk), INTENT(in) :: dt
 
         ! local variables
-        TYPE(field_t), POINTER :: u_f, v_f, w_f
         INTEGER(intk) :: dev_num, num_teams, num_threads
         INTEGER(intk) :: igrid, icorn, ipart, i, j, irk
         INTEGER(intk) :: ip1d(3), ii, jj, kk, destgrid
