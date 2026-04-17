@@ -279,11 +279,7 @@ MODULE particle_boundaries_mod
 
         !$omp target enter data map(to: ngrid)
 
-#if defined __INTEL_COMPILER
         !$omp target enter data map(always, to: particle_gcorner_boundaries)
-#else
-        !$omp target enter data map(always, to: particle_gcorner_boundaries)
-#endif
         
         CALL read_obstacles()
 
