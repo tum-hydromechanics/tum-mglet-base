@@ -324,11 +324,10 @@ CONTAINS    !===================================
         INTEGER(intk), INTENT(out) :: grids_np_arg(nmy_particle_grids)
         INTEGER(intk), OPTIONAL, INTENT(out) :: plist_displ_arg(nmy_particle_grids)
 
-        INTEGER(intk) :: i, pgrid, niterations
+        INTEGER(intk) :: i, pgrid
 
         grids_np_arg = 0
         DO i = 1, particle_list%ifinal
-            niterations = niterations + 1
             IF (particle_list%particles(i)%state < 1) THEN
                 IF (TRIM(particle_terminal) == "normal" .OR. TRIM(particle_terminal) == "verbose") THEN
                     WRITE(*, '("ERROR on proc ", I0, ": Particle list entry ", I0, " unexpectately holds and inactive Partcle!")') myid, i
@@ -385,7 +384,7 @@ CONTAINS    !===================================
         TYPE(particle_list_t), INTENT(inout) :: particle_list
         
         ! Local variales
-        INTEGER(intk) :: i, counter, pgrid, niterations
+        INTEGER(intk) :: i, counter, pgrid
         INTEGER(intk) :: sorted(particle_list%ifinal)
         INTEGER(intk) :: grid_ind(nmy_particle_grids)
         LOGICAL :: found_unsorted_part, finished
@@ -394,8 +393,6 @@ CONTAINS    !===================================
         IF (particle_list%ifinal < 1) RETURN
         
         finished = .FALSE.
-        ! TODO: remove niterations
-        niterations = 0
 
         sorted = 0
 
@@ -408,7 +405,6 @@ CONTAINS    !===================================
 
         counter = 0
         DO i = 1, particle_list%ifinal
-            niterations = niterations + 1
             pgrid = particle_list%particles(i)%igrid
             
             IF (grid_ind(particle_grid_ptr(pgrid)) == i) THEN
@@ -442,7 +438,6 @@ CONTAINS    !===================================
             counter = 0
             found_unsorted_part = .FALSE.
             DO WHILE (.NOT. found_unsorted_part .AND. .NOT. finished)
-                niterations = niterations + 1
                 IF (counter > particle_list%ifinal - 1) THEN
                     finished = .TRUE.
                     EXIT
@@ -462,10 +457,6 @@ CONTAINS    !===================================
 
             IF (finished) EXIT
         END DO
-
-        ! TODO: remove this temporary debugging feature 
-
-        WRITE(*, '("Particle Sorting: N iterations = ", I0, " (Ifinal = ", I0, ")")') niterations, particle_list%ifinal
 
         DO i = 1, particle_list%ifinal
             IF (sorted(i) == 0) CALL errr(__FILE__, __LINE__)

@@ -1,0 +1,264 @@
+{
+  "version": 1,
+  "timers": [
+    1,
+    2,
+    900,
+    920,
+    921,
+    922,
+    923,
+    924,
+    925,
+    940,
+    941,
+    942,
+    943,
+    944,
+    945,
+    960,
+    990
+  ],
+  "correctness": [
+    {
+      "name": "advection-two-rank-smoke",
+      "kind": "smoke",
+      "source": "../Verification/Advection6",
+      "ranks": 2,
+      "expected_particles": 8,
+      "coordinate_tolerance": 1e-5,
+      "expected_coordinates": [
+        [0.35, 0.25, 0.25],
+        [0.35, 0.75, 0.25],
+        [0.35, 0.25, 0.75],
+        [0.35, 0.75, 0.75],
+        [0.85, 0.25, 0.25],
+        [0.85, 0.75, 0.25],
+        [0.85, 0.25, 0.75],
+        [0.85, 0.75, 0.75]
+      ],
+      "remove_top_level": [
+        "probes",
+        "snapshots",
+        "statistics",
+        "uvwbulk"
+      ],
+      "overrides": {
+        "time": {
+          "mtstep": 10,
+          "itinfo": 100000,
+          "read": false,
+          "write": false,
+          "continue": false
+        },
+        "flow": {
+          "solve": false
+        },
+        "particles": {
+          "dread_part_h5": false,
+          "dread_part_dict": true,
+          "dwrite_part_h5": true,
+          "terminal": "none",
+          "snapshot_step": -1,
+          "dgridstat": false
+        }
+      }
+    }
+  ],
+  "benchmarks": [
+    {
+      "name": "bcc-compute-medium",
+      "description": "Production-faithful BCC compute and exchange without particle I/O",
+      "tier": "medium",
+      "category": "compute",
+      "external_root": "/home/yaydin/thesis/particle_run/10_BCC",
+      "source": "3_particle/1000_Dm_3e-3",
+      "particle_dict_columns": "xyz",
+      "external_inputs": {
+        "bcc_body.stl": "0_geometry/body.001.stl",
+        "bcc_fields.h5": "2_simulation/fields.h5",
+        "bcc_grids.h5": "1_grids/grids.h5",
+        "bcc_ib_stencils.h5": "2_simulation/ib_stencils.h5"
+      },
+      "copy_inputs": [
+        "ParticleDict.txt",
+        "ObstaclesDict.txt"
+      ],
+      "ranks": 16,
+      "warmups": 1,
+      "repetitions": 3,
+      "configured_particles": 200000,
+      "seed_base": 104729,
+      "required_timers": [920, 940, 942],
+      "remove_top_level": [
+        "probes",
+        "snapshots",
+        "statistics",
+        "uvwbulk"
+      ],
+      "overrides": {
+        "time": {
+          "mtstep": 1000,
+          "itinfo": 100000,
+          "read": true,
+          "write": false,
+          "continue": false
+        },
+        "io": {
+          "grids": "bcc_grids.h5",
+          "infile": "bcc_fields.h5",
+          "outfile": "output_fields.h5"
+        },
+        "ib": {
+          "stencilfile": "bcc_ib_stencils.h5",
+          "geometries": [
+            {
+              "file": "bcc_body.stl",
+              "velocity": [0.0, 0.0, 0.0]
+            }
+          ]
+        },
+        "particles": {
+          "dread_part_h5": false,
+          "dread_part_dict": true,
+          "dread_obst_dict": true,
+          "dwrite_part_h5": false,
+          "terminal": "none",
+          "snapshot_step": -1,
+          "list_length": 20000,
+          "dgridstat": false
+        }
+      }
+    },
+    {
+      "name": "bcc-io-medium",
+      "description": "Production-faithful BCC snapshots measured separately",
+      "tier": "medium",
+      "category": "io",
+      "external_root": "/home/yaydin/thesis/particle_run/10_BCC",
+      "source": "3_particle/1000_Dm_3e-3",
+      "particle_dict_columns": "xyz",
+      "external_inputs": {
+        "bcc_body.stl": "0_geometry/body.001.stl",
+        "bcc_fields.h5": "2_simulation/fields.h5",
+        "bcc_grids.h5": "1_grids/grids.h5",
+        "bcc_ib_stencils.h5": "2_simulation/ib_stencils.h5"
+      },
+      "copy_inputs": [
+        "ParticleDict.txt",
+        "ObstaclesDict.txt"
+      ],
+      "ranks": 16,
+      "warmups": 1,
+      "repetitions": 3,
+      "configured_particles": 200000,
+      "seed_base": 104729,
+      "required_timers": [920, 940, 942, 960],
+      "remove_top_level": [
+        "probes",
+        "snapshots",
+        "statistics",
+        "uvwbulk"
+      ],
+      "overrides": {
+        "time": {
+          "mtstep": 1000,
+          "itinfo": 100000,
+          "read": true,
+          "write": false,
+          "continue": false
+        },
+        "io": {
+          "grids": "bcc_grids.h5",
+          "infile": "bcc_fields.h5",
+          "outfile": "output_fields.h5"
+        },
+        "ib": {
+          "stencilfile": "bcc_ib_stencils.h5",
+          "geometries": [
+            {
+              "file": "bcc_body.stl",
+              "velocity": [0.0, 0.0, 0.0]
+            }
+          ]
+        },
+        "particles": {
+          "dread_part_h5": false,
+          "dread_part_dict": true,
+          "dread_obst_dict": true,
+          "dwrite_part_h5": false,
+          "terminal": "none",
+          "snapshot_step": 195,
+          "snapshot_npart": 100000,
+          "list_length": 20000,
+          "dgridstat": false
+        }
+      }
+    },
+    {
+      "name": "bcc-production-overnight",
+      "description": "Measured one-hour production validation, not a routine baseline",
+      "tier": "overnight",
+      "category": "io",
+      "external_root": "/home/yaydin/thesis/particle_run/10_BCC",
+      "source": "3_particle/1000_Dm_3e-3",
+      "particle_dict_columns": "xyz",
+      "external_inputs": {
+        "bcc_body.stl": "0_geometry/body.001.stl",
+        "bcc_fields.h5": "2_simulation/fields.h5",
+        "bcc_grids.h5": "1_grids/grids.h5",
+        "bcc_ib_stencils.h5": "2_simulation/ib_stencils.h5"
+      },
+      "copy_inputs": [
+        "ParticleDict.txt",
+        "ObstaclesDict.txt"
+      ],
+      "ranks": 16,
+      "warmups": 0,
+      "repetitions": 1,
+      "configured_particles": 200000,
+      "seed_base": 104729,
+      "required_timers": [920, 940, 942, 960],
+      "remove_top_level": [
+        "probes",
+        "snapshots",
+        "statistics",
+        "uvwbulk"
+      ],
+      "overrides": {
+        "time": {
+          "mtstep": 39075,
+          "itinfo": 195,
+          "read": true,
+          "write": false,
+          "continue": false
+        },
+        "io": {
+          "grids": "bcc_grids.h5",
+          "infile": "bcc_fields.h5",
+          "outfile": "output_fields.h5"
+        },
+        "ib": {
+          "stencilfile": "bcc_ib_stencils.h5",
+          "geometries": [
+            {
+              "file": "bcc_body.stl",
+              "velocity": [0.0, 0.0, 0.0]
+            }
+          ]
+        },
+        "particles": {
+          "dread_part_h5": false,
+          "dread_part_dict": true,
+          "dread_obst_dict": true,
+          "dwrite_part_h5": true,
+          "terminal": "none",
+          "snapshot_step": 195,
+          "snapshot_npart": 100000,
+          "list_length": 20000,
+          "dgridstat": false
+        }
+      }
+    }
+  ]
+}

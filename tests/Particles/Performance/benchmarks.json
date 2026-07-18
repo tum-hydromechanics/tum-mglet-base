@@ -1,0 +1,431 @@
+{
+  "version": 1,
+  "timers": [
+    1,
+    2,
+    900,
+    920,
+    921,
+    922,
+    923,
+    924,
+    925,
+    940,
+    941,
+    942,
+    943,
+    944,
+    945,
+    960,
+    990
+  ],
+  "correctness": [
+    {
+      "name": "advection-single-smoke",
+      "kind": "smoke",
+      "source": "../Verification/Advection1",
+      "ranks": 1,
+      "expected_particles": 1,
+      "coordinate_tolerance": 1e-6,
+      "expected_coordinates": [
+        [
+          1.1,
+          0.5,
+          0.5
+        ]
+      ],
+      "remove_top_level": [
+        "probes",
+        "snapshots",
+        "statistics",
+        "uvwbulk"
+      ],
+      "overrides": {
+        "time": {
+          "mtstep": 10,
+          "itinfo": 100000,
+          "read": false,
+          "write": false,
+          "continue": false
+        },
+        "flow": {
+          "solve": false
+        },
+        "particles": {
+          "dread_part_h5": false,
+          "dread_part_dict": true,
+          "dwrite_part_h5": true,
+          "terminal": "none",
+          "snapshot_step": -1,
+          "dgridstat": false
+        }
+      }
+    },
+    {
+      "name": "advection-two-rank-smoke",
+      "kind": "smoke",
+      "source": "../Verification/Advection6",
+      "ranks": 2,
+      "expected_particles": 8,
+      "coordinate_tolerance": 1e-5,
+      "expected_coordinates": [
+        [0.35, 0.25, 0.25],
+        [0.35, 0.75, 0.25],
+        [0.35, 0.25, 0.75],
+        [0.35, 0.75, 0.75],
+        [0.85, 0.25, 0.25],
+        [0.85, 0.75, 0.25],
+        [0.85, 0.25, 0.75],
+        [0.85, 0.75, 0.75]
+      ],
+      "remove_top_level": [
+        "probes",
+        "snapshots",
+        "statistics",
+        "uvwbulk"
+      ],
+      "overrides": {
+        "time": {
+          "mtstep": 10,
+          "itinfo": 100000,
+          "read": false,
+          "write": false,
+          "continue": false
+        },
+        "flow": {
+          "solve": false
+        },
+        "particles": {
+          "dread_part_h5": false,
+          "dread_part_dict": true,
+          "dwrite_part_h5": true,
+          "terminal": "none",
+          "snapshot_step": -1,
+          "dgridstat": false
+        }
+      }
+    },
+    {
+      "name": "advection-restart-continuation",
+      "kind": "restart",
+      "source": "../Verification/Advection1",
+      "ranks": 1,
+      "expected_particles": 1,
+      "total_steps": 20,
+      "split_steps": 10,
+      "coordinate_tolerance": 1e-6,
+      "remove_top_level": [
+        "probes",
+        "snapshots",
+        "statistics",
+        "uvwbulk"
+      ],
+      "overrides": {
+        "time": {
+          "itinfo": 100000,
+          "read": false,
+          "write": false,
+          "continue": false
+        },
+        "flow": {
+          "solve": false
+        },
+        "particles": {
+          "terminal": "none",
+          "snapshot_step": -1,
+          "dgridstat": false,
+          "dwrite_part_h5": true
+        }
+      }
+    }
+  ],
+  "benchmarks": [
+    {
+      "name": "diffusion-focused-quick",
+      "description": "Diffusion workload with unavoidable CPU advection-path overhead",
+      "tier": "quick",
+      "category": "compute",
+      "source": "Diffusion-Cube",
+      "ranks": 1,
+      "warmups": 1,
+      "repetitions": 3,
+      "configured_particles": 10000,
+      "remove_top_level": [
+        "probes",
+        "snapshots",
+        "statistics",
+        "uvwbulk"
+      ],
+      "overrides": {
+        "time": {
+          "mtstep": 10,
+          "itinfo": 100000,
+          "tstat": 1e30,
+          "read": false,
+          "write": false,
+          "continue": false
+        },
+        "particles": {
+          "terminal": "none",
+          "snapshot_step": -1,
+          "dwrite_part_h5": false,
+          "init_npart": 10000,
+          "list_length": 10000,
+          "particle_seed": [
+            104729,
+            130363,
+            155921,
+            181081,
+            206369,
+            231779,
+            257189,
+            282589
+          ]
+        }
+      }
+    },
+    {
+      "name": "advection-diffusion-quick",
+      "tier": "quick",
+      "category": "compute",
+      "source": "AdvectionDiffusion-Generic",
+      "ranks": 1,
+      "warmups": 1,
+      "repetitions": 3,
+      "configured_particles": 10000,
+      "remove_top_level": [
+        "probes",
+        "snapshots",
+        "statistics",
+        "uvwbulk"
+      ],
+      "overrides": {
+        "time": {
+          "mtstep": 10,
+          "itinfo": 100000,
+          "tstat": 1e30,
+          "read": false,
+          "write": false,
+          "continue": false
+        },
+        "particles": {
+          "terminal": "none",
+          "snapshot_step": -1,
+          "dwrite_part_h5": false,
+          "init_npart": 10000,
+          "list_length": 10000,
+          "particle_seed": [
+            104729,
+            130363,
+            155921,
+            181081,
+            206369,
+            231779,
+            257189,
+            282589
+          ]
+        }
+      }
+    },
+    {
+      "name": "diffusion-focused-medium",
+      "description": "Calibrated diffusion-focused Release workload",
+      "tier": "medium",
+      "category": "compute",
+      "source": "Diffusion-Cube",
+      "ranks": 1,
+      "warmups": 1,
+      "repetitions": 3,
+      "configured_particles": 100000,
+      "seed_base": 104729,
+      "remove_top_level": [
+        "probes",
+        "snapshots",
+        "statistics",
+        "uvwbulk"
+      ],
+      "overrides": {
+        "time": {
+          "mtstep": 125,
+          "itinfo": 100000,
+          "tstat": 1e30,
+          "read": false,
+          "write": false,
+          "continue": false
+        },
+        "particles": {
+          "terminal": "none",
+          "snapshot_step": -1,
+          "dwrite_part_h5": false,
+          "init_npart": 100000,
+          "list_length": 100000
+        }
+      }
+    },
+    {
+      "name": "advection-diffusion-medium",
+      "description": "Calibrated advection-diffusion Release workload",
+      "tier": "medium",
+      "category": "compute",
+      "source": "AdvectionDiffusion-Generic",
+      "ranks": 1,
+      "warmups": 1,
+      "repetitions": 3,
+      "configured_particles": 100000,
+      "seed_base": 104729,
+      "remove_top_level": [
+        "probes",
+        "snapshots",
+        "statistics",
+        "uvwbulk"
+      ],
+      "overrides": {
+        "time": {
+          "mtstep": 125,
+          "itinfo": 100000,
+          "tstat": 1e30,
+          "read": false,
+          "write": false,
+          "continue": false
+        },
+        "particles": {
+          "terminal": "none",
+          "snapshot_step": -1,
+          "dwrite_part_h5": false,
+          "init_npart": 100000,
+          "list_length": 100000
+        }
+      }
+    },
+    {
+      "name": "advection-diffusion-exchange-medium",
+      "description": "Four-rank migration through a ten-grid periodic chain",
+      "tier": "medium",
+      "category": "exchange",
+      "source": "../Verification/AdvectionDiffusion2",
+      "ranks": 4,
+      "warmups": 1,
+      "repetitions": 3,
+      "configured_particles": 50000,
+      "seed_base": 104729,
+      "required_timers": [920, 940, 942],
+      "remove_top_level": [
+        "probes",
+        "snapshots",
+        "statistics",
+        "uvwbulk"
+      ],
+      "overrides": {
+        "time": {
+          "mtstep": 500,
+          "itinfo": 100000,
+          "tstat": 1e30,
+          "read": false,
+          "write": false,
+          "continue": false
+        },
+        "flow": {
+          "solve": false
+        },
+        "particles": {
+          "dread_part_h5": false,
+          "dread_part_dict": false,
+          "terminal": "none",
+          "snapshot_step": -1,
+          "dwrite_part_h5": false,
+          "dgridstat": false,
+          "init_npart": 50000,
+          "list_length": 50000
+        }
+      }
+    },
+    {
+      "name": "diffusion-focused-overnight",
+      "description": "Extreme diffusion workload; not part of routine baselines",
+      "tier": "overnight",
+      "category": "compute",
+      "source": "Diffusion-Cube",
+      "ranks": 1,
+      "warmups": 1,
+      "repetitions": 3,
+      "configured_particles": 8000000,
+      "remove_top_level": [
+        "probes",
+        "snapshots",
+        "statistics",
+        "uvwbulk"
+      ],
+      "overrides": {
+        "time": {
+          "mtstep": 1000,
+          "itinfo": 100000,
+          "tstat": 1e30,
+          "read": false,
+          "write": false,
+          "continue": false
+        },
+        "particles": {
+          "terminal": "none",
+          "snapshot_step": -1,
+          "dwrite_part_h5": false,
+          "init_npart": 8000000,
+          "list_length": 8000000,
+          "particle_seed": [
+            104729,
+            130363,
+            155921,
+            181081,
+            206369,
+            231779,
+            257189,
+            282589
+          ]
+        }
+      }
+    },
+    {
+      "name": "advection-diffusion-overnight",
+      "description": "Large advection-diffusion workload; not part of routine baselines",
+      "tier": "overnight",
+      "category": "compute",
+      "source": "AdvectionDiffusion-Generic",
+      "ranks": 1,
+      "warmups": 1,
+      "repetitions": 3,
+      "configured_particles": 1000000,
+      "remove_top_level": [
+        "probes",
+        "snapshots",
+        "statistics",
+        "uvwbulk"
+      ],
+      "overrides": {
+        "time": {
+          "mtstep": 100,
+          "itinfo": 100000,
+          "tstat": 1e30,
+          "read": false,
+          "write": false,
+          "continue": false
+        },
+        "particles": {
+          "terminal": "none",
+          "snapshot_step": -1,
+          "dwrite_part_h5": false,
+          "init_npart": 1000000,
+          "list_length": 1000000,
+          "particle_seed": [
+            104729,
+            130363,
+            155921,
+            181081,
+            206369,
+            231779,
+            257189,
+            282589
+          ]
+        }
+      }
+    }
+  ]
+}

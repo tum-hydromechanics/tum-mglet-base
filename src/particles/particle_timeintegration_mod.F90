@@ -3,6 +3,7 @@ MODULE particle_timeintegration_mod
     USE omp_lib
 
     USE fields_mod
+    USE flowcore_mod, ONLY: solve_flow
     USE ib_mod
     USE gc_flowstencils_mod
 
@@ -91,6 +92,27 @@ CONTAINS
                 END IF
             END BLOCK
             
+        ELSE IF (.NOT. solve_flow .AND. ib%type == "GHOSTCELL") THEN
+            BLOCK
+                TYPE(field_t), POINTER :: pwu_f, pwv_f, pww_f
+                TYPE(field_t), POINTER :: u_f, v_f, w_f
+
+                SELECT TYPE (ib)
+                TYPE IS (gc_t)
+                    CALL create_flowstencils(ib)
+                END SELECT
+
+                CALL set_field("PWU", istag=1, buffers=.TRUE.)
+                CALL set_field("PWV", jstag=1, buffers=.TRUE.)
+                CALL set_field("PWW", kstag=1, buffers=.TRUE.)
+                CALL get_field(pwu_f, "PWU")
+                CALL get_field(pwv_f, "PWV")
+                CALL get_field(pww_f, "PWW")
+                CALL get_field(u_f, "U")
+                CALL get_field(v_f, "V")
+                CALL get_field(w_f, "W")
+                CALL setpointvalues(pwu_f, pwv_f, pww_f, u_f, v_f, w_f, .TRUE.)
+            END BLOCK
         END IF
 
         CALL stop_timer(910)
