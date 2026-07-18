@@ -1,0 +1,15 @@
+---
+description: Repository, branch, filesystem, and build-environment safety constraints
+alwaysApply: true
+---
+
+# Project Safety
+
+- Work only inside `/home/yaydin/particle-performance` unless the user explicitly authorizes another path.
+- The active Git checkout is `/home/yaydin/particle-performance/tum-mglet-base`.
+- Make code changes only on branch `yilkut/particle-transport`. Before editing, verify both the repository root and current branch. Do not switch branches unless explicitly requested.
+- Do not modify the backup repositories under `/home/yaydin/mglet`.
+- Do not commit, push, rewrite history, or change Git configuration unless explicitly requested.
+- Build artifacts and temporary files must remain under `/home/yaydin/particle-performance`.
+- Server environment modules may be loaded as needed for builds and tests. Prefer `mglet/gcc13`, record what was loaded, and do not persist environment changes in shell startup files.
+- Update this rule when the user gives new persistent project-safety or environment instructions.
