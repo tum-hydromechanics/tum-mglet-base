@@ -7,6 +7,8 @@ MODULE particle_snapshot_mod
 
     USE particle_list_mod
 
+    USE particle_io_mod, only : write_particles_h5
+
     IMPLICIT NONE
 
     TYPE psnapshot_info_t
@@ -138,6 +140,9 @@ CONTAINS
         ! subroutine arguments
         INTEGER(intk), INTENT(in) :: ittot
         REAL(realk), INTENT(in) :: timeph
+        
+        ! YS: local variable
+        CHARACTER(len = mglet_filename_max) :: filename
 
         CALL start_timer(900)
         CALL start_timer(960)
@@ -147,11 +152,16 @@ CONTAINS
             psnapshot_info%counter = psnapshot_info%counter + 1_intk
 
             ! Racing condition is prevented within the create_psnapshot_subfolder routine
-            CALL create_psnapshot_subfolder()
+            ! Following function calls are commented out to prevent writing the VTK files
+            ! CALL create_psnapshot_subfolder()
 
-            CALL write_psnapshot_piece()
+            ! CALL write_psnapshot_piece()
 
-            CALL write_psnapshot_master(timeph)
+            ! CALL write_psnapshot_master(timeph)
+
+            ! YS: h5 snapshot
+            WRITE(filename, '("Particle_Snapshots/psnapshot_", I8.8, ".h5")') ittot
+            CALL write_particles_h5(filename)
 
         END IF
 

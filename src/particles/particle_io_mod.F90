@@ -8,7 +8,7 @@ MODULE particle_io_mod
 
     USE particle_list_mod
 
-    IMPLICIT NONE
+    IMPLICIT NONE(type, external)
 
     PRIVATE
 
@@ -17,14 +17,14 @@ MODULE particle_io_mod
     ! int_stencils_t = INTEGER(intk), ALLOCATABLE :: arr(:) with destructor
     ! real_stencils_t = REAL(realk), ALLOCATABLE :: arr(:) with destructor
 
-    TYPE(int_stencils_t), ALLOCATABLE :: states_lists(:)
+    ! TYPE(int_stencils_t), ALLOCATABLE :: states_lists(:)
 
     TYPE(int_stencils_t), ALLOCATABLE :: ipart_lists(:)
-    TYPE(int_stencils_t), ALLOCATABLE :: igrid_lists(:)
-    TYPE(int_stencils_t), ALLOCATABLE :: islice_lists(:)
+    ! TYPE(int_stencils_t), ALLOCATABLE :: igrid_lists(:)
+    ! TYPE(int_stencils_t), ALLOCATABLE :: islice_lists(:)
 
-    TYPE(int_stencils_t), ALLOCATABLE :: gitstep_lists(:)
-    TYPE(int_stencils_t), ALLOCATABLE :: sitstep_lists(:)
+    ! TYPE(int_stencils_t), ALLOCATABLE :: gitstep_lists(:)
+    ! TYPE(int_stencils_t), ALLOCATABLE :: sitstep_lists(:)
 
     TYPE(real_stencils_t), ALLOCATABLE :: x_lists(:)
     TYPE(real_stencils_t), ALLOCATABLE :: y_lists(:)
@@ -33,16 +33,8 @@ MODULE particle_io_mod
     TYPE(real_stencils_t), ALLOCATABLE :: x_abs_lists(:)
     TYPE(real_stencils_t), ALLOCATABLE :: y_abs_lists(:)
     TYPE(real_stencils_t), ALLOCATABLE :: z_abs_lists(:)
-
-    TYPE(real_stencils_t), ALLOCATABLE :: x_sentry_lists(:)
-    TYPE(real_stencils_t), ALLOCATABLE :: y_sentry_lists(:)
-    TYPE(real_stencils_t), ALLOCATABLE :: z_sentry_lists(:)
-
-#ifdef _MGLET_OPENMP_
-    TYPE(int_stencils_t), ALLOCATABLE :: seed_lists(:)
-#endif
-
     INTEGER(intk), ALLOCATABLE :: nparticle(:)
+
 
     PUBLIC :: write_particles_h5, read_particles_h5
 
@@ -55,9 +47,6 @@ CONTAINS
 
         ! Local variables
         INTEGER(hid_t) :: file_id
-
-        CALL start_timer(900)
-        CALL start_timer(910)
 
         IF (myid == 0) THEN
             IF (TRIM(particle_terminal) == "normal" .OR. TRIM(particle_terminal) == "verbose") THEN
@@ -74,9 +63,6 @@ CONTAINS
         ! global_np is the number of particles amongst all processes, held by the particle list module
         CALL MPI_Allreduce(my_particle_list%active_np, global_np, 1, mglet_mpi_int, MPI_SUM, MPI_COMM_WORLD)
 
-        CALL stop_timer(910)
-        CALL stop_timer(900)
-
     END SUBROUTINE read_particles_h5
 
 
@@ -89,16 +75,10 @@ CONTAINS
         ! Local variables
         INTEGER(hid_t) :: file_id
 
-        CALL start_timer(900)
-        CALL start_timer(990)
-
         ! Function body
         CALL hdf5common_open(filename, 'w', file_id)
         CALL write_particles_list(file_id, my_particle_list)
         CALL hdf5common_close(file_id)
-
-        CALL stop_timer(990)
-        CALL stop_timer(900)
 
     END SUBROUTINE write_particles_h5
 
@@ -122,14 +102,14 @@ CONTAINS
            nparticle = 0
         END IF
 
-        ALLOCATE(states_lists(nmygrids))
+        ! ALLOCATE(states_lists(nmygrids))
 
         ALLOCATE(ipart_lists(nmygrids))
-        ALLOCATE(igrid_lists(nmygrids))
-        ALLOCATE(islice_lists(nmygrids))
+        ! ALLOCATE(igrid_lists(nmygrids))
+        ! ALLOCATE(islice_lists(nmygrids))
 
-        ALLOCATE(gitstep_lists(nmygrids))
-        ALLOCATE(sitstep_lists(nmygrids))
+        ! ALLOCATE(gitstep_lists(nmygrids))
+        ! ALLOCATE(sitstep_lists(nmygrids))
 
         ALLOCATE(x_lists(nmygrids))
         ALLOCATE(y_lists(nmygrids))
@@ -138,17 +118,8 @@ CONTAINS
         ALLOCATE(x_abs_lists(nmygrids))
         ALLOCATE(y_abs_lists(nmygrids))
         ALLOCATE(z_abs_lists(nmygrids))
-
-        ALLOCATE(x_sentry_lists(nmygrids))
-        ALLOCATE(y_sentry_lists(nmygrids))
-        ALLOCATE(z_sentry_lists(nmygrids))
-
-#ifdef _MGLET_OPENMP_
-        ALLOCATE(seed_lists(nmygrids))
-#endif
-        
         ! Counting the particles per grid
-        CALL defragment(plist)
+        CALL plist%defragment()
 
         DO ip = 1, plist%ifinal
             IF ( plist%particles(ip)%state > 0 ) THEN
@@ -169,14 +140,14 @@ CONTAINS
         ! Allocating space for the particles on each grid
         DO ig = 1, nmygrids
             npart = nparticle(ig)
-            ALLOCATE(states_lists(ig)%arr(npart))
+            ! ALLOCATE(states_lists(ig)%arr(npart))
 
             ALLOCATE(ipart_lists(ig)%arr(npart))
-            ALLOCATE(igrid_lists(ig)%arr(npart))
-            ALLOCATE(islice_lists(ig)%arr(npart))
+            ! ALLOCATE(igrid_lists(ig)%arr(npart))
+            ! ALLOCATE(islice_lists(ig)%arr(npart))
 
-            ALLOCATE(gitstep_lists(ig)%arr(npart))
-            ALLOCATE(sitstep_lists(ig)%arr(npart))
+            ! ALLOCATE(gitstep_lists(ig)%arr(npart))
+            ! ALLOCATE(sitstep_lists(ig)%arr(npart))
 
             ALLOCATE(x_lists(ig)%arr(npart))
             ALLOCATE(y_lists(ig)%arr(npart))
@@ -185,15 +156,6 @@ CONTAINS
             ALLOCATE(x_abs_lists(ig)%arr(npart))
             ALLOCATE(y_abs_lists(ig)%arr(npart))
             ALLOCATE(z_abs_lists(ig)%arr(npart))
-
-            ALLOCATE(x_sentry_lists(ig)%arr(npart))
-            ALLOCATE(y_sentry_lists(ig)%arr(npart))
-            ALLOCATE(z_sentry_lists(ig)%arr(npart))
-
-#ifdef _MGLET_OPENMP_
-            ALLOCATE(seed_lists(ig)%arr(npart))
-#endif
-            
         END DO
 
         ! Inserting the particle data
@@ -208,31 +170,22 @@ CONTAINS
                     icount(ig) = icount(ig) + 1
                     ic = icount(ig)
 
-                    states_lists(ig)%arr(ic) = plist%particles(ip)%state
+                    ! states_lists(ig)%arr(ic) = plist%particles(ip)%state
 
                     ipart_lists(ig)%arr(ic) = plist%particles(ip)%ipart
-                    igrid_lists(ig)%arr(ic) = plist%particles(ip)%igrid
-                    !islice_lists(ig)%arr(ic) = plist%particles(ip)%islice
+                    ! igrid_lists(ig)%arr(ic) = plist%particles(ip)%igrid
+                    ! islice_lists(ig)%arr(ic) = plist%particles(ip)%islice
 
-                    !gitstep_lists(ig)%arr(ic) = plist%particles(ip)%gitstep
-                    !sitstep_lists(ig)%arr(ic) = plist%particles(ip)%sitstep
+                    ! gitstep_lists(ig)%arr(ic) = plist%particles(ip)%gitstep
+                    ! sitstep_lists(ig)%arr(ic) = plist%particles(ip)%sitstep
 
                     x_lists(ig)%arr(ic) = plist%particles(ip)%x
                     y_lists(ig)%arr(ic) = plist%particles(ip)%y
                     z_lists(ig)%arr(ic) = plist%particles(ip)%z
 
-                    !x_abs_lists(ig)%arr(ic) = plist%particles(ip)%xyz_abs(1)
-                    !y_abs_lists(ig)%arr(ic) = plist%particles(ip)%xyz_abs(2)
-                    !z_abs_lists(ig)%arr(ic) = plist%particles(ip)%xyz_abs(3)
-
-                    !x_sentry_lists(ig)%arr(ic) = plist%particles(ip)%xyz_sentry(1)
-                    !y_sentry_lists(ig)%arr(ic) = plist%particles(ip)%xyz_sentry(2)
-                    !z_sentry_lists(ig)%arr(ic) = plist%particles(ip)%xyz_sentry(3)
-
-#ifdef _MGLET_OPENMP_
-                seed_lists(ig)%arr(ic) = plist%particles(ip)%seed
-#endif
-
+                    x_abs_lists(ig)%arr(ic) = plist%particles(ip)%xyz_abs(1)
+                    y_abs_lists(ig)%arr(ic) = plist%particles(ip)%xyz_abs(2)
+                    z_abs_lists(ig)%arr(ic) = plist%particles(ip)%xyz_abs(3)
                     ! EXIT
                 END IF
             END DO
@@ -250,14 +203,14 @@ CONTAINS
 
         ! Using stencils infrastructure for parallel I/O
         ! (functions manage all grids of process)
-        CALL stencilio_write(file_id, 'state', states_lists)
+        ! CALL stencilio_write(file_id, 'state', states_lists)
 
         CALL stencilio_write(file_id, 'ipart', ipart_lists)
-        CALL stencilio_write(file_id, 'igrid', igrid_lists)
-        CALL stencilio_write(file_id, 'islice', islice_lists)
+        ! CALL stencilio_write(file_id, 'igrid', igrid_lists)
+        ! CALL stencilio_write(file_id, 'islice', islice_lists)
 
-        CALL stencilio_write(file_id, 'gitstep', gitstep_lists)
-        CALL stencilio_write(file_id, 'sitstep', sitstep_lists)
+        ! CALL stencilio_write(file_id, 'gitstep', gitstep_lists)
+        ! CALL stencilio_write(file_id, 'sitstep', sitstep_lists)
 
         CALL stencilio_write(file_id, 'x', x_lists)
         CALL stencilio_write(file_id, 'y', y_lists)
@@ -266,26 +219,17 @@ CONTAINS
         CALL stencilio_write(file_id, 'x_abs', x_abs_lists)
         CALL stencilio_write(file_id, 'y_abs', y_abs_lists)
         CALL stencilio_write(file_id, 'z_abs', z_abs_lists)
-
-        CALL stencilio_write(file_id, 'x_sentry', x_sentry_lists)
-        CALL stencilio_write(file_id, 'y_sentry', y_sentry_lists)
-        CALL stencilio_write(file_id, 'z_sentry', z_sentry_lists)
-
-#ifdef _MGLET_OPENMP_
-        CALL stencilio_write(file_id, 'seed', seed_lists)
-#endif
-        
         ! Deallocate all allocated attribute arrays
         DEALLOCATE(nparticle)
 
-        DEALLOCATE(states_lists)
+        ! DEALLOCATE(states_lists)
 
         DEALLOCATE(ipart_lists)
-        DEALLOCATE(igrid_lists)
-        DEALLOCATE(islice_lists)
+        ! DEALLOCATE(igrid_lists)
+        ! DEALLOCATE(islice_lists)
 
-        DEALLOCATE(gitstep_lists)
-        DEALLOCATE(sitstep_lists)
+        ! DEALLOCATE(gitstep_lists)
+        ! DEALLOCATE(sitstep_lists)
 
         DEALLOCATE(x_lists)
         DEALLOCATE(y_lists)
@@ -294,15 +238,6 @@ CONTAINS
         DEALLOCATE(x_abs_lists)
         DEALLOCATE(y_abs_lists)
         DEALLOCATE(z_abs_lists)
-
-        DEALLOCATE(x_sentry_lists)
-        DEALLOCATE(y_sentry_lists)
-        DEALLOCATE(z_sentry_lists)
-
-#ifdef _MGLET_OPENMP_
-        DEALLOCATE(seed_lists)
-#endif
-        
     END SUBROUTINE write_particles_list
 
 
@@ -317,41 +252,29 @@ CONTAINS
         INTEGER(intk) :: ig, igrid, npart, n, addlen, cpart, i
 
         ! Function body
-        ALLOCATE(states_lists(nmygrids))
+        ! ALLOCATE(states_lists(nmygrids))
 
         ALLOCATE(ipart_lists(nmygrids))
-        ALLOCATE(igrid_lists(nmygrids))
-        ALLOCATE(islice_lists(nmygrids))
+        ! ALLOCATE(igrid_lists(nmygrids))
+        ! ALLOCATE(islice_lists(nmygrids))
 
-        ALLOCATE(gitstep_lists(nmygrids))
-        ALLOCATE(sitstep_lists(nmygrids))
+        ! ALLOCATE(gitstep_lists(nmygrids))
+        ! ALLOCATE(sitstep_lists(nmygrids))
 
         ALLOCATE(x_lists(nmygrids))
         ALLOCATE(y_lists(nmygrids))
         ALLOCATE(z_lists(nmygrids))
 
-        ALLOCATE(x_abs_lists(nmygrids))
-        ALLOCATE(y_abs_lists(nmygrids))
-        ALLOCATE(z_abs_lists(nmygrids))
-
-        ALLOCATE(x_sentry_lists(nmygrids))
-        ALLOCATE(y_sentry_lists(nmygrids))
-        ALLOCATE(z_sentry_lists(nmygrids))
-
-#ifdef _MGLET_OPENMP_
-        ALLOCATE(seed_lists(nmygrids))
-#endif
-
         ! Using stencils infrastructure for parallel I/O
         ! (functions manage all grids of process)
-        CALL stencilio_read(file_id, 'state', states_lists)
+        ! CALL stencilio_read(file_id, 'state', states_lists)
 
         CALL stencilio_read(file_id, 'ipart', ipart_lists)
-        CALL stencilio_read(file_id, 'igrid', igrid_lists)
-        CALL stencilio_read(file_id, 'islice', islice_lists)
+        ! CALL stencilio_read(file_id, 'igrid', igrid_lists)
+        ! CALL stencilio_read(file_id, 'islice', islice_lists)
 
-        CALL stencilio_read(file_id, 'gitstep', gitstep_lists)
-        CALL stencilio_read(file_id, 'sitstep', sitstep_lists)
+        ! CALL stencilio_read(file_id, 'gitstep', gitstep_lists)
+        ! CALL stencilio_read(file_id, 'sitstep', sitstep_lists)
 
         CALL stencilio_read(file_id, 'x', x_lists)
         CALL stencilio_read(file_id, 'y', y_lists)
@@ -360,31 +283,16 @@ CONTAINS
         CALL stencilio_read(file_id, 'x_abs', x_abs_lists)
         CALL stencilio_read(file_id, 'y_abs', y_abs_lists)
         CALL stencilio_read(file_id, 'z_abs', z_abs_lists)
-
-        CALL stencilio_read(file_id, 'x_sentry', x_sentry_lists)
-        CALL stencilio_read(file_id, 'y_sentry', y_sentry_lists)
-        CALL stencilio_read(file_id, 'z_sentry', z_sentry_lists)
-
-#ifdef _MGLET_OPENMP_
-        CALL stencilio_read(file_id, 'seed', seed_lists)
-#endif
-
         ! Determine the number of particles
         npart = 0
         DO ig = 1, nmygrids
-            IF (ALLOCATED(states_lists(ig)%arr)) THEN
-                n = SIZE(states_lists(ig)%arr)
+            IF (ALLOCATED(ipart_lists(ig)%arr)) THEN
+                n = SIZE(ipart_lists(ig)%arr)
                 npart = npart + n
             END IF
         END DO
 
         ! Extend list of necessary
-
-        IF (list_limit .AND. npart > plist_len) THEN
-            WRITE(*, '("ERROR on Process ", I0, ": Number of particles to be read from particles.h5 exceeds the given list limit!")') myid
-            CALL errr(__FILE__, __LINE__)
-        END IF
-
         IF (npart > plist%max_np) THEN
             addlen = npart - plist%max_np
             CALL reallocate_particle_list(plist, addlen)
@@ -393,50 +301,41 @@ CONTAINS
         cpart = 0
         DO ig = 1, nmygrids
 
-            IF (.NOT. ALLOCATED(states_lists(ig)%arr)) THEN
+            IF (.NOT. ALLOCATED(ipart_lists(ig)%arr)) THEN
                 CYCLE
             END IF
 
-            DO i = 1, SIZE(states_lists(ig)%arr)
+            DO i = 1, SIZE(ipart_lists(ig)%arr)
 
                 ! Checking consistency
                 igrid = mygrids(ig)
-                IF (igrid_lists(ig)%arr(i) /= igrid) THEN
-                    WRITE(*,*) "Particle for wrong grid read in"
-                    CALL errr(__FILE__, __LINE__)
-                END IF
+                ! IF (igrid_lists(ig)%arr(i) /= igrid) THEN
+                !     WRITE(*,*) "Particle for wrong grid read in"
+                !     CALL errr(__FILE__, __LINE__)
+                ! END IF
 
                 ! Incrementing the particle counter
                 cpart = cpart + 1
 
                 ! Inserting the particle data
 
-                plist%particles(cpart)%state = states_lists(ig)%arr(i)
+                ! plist%particles(cpart)%state = states_lists(ig)%arr(i)
 
                 plist%particles(cpart)%ipart = ipart_lists(ig)%arr(i)
                 plist%particles(cpart)%iproc = myid
-                plist%particles(cpart)%igrid = igrid_lists(ig)%arr(i)
-                !plist%particles(cpart)%islice = islice_lists(ig)%arr(i)
+                ! plist%particles(cpart)%igrid = igrid_lists(ig)%arr(i)
+                ! plist%particles(cpart)%islice = islice_lists(ig)%arr(i)
 
-                !plist%particles(cpart)%gitstep = gitstep_lists(ig)%arr(i)
-                !plist%particles(cpart)%sitstep = sitstep_lists(ig)%arr(i)
+                ! plist%particles(cpart)%gitstep = gitstep_lists(ig)%arr(i)
+                ! plist%particles(cpart)%sitstep = sitstep_lists(ig)%arr(i)
 
                 plist%particles(cpart)%x = x_lists(ig)%arr(i)
                 plist%particles(cpart)%y = y_lists(ig)%arr(i)
                 plist%particles(cpart)%z = z_lists(ig)%arr(i)
 
-                !plist%particles(cpart)%xyz_abs(1) = x_abs_lists(ig)%arr(i)
-                !plist%particles(cpart)%xyz_abs(2) = y_abs_lists(ig)%arr(i)
-                !plist%particles(cpart)%xyz_abs(3) = z_abs_lists(ig)%arr(i)
-
-                !plist%particles(cpart)%xyz_sentry(1) = x_sentry_lists(ig)%arr(i)
-                !plist%particles(cpart)%xyz_sentry(2) = y_sentry_lists(ig)%arr(i)
-                !plist%particles(cpart)%xyz_sentry(3) = z_sentry_lists(ig)%arr(i)
-
-#ifdef _MGLET_OPENMP_
-                plist%particles(cpart)%seed = seed_lists(ig)%arr(i)
-#endif
-                
+                plist%particles(cpart)%xyz_abs(1) = x_abs_lists(ig)%arr(i)
+                plist%particles(cpart)%xyz_abs(2) = y_abs_lists(ig)%arr(i)
+                plist%particles(cpart)%xyz_abs(3) = z_abs_lists(ig)%arr(i)
                 CALL set_particle_cell(plist%particles(cpart))
 
             END DO
@@ -446,20 +345,24 @@ CONTAINS
         plist%ifinal = cpart
         plist%active_np = cpart
 
+        IF (list_limit .AND. plist%max_np > plist_len) THEN
+            WRITE(*,*) "WARNING in read_particle_list (h5): Specified List Limit exceeded while reading particles!"
+        END IF
+
         IF (cpart /= npart) THEN
             WRITE(*,*) "Counter unequal number of particles"
             CALL errr(__FILE__, __LINE__)
         END IF
 
         ! Deallocate all allocated attribute arrays
-        DEALLOCATE(states_lists)
+        ! DEALLOCATE(states_lists)
 
         DEALLOCATE(ipart_lists)
-        DEALLOCATE(igrid_lists)
-        DEALLOCATE(islice_lists)
+        ! DEALLOCATE(igrid_lists)
+        ! DEALLOCATE(islice_lists)
 
-        DEALLOCATE(gitstep_lists)
-        DEALLOCATE(sitstep_lists)
+        ! DEALLOCATE(gitstep_lists)
+        ! DEALLOCATE(sitstep_lists)
 
         DEALLOCATE(x_lists)
         DEALLOCATE(y_lists)
@@ -468,15 +371,6 @@ CONTAINS
         DEALLOCATE(x_abs_lists)
         DEALLOCATE(y_abs_lists)
         DEALLOCATE(z_abs_lists)
-
-        DEALLOCATE(x_sentry_lists)
-        DEALLOCATE(y_sentry_lists)
-        DEALLOCATE(z_sentry_lists)
-
-#ifdef _MGLET_OPENMP_
-        DEALLOCATE(seed_lists)
-#endif
-
     END SUBROUTINE read_particles_list
 
 END MODULE particle_io_mod
