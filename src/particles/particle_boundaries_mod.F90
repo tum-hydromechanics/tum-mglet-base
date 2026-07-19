@@ -392,6 +392,44 @@ MODULE particle_boundaries_mod
             WRITE(*, '()')
         END IF
 
+        ! Fast path: no obstacles on this grid and the full step stays strictly inside the grid bbox.
+        IF (ALLOCATED(n_my_obstacles_on_grid)) THEN
+            IF (n_my_obstacles_on_grid(temp_grid) == 0) THEN
+                BLOCK
+                    REAL(realk) :: minx, maxx, miny, maxy, minz, maxz
+                    REAL(realk) :: x_trial, y_trial, z_trial
+
+                    CALL get_bbox(minx, maxx, miny, maxy, minz, maxz, temp_grid)
+                    x_trial = x + dx_from_here
+                    y_trial = y + dy_from_here
+                    z_trial = z + dz_from_here
+                    IF (x_trial > minx .AND. x_trial < maxx .AND. &
+                     y_trial > miny .AND. y_trial < maxy .AND. &
+                     z_trial > minz .AND. z_trial < maxz) THEN
+                        dx_eff = dx_from_here
+                        dy_eff = dy_from_here
+                        dz_eff = dz_from_here
+                        x = x_trial
+                        y = y_trial
+                        z = z_trial
+                        IF (PRESENT(temp_coord_prev)) THEN
+                            temp_coord_prev(1) = x
+                            temp_coord_prev(2) = y
+                            temp_coord_prev(3) = z
+                        END IF
+                        IF (PRESENT(temp_grid_prev)) THEN
+                            temp_grid_prev = temp_grid
+                        END IF
+                        particle%x = particle%x + dx_eff
+                        particle%y = particle%y + dy_eff
+                        particle%z = particle%z + dz_eff
+                        CALL update_particle_cell(particle)
+                        RETURN
+                    END IF
+                END BLOCK
+            END IF
+        END IF
+
         counter = 1
         DO WHILE (SQRT(dx_from_here**(2) + dy_from_here**(2) + dz_from_here**(2)) > eps .AND. &
          MAX(ABS(dx_from_here), ABS(dy_from_here), ABS(dz_from_here)) > EPSILON(0.0_realk) .AND. counter <= 10)
@@ -1460,37 +1498,19 @@ MODULE particle_boundaries_mod
             IF (0 < iobst_local_new) THEN
 
                 ! reflect at obstacle
-                ! compute normal vector
                 n(1) = cvec(1) - my_obstacles_offload(obstacle_displ(particle%igrid) + iobst_local_new)%x
                 n(2) = cvec(2) - my_obstacles_offload(obstacle_displ(particle%igrid) + iobst_local_new)%y
                 n(3) = cvec(3) - my_obstacles_offload(obstacle_displ(particle%igrid) + iobst_local_new)%z
-
-                ! magnitude
                 temp = SQRT(n(1)**2 + n(2)**2 + n(3)**2)
-
                 n(1) = n(1) / temp
                 n(2) = n(2) / temp
                 n(3) = n(3) / temp
-
-                ! alter displacement verctor
-                ! dot product
-                temp = MIN((n(1) * dvec(1) + n(2) * dvec(2) + n(3) * dvec(3)), 0.0)
-
-                dvec(1) = dvec(1) - 2 * temp * n(1)
-                dvec(2) = dvec(2) - 2 * temp * n(2)
-                dvec(3) = dvec(3) - 2 * temp * n(3)
+                CALL reflect_displacement_vector(dvec(1), dvec(2), dvec(3), n(1), n(2), n(3))
 
             ELSEIF (0 < idir) THEN
                 
                 CALL get_gcorner_normal(particle_gcorner_boundaries((particle%igrid - 1) * 8_intk + icorn), pstag, idir, n)
-                
-                ! reflect at grid boundary
-                ! dot product
-                temp = MIN((n(1) * dvec(1) + n(2) * dvec(2) + n(3) * dvec(3)), 0.0)
-
-                dvec(1) = dvec(1) - 2 * temp * n(1)
-                dvec(2) = dvec(2) - 2 * temp * n(2)
-                dvec(3) = dvec(3) - 2 * temp * n(3)
+                CALL reflect_displacement_vector(dvec(1), dvec(2), dvec(3), n(1), n(2), n(3))
 
                 !pstag is either 0 or 1 
                 !update pstag (normal vector idir component must be zero or point inwards for this method to work)
@@ -1854,6 +1874,24 @@ MODULE particle_boundaries_mod
     END SUBROUTINE apply_periodic_boundary
 
 
+    SUBROUTINE reflect_displacement_vector(dx, dy, dz, n1, n2, n3)
+
+        !$omp declare target
+
+        REAL(realk), INTENT(inout) :: dx, dy, dz
+        REAL(realk), INTENT(in) :: n1, n2, n3
+
+        REAL(realk) :: dot_product
+
+        dot_product = n1 * dx + n2 * dy + n3 * dz
+        IF (dot_product < 0.0_realk) THEN
+            dx = dx - 2.0_realk * dot_product * n1
+            dy = dy - 2.0_realk * dot_product * n2
+            dz = dz - 2.0_realk * dot_product * n3
+        END IF
+
+    END SUBROUTINE reflect_displacement_vector
+
     SUBROUTINE reflect_at_boundary(dx, dy, dz, n1, n2, n3, reflect)
         
         !$omp declare target
@@ -1865,9 +1903,6 @@ MODULE particle_boundaries_mod
         REAL(realk), INTENT(in) :: n1, n2, n3 ! normal vector components of the surface the particle is reflected from
         INTEGER(intk), INTENT(out), OPTIONAL :: reflect(3)
 
-        ! local variables
-        REAL(realk) :: dot_product
-
         IF (PRESENT(reflect)) THEN
             reflect = 0
             IF (0 < ABS(n1)) reflect(1) = 1
@@ -1875,17 +1910,7 @@ MODULE particle_boundaries_mod
             IF (0 < ABS(n3)) reflect(3) = 1
         END IF
 
-        dot_product = n1 * dx + n2 * dy + n3 * dz
-
-        IF (dot_product < 0) THEN
-            dx = dx - 2 * dot_product * n1
-            dy = dy - 2 * dot_product * n2
-            dz = dz - 2 * dot_product * n3
-        ELSE
-            dx = dx
-            dy = dy
-            dz = dz
-        END IF
+        CALL reflect_displacement_vector(dx, dy, dz, n1, n2, n3)
 
     END SUBROUTINE reflect_at_boundary
 

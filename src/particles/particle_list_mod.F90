@@ -33,7 +33,7 @@ MODULE particle_list_mod
 
     END TYPE particle_list_t
 
-    TYPE(particle_list_t) :: my_particle_list
+    TYPE(particle_list_t), TARGET :: my_particle_list
 
 #if defined __INTEL_COMPILER
     !$omp declare mapper(particle_list_t :: plist) map(to: plist, plist%iproc, plist%max_np, plist%active_np, &
@@ -922,7 +922,9 @@ CONTAINS    !===================================
     SUBROUTINE finish_particle_list()
 
         !$omp target exit data map(delete: nmy_particle_grids, my_particle_grids, particle_grid_ptr, grids_np, plist_displ)
+#if defined __INTEL_COMPILER
         !$omp target exit data map(delete: my_particle_list)
+#endif
 
         IF (ALLOCATED(my_particle_list%particles)) DEALLOCATE(my_particle_list%particles)
 

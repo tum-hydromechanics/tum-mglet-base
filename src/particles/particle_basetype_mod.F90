@@ -16,7 +16,8 @@ MODULE particle_basetype_mod
 
     IMPLICIT NONE
 
-    INTEGER(c_intk) :: particle_mpi_elems = 8
+    ! state, ipart, iproc, igrid, ijkcell(3), x, y, z, seed
+    INTEGER(c_intk) :: particle_mpi_elems = 9
 
     ! TODO: clear some components, use type extensions...
     ! C binding for MPI compatability!
@@ -54,9 +55,8 @@ MODULE particle_basetype_mod
         ! coordinates of point where a particle entered the current slice
         !REAL(c_realk) :: xyz_sentry(3) = 0.0
 
-#ifdef _MGLET_OPENMP_
-        INTEGER(c_int) :: seed 
-#endif
+        ! Per-particle RNG state for OpenMP offload; unused by host RANDOM_NUMBER path.
+        INTEGER(c_int) :: seed = 0
 
     END TYPE baseparticle_t
 
@@ -92,9 +92,7 @@ CONTAINS
         !particle%xyz_abs(2) = y
         !particle%xyz_abs(3) = z
         
-#ifdef _MGLET_OPENMP_
-        particle%seed = MOD(particle_base_seed + ipart * 37, 16777216_c_int)
-#endif
+        particle%seed = MOD(particle_base_seed + INT(ipart, c_int) * 37_c_int, 16777216_c_int)
 
         IF (PRESENT(iproc)) THEN
             particle%iproc = iproc

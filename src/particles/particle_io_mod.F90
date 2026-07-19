@@ -28,9 +28,7 @@ MODULE particle_io_mod
     TYPE(real_stencils_t), ALLOCATABLE :: y_lists(:)
     TYPE(real_stencils_t), ALLOCATABLE :: z_lists(:)
 
-#ifdef _MGLET_OPENMP_
     TYPE(int_stencils_t), ALLOCATABLE :: seed_lists(:)
-#endif
 
     INTEGER(intk), ALLOCATABLE :: nparticle(:)
 
@@ -111,9 +109,7 @@ CONTAINS
         ALLOCATE(y_lists(nmygrids))
         ALLOCATE(z_lists(nmygrids))
 
-#ifdef _MGLET_OPENMP_
         ALLOCATE(seed_lists(nmygrids))
-#endif
 
         ! Counting the particles per grid
         CALL defragment(plist)
@@ -151,9 +147,7 @@ CONTAINS
             ALLOCATE(y_lists(ig)%arr(npart))
             ALLOCATE(z_lists(ig)%arr(npart))
 
-#ifdef _MGLET_OPENMP_
             ALLOCATE(seed_lists(ig)%arr(npart))
-#endif
         END DO
 
         ! Inserting the particle data
@@ -177,9 +171,7 @@ CONTAINS
                     y_lists(ig)%arr(ic) = plist%particles(ip)%y
                     z_lists(ig)%arr(ic) = plist%particles(ip)%z
 
-#ifdef _MGLET_OPENMP_
                     seed_lists(ig)%arr(ic) = plist%particles(ip)%seed
-#endif
                     EXIT
                 END IF
             END DO
@@ -206,9 +198,7 @@ CONTAINS
         CALL stencilio_write(file_id, 'y', y_lists)
         CALL stencilio_write(file_id, 'z', z_lists)
 
-#ifdef _MGLET_OPENMP_
         CALL stencilio_write(file_id, 'seed', seed_lists)
-#endif
 
         ! Deallocate all allocated attribute arrays
         DEALLOCATE(nparticle)
@@ -222,9 +212,7 @@ CONTAINS
         DEALLOCATE(y_lists)
         DEALLOCATE(z_lists)
 
-#ifdef _MGLET_OPENMP_
         DEALLOCATE(seed_lists)
-#endif
     END SUBROUTINE write_particles_list
 
 
@@ -238,9 +226,7 @@ CONTAINS
         ! Local variables
         INTEGER(intk) :: ig, igrid, npart, n, addlen, cpart, i
         LOGICAL :: has_state, has_igrid
-#ifdef _MGLET_OPENMP_
         LOGICAL :: has_seed
-#endif
 
         ! Function body
         ALLOCATE(ipart_lists(nmygrids))
@@ -266,7 +252,6 @@ CONTAINS
             ALLOCATE(igrid_lists(nmygrids))
             CALL stencilio_read(file_id, 'igrid', igrid_lists)
         END IF
-#ifdef _MGLET_OPENMP_
         CALL hdf5common_dataset_exists('seed', file_id, has_seed)
         IF (has_seed) THEN
             ALLOCATE(seed_lists(nmygrids))
@@ -274,7 +259,6 @@ CONTAINS
         ELSEIF (myid == 0) THEN
             WRITE(*,*) "WARNING: Particle restart has no RNG seeds; seeds will be reinitialized from particle IDs."
         END IF
-#endif
 
         ! Determine the number of particles
         npart = 0
@@ -328,9 +312,7 @@ CONTAINS
                 CALL set_particle(plist%particles(cpart), ipart_lists(ig)%arr(i), &
                     x_lists(ig)%arr(i), y_lists(ig)%arr(i), z_lists(ig)%arr(i), &
                     iproc=myid, igrid=igrid)
-#ifdef _MGLET_OPENMP_
                 IF (has_seed) plist%particles(cpart)%seed = seed_lists(ig)%arr(i)
-#endif
 
             END DO
 
@@ -357,9 +339,7 @@ CONTAINS
         DEALLOCATE(y_lists)
         DEALLOCATE(z_lists)
 
-#ifdef _MGLET_OPENMP_
         IF (ALLOCATED(seed_lists)) DEALLOCATE(seed_lists)
-#endif
     END SUBROUTINE read_particles_list
 
 END MODULE particle_io_mod

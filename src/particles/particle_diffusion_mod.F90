@@ -34,14 +34,27 @@ MODULE particle_diffusion_mod
 
     ! truncation limit stored in config mod
     REAL(realk) :: truncation_factor
+    ! Local copy of walk mode for host/device hot paths (integer, not strings).
+    INTEGER(intk) :: diffusion_walk_mode = rw_uniform
+
+    ! Host-side spare standard-normal from Marsaglia polar (pair reuse).
+    LOGICAL :: gaussian_spare_ready = .FALSE.
+    REAL(realk) :: gaussian_spare_std = 0.0_realk
 
 #if defined __INTEL_COMPILER
-    !$omp declare target link(truncation_factor)
+    !$omp declare target link(truncation_factor, diffusion_walk_mode)
 #else
-    !$omp declare target(truncation_factor)
+    !$omp declare target(truncation_factor, diffusion_walk_mode)
 #endif
 
 CONTAINS
+
+    SUBROUTINE reset_gaussian_spare()
+
+        gaussian_spare_ready = .FALSE.
+        gaussian_spare_std = 0.0_realk
+
+    END SUBROUTINE reset_gaussian_spare
 
     SUBROUTINE init_particle_diffusion()
 
@@ -50,6 +63,8 @@ CONTAINS
 
         CALL start_timer(900)
         CALL start_timer(910)
+
+        CALL reset_gaussian_spare()
 
         DO i = 1, SIZE(sn_p)
             sn_p(i) = 1.0_realk / SQRT(2.0_realk * pi) * EXP(- (sn_x(i)**2) / 2.0_realk)
@@ -64,6 +79,7 @@ CONTAINS
         END IF
 
         CALL get_truncation_factor(truncation_limit, truncation_factor)
+        diffusion_walk_mode = random_walk_mode_id
 
         IF (myid == 0) THEN
             IF (TRIM(particle_terminal) == "normal" .OR. TRIM(particle_terminal) == "verbose") THEN
@@ -76,7 +92,7 @@ CONTAINS
         CALL init_parallel_lcg()
 #endif
 
-        !$omp target enter data map(always, to: truncation_factor)
+        !$omp target enter data map(always, to: truncation_factor, diffusion_walk_mode)
 
         CALL stop_timer(910)
         CALL stop_timer(900)
@@ -92,118 +108,156 @@ CONTAINS
         REAL(realk), INTENT(out) :: pdx, pdy, pdz
 
         ! local variables
-        REAL(realk) :: sigx, sigy, sigz, ranx, rany, ranz
+        REAL(realk) :: sigx, sigy, sigz, u
+
+        pdx = 0.0_realk
+        pdy = 0.0_realk
+        pdz = 0.0_realk
 
         IF (D_x > 0.0_realk) THEN
-            sigx = SQRT(2 * D_x * dt)
-
-            SELECT CASE (lower(TRIM(random_walk_mode)))
-            CASE ("rademacher")
-                CALL rademacher_dist(sigx, ranx)
-            CASE ("uniform")
-                CALL uniform_dist(sigx, ranx)
-            CASE ("gaussian2")
-                CALL gaussian_dist2(0.0_realk, sigx, truncation_limit, truncation_factor, ranx)
-            END SELECT
-
-            pdx = ranx ! diffusion length
-
+            sigx = SQRT(2.0_realk * D_x * dt)
+            CALL sample_host_axis(diffusion_walk_mode, sigx, pdx)
         END IF
-
         IF (D_y > 0.0_realk) THEN
-
-            sigy = SQRT(2 * D_y * dt)
-
-            SELECT CASE (lower(TRIM(random_walk_mode)))
-            CASE ("rademacher")
-                CALL rademacher_dist(sigy, rany)
-            CASE ("uniform")
-                CALL uniform_dist(sigy, rany)
-            CASE ("gaussian2")
-                CALL gaussian_dist2(0.0_realk, sigy, truncation_limit, truncation_factor, rany)
-            END SELECT
-
-            pdy = rany ! diffusion length
-
+            sigy = SQRT(2.0_realk * D_y * dt)
+            CALL sample_host_axis(diffusion_walk_mode, sigy, pdy)
         END IF
-
         IF (D_z > 0.0_realk) THEN
-
-            sigz = SQRT(2 * D_z * dt)
-
-            SELECT CASE (lower(TRIM(random_walk_mode)))
-            CASE ("rademacher")
-                CALL rademacher_dist(sigz, ranz)
-            CASE ("uniform")
-                CALL uniform_dist(sigz, ranz)
-            CASE ("gaussian2")
-                CALL gaussian_dist2(0.0_realk, sigz, truncation_limit, truncation_factor, ranz)
-            END SELECT
-
-            pdz = ranz ! diffusion length
-
+            sigz = SQRT(2.0_realk * D_z * dt)
+            CALL sample_host_axis(diffusion_walk_mode, sigz, pdz)
         END IF
 
     END SUBROUTINE generate_diffusive_displacement
 
-    SUBROUTINE rademacher_dist(sigma, R)
+    SUBROUTINE sample_host_axis(mode, sigma, R)
 
-        ! subroutine arguments
+        INTEGER(intk), INTENT(in) :: mode
         REAL(realk), INTENT(in) :: sigma
         REAL(realk), INTENT(out) :: R
 
-        R = 0.0
-        !CALL RANDOM_SEED()
-        CALL RANDOM_NUMBER(R)
-        R = R - 0.5_realk
-        R = SIGN(1.0_realk, R) * sigma
+        REAL(realk) :: u
 
-    END SUBROUTINE rademacher_dist
+        SELECT CASE (mode)
+        CASE (rw_rademacher)
+            CALL RANDOM_NUMBER(u)
+            CALL sample_rademacher(sigma, u, R)
+        CASE (rw_uniform)
+            CALL RANDOM_NUMBER(u)
+            CALL sample_uniform(sigma, u, R)
+        CASE (rw_gaussian2)
+            CALL sample_gaussian2_host(0.0_realk, sigma, truncation_limit, truncation_factor, R)
+        CASE DEFAULT
+            CALL errr(__FILE__, __LINE__)
+        END SELECT
 
-    SUBROUTINE uniform_dist(sigma, R)
+    END SUBROUTINE sample_host_axis
 
-        ! subroutine arguments
-        REAL(realk), INTENT(in) :: sigma
+    SUBROUTINE sample_rademacher(sigma, u, R)
+
+        !$omp declare target
+
+        REAL(realk), INTENT(in) :: sigma, u
         REAL(realk), INTENT(out) :: R
 
-        !CALL RANDOM_SEED()
-        CALL RANDOM_NUMBER(R)
-        R = 2 * SQRT(3.0) * sigma * (R - 0.5)
+        R = SIGN(1.0_realk, u - 0.5_realk) * sigma
 
-    END SUBROUTINE uniform_dist
+    END SUBROUTINE sample_rademacher
 
-    ! TODO: implement polar method for gaussian distribution (https://de.wikipedia.org/wiki/Polar-Methode)
+    SUBROUTINE sample_uniform(sigma, u, R)
 
-    ! from: Simulation of truncated normal variables, Christian Robert, Statistics and Computing (1995) 5, 121-125
-    ! TODO: potentially optimize this
-    SUBROUTINE gaussian_dist2(mu, sigma, trunc_limit, trunc_factor, R)
+        !$omp declare target
 
-        ! subroutine arguments
+        REAL(realk), INTENT(in) :: sigma, u
+        REAL(realk), INTENT(out) :: R
+
+        R = 2.0_realk * SQRT(3.0_realk) * sigma * (u - 0.5_realk)
+
+    END SUBROUTINE sample_uniform
+
+    ! One Marsaglia polar attempt from two uniforms in (0,1).
+    SUBROUTINE polar_normal_pair(u, v, z1, z2, valid)
+
+        !$omp declare target
+
+        REAL(realk), INTENT(in) :: u, v
+        REAL(realk), INTENT(out) :: z1, z2
+        LOGICAL, INTENT(out) :: valid
+
+        REAL(realk) :: x, y, s, factor
+
+        x = 2.0_realk * u - 1.0_realk
+        y = 2.0_realk * v - 1.0_realk
+        s = x * x + y * y
+        IF (s > 0.0_realk .AND. s < 1.0_realk) THEN
+            factor = SQRT(-2.0_realk * LOG(s) / s)
+            z1 = x * factor
+            z2 = y * factor
+            valid = .TRUE.
+        ELSE
+            z1 = 0.0_realk
+            z2 = 0.0_realk
+            valid = .FALSE.
+        END IF
+
+    END SUBROUTINE polar_normal_pair
+
+    SUBROUTINE scale_truncated_normal(z, mu, sigma, trunc_limit, trunc_factor, R, accepted)
+
+        !$omp declare target
+
+        REAL(realk), INTENT(in) :: z, mu, sigma, trunc_limit, trunc_factor
+        REAL(realk), INTENT(out) :: R
+        LOGICAL, INTENT(out) :: accepted
+
+        REAL(realk) :: bound
+
+        bound = trunc_limit / trunc_factor
+        IF (ABS(z) <= bound) THEN
+            R = mu + sigma * trunc_factor * z
+            accepted = .TRUE.
+        ELSE
+            R = 0.0_realk
+            accepted = .FALSE.
+        END IF
+
+    END SUBROUTINE scale_truncated_normal
+
+    SUBROUTINE sample_gaussian2_host(mu, sigma, trunc_limit, trunc_factor, R)
+
         REAL(realk), INTENT(in) :: mu, sigma, trunc_limit, trunc_factor
         REAL(realk), INTENT(out) :: R
 
-        ! local variables
-        REAL(realk) :: rand1, rand2, P
-        LOGICAL :: found
+        REAL(realk) :: u, v, z, z1, z2
+        LOGICAL :: valid, accepted
 
-        found = .FALSE.
-
-        DO WHILE (.NOT. found)
-
-            CALL RANDOM_NUMBER(rand1)
-            rand1 = trunc_limit / trunc_factor * (rand1 - 0.5) * 2.0
-
-            P = EXP(-(rand1 ** 2) / 2)
-
-            CALL RANDOM_NUMBER(rand2)
-
-            IF (rand2 <= P) THEN
-                ! linear transformation to match given mean and standard deviation
-                R = mu + sigma * trunc_factor * rand1
-                found = .TRUE.
+        DO
+            IF (gaussian_spare_ready) THEN
+                z = gaussian_spare_std
+                gaussian_spare_ready = .FALSE.
+            ELSE
+                DO
+                    CALL RANDOM_NUMBER(u)
+                    CALL RANDOM_NUMBER(v)
+                    CALL polar_normal_pair(u, v, z1, z2, valid)
+                    IF (valid) EXIT
+                END DO
+                z = z1
+                gaussian_spare_std = z2
+                gaussian_spare_ready = .TRUE.
             END IF
-
+            CALL scale_truncated_normal(z, mu, sigma, trunc_limit, trunc_factor, R, accepted)
+            IF (accepted) RETURN
         END DO
+
+    END SUBROUTINE sample_gaussian2_host
+
+    ! Compatibility wrapper used by older call sites / tests.
+    SUBROUTINE gaussian_dist2(mu, sigma, trunc_limit, trunc_factor, R)
+
+        REAL(realk), INTENT(in) :: mu, sigma, trunc_limit, trunc_factor
+        REAL(realk), INTENT(out) :: R
+
+        CALL sample_gaussian2_host(mu, sigma, trunc_limit, trunc_factor, R)
 
     END SUBROUTINE gaussian_dist2
 
@@ -322,99 +376,99 @@ CONTAINS
         INTEGER(c_int), INTENT(inout) :: seed
 
         ! local variables
-        REAL(realk) :: sigx, sigy, sigz, ranx, rany, ranz
+        REAL(realk) :: sigx, sigy, sigz
+        LOGICAL :: spare_ready
+        REAL(realk) :: spare_std
 
-        sigx = SQRT(2 * D_x * dt)
-        !CALL gaussian_dist_target(0.0_realk, sigx, truncation_limit, truncation_factor, seed, ranx)
-        CALL uniform_dist_target(sigx, ranx, seed)
-        pdx = ranx ! diffusion length
+        pdx = 0.0_realk
+        pdy = 0.0_realk
+        pdz = 0.0_realk
+        spare_ready = .FALSE.
+        spare_std = 0.0_realk
 
-        sigy = SQRT(2 * D_y * dt)
-        !CALL gaussian_dist_target(0.0_realk, sigy, truncation_limit, truncation_factor, seed, rany)
-        CALL uniform_dist_target(sigy, rany, seed)
-        pdy = rany ! diffusion length
-
-        sigz = SQRT(2 * D_z * dt)
-        !CALL gaussian_dist_target(0.0_realk, sigz, truncation_limit, truncation_factor, seed, ranz)
-        CALL uniform_dist_target(sigz, ranz, seed)
-        pdz = ranz ! diffusion length
+        IF (D_x > 0.0_realk) THEN
+            sigx = SQRT(2.0_realk * D_x * dt)
+            CALL sample_device_axis(diffusion_walk_mode, sigx, pdx, seed, spare_ready, spare_std)
+        END IF
+        IF (D_y > 0.0_realk) THEN
+            sigy = SQRT(2.0_realk * D_y * dt)
+            CALL sample_device_axis(diffusion_walk_mode, sigy, pdy, seed, spare_ready, spare_std)
+        END IF
+        IF (D_z > 0.0_realk) THEN
+            sigz = SQRT(2.0_realk * D_z * dt)
+            CALL sample_device_axis(diffusion_walk_mode, sigz, pdz, seed, spare_ready, spare_std)
+        END IF
 
     END SUBROUTINE generate_diffusive_displacement_target
 
-    SUBROUTINE gaussian_dist_target(mu, sigma, trunc_limit, trunc_factor, seed, R)
+    SUBROUTINE sample_device_axis(mode, sigma, R, seed, spare_ready, spare_std)
 
         !$omp declare target
 
-        ! subroutine arguments
-        REAL(realk), INTENT(in) :: mu, sigma, trunc_limit, trunc_factor
-        INTEGER(c_int), INTENT(inout) :: seed
-        REAL(realk), INTENT(out) :: R
-        
-        ! local variables
-        REAL(realk) :: rand1, rand2, P
-        LOGICAL :: found
-
-        found = .FALSE.
-
-        DO WHILE (.NOT. found)
-
-#if defined __GFORTRAN__
-            CALL RANDOM_NUMBER(rand1)
-#else
-            CALL lcg(seed, rand1)
-#endif
-
-            rand1 = trunc_limit / trunc_factor * (rand1 - 0.5) * 2.0
-
-            P = EXP(-(rand1 ** 2) / 2)
-
-#if defined __GFORTRAN__
-            CALL RANDOM_NUMBER(rand2)
-#else
-            CALL lcg(seed, rand2)
-#endif
-
-            IF (rand2 <= P) THEN
-                ! linear transformation to match given mean and standard deviation
-                R = mu + sigma * trunc_factor * rand1
-                found = .TRUE.
-            END IF
-
-        END DO
-
-    END SUBROUTINE gaussian_dist_target
-
-    SUBROUTINE uniform_dist_target(sigma, R, seed)
-        
-        !$omp declare target
-        
-        ! subroutine arguments
-        
+        INTEGER(intk), INTENT(in) :: mode
         REAL(realk), INTENT(in) :: sigma
         REAL(realk), INTENT(out) :: R
         INTEGER(c_int), INTENT(inout) :: seed
+        LOGICAL, INTENT(inout) :: spare_ready
+        REAL(realk), INTENT(inout) :: spare_std
 
-#if defined __GFORTRAN__
-        CALL RANDOM_NUMBER(R)
-#else
-        CALL lcg(seed, R)
-#endif
-        
-        R = 2 * SQRT(3.0) * sigma * (R - 0.5)
+        REAL(c_float) :: u32
 
-    END SUBROUTINE uniform_dist_target
+        SELECT CASE (mode)
+        CASE (rw_rademacher)
+            CALL lcg(seed, u32)
+            CALL sample_rademacher(sigma, REAL(u32, realk), R)
+        CASE (rw_uniform)
+            CALL lcg(seed, u32)
+            CALL sample_uniform(sigma, REAL(u32, realk), R)
+        CASE (rw_gaussian2)
+            CALL sample_gaussian2_device(0.0_realk, sigma, truncation_limit, truncation_factor, &
+                R, seed, spare_ready, spare_std)
+        CASE DEFAULT
+            R = 0.0_realk
+        END SELECT
 
+    END SUBROUTINE sample_device_axis
 
-    SUBROUTINE init_custom_prng()
+    SUBROUTINE sample_gaussian2_device(mu, sigma, trunc_limit, trunc_factor, R, seed, spare_ready, spare_std)
 
-        
+        !$omp declare target
 
-    END SUBROUTINE init_custom_prng
+        REAL(realk), INTENT(in) :: mu, sigma, trunc_limit, trunc_factor
+        REAL(realk), INTENT(out) :: R
+        INTEGER(c_int), INTENT(inout) :: seed
+        LOGICAL, INTENT(inout) :: spare_ready
+        REAL(realk), INTENT(inout) :: spare_std
 
+        REAL(c_float) :: u32, v32
+        REAL(realk) :: z, z1, z2
+        LOGICAL :: valid, accepted
+
+        DO
+            IF (spare_ready) THEN
+                z = spare_std
+                spare_ready = .FALSE.
+            ELSE
+                DO
+                    CALL lcg(seed, u32)
+                    CALL lcg(seed, v32)
+                    CALL polar_normal_pair(REAL(u32, realk), REAL(v32, realk), z1, z2, valid)
+                    IF (valid) EXIT
+                END DO
+                z = z1
+                spare_std = z2
+                spare_ready = .TRUE.
+            END IF
+            CALL scale_truncated_normal(z, mu, sigma, trunc_limit, trunc_factor, R, accepted)
+            IF (accepted) RETURN
+        END DO
+
+    END SUBROUTINE sample_gaussian2_device
 
     SUBROUTINE finish_particle_diffusion()
 
-        !$omp target exit data map(delete: truncation_factor)
+        CALL reset_gaussian_spare()
+        !$omp target exit data map(delete: truncation_factor, diffusion_walk_mode)
 
     END SUBROUTINE finish_particle_diffusion
 

@@ -436,6 +436,8 @@ CONTAINS
         REAL(realk) :: pdx_pot, pdy_pot, pdz_pot, pu_adv, pv_adv, pw_adv
         REAL(realk) :: dvec(3), deff_vec(3), dtot_vec(3), n(3)
         REAL(realk) :: bbox(6)
+        ! Pointer avoids gfortran reject of mapping a derived type with allocatables.
+        TYPE(baseparticle_t), POINTER :: omp_particles(:)
 
         CALL start_timer(900)
 
@@ -463,18 +465,16 @@ CONTAINS
 
         CALL start_timer(924)
 
+        omp_particles => my_particle_list%particles
+
         !$omp target defaultmap(none) &
-#if defined __INTEL_COMPILER
-        !$omp map(mapper(particle_list_t), always, tofrom: my_particle_list) &
-#else
-        !$omp map(tofrom: my_particle_list) &
-#endif
+        !$omp map(tofrom: omp_particles) &
         !$omp map(tofrom: dev_num, num_teams, num_threads) map(to: my_particle_grids, plist_displ, grids_np, A_offload, B_offload, D) &
         !$omp firstprivate(dt, nmy_particle_grids, pnrk, dadvection, ddiffusion) private(igrid, ipart, icorn, pstag, ip1d, ii, jj, kk, destgrid, irk, dvec, &
         !$omp pu_adv, pv_adv, pw_adv, pdx_pot, pdy_pot, pdz_pot, bbox, deff_vec, dtot_vec, n)
         !$omp teams distribute firstprivate(dt, nmy_particle_grids, pnrk, dadvection, ddiffusion) private(igrid, ipart, icorn, pstag, ip1d, ii, jj, kk, destgrid, irk, dvec, &
         !$omp pu_adv, pv_adv, pw_adv, pdx_pot, pdy_pot, pdz_pot, bbox, deff_vec, dtot_vec, n) &
-        !$omp shared(my_particle_grids, plist_displ, grids_np, A_offload, B_offload, D) &
+        !$omp shared(omp_particles, my_particle_grids, plist_displ, grids_np, A_offload, B_offload, D) &
         !$omp reduction(max: num_threads)
         DO i = 1, nmy_particle_grids
 
@@ -500,7 +500,7 @@ CONTAINS
             !$omp parallel do firstprivate(dt, pnrk, igrid, ip1d, ii, jj, kk, bbox, dadvection, ddiffusion) &
             !$omp private(ipart, icorn, pstag, destgrid, irk, deff_vec, dtot_vec, dvec, &
             !$omp pu_adv, pv_adv, pw_adv, pdx_pot, pdy_pot, pdz_pot, n) &
-            !$omp shared(plist_displ, grids_np, A_offload, B_offload, D)
+            !$omp shared(omp_particles, plist_displ, grids_np, A_offload, B_offload, D)
             DO j = 1, grids_np(i)
             
                 !number of threads in the team (working on j-loop)
@@ -508,7 +508,7 @@ CONTAINS
                 
                 ipart = plist_displ(i) + j
 
-                CALL get_particle_gcorner_target(my_particle_list%particles(ipart), bbox, icorn)
+                CALL get_particle_gcorner_target(omp_particles(ipart), bbox, icorn)
 
                 pstag = 0_intk
 
@@ -525,16 +525,14 @@ CONTAINS
                     DO irk = 1, pnrk
 
                         ! get particle velocity
-                        CALL interpolate_lincon_target(my_particle_list%particles(ipart), igrid, kk, jj, ii, pu_adv, pv_adv, pw_adv)
-
-!WRITE(*,*) ">>>>>>>>>>> pui_adv (ipart: ", my_particle_list%particles(ipart)%ipart,  "): ", pu_adv, pv_adv, pw_adv
+                        CALL interpolate_lincon_target(omp_particles(ipart), igrid, kk, jj, ii, pu_adv, pv_adv, pw_adv)
 
                         ! runge kutta substep
                         CALL prkstep(pdx_pot, pdy_pot, pdz_pot, pu_adv, pv_adv, pw_adv, dt, &
                         A_offload(irk), B_offload(irk), dvec(1), dvec(2), dvec(3))
                         
                         ! substep particle displacement
-                        CALL move_particle_target3(my_particle_list%particles(ipart), icorn, pstag, dvec, deff_vec)
+                        CALL move_particle_target3(omp_particles(ipart), icorn, pstag, dvec, deff_vec)
 
                         ! TODO: check if this modification of the pot. displacement makes sense
                         pdx_pot = deff_vec(1) / B_offload(irk)
@@ -546,7 +544,7 @@ CONTAINS
                         dtot_vec(3) = dtot_vec(3) + deff_vec(3)  
 
                         ! update particle cell
-                        CALL update_particle_cell_target(my_particle_list%particles(ipart), kk, jj, ii, ip1d)
+                        CALL update_particle_cell_target(omp_particles(ipart), kk, jj, ii, ip1d)
             
                         ! TODO: reintroduce particle runtime statistics
                     END DO
@@ -557,9 +555,9 @@ CONTAINS
                 IF (ddiffusion) THEN
 
                     CALL generate_diffusive_displacement_target(dt, D(1), D(2), D(3), dvec(1), dvec(2), dvec(3), &
-                     my_particle_list%particles(ipart)%seed)
+                     omp_particles(ipart)%seed)
 
-                    CALL move_particle_target3(my_particle_list%particles(ipart), icorn, pstag, dvec, deff_vec)
+                    CALL move_particle_target3(omp_particles(ipart), icorn, pstag, dvec, deff_vec)
 
                     dtot_vec(1) = dtot_vec(1) + deff_vec(1)
                     dtot_vec(2) = dtot_vec(2) + deff_vec(2)
@@ -568,23 +566,21 @@ CONTAINS
                 END IF
 #endif
 
-!WRITE(*,*) ">>>>>>>>>>> dtot_vec (ipart: ", my_particle_list%particles(ipart)%ipart,  "): ", dtot_vec
-
                 ! >>>>>>>>>>>> UPDATE OF PARTICLE COORDINATES (neccesary for PER boundaries) AND GRID <<<<<<<<<<<<
                
                 CALL get_gcorner_neighbour(igrid, icorn, pstag, destgrid)
 
-                IF (destgrid == 0) destgrid = my_particle_list%particles(ipart)%igrid
+                IF (destgrid == 0) destgrid = omp_particles(ipart)%igrid
                 
-                CALL update_coordinates_target3(my_particle_list%particles(ipart), icorn, pstag)
+                CALL update_coordinates_target3(omp_particles(ipart), icorn, pstag)
                 
-                my_particle_list%particles(ipart)%igrid = destgrid
+                omp_particles(ipart)%igrid = destgrid
 
                 DO irk = 1, nmy_particle_grids
                     IF (my_particle_grids(irk) == destgrid) THEN
-                        CALL get_grid_ptr1_target(ip1d, my_particle_list%particles(ipart)%igrid)
-                        CALL get_mgdims_target(kk, jj, ii, my_particle_list%particles(ipart)%igrid)
-                        CALL set_particle_cell_target(my_particle_list%particles(ipart), kk, jj, ii, ip1d)
+                        CALL get_grid_ptr1_target(ip1d, omp_particles(ipart)%igrid)
+                        CALL get_mgdims_target(kk, jj, ii, omp_particles(ipart)%igrid)
+                        CALL set_particle_cell_target(omp_particles(ipart), kk, jj, ii, ip1d)
                         EXIT
                     END IF
                 END DO

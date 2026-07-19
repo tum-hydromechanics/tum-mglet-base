@@ -11,6 +11,7 @@ MODULE particle_config_mod
     USE fort7_mod
     USE grids_mod
     USE utils_mod
+    USE charfunc_mod
     USE flowcore_mod, ONLY: solve_flow ! to check compatability of particle rk scheme
 
     IMPLICIT NONE
@@ -56,6 +57,11 @@ MODULE particle_config_mod
     ! DIFFUSION / RANDOM WALK
     LOGICAL :: ddiffusion ! "particles/do_diffusion"
     CHARACTER(len = 16) :: random_walk_mode ! "particles/random_walk_mode"
+    ! Integer mode for hot-path / device branching (set from random_walk_mode at init).
+    INTEGER(intk), PARAMETER :: rw_uniform = 1_intk
+    INTEGER(intk), PARAMETER :: rw_gaussian2 = 2_intk
+    INTEGER(intk), PARAMETER :: rw_rademacher = 3_intk
+    INTEGER(intk) :: random_walk_mode_id = rw_uniform
     REAL(realk) :: truncation_limit ! "particles/truncation_limit"
     REAL(realk) :: D(3) ! "particles/D"
 
@@ -294,6 +300,17 @@ CONTAINS
         !- - - - - - - - - - - - - - - - - -
 
         CALL pconf%get_value("/random_walk_mode", random_walk_mode, "uniform")
+        SELECT CASE (lower(TRIM(random_walk_mode)))
+        CASE ("uniform")
+            random_walk_mode_id = rw_uniform
+        CASE ("gaussian2")
+            random_walk_mode_id = rw_gaussian2
+        CASE ("rademacher")
+            random_walk_mode_id = rw_rademacher
+        CASE DEFAULT
+            WRITE(*, *) "Unknown random_walk_mode: ", TRIM(random_walk_mode)
+            CALL errr(__FILE__, __LINE__)
+        END SELECT
 
         !- - - - - - - - - - - - - - - - - -
 

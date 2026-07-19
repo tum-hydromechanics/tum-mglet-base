@@ -1,5 +1,8 @@
 # Particle performance suite
 
+Kept optimization history and measured results are summarized in
+[OPTIMIZATIONS.md](OPTIMIZATIONS.md).
+
 This directory contains a local benchmark harness for measuring particle
 optimizations without using machine-dependent CI timing thresholds.
 
