@@ -142,33 +142,35 @@ CONTAINS
 
         CALL start_timer(921)
 
-        CALL get_field(x_f, "X")
-        CALL get_field(y_f, "Y")
-        CALL get_field(z_f, "Z")
+        IF (dadvection) THEN
+            CALL get_field(x_f, "X")
+            CALL get_field(y_f, "Y")
+            CALL get_field(z_f, "Z")
 
-        IF (dinterp_padvection) THEN
-            CALL get_field(dx_f, "DX")
-            CALL get_field(dy_f, "DY")
-            CALL get_field(dz_f, "DZ")
-            CALL get_field(ddx_f, "DDX")
-            CALL get_field(ddy_f, "DDY")
-            CALL get_field(ddz_f, "DDZ")
-        END IF
+            IF (dinterp_padvection) THEN
+                CALL get_field(dx_f, "DX")
+                CALL get_field(dy_f, "DY")
+                CALL get_field(dz_f, "DZ")
+                CALL get_field(ddx_f, "DDX")
+                CALL get_field(ddy_f, "DDY")
+                CALL get_field(ddz_f, "DDZ")
+            END IF
 
-        IF (duse_avg_flow) THEN
-            ! use the point values deduced from the average flow field
-            CALL get_field(pwu_f, "PWU_AVG")
-            CALL get_field(pwv_f, "PWV_AVG")
-            CALL get_field(pww_f, "PWW_AVG")
-        ELSE
-            IF (ib%type == "GHOSTCELL") THEN
-                CALL get_field(pwu_f, "PWU")
-                CALL get_field(pwv_f, "PWV")
-                CALL get_field(pww_f, "PWW")
+            IF (duse_avg_flow) THEN
+                ! use the point values deduced from the average flow field
+                CALL get_field(pwu_f, "PWU_AVG")
+                CALL get_field(pwv_f, "PWV_AVG")
+                CALL get_field(pww_f, "PWW_AVG")
             ELSE
-                CALL get_field(pwu_f, "U")
-                CALL get_field(pwv_f, "V")
-                CALL get_field(pww_f, "W")
+                IF (ib%type == "GHOSTCELL") THEN
+                    CALL get_field(pwu_f, "PWU")
+                    CALL get_field(pwv_f, "PWV")
+                    CALL get_field(pww_f, "PWW")
+                ELSE
+                    CALL get_field(pwu_f, "U")
+                    CALL get_field(pwv_f, "V")
+                    CALL get_field(pww_f, "W")
+                END IF
             END IF
         END IF
         
@@ -180,6 +182,18 @@ CONTAINS
                 WRITE(*, '("=== TIMESTEP ", I0, " - PARTICLE TIMEINTEGRATION ===")') itstep
                 WRITE(*, *) ''
             END IF
+        END IF
+
+        IF (.NOT. dadvection .AND. .NOT. ddiffusion) THEN
+            CALL start_timer(922)
+            CALL stop_timer(922)
+            CALL start_timer(924)
+            CALL stop_timer(924)
+            CALL start_timer(925)
+            CALL stop_timer(925)
+            CALL stop_timer(920)
+            CALL stop_timer(900)
+            RETURN
         END IF
 
         CALL count_pog(my_particle_list, grids_np, plist_displ)
@@ -198,27 +212,29 @@ CONTAINS
                 CALL errr(__FILE__, __LINE__)
             END IF
 
-            CALL start_timer(921)
+            IF (dadvection) THEN
+                CALL start_timer(921)
 
-            CALL get_mgdims(kk, jj, ii, igrid)
-            CALL x_f%get_ptr(x, igrid)
-            CALL y_f%get_ptr(y, igrid)
-            CALL z_f%get_ptr(z, igrid)
+                CALL get_mgdims(kk, jj, ii, igrid)
+                CALL x_f%get_ptr(x, igrid)
+                CALL y_f%get_ptr(y, igrid)
+                CALL z_f%get_ptr(z, igrid)
 
-            IF (dinterp_padvection) THEN
-                CALL dx_f%get_ptr(dx, igrid)
-                CALL dy_f%get_ptr(dy, igrid)
-                CALL dz_f%get_ptr(dz, igrid)
-                CALL ddx_f%get_ptr(ddx, igrid)
-                CALL ddy_f%get_ptr(ddy, igrid)
-                CALL ddz_f%get_ptr(ddz, igrid)
+                IF (dinterp_padvection) THEN
+                    CALL dx_f%get_ptr(dx, igrid)
+                    CALL dy_f%get_ptr(dy, igrid)
+                    CALL dz_f%get_ptr(dz, igrid)
+                    CALL ddx_f%get_ptr(ddx, igrid)
+                    CALL ddy_f%get_ptr(ddy, igrid)
+                    CALL ddz_f%get_ptr(ddz, igrid)
+                END IF
+
+                CALL pwu_f%get_ptr(pwu, igrid)
+                CALL pwv_f%get_ptr(pwv, igrid)
+                CALL pww_f%get_ptr(pww, igrid)
+
+                CALL stop_timer(921)
             END IF
-
-            CALL pwu_f%get_ptr(pwu, igrid)
-            CALL pwv_f%get_ptr(pwv, igrid)
-            CALL pww_f%get_ptr(pww, igrid)
-
-            CALL stop_timer(921)
 
             DO j = 1, grids_np(i)
 
@@ -256,10 +272,14 @@ CONTAINS
                 temp_coord(2) = my_particle_list%particles(ipart)%y
                 temp_coord(3) = my_particle_list%particles(ipart)%z
 
-                CALL particle_advection(my_particle_list%particles(ipart), temp_grid, temp_coord, pd_eff_tot, &
-                 kk, jj, ii, x, y, z, dx, dy, dz, ddx, ddy, ddz, pwu, pwv, pww, dt)
+                IF (dadvection) THEN
+                    CALL particle_advection(my_particle_list%particles(ipart), temp_grid, temp_coord, pd_eff_tot, &
+                     kk, jj, ii, x, y, z, dx, dy, dz, ddx, ddy, ddz, pwu, pwv, pww, dt)
+                END IF
                 
-                CALL particle_diffusion(my_particle_list%particles(ipart), temp_grid, temp_coord, pd_eff_tot, dt)
+                IF (ddiffusion) THEN
+                    CALL particle_diffusion(my_particle_list%particles(ipart), temp_grid, temp_coord, pd_eff_tot, dt)
+                END IF
 
                 ! for particle runtime statistics (terminal output)
                 IF (TRIM(particle_terminal) == "normal" .OR. TRIM(particle_terminal) == "verbose") THEN
@@ -272,6 +292,18 @@ CONTAINS
                 END IF
             END DO 
         END DO
+
+        ! Keep disabled-kernel timer IDs present for harness baseline comparison.
+        IF (.NOT. dadvection) THEN
+            CALL start_timer(922)
+            CALL stop_timer(922)
+        END IF
+        IF (.NOT. ddiffusion) THEN
+            CALL start_timer(924)
+            CALL stop_timer(924)
+            CALL start_timer(925)
+            CALL stop_timer(925)
+        END IF
 
         CALL stop_timer(920)
         CALL stop_timer(900)

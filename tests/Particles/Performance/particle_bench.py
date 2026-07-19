@@ -419,6 +419,7 @@ def validate_particle_file(
     expected_particles: int,
     expected_coordinates: list[list[float]] | None = None,
     tolerance: float = 0.0,
+    coordinate_bounds: dict[str, list[float]] | None = None,
 ) -> dict[str, Any]:
     particles = read_particles(path)
     count = len(particles["ids"])
@@ -445,6 +446,20 @@ def validate_particle_file(
             )
         result["maximum_coordinate_delta"] = max_delta
         result["coordinate_tolerance"] = tolerance
+    if coordinate_bounds is not None:
+        minimum = np.asarray(coordinate_bounds["minimum"], dtype=float)
+        maximum = np.asarray(coordinate_bounds["maximum"], dtype=float)
+        if minimum.shape != (3,) or maximum.shape != (3,) or np.any(minimum > maximum):
+            raise BenchmarkError(f"Coordinate bounds are invalid for {path}")
+        coordinates = particles["coordinates"]
+        if np.any(coordinates < minimum) or np.any(coordinates > maximum):
+            raise BenchmarkError(
+                f"Particle coordinates fall outside configured bounds in {path}"
+            )
+        result["coordinate_bounds"] = {
+            "minimum": minimum.tolist(),
+            "maximum": maximum.tolist(),
+        }
     return result
 
 
@@ -502,6 +517,7 @@ def run_smoke(
         entry["expected_particles"],
         entry.get("expected_coordinates"),
         float(entry.get("coordinate_tolerance", 0.0)),
+        entry.get("coordinate_bounds"),
     )
     return {"name": entry["name"], "kind": "smoke", "run": run, **validation}
 
@@ -977,22 +993,23 @@ def run_command(args: argparse.Namespace) -> int:
                 args.mpirun,
                 args.mpirun_arg,
             )
-        entries = select_benchmarks(manifest["benchmarks"], args.tier, args.case)
-        for entry in entries:
-            entry = copy.deepcopy(entry)
-            if args.pilot:
-                entry["warmups"] = 0
-                entry["repetitions"] = 1
-            summary["benchmarks"].append(
-                run_benchmark(
-                    entry,
-                    session_root / "benchmarks",
-                    binary,
-                    set(manifest["timers"]),
-                    args.mpirun,
-                    args.mpirun_arg,
+        if not args.correctness_only:
+            entries = select_benchmarks(manifest["benchmarks"], args.tier, args.case)
+            for entry in entries:
+                entry = copy.deepcopy(entry)
+                if args.pilot:
+                    entry["warmups"] = 0
+                    entry["repetitions"] = 1
+                summary["benchmarks"].append(
+                    run_benchmark(
+                        entry,
+                        session_root / "benchmarks",
+                        binary,
+                        set(manifest["timers"]),
+                        args.mpirun,
+                        args.mpirun_arg,
+                    )
                 )
-            )
     except Exception:
         summary["status"] = "failed"
         write_json(session_root / "summary.json", summary)
@@ -1094,10 +1111,18 @@ def compare_command(args: argparse.Namespace) -> int:
                 timer_id: timer["region"]
                 for timer_id, timer in previous["medians"]["timers"][section].items()
             }
-            if current_regions != previous_regions:
-                raise BenchmarkError(
-                    f"{section.capitalize()} timer map differs for {current['name']}"
-                )
+            for timer_id, region in current_regions.items():
+                previous_region = previous_regions.get(timer_id)
+                if previous_region is None:
+                    raise BenchmarkError(
+                        f"{section.capitalize()} timer {timer_id} ({region}) is "
+                        f"absent from the baseline for {current['name']}"
+                    )
+                if previous_region != region:
+                    raise BenchmarkError(
+                        f"{section.capitalize()} timer {timer_id} changed identity "
+                        f"for {current['name']}"
+                    )
         metrics = {
             "wall_seconds": {
                 "baseline": previous["medians"]["wall_seconds"],
@@ -1105,17 +1130,15 @@ def compare_command(args: argparse.Namespace) -> int:
             }
         }
         for section in ("inclusive", "exclusive"):
-            for timer_id, timer in current["medians"]["timers"][section].items():
-                old_timer = previous["medians"]["timers"][section].get(timer_id)
-                if old_timer is None:
-                    continue
-                if old_timer["region"] != timer["region"]:
-                    raise BenchmarkError(
-                        f"Timer {timer_id} changed identity for {current['name']}"
-                    )
+            previous_section = previous["medians"]["timers"][section]
+            current_section = current["medians"]["timers"][section]
+            for timer_id, old_timer in previous_section.items():
+                timer = current_section.get(timer_id)
+                # Disabled kernels may omit a timer entirely; treat that as zero work.
+                current_total = 0.0 if timer is None else timer["total"]
                 metrics[f"{section}.timer_{timer_id}.total"] = {
                     "baseline": old_timer["total"],
-                    "current": timer["total"],
+                    "current": current_total,
                 }
         for values in metrics.values():
             values["delta_percent"] = percentage_delta(
@@ -1172,6 +1195,11 @@ def build_parser() -> argparse.ArgumentParser:
         help="extra mpirun argument; use --mpirun-arg=VALUE",
     )
     run_parser.add_argument("--skip-correctness", action="store_true")
+    run_parser.add_argument(
+        "--correctness-only",
+        action="store_true",
+        help="run correctness gates without timed benchmark cases",
+    )
     run_parser.add_argument(
         "--pilot",
         action="store_true",

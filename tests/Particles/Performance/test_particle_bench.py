@@ -73,6 +73,29 @@ class ParticleBenchTests(unittest.TestCase):
         self.assertEqual(comparison["particle_count"], 2)
         self.assertEqual(comparison["maximum_coordinate_delta"], 0.0)
 
+    def test_particle_validation_enforces_coordinate_bounds(self) -> None:
+        with self.temporary_directory() as directory:
+            path = Path(directory) / "particles.h5"
+            self.write_particles(path, [1], [0.1])
+            result = particle_bench.validate_particle_file(
+                path,
+                expected_particles=1,
+                coordinate_bounds={
+                    "minimum": [0.0, -0.1, -0.1],
+                    "maximum": [0.2, 0.1, 0.1],
+                },
+            )
+            with self.assertRaises(particle_bench.BenchmarkError):
+                particle_bench.validate_particle_file(
+                    path,
+                    expected_particles=1,
+                    coordinate_bounds={
+                        "minimum": [0.2, -0.1, -0.1],
+                        "maximum": [0.3, 0.1, 0.1],
+                    },
+                )
+        self.assertEqual(result["coordinate_bounds"]["maximum"], [0.2, 0.1, 0.1])
+
     def test_safe_name_rejects_path_traversal(self) -> None:
         with self.assertRaises(particle_bench.BenchmarkError):
             particle_bench.safe_name("../outside", "case name")
@@ -93,6 +116,18 @@ class ParticleBenchTests(unittest.TestCase):
         bindings = particle_bench.external_input_paths(entry)
         self.assertEqual(len(bindings), 4)
         self.assertTrue(all(path.is_file() for path in bindings.values()))
+
+    def test_correctness_manifest_covers_particle_physics_modes(self) -> None:
+        manifest = particle_bench.load_manifest(SCRIPT.with_name("benchmarks.json"))
+        modes = {
+            (
+                entry["overrides"]["particles"].get("do_advection", True),
+                entry["overrides"]["particles"].get("do_diffusion", True),
+            )
+            for entry in manifest["correctness"]
+            if entry["kind"] == "smoke"
+        }
+        self.assertTrue({(True, False), (False, True), (True, True)} <= modes)
 
     def test_generated_seed_covers_every_rank(self) -> None:
         parameters = {"particles": {}}

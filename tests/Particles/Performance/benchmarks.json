@@ -55,6 +55,162 @@
           "dread_part_h5": false,
           "dread_part_dict": true,
           "dwrite_part_h5": true,
+          "do_advection": true,
+          "do_diffusion": false,
+          "terminal": "none",
+          "snapshot_step": -1,
+          "dgridstat": false
+        }
+      }
+    },
+    {
+      "name": "diffusion-only-smoke",
+      "kind": "smoke",
+      "source": "../Verification/Advection1",
+      "ranks": 1,
+      "expected_particles": 1,
+      "coordinate_bounds": {
+        "minimum": [0.05, 0.45, 0.45],
+        "maximum": [0.15, 0.55, 0.55]
+      },
+      "remove_top_level": [
+        "probes",
+        "snapshots",
+        "statistics",
+        "uvwbulk"
+      ],
+      "overrides": {
+        "time": {
+          "mtstep": 10,
+          "itinfo": 100000,
+          "read": false,
+          "write": false,
+          "continue": false
+        },
+        "flow": {
+          "solve": false
+        },
+        "particles": {
+          "dread_part_h5": false,
+          "dread_part_dict": true,
+          "dwrite_part_h5": true,
+          "do_advection": false,
+          "do_diffusion": true,
+          "random_walk_mode": "uniform",
+          "D": [1e-6, 1e-6, 1e-6],
+          "particle_seed": [
+            104729,
+            130363,
+            155921,
+            181081,
+            206369,
+            231779,
+            257189,
+            282589
+          ],
+          "terminal": "none",
+          "snapshot_step": -1,
+          "dgridstat": false
+        }
+      }
+    },
+    {
+      "name": "gaussian-diffusion-smoke",
+      "kind": "smoke",
+      "source": "../Verification/Advection1",
+      "ranks": 1,
+      "expected_particles": 1,
+      "coordinate_bounds": {
+        "minimum": [0.05, 0.45, 0.45],
+        "maximum": [0.15, 0.55, 0.55]
+      },
+      "remove_top_level": [
+        "probes",
+        "snapshots",
+        "statistics",
+        "uvwbulk"
+      ],
+      "overrides": {
+        "time": {
+          "mtstep": 10,
+          "itinfo": 100000,
+          "read": false,
+          "write": false,
+          "continue": false
+        },
+        "flow": {
+          "solve": false
+        },
+        "particles": {
+          "dread_part_h5": false,
+          "dread_part_dict": true,
+          "dwrite_part_h5": true,
+          "do_advection": false,
+          "do_diffusion": true,
+          "random_walk_mode": "gaussian2",
+          "truncation_limit": 2.0,
+          "D": [1e-6, 1e-6, 1e-6],
+          "particle_seed": [
+            104729,
+            130363,
+            155921,
+            181081,
+            206369,
+            231779,
+            257189,
+            282589
+          ],
+          "terminal": "none",
+          "snapshot_step": -1,
+          "dgridstat": false
+        }
+      }
+    },
+    {
+      "name": "advection-diffusion-combined-smoke",
+      "kind": "smoke",
+      "source": "../Verification/Advection1",
+      "ranks": 1,
+      "expected_particles": 1,
+      "coordinate_bounds": {
+        "minimum": [1.05, 0.45, 0.45],
+        "maximum": [1.15, 0.55, 0.55]
+      },
+      "remove_top_level": [
+        "probes",
+        "snapshots",
+        "statistics",
+        "uvwbulk"
+      ],
+      "overrides": {
+        "time": {
+          "mtstep": 10,
+          "itinfo": 100000,
+          "read": false,
+          "write": false,
+          "continue": false
+        },
+        "flow": {
+          "solve": false
+        },
+        "particles": {
+          "dread_part_h5": false,
+          "dread_part_dict": true,
+          "dwrite_part_h5": true,
+          "do_advection": true,
+          "do_diffusion": true,
+          "random_walk_mode": "uniform",
+          "D": [1e-6, 1e-6, 1e-6],
+          "particle_seed": [
+            104729,
+            130363,
+            155921,
+            181081,
+            206369,
+            231779,
+            257189,
+            282589
+          ],
           "terminal": "none",
           "snapshot_step": -1,
           "dgridstat": false
@@ -142,7 +298,7 @@
   "benchmarks": [
     {
       "name": "diffusion-focused-quick",
-      "description": "Diffusion workload with unavoidable CPU advection-path overhead",
+      "description": "Diffusion-only workload with CPU advection disabled",
       "tier": "quick",
       "category": "compute",
       "source": "Diffusion-Cube",

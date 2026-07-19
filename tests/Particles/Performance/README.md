@@ -56,10 +56,9 @@ global particle count. Reported values are medians. Snapshots, statistics,
 frequent `itinfo`, terminal chatter, and particle checkpoint output are disabled
 in staged benchmark parameters.
 
-The current CPU implementation calls its advection routine even when
-`do_advection` is false. Consequently, `diffusion-focused-*` measures the
-existing Diffusion-Cube workload, including that avoidable advection-path
-overhead; it must not be described as a pure diffusion kernel benchmark.
+The CPU implementation honors `do_advection` and `do_diffusion`, matching the
+OpenMP target path. Consequently, `diffusion-focused-*` measures the
+Diffusion-Cube workload without running the disabled advection kernel.
 The profiles provide deterministic per-rank GCC 13 `particle_seed` arrays so
 repetitions use the same initialization and diffusion realization. On hyd38,
 calibration pilots took about 6 minutes per measured compute case and 5 minutes
