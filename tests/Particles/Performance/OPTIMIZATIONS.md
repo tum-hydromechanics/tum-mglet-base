@@ -1,9 +1,9 @@
 # Particle performance optimizations
 
-This note records the two optimizations currently kept on the CPU Release
-particle path (`MGLET_OPENMP=OFF`), and the one shared-kernel experiment that
-was measured and reverted. Numbers below are median wall / exclusive timer
-totals from the harness on `hyd39`.
+This note records the optimizations kept on the CPU Release particle path
+(`MGLET_OPENMP=OFF`), the shared-kernel / lincon experiment that was measured
+and reverted, and the motion/exchange prep bundle. Numbers below are median
+wall / exclusive timer totals from the harness on `hyd39` unless noted.
 
 Authoritative baselines (pre-optimization gold):
 
@@ -21,6 +21,13 @@ Shared-kernel measurement session (included a later-reverted lincon split):
 - BCC compute: `benchmark-results/20260719-154522-760502/`
 - Comparisons: `*-shared-kernels-comparison.json`
 
+Motion/exchange bundle keep-set confirmation (guards + RNG + §4 vs baselines):
+
+- Self-contained: `benchmark-results/20260730-165059-204638/`
+- BCC compute: `benchmark-results/20260730-165338-397453/`
+- Comparisons: `*-keepset-comparison.json`
+- Driver log: `benchmark-results/keepset-compare-driver.log`
+
 Timer IDs (Release/CPU names):
 
 | ID  | Region              | Meaning                                      |
@@ -30,6 +37,7 @@ Timer IDs (Release/CPU names):
 | 922 | `ADV_MOTION`        | Advective `move_particle`                    |
 | 924 | `DIF_RN_GENERATION` | Random-walk displacement sampling            |
 | 925 | `DIF_MOTION`        | Diffusive `move_particle`                    |
+| 941 | `PREP_COMM`         | Exchange preparation (target grid / triage)  |
 
 ---
 
@@ -60,7 +68,7 @@ math of enabled kernels.
 
 ## 2. Shared / faster diffusion RNG (kept)
 
-**Status:** Kept in the working tree for commit (with lincon split reverted).
+**Commit:** `66d101b7` — *Speed up particle diffusion RNG with shared polar sampling.*
 
 **Change (summary):**
 
@@ -123,19 +131,68 @@ primary win or the primary regression.
 
 ---
 
-## Keep-set for commit
+## 4. Motion / exchange prep bundle (kept)
+
+**Status:** Kept. Measured on `hyd39` via
+`tests/Particles/Performance/run-keepset-compare.sh` (sessions listed above).
+
+**Intent:** After guards + RNG, motion (`922` / `925`) and exchange prep
+(`941`) remained major costs. This bundle removes duplicate cell-lookup
+metadata work and a redundant same-grid exchange refresh, plus two small
+timestep-invariant hoists. It does **not** revisit the reverted lincon
+shared-stencil experiment, change RNG stream semantics, or alter MPI/HDF5
+particle layout.
+
+### Changes
+
+| Piece | Where | What |
+|-------|-------|------|
+| Cached grid context for cell updates | `particle_basetype_mod.F90`, `particle_boundaries_mod.F90`, `particle_timeintegration_mod.F90` | Optional `kk/jj/ii` + `X/Y/Z` pointers into `update_particle_cell`; threaded through CPU `move_particle`. Removes unused `DX/DY/DZ` and `get_bbox` from the cell-update fallback. Falls back when `particle%igrid` no longer matches the bound grid (e.g. after replace). |
+| Skip redundant exchange cell refresh | `particle_exchange_mod.F90` (CPU `#else` path) | When `destgrid` is unchanged **and** `iface == 0`, skip `update_particle_cell` (motion already refreshed `ijkcell`). Still refresh when `iface /= 0` (periodic same-grid wrap) and on all cross-grid paths. |
+| Precomputed diffusion scales | `particle_diffusion_mod.F90`, `particle_timeintegration_mod.F90` | Compute `sqrt(2*D*dt)` once per timestep; pass scales into host displacement generation. Walk mode and RNG call order unchanged. |
+| Reuse init-time RK coeffs | `particle_timeintegration_mod.F90` | CPU advection uses `A_offload` / `B_offload` instead of `prkscheme%get_coeffs` every particle/stage. Timer 921/922 placement inside the RK loop is unchanged. |
+
+Also fixed a latent REAL64 kind typo in `particle_utils_mod.F90`
+(`INTEGER(realk)` → `INTEGER(intk)` in `conditional_update_ri`) so double-precision
+builds compile; single-precision Release was unaffected.
+
+### Cumulative results vs authoritative baselines
+
+Environment match: hyd39, GCC 13, Release, `MGLET_OPENMP=OFF`,
+`--bind-to core`. Correctness gates passed. These wall numbers include
+guards + RNG + this bundle.
+
+| Case | Wall | Notable exclusive timers |
+|------|------|--------------------------|
+| `diffusion-focused-medium` | **−79.7%** (30.5 → 6.2 s) | 924 −85%; 925 −63%; 941 −92%; 921/922 ~0 (guards) |
+| `advection-diffusion-medium` | **−58.3%** (47.8 → 19.9 s) | 924 −85%; 922 −74%; 925 −71%; 941 −94%; 921 −15% |
+| `advection-diffusion-exchange-medium` | **−56.2%** (25.5 → 11.2 s) | 924 −78%; 922 −71%; 925 −72%; 941 −92%; 942 −57% |
+| `bcc-compute-medium` | **−52.6%** (52.4 → 24.8 s) | 924 −78%; 922 −64%; 925 −59%; 941 −92%; 942 −54%; 921 −5% |
+
+### Bundle attribution (approx.)
+
+Against the earlier post-RNG / shared-kernel BCC session (~41 s wall, before
+this bundle; still had the later-reverted lincon split on 921), the keep-set
+BCC wall is ~25 s. The largest new exclusive cuts aligned with this section
+are **941** (~2.9 → 0.23 s) and motion **922** / **925**. Timer **924** was
+already dominated by the RNG keep-set.
+
+Comparisons against the authoritative baselines alone are **cumulative**; an
+isolated §4-only delta needs a clean post-RNG / pre-bundle reference under the
+same environment.
+
+---
+
+## Keep-set
 
 | Piece | Keep? |
 |-------|-------|
-| Physics guards (`b2689a2f`) | Yes (already committed) |
-| RNG walk-mode + polar truncated sampler + unified seed | Yes |
+| Physics guards (`b2689a2f`) | Yes |
+| RNG walk-mode + polar truncated sampler + unified seed (`66d101b7`) | Yes |
 | Lincon shared-stencil split | No (reverted) |
+| Motion / exchange prep bundle (§4) | Yes |
+| REAL64 `conditional_update_ri` kind fix | Yes |
 
-Optional confirmation after this keep-set lands: from the repo root of
-`tum-mglet-base`, run
-`tests/Particles/Performance/run-keepset-compare.sh` (self-contained medium +
-BCC compute vs the authoritative baselines). That is good practice before
-calling the RNG numbers final on a lincon-reverted binary, but not required if
-the tree matches this document and correctness gates pass. The wrapper expects
-Release `mglet` at
-`/home/yaydin/particle-performance/build-particle-release/src/mglet`.
+Re-measure with
+`tests/Particles/Performance/run-keepset-compare.sh` (expects Release `mglet` at
+`/home/yaydin/particle-performance/build-particle-release/src/mglet`).

@@ -356,18 +356,22 @@ CONTAINS
     !-----------------------------------
 
     ! determine the pressurce cell that a particle is on from its coordinates, grid and previous presuure cell
-    SUBROUTINE update_particle_cell(particle)
+    ! Optional grid context (kk/jj/ii + X/Y/Z pointers) avoids repeated get_field/get_ptr/get_mgdims
+    ! when the caller already resolved them for particle%igrid.
+    SUBROUTINE update_particle_cell(particle, kk_ctx, jj_ctx, ii_ctx, x_ctx, y_ctx, z_ctx)
 
         ! subroutine arguments
         TYPE(baseparticle_t), INTENT(inout) :: particle
+        INTEGER(intk), INTENT(in), OPTIONAL :: kk_ctx, jj_ctx, ii_ctx
+        REAL(realk), POINTER, CONTIGUOUS, DIMENSION(:), INTENT(in), OPTIONAL :: x_ctx, y_ctx, z_ctx
 
         ! local variables
-        TYPE(field_t), POINTER :: x_f, y_f, z_f, dx_f, dy_f, dz_f
-        REAL(realk), POINTER, CONTIGUOUS :: x(:), y(:), z(:), dx(:), dy(:), dz(:)
+        TYPE(field_t), POINTER :: x_f, y_f, z_f
+        REAL(realk), POINTER, CONTIGUOUS :: x(:), y(:), z(:)
 
         REAL(realk) :: diff_old, diff_new
-        REAL(realk) :: minx, maxx, miny, maxy, minz, maxz
         INTEGER(intk) :: k, j, i, kk, jj, ii, istep, jstep, kstep
+        LOGICAL :: have_ctx
 
         IF (particle%state < 1) THEN
             IF (TRIM(particle_terminal) == "normal" .OR. TRIM(particle_terminal) == "verbose") THEN
@@ -377,24 +381,27 @@ CONTAINS
             RETURN
         END IF
 
-        CALL get_field(x_f, "X")
-        CALL get_field(y_f, "Y")
-        CALL get_field(z_f, "Z")
+        have_ctx = PRESENT(kk_ctx) .AND. PRESENT(jj_ctx) .AND. PRESENT(ii_ctx) .AND. &
+         PRESENT(x_ctx) .AND. PRESENT(y_ctx) .AND. PRESENT(z_ctx)
 
-        CALL get_field(dx_f, "DX")
-        CALL get_field(dy_f, "DY")
-        CALL get_field(dz_f, "DZ")
+        IF (have_ctx) THEN
+            kk = kk_ctx
+            jj = jj_ctx
+            ii = ii_ctx
+            x => x_ctx
+            y => y_ctx
+            z => z_ctx
+        ELSE
+            CALL get_field(x_f, "X")
+            CALL get_field(y_f, "Y")
+            CALL get_field(z_f, "Z")
 
-        CALL x_f%get_ptr(x, particle%igrid)
-        CALL y_f%get_ptr(y, particle%igrid)
-        CALL z_f%get_ptr(z, particle%igrid)
+            CALL x_f%get_ptr(x, particle%igrid)
+            CALL y_f%get_ptr(y, particle%igrid)
+            CALL z_f%get_ptr(z, particle%igrid)
 
-        CALL dx_f%get_ptr(dx, particle%igrid)
-        CALL dy_f%get_ptr(dy, particle%igrid)
-        CALL dz_f%get_ptr(dz, particle%igrid)
-
-        CALL get_mgdims(kk, jj, ii, particle%igrid)
-        CALL get_bbox(minx, maxx, miny, maxy, minz, maxz, particle%igrid)
+            CALL get_mgdims(kk, jj, ii, particle%igrid)
+        END IF
 
         IF (particle%ijkcell(1) < 1 .OR. particle%ijkcell(1) > ii) CALL errr(__FILE__, __LINE__)
         IF (particle%ijkcell(2) < 1 .OR. particle%ijkcell(2) > jj) CALL errr(__FILE__, __LINE__)

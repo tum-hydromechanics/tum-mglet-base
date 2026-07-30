@@ -129,6 +129,7 @@ CONTAINS
         ! local variables
         INTEGER(intk) :: igrid, i, j, ii, jj, kk, gfound, ig, ipart, temp_grid
         REAL(realk) :: pd_eff_tot(3), temp_coord(3)
+        REAL(realk) :: sig_diff(3)
         TYPE(field_t), POINTER :: x_f, y_f, z_f
         TYPE(field_t), POINTER :: dx_f, dy_f, dz_f, ddx_f, ddy_f, ddz_f
         TYPE(field_t), POINTER :: pwu_f, pwv_f, pww_f
@@ -196,7 +197,23 @@ CONTAINS
             RETURN
         END IF
 
+        ! Diffusion scales are constant for the timestep; compute once for all particles.
+        sig_diff = 0.0_realk
+        IF (ddiffusion) THEN
+            IF (D(1) > 0.0_realk) sig_diff(1) = SQRT(2.0_realk * D(1) * dt)
+            IF (D(2) > 0.0_realk) sig_diff(2) = SQRT(2.0_realk * D(2) * dt)
+            IF (D(3) > 0.0_realk) sig_diff(3) = SQRT(2.0_realk * D(3) * dt)
+        END IF
+
         CALL count_pog(my_particle_list, grids_np, plist_displ)
+
+        ! Resolve coordinate arrays once per owned grid for cell updates during motion,
+        ! even when only diffusion is enabled (advection already needed them for lincon).
+        IF (.NOT. dadvection) THEN
+            CALL get_field(x_f, "X")
+            CALL get_field(y_f, "Y")
+            CALL get_field(z_f, "Z")
+        END IF
         
         DO i = 1, nmy_particle_grids
             igrid = my_particle_grids(i)
@@ -234,6 +251,11 @@ CONTAINS
                 CALL pww_f%get_ptr(pww, igrid)
 
                 CALL stop_timer(921)
+            ELSE
+                CALL get_mgdims(kk, jj, ii, igrid)
+                CALL x_f%get_ptr(x, igrid)
+                CALL y_f%get_ptr(y, igrid)
+                CALL z_f%get_ptr(z, igrid)
             END IF
 
             DO j = 1, grids_np(i)
@@ -274,11 +296,12 @@ CONTAINS
 
                 IF (dadvection) THEN
                     CALL particle_advection(my_particle_list%particles(ipart), temp_grid, temp_coord, pd_eff_tot, &
-                     kk, jj, ii, x, y, z, dx, dy, dz, ddx, ddy, ddz, pwu, pwv, pww, dt)
+                     kk, jj, ii, x, y, z, dx, dy, dz, ddx, ddy, ddz, pwu, pwv, pww, dt, igrid)
                 END IF
                 
                 IF (ddiffusion) THEN
-                    CALL particle_diffusion(my_particle_list%particles(ipart), temp_grid, temp_coord, pd_eff_tot, dt)
+                    CALL particle_diffusion(my_particle_list%particles(ipart), temp_grid, temp_coord, pd_eff_tot, &
+                     kk, jj, ii, x, y, z, igrid, sig_diff(1), sig_diff(2), sig_diff(3))
                 END IF
 
                 ! for particle runtime statistics (terminal output)
@@ -310,7 +333,7 @@ CONTAINS
 
     END SUBROUTINE timeintegrate_particles
 
-    SUBROUTINE particle_advection(particle, temp_grid, temp_coord, pd_eff_tot, kk, jj, ii, x, y, z, dx, dy, dz, ddx, ddy, ddz, pwu, pwv, pww, dt)
+    SUBROUTINE particle_advection(particle, temp_grid, temp_coord, pd_eff_tot, kk, jj, ii, x, y, z, dx, dy, dz, ddx, ddy, ddz, pwu, pwv, pww, dt, igrid_ctx)
 
         ! subroutine arguments
         TYPE(baseparticle_t), INTENT(inout) :: particle
@@ -322,6 +345,7 @@ CONTAINS
         REAL(realk), POINTER, CONTIGUOUS, DIMENSION(:), INTENT(in) :: dx, dy, dz, ddx, ddy, ddz
         REAL(realk), POINTER, CONTIGUOUS, DIMENSION(:, :, :), INTENT(in) :: pwu, pwv, pww
         REAL(realk), INTENT(in) :: dt
+        INTEGER(intk), INTENT(in) :: igrid_ctx
         
         ! local variables
         INTEGER(intk) :: irk
@@ -334,7 +358,8 @@ CONTAINS
         CALL start_timer(921)
         DO irk = 1, prkscheme%nrk
 
-            CALL prkscheme%get_coeffs(A, B, irk)
+            A = A_offload(irk)
+            B = B_offload(irk)
 
             ! get particle velocity
             IF (dinterp_padvection) THEN
@@ -359,7 +384,8 @@ CONTAINS
             CALL stop_timer(921)
             CALL start_timer(922)
             CALL move_particle(particle, pdx_adv, pdy_adv, pdz_adv, &
-             pdx_eff, pdy_eff, pdz_eff, temp_coord, temp_grid)
+             pdx_eff, pdy_eff, pdz_eff, temp_coord, temp_grid, &
+             kk, jj, ii, x, y, z, igrid_ctx)
             CALL stop_timer(922)
             CALL start_timer(921)
             pdx_pot = pdx_eff / B
@@ -380,14 +406,17 @@ CONTAINS
     
     END SUBROUTINE particle_advection
 
-    SUBROUTINE particle_diffusion(particle, temp_grid, temp_coord, pd_eff_tot, dt)
+    SUBROUTINE particle_diffusion(particle, temp_grid, temp_coord, pd_eff_tot, &
+     kk, jj, ii, x, y, z, igrid_ctx, sigx, sigy, sigz)
 
         ! subroutine arguments
         TYPE(baseparticle_t), INTENT(inout) :: particle
         INTEGER(intk), INTENT(inout) :: temp_grid
         REAL(realk), INTENT(inout) :: temp_coord(3)
         REAL(realk), INTENT(inout) :: pd_eff_tot(3)
-        REAL(realk), INTENT(in) :: dt
+        INTEGER(intk), INTENT(in) :: kk, jj, ii, igrid_ctx
+        REAL(realk), POINTER, CONTIGUOUS, DIMENSION(:), INTENT(in) :: x, y, z
+        REAL(realk), INTENT(in) :: sigx, sigy, sigz
 
         ! local variables
         REAL(realk) :: pdx_diff, pdy_diff, pdz_diff
@@ -399,12 +428,13 @@ CONTAINS
         END IF
 
         CALL start_timer(924)
-        CALL generate_diffusive_displacement(dt, D(1), D(2), D(3), pdx_diff, pdy_diff, pdz_diff)
+        CALL generate_diffusive_displacement(sigx, sigy, sigz, pdx_diff, pdy_diff, pdz_diff)
         CALL stop_timer(924)
 
         CALL start_timer(925)
         CALL move_particle(particle, pdx_diff, pdy_diff, pdz_diff, &
-             pdx_eff, pdy_eff, pdz_eff, temp_coord, temp_grid)
+             pdx_eff, pdy_eff, pdz_eff, temp_coord, temp_grid, &
+             kk, jj, ii, x, y, z, igrid_ctx)
         CALL stop_timer(925)
 
         CALL start_timer(924)

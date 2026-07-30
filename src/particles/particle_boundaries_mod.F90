@@ -334,7 +334,8 @@ MODULE particle_boundaries_mod
 
     ! TODO: source the following moduled out into particle_motion_mod or so
 
-    SUBROUTINE move_particle(particle, dx, dy, dz, dx_eff, dy_eff, dz_eff, temp_coord_prev, temp_grid_prev)
+    SUBROUTINE move_particle(particle, dx, dy, dz, dx_eff, dy_eff, dz_eff, temp_coord_prev, temp_grid_prev, &
+     kk_ctx, jj_ctx, ii_ctx, x_ctx, y_ctx, z_ctx, igrid_ctx)
 
         ! subroutine arguments
         TYPE(baseparticle_t), INTENT(inout) :: particle
@@ -342,6 +343,8 @@ MODULE particle_boundaries_mod
         REAL(realk), INTENT(out) :: dx_eff, dy_eff, dz_eff
         REAL(realk), INTENT(inout), OPTIONAL :: temp_coord_prev(3)
         INTEGER(intk), INTENT(inout), OPTIONAL :: temp_grid_prev
+        INTEGER(intk), INTENT(in), OPTIONAL :: kk_ctx, jj_ctx, ii_ctx, igrid_ctx
+        REAL(realk), POINTER, CONTIGUOUS, DIMENSION(:), INTENT(in), OPTIONAL :: x_ctx, y_ctx, z_ctx
 
         ! local variables
         INTEGER(intk) :: temp_grid, iface, iobst_local, destgrid, counter
@@ -351,8 +354,11 @@ MODULE particle_boundaries_mod
         REAL(realk) :: dx_from_here, dy_from_here, dz_from_here
         REAL(realk) :: eps
         LOGICAL :: dreplace
+        LOGICAL :: use_ctx
 
         dreplace = .FALSE.
+        use_ctx = PRESENT(kk_ctx) .AND. PRESENT(jj_ctx) .AND. PRESENT(ii_ctx) .AND. &
+         PRESENT(x_ctx) .AND. PRESENT(y_ctx) .AND. PRESENT(z_ctx) .AND. PRESENT(igrid_ctx)
 
         dx_eff = 0.0
         dy_eff = 0.0
@@ -423,7 +429,11 @@ MODULE particle_boundaries_mod
                         particle%x = particle%x + dx_eff
                         particle%y = particle%y + dy_eff
                         particle%z = particle%z + dz_eff
-                        CALL update_particle_cell(particle)
+                        IF (use_ctx .AND. particle%igrid == igrid_ctx) THEN
+                            CALL update_particle_cell(particle, kk_ctx, jj_ctx, ii_ctx, x_ctx, y_ctx, z_ctx)
+                        ELSE
+                            CALL update_particle_cell(particle)
+                        END IF
                         RETURN
                     END IF
                 END BLOCK
@@ -536,7 +546,11 @@ MODULE particle_boundaries_mod
         !particle%xyz_abs(2) = particle%xyz_abs(2) + dy_eff
         !particle%xyz_abs(3) = particle%xyz_abs(3) + dz_eff
 
-        CALL update_particle_cell(particle)
+        IF (use_ctx .AND. particle%igrid == igrid_ctx) THEN
+            CALL update_particle_cell(particle, kk_ctx, jj_ctx, ii_ctx, x_ctx, y_ctx, z_ctx)
+        ELSE
+            CALL update_particle_cell(particle)
+        END IF
 
     END SUBROUTINE move_particle
 

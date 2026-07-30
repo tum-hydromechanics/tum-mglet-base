@@ -164,8 +164,12 @@ CONTAINS
             ! triage of particles
             IF (particle_list%particles(i)%igrid == destgrid) THEN
 
-                ! particle stays on grid => only update cell
-                CALL update_particle_cell(particle_list%particles(i))
+                ! Same grid after motion: ijkcell was already refreshed in move_particle.
+                ! Recompute only when a face mapping adjusted coordinates (e.g. periodic
+                ! wrap that returns to the same grid).
+                IF (iface /= 0) THEN
+                    CALL update_particle_cell(particle_list%particles(i))
+                END IF
 
             ELSE
 

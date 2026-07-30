@@ -100,30 +100,25 @@ CONTAINS
     END SUBROUTINE init_particle_diffusion
 
 
-    SUBROUTINE generate_diffusive_displacement(dt, D_x, D_y, D_z, pdx, pdy, pdz)
+    SUBROUTINE generate_diffusive_displacement(sigx, sigy, sigz, pdx, pdy, pdz)
 
         ! subroutine arguments
-        REAL(realk), INTENT(in) :: dt
-        REAL(realk), INTENT(in) :: D_x, D_y, D_z
+        REAL(realk), INTENT(in) :: sigx, sigy, sigz
         REAL(realk), INTENT(out) :: pdx, pdy, pdz
-
-        ! local variables
-        REAL(realk) :: sigx, sigy, sigz, u
 
         pdx = 0.0_realk
         pdy = 0.0_realk
         pdz = 0.0_realk
 
-        IF (D_x > 0.0_realk) THEN
-            sigx = SQRT(2.0_realk * D_x * dt)
+        ! Scales are precomputed once per timestep by the caller. Zero scale means
+        ! that axis is inactive (D <= 0); skip sampling to preserve prior behavior.
+        IF (sigx > 0.0_realk) THEN
             CALL sample_host_axis(diffusion_walk_mode, sigx, pdx)
         END IF
-        IF (D_y > 0.0_realk) THEN
-            sigy = SQRT(2.0_realk * D_y * dt)
+        IF (sigy > 0.0_realk) THEN
             CALL sample_host_axis(diffusion_walk_mode, sigy, pdy)
         END IF
-        IF (D_z > 0.0_realk) THEN
-            sigz = SQRT(2.0_realk * D_z * dt)
+        IF (sigz > 0.0_realk) THEN
             CALL sample_host_axis(diffusion_walk_mode, sigz, pdz)
         END IF
 

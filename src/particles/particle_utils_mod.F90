@@ -912,7 +912,7 @@ SUBROUTINE get_exit_face_c_target(bbox, x, y, z, dist, iface)
         !subroutine arguments
         REAL(realk), INTENT(inout) :: old
         REAL(realk), INTENT(in) :: new
-        INTEGER(realk), INTENT(in) :: large_to_old, large_to_new
+        INTEGER(intk), INTENT(in) :: large_to_old, large_to_new
 
         old = old * REAL(MAX(0_intk, SIGN(1_intk, large_to_old - large_to_new))) &
             + new * REAL(MAX(0_intk, SIGN(1_intk, large_to_new - large_to_old)))
