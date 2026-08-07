@@ -73,9 +73,9 @@ CONTAINS
         END IF
     END SUBROUTINE init_darcyterm
 
-    
+
     SUBROUTINE finish_darcyterm()
-        ! placeholder 
+        ! placeholder
         CONTINUE
     END SUBROUTINE finish_darcyterm
 

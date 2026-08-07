@@ -123,8 +123,8 @@ CONTAINS
 
 
     ! Resolve a region name to its id. Returns -1 if the name is not
-    ! among the defined regions (caller's responsibility to error out -
-    ! this module doesn't know whether an unresolved name is fatal for
+    ! among the defined regions (caller's responsibility to error out.
+    ! This module doesn't know whether an unresolved name is fatal for
     ! the caller).
     INTEGER(intk) FUNCTION get_region_id(name) RESULT(id)
         CHARACTER(len=*), INTENT(in) :: name
@@ -202,7 +202,8 @@ CONTAINS
 
             IF (noverlap > 0) THEN
                 WRITE(*, '(A, A, A, I0, A)') "Warning: region ", &
-                    TRIM(regions(n)%name), " overlaps IB-blocked geometry in ", &
+                    TRIM(regions(n)%name), &
+                    " overlaps IB-blocked geometry in ", &
                     noverlap, " cell(s)"
             END IF
         END DO
