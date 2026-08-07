@@ -1,0 +1,10 @@
+#IncludeRegexLine: ^[ 	]*[#%][ 	]*(include|import)[ 	]*[<"]([^">]+)([">])
+
+#IncludeRegexScan: ^.*$
+
+#IncludeRegexComplain: ^$
+
+#IncludeRegexTransform: 
+
+/opt/cmake/cmake-3.23.2-linux-x86_64/share/cmake-3.23/Modules/FortranCInterface/Verify/VerifyCXX.cxx
+

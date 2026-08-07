@@ -1,0 +1,2 @@
+/usr/bin/ar qc libmgletlib.a CMakeFiles/mgletlib.dir/runinfo_mod.F90.o CMakeFiles/mgletlib.dir/timeloop_mod.F90.o
+/usr/bin/ranlib libmgletlib.a

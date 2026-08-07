@@ -1,0 +1,24 @@
+# The fortran modules provided by this target.
+provides
+ bound_flow_mod.mod
+ boussinesqterm_mod.mod
+ coriolisterm_mod.mod
+ darcyterm_mod.mod
+ flow_mod.mod
+ flowcore_mod.mod
+ flowstat_mod.mod
+ gc_compbodyforce_mod.mod
+ gc_flowstencils_mod.mod
+ itinfo_mod.mod
+ laplacephi_mod.mod
+ lesmodel_mod.mod
+ plog_mod.mod
+ pressuresolver_mod.mod
+ region_mod.mod
+ setboundarybuffers_mod.mod
+ sip_classic_mod.mod
+ sip_hyperplane_mod.mod
+ sor_mod.mod
+ timeintegration_mod.mod
+ tstle4_mod.mod
+ wernerwengle_mod.mod

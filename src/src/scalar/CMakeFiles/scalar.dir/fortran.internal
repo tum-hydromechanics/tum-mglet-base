@@ -1,0 +1,11 @@
+# The fortran modules provided by this target.
+provides
+ blockbt_mod.mod
+ bound_scalar_mod.mod
+ gc_scastencils_mod.mod
+ itinfo_scalar_mod.mod
+ scacore_mod.mod
+ scalar_mod.mod
+ scastat_mod.mod
+ setboundarybuffers_scalar_mod.mod
+ timeintegrate_scalar_mod.mod

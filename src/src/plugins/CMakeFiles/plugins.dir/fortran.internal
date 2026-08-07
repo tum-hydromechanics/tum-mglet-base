@@ -1,0 +1,7 @@
+# The fortran modules provided by this target.
+provides
+ builtin_plugins_mod.mod
+ derivfields_mod.mod
+ probes_mod.mod
+ snapshots_mod.mod
+ uvwbulk_mod.mod

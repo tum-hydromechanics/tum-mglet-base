@@ -1,0 +1,32 @@
+# CMake generated Testfile for 
+# Source directory: /home/pott/tum-mglet-base/tests
+# Build directory: /home/pott/tum-mglet-base/src/tests
+# 
+# This file includes the relevant testing commands required for 
+# testing this directory and lists subdirectories to be tested as well.
+add_test([=[BlasiusBL]=] "/home/pott/tum-mglet-base/ci/run-test.sh" "/home/pott/tum-mglet-base/tests/BlasiusBL" "/home/pott/tum-mglet-base/src/src/mglet")
+set_tests_properties([=[BlasiusBL]=] PROPERTIES  TIMEOUT_SIGNAL_GRACE_PERIOD "4" TIMEOUT_SIGNAL_NAME "SIGINT" WORKING_DIRECTORY "/home/pott/tum-mglet-base/src/tests/BlasiusBL" _BACKTRACE_TRIPLES "/home/pott/tum-mglet-base/tests/CMakeLists.txt;7;add_test;/home/pott/tum-mglet-base/tests/CMakeLists.txt;0;")
+add_test([=[Checkblock]=] "/home/pott/tum-mglet-base/ci/run-test.sh" "/home/pott/tum-mglet-base/tests/Checkblock" "/home/pott/tum-mglet-base/src/src/mglet")
+set_tests_properties([=[Checkblock]=] PROPERTIES  TIMEOUT_SIGNAL_GRACE_PERIOD "4" TIMEOUT_SIGNAL_NAME "SIGINT" WORKING_DIRECTORY "/home/pott/tum-mglet-base/src/tests/Checkblock" _BACKTRACE_TRIPLES "/home/pott/tum-mglet-base/tests/CMakeLists.txt;7;add_test;/home/pott/tum-mglet-base/tests/CMakeLists.txt;0;")
+add_test([=[GeostrophicWind]=] "/home/pott/tum-mglet-base/ci/run-test.sh" "/home/pott/tum-mglet-base/tests/GeostrophicWind" "/home/pott/tum-mglet-base/src/src/mglet")
+set_tests_properties([=[GeostrophicWind]=] PROPERTIES  TIMEOUT_SIGNAL_GRACE_PERIOD "4" TIMEOUT_SIGNAL_NAME "SIGINT" WORKING_DIRECTORY "/home/pott/tum-mglet-base/src/tests/GeostrophicWind" _BACKTRACE_TRIPLES "/home/pott/tum-mglet-base/tests/CMakeLists.txt;7;add_test;/home/pott/tum-mglet-base/tests/CMakeLists.txt;0;")
+add_test([=[HotAndColdSpheres]=] "/home/pott/tum-mglet-base/ci/run-test.sh" "/home/pott/tum-mglet-base/tests/HotAndColdSpheres" "/home/pott/tum-mglet-base/src/src/mglet")
+set_tests_properties([=[HotAndColdSpheres]=] PROPERTIES  TIMEOUT_SIGNAL_GRACE_PERIOD "4" TIMEOUT_SIGNAL_NAME "SIGINT" WORKING_DIRECTORY "/home/pott/tum-mglet-base/src/tests/HotAndColdSpheres" _BACKTRACE_TRIPLES "/home/pott/tum-mglet-base/tests/CMakeLists.txt;7;add_test;/home/pott/tum-mglet-base/tests/CMakeLists.txt;0;")
+add_test([=[Inflow-ramp]=] "/home/pott/tum-mglet-base/ci/run-test.sh" "/home/pott/tum-mglet-base/tests/Inflow-ramp" "/home/pott/tum-mglet-base/src/src/mglet")
+set_tests_properties([=[Inflow-ramp]=] PROPERTIES  TIMEOUT_SIGNAL_GRACE_PERIOD "4" TIMEOUT_SIGNAL_NAME "SIGINT" WORKING_DIRECTORY "/home/pott/tum-mglet-base/src/tests/Inflow-ramp" _BACKTRACE_TRIPLES "/home/pott/tum-mglet-base/tests/CMakeLists.txt;7;add_test;/home/pott/tum-mglet-base/tests/CMakeLists.txt;0;")
+add_test([=[NaturalConvection]=] "/home/pott/tum-mglet-base/ci/run-test.sh" "/home/pott/tum-mglet-base/tests/NaturalConvection" "/home/pott/tum-mglet-base/src/src/mglet")
+set_tests_properties([=[NaturalConvection]=] PROPERTIES  TIMEOUT_SIGNAL_GRACE_PERIOD "4" TIMEOUT_SIGNAL_NAME "SIGINT" WORKING_DIRECTORY "/home/pott/tum-mglet-base/src/tests/NaturalConvection" _BACKTRACE_TRIPLES "/home/pott/tum-mglet-base/tests/CMakeLists.txt;7;add_test;/home/pott/tum-mglet-base/tests/CMakeLists.txt;0;")
+add_test([=[Parker_micro]=] "/home/pott/tum-mglet-base/ci/run-test.sh" "/home/pott/tum-mglet-base/tests/Parker_micro" "/home/pott/tum-mglet-base/src/src/mglet")
+set_tests_properties([=[Parker_micro]=] PROPERTIES  TIMEOUT_SIGNAL_GRACE_PERIOD "4" TIMEOUT_SIGNAL_NAME "SIGINT" WORKING_DIRECTORY "/home/pott/tum-mglet-base/src/tests/Parker_micro" _BACKTRACE_TRIPLES "/home/pott/tum-mglet-base/tests/CMakeLists.txt;7;add_test;/home/pott/tum-mglet-base/tests/CMakeLists.txt;0;")
+add_test([=[Santarelli]=] "/home/pott/tum-mglet-base/ci/run-test.sh" "/home/pott/tum-mglet-base/tests/Santarelli" "/home/pott/tum-mglet-base/src/src/mglet")
+set_tests_properties([=[Santarelli]=] PROPERTIES  TIMEOUT_SIGNAL_GRACE_PERIOD "4" TIMEOUT_SIGNAL_NAME "SIGINT" WORKING_DIRECTORY "/home/pott/tum-mglet-base/src/tests/Santarelli" _BACKTRACE_TRIPLES "/home/pott/tum-mglet-base/tests/CMakeLists.txt;7;add_test;/home/pott/tum-mglet-base/tests/CMakeLists.txt;0;")
+add_test([=[ScalarDecay]=] "/home/pott/tum-mglet-base/ci/run-test.sh" "/home/pott/tum-mglet-base/tests/ScalarDecay" "/home/pott/tum-mglet-base/src/src/mglet")
+set_tests_properties([=[ScalarDecay]=] PROPERTIES  TIMEOUT_SIGNAL_GRACE_PERIOD "4" TIMEOUT_SIGNAL_NAME "SIGINT" WORKING_DIRECTORY "/home/pott/tum-mglet-base/src/tests/ScalarDecay" _BACKTRACE_TRIPLES "/home/pott/tum-mglet-base/tests/CMakeLists.txt;7;add_test;/home/pott/tum-mglet-base/tests/CMakeLists.txt;0;")
+add_test([=[Statistics]=] "/home/pott/tum-mglet-base/ci/run-test.sh" "/home/pott/tum-mglet-base/tests/Statistics" "/home/pott/tum-mglet-base/src/src/mglet")
+set_tests_properties([=[Statistics]=] PROPERTIES  TIMEOUT_SIGNAL_GRACE_PERIOD "4" TIMEOUT_SIGNAL_NAME "SIGINT" WORKING_DIRECTORY "/home/pott/tum-mglet-base/src/tests/Statistics" _BACKTRACE_TRIPLES "/home/pott/tum-mglet-base/tests/CMakeLists.txt;7;add_test;/home/pott/tum-mglet-base/tests/CMakeLists.txt;0;")
+add_test([=[TaylorGreen]=] "/home/pott/tum-mglet-base/ci/run-test.sh" "/home/pott/tum-mglet-base/tests/TaylorGreen" "/home/pott/tum-mglet-base/src/src/mglet")
+set_tests_properties([=[TaylorGreen]=] PROPERTIES  TIMEOUT_SIGNAL_GRACE_PERIOD "4" TIMEOUT_SIGNAL_NAME "SIGINT" WORKING_DIRECTORY "/home/pott/tum-mglet-base/src/tests/TaylorGreen" _BACKTRACE_TRIPLES "/home/pott/tum-mglet-base/tests/CMakeLists.txt;7;add_test;/home/pott/tum-mglet-base/tests/CMakeLists.txt;0;")
+add_test([=[Taylorvortex_2D]=] "/home/pott/tum-mglet-base/ci/run-test.sh" "/home/pott/tum-mglet-base/tests/Taylorvortex_2D" "/home/pott/tum-mglet-base/src/src/mglet")
+set_tests_properties([=[Taylorvortex_2D]=] PROPERTIES  TIMEOUT_SIGNAL_GRACE_PERIOD "4" TIMEOUT_SIGNAL_NAME "SIGINT" WORKING_DIRECTORY "/home/pott/tum-mglet-base/src/tests/Taylorvortex_2D" _BACKTRACE_TRIPLES "/home/pott/tum-mglet-base/tests/CMakeLists.txt;7;add_test;/home/pott/tum-mglet-base/tests/CMakeLists.txt;0;")
+add_test([=[sphere]=] "/home/pott/tum-mglet-base/ci/run-test.sh" "/home/pott/tum-mglet-base/tests/sphere" "/home/pott/tum-mglet-base/src/src/mglet")
+set_tests_properties([=[sphere]=] PROPERTIES  TIMEOUT_SIGNAL_GRACE_PERIOD "4" TIMEOUT_SIGNAL_NAME "SIGINT" WORKING_DIRECTORY "/home/pott/tum-mglet-base/src/tests/sphere" _BACKTRACE_TRIPLES "/home/pott/tum-mglet-base/tests/CMakeLists.txt;7;add_test;/home/pott/tum-mglet-base/tests/CMakeLists.txt;0;")

@@ -1,0 +1,18 @@
+Performing C SOURCE FILE Test C_SUPPORTS_DOLLAR succeeded with the following output:
+Change Dir: /home/pott/tum-mglet-base/src/CMakeFiles/FortranCInterface/CMakeFiles/CMakeTmp
+
+Run Build Command(s):/usr/bin/gmake -f Makefile cmTC_32f7b/fast && /usr/bin/gmake  -f CMakeFiles/cmTC_32f7b.dir/build.make CMakeFiles/cmTC_32f7b.dir/build
+gmake[1]: Verzeichnis „/home/pott/tum-mglet-base/src/CMakeFiles/FortranCInterface/CMakeFiles/CMakeTmp“ wird betreten
+Building C object CMakeFiles/cmTC_32f7b.dir/src.c.o
+/usr/bin/gcc-13 -DC_SUPPORTS_DOLLAR   -o CMakeFiles/cmTC_32f7b.dir/src.c.o -c /home/pott/tum-mglet-base/src/CMakeFiles/FortranCInterface/CMakeFiles/CMakeTmp/src.c
+Linking C executable cmTC_32f7b
+/opt/cmake/cmake-3.23.2-linux-x86_64/bin/cmake -E cmake_link_script CMakeFiles/cmTC_32f7b.dir/link.txt --verbose=1
+/usr/bin/gcc-13 CMakeFiles/cmTC_32f7b.dir/src.c.o -o cmTC_32f7b 
+gmake[1]: Verzeichnis „/home/pott/tum-mglet-base/src/CMakeFiles/FortranCInterface/CMakeFiles/CMakeTmp“ wird verlassen
+
+
+Source file was:
+
+extern int dollar$(void);
+int main() { return 0; }
+

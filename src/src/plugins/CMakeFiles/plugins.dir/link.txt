@@ -1,0 +1,2 @@
+/usr/bin/ar qc libplugins.a CMakeFiles/plugins.dir/builtin_plugins_mod.F90.o CMakeFiles/plugins.dir/derivfields_mod.F90.o CMakeFiles/plugins.dir/probes_mod.F90.o CMakeFiles/plugins.dir/snapshots_mod.F90.o CMakeFiles/plugins.dir/uvwbulk_mod.F90.o
+/usr/bin/ranlib libplugins.a

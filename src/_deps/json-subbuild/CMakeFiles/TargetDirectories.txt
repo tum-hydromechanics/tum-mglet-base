@@ -1,0 +1,3 @@
+/home/pott/tum-mglet-base/src/_deps/json-subbuild/CMakeFiles/json-populate.dir
+/home/pott/tum-mglet-base/src/_deps/json-subbuild/CMakeFiles/edit_cache.dir
+/home/pott/tum-mglet-base/src/_deps/json-subbuild/CMakeFiles/rebuild_cache.dir
