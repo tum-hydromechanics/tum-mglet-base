@@ -103,6 +103,20 @@ CONTAINS
         CALL rkstep(v%arr, dv%arr, vo%arr, frhs, dt*fu)
         CALL rkstep(w%arr, dw%arr, wo%arr, frhs, dt*fu)
 
+        ! Operator-split correction on the already RK-updated velocity,
+        ! immediately after the explicit update and before anything that
+        ! needs a globally-consistent field (IB masking, boundary
+        ! exchange, pressure projection below) - those all run *after*
+        ! this and will naturally resync box-to-box ghost cells with the
+        ! corrected values. Do NOT move this after the connect/parent/
+        ! bound_flow block further down: darcyterm modifies u/v/w in
+        ! place per-box, and nothing re-syncs neighboring boxes' ghost
+        ! cells with those corrected values before mgpoisl - placing it
+        ! after that block left box-to-box ghost cells stale at the
+        ! pressure projection, producing a spurious divergence (and a
+        ! compensating pressure jump) at every box boundary.
+        CALL darcyterm(u, v, w, dtrki)
+
         IF (ib%type == "GHOSTCELL") THEN
             ! Equivalent to old "cop3dzero"
             CALL maskbp(u, v, w, p)
@@ -125,13 +139,6 @@ CONTAINS
             CALL parent(ilevel, u, v, w, p)
             CALL bound_flow%bound(ilevel, u, v, w, p)
         END DO
-
-        ! Operator-split correction on the already RK-updated velocity,
-        ! after halo exchange/BC (so face-normal neighbor reads are
-        ! current) and before the pressure projection (so the projection
-        ! accounts for the resistance) - see darcyterm_mod for why this
-        ! differs from boussinesqterm/coriolisterm's placement above
-        CALL darcyterm(u, v, w, dtrki)
 
         ! TODO: check dtrk
         CALL mgpoisl(u, v, w, p, dtrk*dt, ittot, irk)
