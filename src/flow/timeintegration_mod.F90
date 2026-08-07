@@ -12,6 +12,7 @@ MODULE timeintegration_mod
     USE setboundarybuffers_mod
     USE boussinesqterm_mod, ONLY: boussinesqterm
     USE coriolisterm_mod, ONLY: coriolisterm
+    USE darcyterm_mod, ONLY: darcyterm
 
     IMPLICIT NONE(type, external)
     PRIVATE
@@ -124,6 +125,13 @@ CONTAINS
             CALL parent(ilevel, u, v, w, p)
             CALL bound_flow%bound(ilevel, u, v, w, p)
         END DO
+
+        ! Operator-split correction on the already RK-updated velocity,
+        ! after halo exchange/BC (so face-normal neighbor reads are
+        ! current) and before the pressure projection (so the projection
+        ! accounts for the resistance) - see darcyterm_mod for why this
+        ! differs from boussinesqterm/coriolisterm's placement above
+        CALL darcyterm(u, v, w, dtrki)
 
         ! TODO: check dtrk
         CALL mgpoisl(u, v, w, p, dtrk*dt, ittot, irk)

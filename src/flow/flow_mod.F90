@@ -24,6 +24,8 @@ CONTAINS
         USE itinfo_mod, ONLY: init_itinfo
         USE boussinesqterm_mod, ONLY: init_boussinesqterm
         USE coriolisterm_mod, ONLY: init_coriolisterm
+        USE region_mod, ONLY: init_region
+        USE darcyterm_mod, ONLY: init_darcyterm
 
         ! Local variables
         TYPE(field_t), POINTER :: u, v, w
@@ -43,7 +45,7 @@ CONTAINS
         ! even when no flow is solved.
         IF (.NOT. solve_flow) RETURN
 
-        ! These sould only be needed when flow is actually solved
+        ! These should only be needed when flow is actually solved
         CALL set_timer(300, "FLOW")
         CALL set_timer(310, "FLOW_TSTLE4")
         CALL set_timer(320, "FLOW_MGPOISL")
@@ -57,10 +59,13 @@ CONTAINS
         CALL set_timer(351, "FLOW_COMPBODYFORCE")
         CALL set_timer(360, "FLOW_BOUSSINESQTERM")
         CALL set_timer(370, "FLOW_CORIOLISTERM")
+        CALL set_timer(380, "FLOW_DARCYTERM")
 
         CALL init_pressuresolver()
         CALL init_boussinesqterm()
         CALL init_coriolisterm()
+        CALL init_region()
+        CALL init_darcyterm()
         CALL init_itinfo(dcont)
 
         ! Need to call this here - cannot be in flowcore because that
@@ -96,6 +101,8 @@ CONTAINS
         USE ib_mod
         USE boussinesqterm_mod, ONLY: finish_boussinesqterm
         USE coriolisterm_mod, ONLY: finish_coriolisterm
+        USE darcyterm_mod, ONLY: finish_darcyterm
+        USE region_mod, ONLY: finish_region
 
         IF (.NOT. has_flow) RETURN
 
@@ -111,6 +118,8 @@ CONTAINS
             CALL finish_itinfo
             CALL finish_boussinesqterm()
             CALL finish_coriolisterm()
+            CALL finish_darcyterm()
+            CALL finish_region()
             CALL finish_pressuresolver()
         END IF
 
