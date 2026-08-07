@@ -1,7 +1,7 @@
 MODULE darcyterm_mod
     USE core_mod
     USE flowcore_mod, ONLY: gmol
-    USE region_mod, ONLY: has_regions, regionid, get_regionid
+    USE region_mod, ONLY: has_regions, regionid, get_region_id
 
     IMPLICIT NONE(type, external)
     PRIVATE
