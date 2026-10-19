@@ -3,7 +3,9 @@ MODULE particle_diffusion_mod
     USE, INTRINSIC :: ISO_FORTRAN_ENV
     USE, INTRINSIC :: ISO_C_BINDING
 
+#ifdef _MGLET_OPENMP_
     USE omp_lib
+#endif
 
     USE MPI_f08
     USE precision_mod

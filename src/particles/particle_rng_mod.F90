@@ -5,7 +5,9 @@ MODULE particle_rng_mod
     USE, INTRINSIC :: ISO_FORTRAN_ENV
     USE, INTRINSIC :: ISO_C_BINDING
 
+#ifdef _MGLET_OPENMP_
     USE omp_lib
+#endif
 
     USE precision_mod
 

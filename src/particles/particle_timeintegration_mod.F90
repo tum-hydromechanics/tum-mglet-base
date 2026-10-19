@@ -1,6 +1,8 @@
 MODULE particle_timeintegration_mod
 
+#ifdef _MGLET_OPENMP_
     USE omp_lib
+#endif
 
     USE fields_mod
     USE flowcore_mod, ONLY: solve_flow
@@ -508,13 +510,13 @@ CONTAINS
         !$omp reduction(max: num_threads)
         DO i = 1, nmy_particle_grids
 
-#ifdef __GFORTRAN__
+#if defined _MGLET_OPENMP_ && defined __GFORTRAN__
             !$omp master  
                 dev_num = omp_get_device_num()
                 num_teams = omp_get_num_teams()
             !$omp end master
 #endif
-#ifdef __INTEL_COMPILER
+#if defined _MGLET_OPENMP_ && defined __INTEL_COMPILER
             dev_num = omp_get_device_num()
             num_teams = omp_get_num_teams()
 #endif
@@ -534,7 +536,9 @@ CONTAINS
             DO j = 1, grids_np(i)
             
                 !number of threads in the team (working on j-loop)
+#ifdef _MGLET_OPENMP_
                 num_threads = omp_get_num_threads()
+#endif
                 
                 ipart = plist_displ(i) + j
 

@@ -1,6 +1,5 @@
 MODULE openmp_mod
     USE precision_mod
-    USE omp_lib
 
     IMPLICIT NONE
     PRIVATE
@@ -10,6 +9,8 @@ MODULE openmp_mod
 CONTAINS
 
     SUBROUTINE init_openmp()
+#ifdef _MGLET_OPENMP_
+        USE omp_lib
         USE comms_mod, ONLY: myid
 
         INTEGER(intk) :: num_devices, host_device_nbr, device_nbr
@@ -24,6 +25,10 @@ CONTAINS
             WRITE(*, '("    Number of Target devices:       ", I0)') num_devices
             WRITE(*, '()')
         END IF
+#else
+        ! Keep this module link-safe when OpenMP support is disabled.
+        CONTINUE
+#endif
 
     END SUBROUTINE init_openmp
 
